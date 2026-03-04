@@ -244,7 +244,7 @@ class LinearExecutor:
                     
                 except Exception as e:
                     logger.error(f"Local model inference failed: {e}")
-                    raise
+                    raise   
 
             else:
                 # Cloud APIs (Groq, OpenAI, etc.)
