@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""
+================================================================================
+CONFIGURATION LOADER - Simple version for Module 1 testing
+================================================================================
+
+This is a minimal config loader for testing energy_engine.py.
+In production, this would be replaced by the full Module 0 config loader.
+"""
+
+import json
+import yaml
+from pathlib import Path
+from typing import Dict, Any, Optional
+
+
+class ConfigLoader:
+    """Simple configuration loader for testing energy_engine."""
+    
+    def __init__(self, config_dir: Optional[str] = None):
+        """
+        Initialize config loader.
+        
+        Args:
+            config_dir: Path to config directory (default: ../config relative to this file)
+        """
+        if config_dir:
+            self.config_dir = Path(config_dir)
+        else:
+            self.config_dir = Path(__file__).parent.parent / 'config'
+    
+    def get_hardware_config(self) -> Dict[str, Any]:
+        """
+        Load hardware configuration from hw_config.json.
+        
+        Returns:
+            Dictionary containing hardware paths and settings
+        """
+        config_path = self.config_dir / 'hw_config.json'
+        if not config_path.exists():
+            raise FileNotFoundError(f"Hardware config not found: {config_path}")
+        
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    
+    def get_settings(self):
+        """
+        Get application settings as an object with attributes.
+        
+        Returns:
+            Settings object with measurement and ui attributes
+        """
+        class Settings:
+            def __init__(self):
+                self.measurement = self.Measurement()
+                self.ui = self.UI()
+            
+            class Measurement:
+                def __init__(self):
+                    self.sampling_rate_hz = 100
+                    self.warmup_seconds = 2
+                    self.cooldown_seconds = 10
+                    self.baseline_seconds = 5
+            
+            class UI:
+                def __init__(self):
+                    self.default_country = 'US'
+        
+        return Settings()
+    
+    def get_turbostat_columns(self) -> Dict[str, str]:
+        """
+        Get turbostat column mappings from hardware config.
+        
+        Returns:
+            Dictionary mapping metric names to column names
+        """
+        hw_config = self.get_hardware_config()
+        return hw_config.get('turbostat', {}).get('columns', {})
+    def get_model_config(self, mode: str, workflow: str) -> Optional[dict]:
+        """
+        Get model configuration for a specific mode and workflow.
+
+        Args:
+            mode: "local" or "cloud"
+            workflow: "linear" or "agentic"
+
+        Returns:
+            Dictionary with model config (e.g., api_endpoint, model_id, etc.)
+            or None if not found.
+        """
+        if self._models_config is None:
+            return None
+        return self._models_config.get(mode, {}).get(workflow)
+
+# Quick test if run directly
+if __name__ == "__main__":
+    print("Testing ConfigLoader...")
+    loader = ConfigLoader()
+    try:
+        hw = loader.get_hardware_config()
+        print(f"✅ Loaded hardware config with RAPL paths: {list(hw.get('rapl', {}).get('paths', {}).keys())}")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+    
+        
+        

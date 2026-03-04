@@ -1,0 +1,640 @@
+#!/usr/bin/env python3
+"""
+================================================================================
+REAL EXPERIMENT – Run statistically significant experiments
+================================================================================
+
+Usage:
+    # Run with defaults from config
+    python run_real_experiment.py
+
+    # Run specific tasks with custom repetitions
+    python run_real_experiment.py --repetitions 50 --tasks capital,stock_search
+
+    # Use local models (Ollama) to eliminate network noise
+    python run_real_experiment.py --provider local --repetitions 30
+
+    # List available tasks
+    python run_real_experiment.py --list-tasks
+
+Author: Deepak Panigrahy
+================================================================================
+"""
+import os
+import json
+import argparse
+import sys
+import numpy as np
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
+# ============================================================================
+# Add project root to Python path
+# ============================================================================
+project_root = Path(__file__).parent.parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from datetime import datetime
+
+from core.config_loader import ConfigLoader
+from core.execution.linear import LinearExecutor
+from core.execution.agentic import AgenticExecutor
+from core.execution.harness import ExperimentHarness
+from core.utils.task_loader import load_tasks, get_task_by_id, list_task_summary
+from core.database.manager import DatabaseManager
+
+
+def parse_arguments():
+    """Parse command line arguments for experiments."""
+    parser = argparse.ArgumentParser(
+        description="Run A-LEMS experiments with configurable parameters",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Quick test
+  python run_real_experiment.py --repetitions 5 --tasks simple
+
+  # Full experiment with all tasks
+  python run_real_experiment.py --repetitions 30 --tasks all
+
+  # Local model to eliminate network noise
+  python run_real_experiment.py --provider local --repetitions 50
+  
+  # List available tasks
+  python run_real_experiment.py --list-tasks
+        """
+    )
+    
+    # Experiment parameters
+    parser.add_argument(
+        "--repetitions", "-n",
+        type=int,
+        default=None,
+        help="Number of repetitions (default: from config)"
+    )
+    
+    parser.add_argument(
+        "--cool-down",
+        type=int,
+        default=None,
+        help="Seconds between runs (default: from config)"
+    )
+    
+    parser.add_argument(
+        "--tasks",
+        type=str,
+        default="simple,capital",
+        help="Comma-separated task IDs: simple,capital,explain,code,stock_search,comparative_analysis,research_summary,all"
+    )
+    
+    parser.add_argument(
+        "--list-tasks",
+        action="store_true",
+        help="List all available tasks and exit"
+    )
+    
+    parser.add_argument(
+        "--no-warmup",
+        action="store_true",
+        help="Skip warmup runs (not recommended)"
+    )
+    
+    # Model selection
+    parser.add_argument(
+        "--provider",
+        choices=["cloud", "local"],
+        default="cloud",
+        help="Model provider (default: cloud)"
+    )
+    
+    # Output
+    parser.add_argument(
+        "--output", "-o",
+        type=str,
+        default=None,
+        help="Output file path (default: auto-generated)"
+    )
+    
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed progress"
+    )
+    # In parse_arguments() of run_experiment.py
+    parser.add_argument(
+        "--country", 
+        type=str, 
+        default="US",
+        help="Country code for sustainability calculations (e.g., US, IN, FR, DE)"
+    ) 
+    parser.add_argument(
+        "--save-db",
+        action="store_true",
+        help="Save results to database"
+    )    
+    
+    return parser.parse_args()
+
+
+def main():
+    """Run real experiments with configurable parameters."""
+    args = parse_arguments()
+    
+    print("\n" + "="*70)
+    print("📊 A-LEMS REAL EXPERIMENT")
+    print("="*70)
+    # ========================================================================
+    # Collect hardware information for database
+    # ========================================================================
+    hardware_info = None
+    if args.save_db:
+        import socket
+        import psutil
+        hardware_info = {
+            'hostname': socket.gethostname(),
+            'cpu_model': 'Unknown',  # You can get this from /proc/cpuinfo
+            'cpu_cores': psutil.cpu_count(logical=False),
+            'cpu_threads': psutil.cpu_count(logical=True),
+            'ram_gb': psutil.virtual_memory().total // (1024**3),
+            'kernel_version': os.uname().release,
+            'microcode_version': 'Unknown',  # Can be read from /proc/cpuinfo
+            'rapl_domains': 'package,core,uncore,dram'  # Default
+        }
+        print("📊 Hardware info collected for database")    
+    # ========================================================================
+    # Handle task listing if requested
+    # ========================================================================
+    if args.list_tasks:
+        tasks = load_tasks()
+        list_task_summary(tasks)
+        return 0
+    
+    # ========================================================================
+    # Load configuration
+    # ========================================================================
+    print("\n📁 Loading configuration from Module 0...")
+    config = ConfigLoader()
+    settings = config.get_settings()
+    
+    # Get defaults from config
+    if hasattr(settings, 'experiment'):
+        default_repetitions = getattr(settings.experiment, 'default_iterations', 30)
+        default_cool_down = getattr(settings.experiment, 'cool_down_seconds', 30)
+    else:
+        default_repetitions = 30
+        default_cool_down = 30
+    
+    # Command line overrides
+    repetitions = args.repetitions if args.repetitions is not None else default_repetitions
+    cool_down = args.cool_down if args.cool_down is not None else default_cool_down
+    
+    print(f"\n📋 Experiment Configuration:")
+    print(f"   Provider:     {args.provider}")
+    print(f"   Country:      {args.country}") 
+    print(f"   Repetitions:  {repetitions} (config default: {default_repetitions})")
+    print(f"   Cool-down:    {cool_down}s (config default: {default_cool_down}s)")
+    print(f"   Warmup:       {'Yes' if not args.no_warmup else 'No'}")
+    
+    
+    # ========================================================================
+    # Parse tasks from config
+    # ========================================================================
+    all_tasks = load_tasks()
+    
+    if args.tasks == "all":
+        selected_tasks = all_tasks
+    else:
+        task_ids = [tid.strip() for tid in args.tasks.split(',')]
+        selected_tasks = [t for t in all_tasks if t['id'] in task_ids]
+        
+        # Check for missing tasks and warn
+        found_ids = [t['id'] for t in selected_tasks]
+        missing = set(task_ids) - set(found_ids)
+        if missing:
+            print(f"\n⚠️ Warning: Tasks not found in config: {', '.join(missing)}")
+            print("   Use --list-tasks to see available tasks.")
+    
+    if not selected_tasks:
+        print("\n❌ No valid tasks selected. Exiting.")
+        return 1
+    
+    print(f"\n📋 Tasks to run: {len(selected_tasks)}")
+    for i, task in enumerate(selected_tasks):
+        print(f"   {i+1}. {task['name']} (level {task['level']}, {task['tool_calls']} tools)")
+    
+    # ========================================================================
+    # Initialize executors
+    # ========================================================================
+    print(f"\n🤖 Initializing {args.provider} models...")
+    
+    linear_config = config.get_model_config(args.provider, "linear")
+    agentic_config = config.get_model_config(args.provider, "agentic")
+    
+    if not linear_config or not agentic_config:
+        print(f"❌ Failed to load {args.provider} model configurations")
+        return 1
+    
+    linear = LinearExecutor(linear_config)
+    agentic = AgenticExecutor(agentic_config)
+    
+    # ========================================================================
+    # Create harness
+    # ========================================================================
+    print("\n🔧 Initializing experiment harness...")
+    harness = ExperimentHarness(config)
+    
+    # ========================================================================
+    # Run experiments for each task
+    # ========================================================================
+    all_results = {}
+    exp_ids = []
+    
+    for task_idx, task in enumerate(selected_tasks):
+        print(f"\n{'='*70}")
+        print(f"📊 TASK {task_idx+1}/{len(selected_tasks)}: {task['name']}")
+        print(f"{'='*70}")
+        print(f"   Level: {task['level']} | Tools: {task['tool_calls']}")
+        print(f"   Prompt: {task['prompt']}")
+        
+        results = harness.run_comparison(
+            linear_executor=linear,
+            agentic_executor=agentic,
+            task=task['prompt'],
+            task_id=task['id'],
+            n_repetitions=repetitions,
+            cool_down=cool_down,
+            include_warmup=not args.no_warmup,
+            country_code=args.country 
+        )
+
+        # 🔍 DEBUG: Print the structure of results
+        print("\n🔍 DEBUG - results keys:", results.keys())
+        if 'all_runs' in results:
+            print("🔍 DEBUG - all_runs type:", type(results['all_runs']))
+            print("🔍 DEBUG - all_runs content:", results['all_runs'])
+        
+        all_results[task['id']] = results
+
+                
+        all_results[task['id']] = results
+        # ====================================================================
+        # Save to database if requested
+        # ====================================================================
+        if args.save_db:
+            try:
+                # Load database config
+                db_config = config.get_db_config()
+                db = DatabaseManager(db_config)
+                db.create_tables()
+                
+                # Get hardware ID
+                hw_id = None
+                if hardware_info:
+                    hw_id = db.insert_hardware(hardware_info)
+                
+                # Insert experiment
+                experiment_meta = {
+                    'name': f"{task['id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    'description': f"Task: {task['name']} (level {task['level']})",
+                    'workflow_type': 'comparison',
+                    'model_name': linear_config.get('name', 'unknown'),
+                    'provider': args.provider,
+                    'task_name': task['id'],
+                    'country_code': args.country or "US"
+                }
+                exp_id = db.insert_experiment(experiment_meta)
+                exp_ids.append(exp_id)
+                
+                # ====================================================================
+                # Get run data for database insertion - FIXED VERSION
+                # ====================================================================
+                all_runs = []
+                
+                # Debug: Print what's available in results
+                print("\n🔍 DEBUG - Results structure:")
+                print(f"   Keys in results: {list(results.keys())}")
+                
+                # The actual run data is in ml_dataset.linear_runs and ml_dataset.agentic_runs
+                if 'ml_dataset' in results:
+                    print(f"   'ml_dataset' keys: {list(results['ml_dataset'].keys())}")
+                    
+                    # Process linear runs
+                    if 'linear_runs' in results['ml_dataset']:
+                        linear_data = results['ml_dataset']['linear_runs']
+                        print(f"   Found {len(linear_data)} linear runs in ml_dataset")
+                        
+                        for run_dict in linear_data:
+                            # Wrap the run data in the format expected by insert_run
+                            run_package = {
+                                'ml_features': run_dict,
+                                'sustainability': {
+                                    'carbon': {'grams': run_dict.get('carbon_g', 0)},
+                                    'water': {'milliliters': run_dict.get('water_ml', 0)},
+                                    'methane': {'grams': run_dict.get('methane_mg', 0)}
+                                },
+                                'harness_timestamp': datetime.now().isoformat()
+                            }
+                            all_runs.append(run_package)
+                            print(f"      Added linear run with energy: {run_dict.get('energy_j', 0):.4f}J")
+                    
+                    # Process agentic runs
+                    if 'agentic_runs' in results['ml_dataset']:
+                        agentic_data = results['ml_dataset']['agentic_runs']
+                        print(f"   Found {len(agentic_data)} agentic runs in ml_dataset")
+                        
+                        for run_dict in agentic_data:
+                            run_package = {
+                                'ml_features': run_dict,
+                                'sustainability': {
+                                    'carbon': {'grams': run_dict.get('carbon_g', 0)},
+                                    'water': {'milliliters': run_dict.get('water_ml', 0)},
+                                    'methane': {'grams': run_dict.get('methane_mg', 0)}
+                                },
+                                'harness_timestamp': datetime.now().isoformat()
+                            }
+                            all_runs.append(run_package)
+                            print(f"      Added agentic run with energy: {run_dict.get('energy_j', 0):.4f}J")
+                    
+                    # Also check all_runs if needed (but we're using linear_runs/agentic_runs)
+                    if 'all_runs' in results['ml_dataset']:
+                        print(f"   Note: ml_dataset['all_runs'] contains {len(results['ml_dataset']['all_runs'])} flattened records")
+                        
+                else:
+                    print("   ⚠️ No 'ml_dataset' in results")
+                    # Fallback to old method if needed
+                    if 'all_runs' in results:
+                        print(f"   Falling back to results['all_runs']")
+                        all_runs = results['all_runs']
+
+                # ====================================================================
+                # Collect and convert energy samples if available
+                # ====================================================================
+                energy_samples_list = []
+                if 'energy_samples' in results:
+                    raw_samples = results['energy_samples']
+                    # Convert tuple samples to dictionaries
+                    for sample in raw_samples:
+                        if len(sample) == 2 and isinstance(sample[1], dict):
+                            timestamp, energy_dict = sample
+                            converted = {
+                                'timestamp_ns': int(timestamp * 1_000_000_000),  # Convert seconds to ns
+                                'pkg_energy_uj': energy_dict.get('package-0', 0),
+                                'core_energy_uj': energy_dict.get('core', 0),
+                                'uncore_energy_uj': energy_dict.get('uncore', 0),
+                                'dram_energy_uj': 0  # DRAM not in samples
+                            }
+                            energy_samples_list.append(converted)
+                    print(f"   Converted {len(energy_samples_list)} energy samples to dictionary format")
+
+                print("\n🔄 DEBUG: Starting database save...")
+                print(f"   exp_id: {exp_id}")
+                print(f"   hw_id: {hw_id}")
+                print(f"   all_runs count: {len(all_runs)}")
+                print(f"   energy_samples count: {len(energy_samples_list)}")
+
+                # ====================================================================
+                # Collect CPU samples if available
+                # ====================================================================
+                cpu_samples_list = []
+                if 'cpu_samples' in results:
+                    cpu_samples_list = results['cpu_samples']
+                    print(f"   Found {len(cpu_samples_list)} CPU samples (ready for insertion)")
+                    if cpu_samples_list and len(cpu_samples_list) > 0:
+                        print(f"   🔍 First CPU sample keys: {list(cpu_samples_list[0].keys())}")            
+            
+                # ====================================================================
+                # Collect interrupt samples if available
+                # ====================================================================
+                interrupt_samples_list = []
+                if 'interrupt_samples' in results:
+                    interrupt_samples_list = results['interrupt_samples']
+                    print(f"   Found {len(interrupt_samples_list)} interrupt samples (ready for insertion)")
+
+
+                if all_runs:
+                    print(f"   First run type: {type(all_runs[0])}")
+                    if isinstance(all_runs[0], dict):
+                        print(f"   First run keys: {list(all_runs[0].keys())}")
+                
+                # Check if connection is already in transaction
+                try:
+                    in_trans = db.db.execute("SELECT 1 FROM sqlite_master LIMIT 1")
+                    print("   ✅ Database connection OK")
+                except Exception as e:
+                    print(f"   ❌ Database connection error: {e}")
+                
+                # Only proceed if we have actual run data
+                if all_runs and isinstance(all_runs[0], dict):
+                    print("   🟡 Attempting transaction...")
+                    try:
+                            with db:
+                                print("   ✅ Transaction started")
+                                # Get the current max run number for this experiment
+                                current_max_result = db.db.execute(
+                                    "SELECT MAX(run_number) as max_num FROM runs WHERE exp_id = ?", 
+                                    (exp_id,)
+                                )
+                                current_max = current_max_result[0]['max_num'] if current_max_result else 0
+                                next_run_number = (current_max or 0) + 1
+                                
+                                print(f"      Current max run_number for this experiment: {current_max}, starting at: {next_run_number}")
+                                
+                                # Calculate samples per run
+                                runs_count = len(all_runs)
+                                samples_per_run = len(energy_samples_list) // runs_count if runs_count > 0 else 0
+                                
+                                for i, run in enumerate(all_runs):
+                                    run_number = next_run_number + i
+                                    ml = run.get('ml_features', {})
+                                    workflow = ml.get('workflow_type', 'unknown')
+                                    duration_ms = ml.get('duration_ms', 0)
+                                    
+                                    # Get actual workflow timestamps
+                                    start_time_ns = ml.get('start_time_ns')
+                                    end_time_ns = ml.get('end_time_ns')
+                                    
+                                    # Convert to readable format if available
+                                    if start_time_ns:
+                                        start_dt = datetime.fromtimestamp(start_time_ns / 1_000_000_000)
+                                        start_str = start_dt.strftime('%H:%M:%S.%f')[:-3]
+                                    else:
+                                        start_str = 'N/A'
+                                        
+                                    if end_time_ns:
+                                        end_dt = datetime.fromtimestamp(end_time_ns / 1_000_000_000)
+                                        end_str = end_dt.strftime('%H:%M:%S.%f')[:-3]
+                                    else:
+                                        end_str = 'N/A'
+                                    
+                                    # Calculate sample counts for this run using the flat lists
+                                    # This assumes samples are evenly distributed
+                                    runs_count = len(all_runs)
+                                    energy_per_run = len(energy_samples_list) // runs_count if runs_count > 0 else 0
+                                    cpu_per_run = len(cpu_samples_list) // runs_count if runs_count > 0 else 0
+                                    int_per_run = len(interrupt_samples_list) // runs_count if runs_count > 0 else 0
+                                    
+                                    print(f"\n                                        {'─'*50}")
+                                    print(f"                                        Inserting run {i+1}/{len(all_runs)} (run_number={run_number})")
+                                    print(f"                                           Workflow: {workflow.upper()}")
+                                    print(f"                                           Duration: {duration_ms:.1f} ms")
+                                    print(f"                                           Run time: {start_str} → {end_str}")
+                                    print(f"                                           Samples (approx): E={energy_per_run}, CPU={cpu_per_run}, INT={int_per_run}")
+                                    
+                                    # Set the run_number in ml_features
+                                    if 'ml_features' in run and run['ml_features']:
+                                        run['ml_features']['run_number'] = run_number
+                                    else:
+                                        print(f"                                           ⚠️ Warning: run has no ml_features")
+                                    
+                                    current_run_id = db.insert_run(exp_id, hw_id, run)
+                                    print(f"      ✅ Run {i+1} inserted with ID: {current_run_id}")
+                                    
+                                    # Insert energy samples for THIS run
+                                    if energy_samples_list and samples_per_run > 0:
+                                        start_idx = i * samples_per_run
+                                        end_idx = start_idx + samples_per_run
+                                        run_energy_samples = energy_samples_list[start_idx:end_idx]
+                                        
+                                        if run_energy_samples:
+                                            db.insert_energy_samples(current_run_id, run_energy_samples)
+                                            print(f"         ✅ Inserted {len(run_energy_samples)} energy samples for run {current_run_id}")
+                                    
+                                    # Insert CPU samples for THIS run
+                                    # Assuming cpu_samples_list is a list of lists (one per run)
+                                    if cpu_samples_list and i < len(cpu_samples_list):
+                                        # Check if it's a list of lists or flat
+                                        if isinstance(cpu_samples_list[i], list):
+                                            db.insert_cpu_samples(current_run_id, cpu_samples_list[i])
+                                            print(f"         ✅ Inserted {len(cpu_samples_list[i])} CPU samples for run {current_run_id}")
+                                        else:
+                                            # If flat, calculate samples per run
+                                            cpu_per_run = len(cpu_samples_list) // runs_count
+                                            if cpu_per_run > 0:
+                                                start_idx = i * cpu_per_run
+                                                end_idx = start_idx + cpu_per_run
+                                                run_cpu_samples = cpu_samples_list[start_idx:end_idx]
+                                                db.insert_cpu_samples(current_run_id, run_cpu_samples)
+                                                print(f"         ✅ Inserted {len(run_cpu_samples)} CPU samples for run {current_run_id}")
+                                    
+                                    # Insert interrupt samples for THIS run
+                                    if interrupt_samples_list and i < len(interrupt_samples_list):
+                                        # Check if it's a list of lists or flat
+                                        if isinstance(interrupt_samples_list[i], list):
+                                            db.insert_interrupt_samples(current_run_id, interrupt_samples_list[i])
+                                            print(f"         ✅ Inserted {len(interrupt_samples_list[i])} interrupt samples for run {current_run_id}")
+                                        else:
+                                            # If flat, calculate samples per run
+                                            int_per_run = len(interrupt_samples_list) // runs_count
+                                            if int_per_run > 0:
+                                                start_idx = i * int_per_run
+                                                end_idx = start_idx + int_per_run
+                                                run_int_samples = interrupt_samples_list[start_idx:end_idx]
+                                                db.insert_interrupt_samples(current_run_id, run_int_samples)
+                                                print(f"         ✅ Inserted {len(run_int_samples)} interrupt samples for run {current_run_id}")
+                                
+                                print("      Creating tax summaries...")
+                                db.create_tax_summaries(exp_id)
+                                print("      ✅ Tax summaries created")
+                            print("   ✅ Transaction committed successfully")
+                        
+                    except Exception as e:
+                        print(f"   ❌ Transaction failed: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print("   ⚠️ Skipping database insert - no valid run data found")
+                    print(f"   all_runs type: {type(all_runs)}")
+                    if all_runs:
+                        print(f"   First element type: {type(all_runs[0])}")
+                
+                db.close()
+                print(f"✅ Database connection closed")
+                
+                if all_runs and isinstance(all_runs[0], dict):
+                    print(f"✅ Saved experiment {exp_id} to database")
+                
+            except Exception as outer_e:
+                print(f"⚠️ Outer database error: {outer_e}")
+                import traceback
+                traceback.print_exc()
+                if 'db' in locals():
+                    db.close()
+        
+        tax = results['statistics']['orchestration_tax']
+        print(f"\n📈 Task {task['name']} complete:")
+        
+        # Handle NaN in CI
+        ci_lower = tax['ci_lower']
+        ci_upper = tax['ci_upper']
+        
+        if not np.isnan(ci_lower):
+            print(f"   Tax: {tax['mean']:.2f}x [95% CI: {ci_lower:.2f}, {ci_upper:.2f}]")
+        else:
+            print(f"   Tax: {tax['mean']:.2f}x (CI not available for single run)")
+
+    if args.save_db and exp_ids:
+        print(f"\n💾 Saved {len(exp_ids)} experiments to database:")
+        for i, exp_id in enumerate(exp_ids):
+            print(f"   {i+1}. Experiment ID: {exp_id}")
+
+    
+    # ========================================================================
+    # Save results
+    # ========================================================================
+    if args.output:
+        filename = args.output
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"data/experiment_{args.provider}_{timestamp}.json"
+    
+    # Ensure directory exists
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(filename, 'w') as f:
+        json.dump(all_results, f, indent=2, default=str)
+    
+    print(f"\n{'='*70}")
+    print(f"✅ EXPERIMENT COMPLETE!")
+    print(f"{'='*70}")
+    print(f"\n📁 Results saved to: {filename}")
+    
+    # ========================================================================
+    # Final summary table
+    # ========================================================================
+    print("\n📊 Summary Table:")
+    print("-" * 85)
+    print(f"{'Task':<20} {'Linear (J)':>15} {'Agentic (J)':>15} {'Tax (x)':>12} {'CI Range':>20} {'Level':>6}")
+    print("-" * 85)
+    
+    for task in selected_tasks:
+        if task['id'] in all_results:
+            stats = all_results[task['id']]['statistics']
+            linear = f"{stats['linear_energy_j']['mean']:.4f}"
+            agentic = f"{stats['agentic_energy_j']['mean']:.4f}"
+            tax_mean = stats['orchestration_tax']['mean']
+            
+            # Handle CI
+            ci_lower = stats['orchestration_tax']['ci_lower']
+            ci_upper = stats['orchestration_tax']['ci_upper']
+            
+            if not np.isnan(ci_lower):
+                ci_display = f"[{ci_lower:.2f}, {ci_upper:.2f}]"
+                tax_display = f"{tax_mean:.2f}x"
+            else:
+                ci_display = "N/A"
+                tax_display = f"{tax_mean:.2f}x*"
+            
+            print(f"{task['name'][:20]:<20} {linear:>15} {agentic:>15} {tax_display:>12} {ci_display:>20} {task['level']:>6}")
+    
+    print("-" * 85)
+    if any(np.isnan(stats['orchestration_tax']['ci_lower']) for task in selected_tasks if task['id'] in all_results):
+        print("* CI not available for tasks with single run")
+    
+    print("-" * 70)
+    
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

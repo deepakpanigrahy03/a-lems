@@ -1,0 +1,62 @@
+# A-LEMS Predefined Tasks
+# Levels:
+#   1: Direct (0 tool calls)
+#   2: Search (1-2 tool calls)
+#   3: Reasoning (3+ tool calls)
+
+tasks:
+  - id: simple
+    name: "Simple Q&A"
+    description: "Basic factual query"
+    level: 1
+    tool_calls: 0
+    prompt: "What is 2+2? Answer in one word."
+    tags: ["math", "simple"]
+
+  - id: capital
+    name: "Capital City Query"
+    description: "What is the capital of France?"
+    level: 1
+    tool_calls: 0
+    prompt: "What is the capital of France?"
+    tags: ["geography"]
+
+  - id: explain
+    name: "Explain Concept"
+    description: "Explain quantum computing in simple terms"
+    level: 1
+    tool_calls: 0
+    prompt: "Explain quantum computing in simple terms."
+    tags: ["science"]
+
+  - id: code
+    name: "Code Generation"
+    description: "Write a Python function to calculate Fibonacci numbers"
+    level: 2
+    tool_calls: 1
+    prompt: "Write a Python function to calculate Fibonacci numbers."
+    tags: ["programming"]
+
+  - id: stock_search
+    name: "Current Stock Price"
+    description: "Search for current 2026 stock prices of NVIDIA"
+    level: 2
+    tool_calls: 1
+    prompt: "Search for current 2026 stock prices of NVIDIA."
+    tags: ["finance", "search"]
+
+  - id: comparative_analysis
+    name: "Comparative Analysis"
+    description: "Search stock prices, compare with 2025 data, and write summary"
+    level: 3
+    tool_calls: 4
+    prompt: "Search for current NVIDIA stock price, compare with 2025 data, and write a summary."
+    tags: ["finance", "analysis", "multi-tool"]
+
+  - id: research_summary
+    name: "Research Summary"
+    description: "Find recent papers on AI energy and summarize"
+    level: 3
+    tool_calls: 5
+    prompt: "Search for recent papers on AI energy consumption and summarize key findings."
+    tags: ["research"]
