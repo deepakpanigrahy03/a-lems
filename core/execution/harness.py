@@ -1102,12 +1102,22 @@ class ExperimentHarness:
         # ====================================================================
         # DEBUG: Check token data before building ml_features
         # ====================================================================
-        print(f"🔍 DEBUG*** - agentic exec_result keys: {exec_result.keys()}")
-        print(f"🔍 DEBUG ***- agentic tokens in exec_result: {exec_result.get('tokens', {})}")
-        print(f"🔍 DEBUG*** - agentic token total: {exec_result.get('tokens', {}).get('total')}")
-        print(f"🔍 DEBUG*** - agentic token prompt: {exec_result.get('tokens', {}).get('prompt')}")
-        print(f"🔍 DEBUG*** - agentic token completion: {exec_result.get('tokens', {}).get('completion')}")        
-        
+        dprint(f"🔍 DEBUG*** - agentic exec_result keys: {exec_result.keys()}")
+        dprint(f"🔍 DEBUG ***- agentic tokens in exec_result: {exec_result.get('tokens', {})}")
+        dprint(f"🔍 DEBUG*** - agentic token total: {exec_result.get('tokens', {}).get('total')}")
+        dprint(f"🔍 DEBUG*** - agentic token prompt: {exec_result.get('tokens', {}).get('prompt')}")
+        dprint(f"🔍 DEBUG*** - agentic token completion: {exec_result.get('tokens', {}).get('completion')}")        
+        # ====================================================================  
+        # NEW: Capture orchestration events from executor
+        # ====================================================================
+        orchestration_events = []
+        if hasattr(executor, '_events') and executor._events:
+            orchestration_events = executor._events.copy()  # Copy to prevent modification
+            print(f"🔍 DEBUG - Captured {len(orchestration_events)} orchestration events from executor")
+            # Clear events to prevent mixing between runs
+            executor._events = []
+        else:
+            print("🔍 DEBUG - No orchestration events found in executor")        
         
         # ====================================================================
         # Step 6: Return ALL THREE LAYERS with ML features
@@ -1133,7 +1143,7 @@ class ExperimentHarness:
             'network_metrics': network_metrics,
             'energy_per_token': energy_per_token,
             'cpu_metrics': cpu_metrics,
-            
+            'orchestration_events': orchestration_events,
             # ====================================================================
             # NEW: ML Features Dictionary (ALL features for training)
             # ====================================================================
@@ -1267,7 +1277,14 @@ class ExperimentHarness:
         else:
             dprint("⚠️ No last_samples attribute found in energy_engine")
 
-                
+        # ====================================================================
+        # DEBUG - Check orchestration events before returning
+        # ====================================================================
+        print(f"🔍 DEBUG HARNESS - orchestration_events in result: {'orchestration_events' in result}")
+        if 'orchestration_events' in result:
+            print(f"🔍 DEBUG HARNESS - Number of events: {len(result['orchestration_events'])}")
+            if len(result['orchestration_events']) > 0:
+                print(f"🔍 DEBUG HARNESS - First event keys: {result['orchestration_events'][0].keys()}")                
 
         dprint(f"✅ Harness complete: {derived.workload_energy_j:.4f}J workload energy")
         return result
@@ -1342,7 +1359,23 @@ class ExperimentHarness:
 
             if 'interrupt_samples' in linear_result:
                 self._collected_samples['interrupt_samples'].extend(linear_result['interrupt_samples'])
-  
+            # ====================================================================
+            # Collect orchestration events from agentic run (with protection)
+            # ====================================================================
+            try:
+                if agentic_result and 'orchestration_events' in agentic_result:
+                    if 'orchestration_events_by_run' not in self._collected_samples:
+                        self._collected_samples['orchestration_events_by_run'] = []
+                    self._collected_samples['orchestration_events_by_run'].append(agentic_result['orchestration_events'])
+                    dprint(f"   📝 Collected {len(agentic_result['orchestration_events'])} orchestration events")
+                else:
+                    dprint("   ⚠️ No orchestration events in agentic_result")
+            except Exception as e:
+                dprint(f"   ⚠️ Error collecting events: {e}")
+                # Still add an empty list to maintain alignment
+                if 'orchestration_events_by_run' not in self._collected_samples:
+                    self._collected_samples['orchestration_events_by_run'] = []
+                self._collected_samples['orchestration_events_by_run'].append([])
             
             
             # Cool‑down
@@ -1501,7 +1534,57 @@ class ExperimentHarness:
         linear_ept = [r['energy_per_token'] for r in all_linear]
         agentic_ept = [r['energy_per_token'] for r in all_agentic]
 
-       
+        # ====================================================================
+        # Collect raw events from agentic runs (store temporarily)
+        # ====================================================================
+        raw_agentic_events = []
+        for i, result in enumerate(all_agentic):
+            if result and 'orchestration_events' in result:
+                raw_agentic_events.append(result['orchestration_events'])
+                dprint(f"🔍 DEBUG - Collected {len(result['orchestration_events'])} orchestration events from agentic run {i+1}")
+            else:
+                raw_agentic_events.append([])
+                dprint(f"🔍 DEBUG - No orchestration events in agentic run {i+1}")
+
+        # ====================================================================
+        # Build grouped samples after the loop
+        # ====================================================================
+        # Build energy_samples_by_run in order: [L1, L2, L3, A1, A2, A3]
+        self._collected_samples['energy_samples_by_run'] = [
+            run['energy_samples'] for run in all_linear if 'energy_samples' in run
+        ] + [
+            run['energy_samples'] for run in all_agentic if 'energy_samples' in run
+        ]
+        
+        self._collected_samples['cpu_samples_by_run'] = [
+            run['cpu_samples'] for run in all_linear if 'cpu_samples' in run
+        ] + [
+            run['cpu_samples'] for run in all_agentic if 'cpu_samples' in run
+        ]
+        
+        self._collected_samples['interrupt_samples_by_run'] = [
+            run['interrupt_samples'] for run in all_linear if 'interrupt_samples' in run
+        ] + [
+            run['interrupt_samples'] for run in all_agentic if 'interrupt_samples' in run
+        ]
+        
+        # ====================================================================
+        # Build orchestration events by run (AGENTIC ONLY)
+        # ====================================================================
+        # For orchestration events, we only have them for agentic runs
+        # But we need to place them in the same order as runs:
+        # [L1, L2, L3, A1, A2, A3] → So first n_repetitions entries are empty lists
+        orchestration_events_by_run = []
+        
+        # Add empty lists for linear runs
+        for _ in range(n_repetitions):
+            orchestration_events_by_run.append([])
+        
+        # Add events for agentic runs (using raw_agentic_events collected above)
+        orchestration_events_by_run.extend(raw_agentic_events)
+        dprint(f"📊 Added {len(raw_agentic_events)} agentic event groups")
+
+
         results = {
             'task': task,
             'task_id': task_id,
@@ -1548,6 +1631,7 @@ class ExperimentHarness:
             results['energy_samples_by_run'] = self._collected_samples.get('energy_samples_by_run', [])
             results['cpu_samples_by_run'] = self._collected_samples.get('cpu_samples_by_run', [])
             results['interrupt_samples_by_run'] = self._collected_samples.get('interrupt_samples_by_run', [])
+            results['orchestration_events_by_run'] = orchestration_events_by_run
 
             dprint(f"📊 Added samples to final results: energy={len(results['energy_samples'])}, "
                    f"cpu={len(results['cpu_samples'])}, interrupt={len(results['interrupt_samples'])}")         
