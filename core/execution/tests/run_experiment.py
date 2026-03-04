@@ -462,7 +462,13 @@ def main():
                                             run_int_samples = interrupt_samples_list[start_idx:end_idx]
                                             db.insert_interrupt_samples(current_run_id, run_int_samples)
                                             print(f"         ⚠️ Inserted {len(run_int_samples)} interrupt samples (fallback)")
-                        
+                            # ====================================================================
+                            # ORCHESTRATION EVENTS - Insert if available
+                            # ====================================================================
+                            if 'orchestration_events' in results and results['orchestration_events']:
+                                # Events are already per-run from agentic.py
+                                db.insert_orchestration_events(current_run_id, results['orchestration_events'])
+                                print(f"         ✅ Inserted {len(results['orchestration_events'])} orchestration events for run {current_run_id}")                        
                         if len(all_runs) >= 2:
                             print("      Creating tax summaries...")
                             db.create_tax_summaries(exp_id)

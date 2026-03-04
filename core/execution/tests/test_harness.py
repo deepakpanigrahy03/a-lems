@@ -413,6 +413,19 @@ def main():
                                     db.insert_interrupt_samples(current_run_id, run_int_samples)
                                     print(f"         ⚠️ Inserted {len(run_int_samples)} interrupt samples (fallback)")
                 
+                    # ====================================================================
+                    # ORCHESTRATION EVENTS - Use grouped if available
+                    # ====================================================================
+                    print(f"🔍 DEBUG - Checking for events in results: {'orchestration_events_by_run' in results}")
+                    if 'orchestration_events_by_run' in results:
+                        event_groups = results['orchestration_events_by_run']
+                        print(f"🔍 DEBUG - Found {len(event_groups)} event groups")
+                        if i < len(event_groups) and event_groups[i]:
+                            print(f"🔍 DEBUG - Inserting {len(event_groups[i])} events for run {i+1}")
+                            db.insert_orchestration_events(current_run_id, event_groups[i])
+                            print(f"         ✅ Inserted {len(event_groups[i])} orchestration events for run {current_run_id}")
+                        else:
+                            print(f"         ⚠️ No orchestration events for run {i+1}")
                 if len(all_runs) >= 2:
                     print("      Creating tax summaries...")
                     db.create_tax_summaries(exp_id)

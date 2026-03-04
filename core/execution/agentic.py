@@ -229,7 +229,9 @@ class AgenticExecutor:
         overall_start = time.time()
         total_prompt_chars = 0
         total_response_chars = 0
-        
+        call_counter = 0
+        step_counter = 0
+
         dprint(f"\n{'#'*70}")
         dprint(f"🚀 AGENTIC EXECUTION [{experiment_id}]: {task[:100]}")
         dprint(f"{'#'*70}")
@@ -240,11 +242,26 @@ class AgenticExecutor:
         # This is CRITICAL for experimental reproducibility
         # ====================================================================
         plan_start = time.time()
-        plan = self._create_plan(task, temperature=planning_temperature)
+        call_counter += 1
+        plan = self._create_plan(task, temperature=planning_temperature, call_counter=call_counter)
         steps = plan.get('steps', [])
         plan_end = time.time()
         planning_time_ms = (plan_end - plan_start) * 1000
-        dprint(f"📋 Planning: {len(steps)} steps, {planning_time_ms:.1f}ms")
+        
+        # Emit planning phase event
+        self._emit_event(
+            phase='planning',
+            event_type='planning',
+            start_time=plan_start,
+            end_time=plan_end,
+            metadata={
+                'steps': len(steps),
+                'task_preview': task[:100],
+                'planning_temperature': planning_temperature
+            }
+        )
+        
+        dprint(f"📋 Planning: {len(steps)} steps, {planning_time_ms:.1f}ms")    
         
         # ====================================================================
         # Phase 2: Execution – Run each step (tool or LLM)
@@ -253,12 +270,14 @@ class AgenticExecutor:
         step_results, tools_used = [], []
         tokens = {'prompt': 0, 'completion': 0, 'total': 0}
         total_llm_calls = 0
+        step_counter = 0
         
         for i, step in enumerate(steps):
+            step_counter += 1
             if step.get('tool') in self.supported_tools:
                 # Tool execution – external computation, no LLM call
                 tool_start = time.time()
-                result = self._execute_tool(step['tool'], step.get('args', {}))
+                result = self._execute_tool(step['tool'], step.get('args', {}), step_counter)
                 tool_end = time.time()
                 step_results.append({
                     'step': i+1,
@@ -272,9 +291,10 @@ class AgenticExecutor:
                 dprint(f"  🔧 Tool {step['tool']} → {result}")
             else:
                 # LLM execution – another call to the model
+                call_counter += 1
                 prompt = step.get('prompt', task)
                 llm_start = time.time()
-                llm_result = self._call_llm(prompt, temperature=self.temperature)
+                llm_result = self._call_llm(prompt, temperature=self.temperature, call_counter=call_counter)
                 llm_end = time.time()
                 step_results.append({
                     'step': i+1,
@@ -317,10 +337,22 @@ class AgenticExecutor:
         # Phase 3: Synthesis – Combine all results (1 call)
         # ====================================================================
         syn_start = time.time()
-        synthesis = self._synthesize(task, steps, step_results)
+        call_counter += 1
+        synthesis = self._synthesize(task, steps, step_results, call_counter=call_counter)
         syn_end = time.time()
         synthesis_time_ms = (syn_end - syn_start) * 1000
-        
+
+        # Emit synthesis phase event
+        self._emit_event(
+            phase='synthesis',
+            event_type='synthesis',
+            start_time=syn_start,
+            end_time=syn_end,
+            metadata={
+                'tokens': tokens,
+                'has_content': bool(synthesis.get('content'))
+            }
+        )        
         if 'tokens' in synthesis:
             for k, v in synthesis['tokens'].items():
                 tokens[k] += v
@@ -468,7 +500,7 @@ You can use tools like calculator or web search if needed.
 """
         return self.execute(planning_prompt)
 
-    def _create_plan(self, task: str, temperature: float = 0.0) -> Dict[str, Any]:
+    def _create_plan(self, task: str, temperature: float = 0.0, call_counter: int = None) -> Dict[str, Any]:
         """
         Ask LLM to create execution plan with deterministic temperature.
         
@@ -499,7 +531,7 @@ You can use tools like calculator or web search if needed.
                              "tool": "calculator", "args": {{"expression": "2+2"}}}}]}}
         """
         
-        response = self._call_llm(prompt, temperature=temperature)
+        response = self._call_llm(prompt, temperature=temperature, call_counter=call_counter)
         content = response.get('content', '{}')
         
         try:
@@ -510,7 +542,7 @@ You can use tools like calculator or web search if needed.
             # Fallback for when LLM fails – still return something usable
             return {'steps': [{'description': 'Answer', 'type': 'llm', 'prompt': task}]}
 
-    def _synthesize(self, task: str, steps: List, results: List) -> Dict[str, Any]:
+    def _synthesize(self, task: str, steps: List, results: List, call_counter: int = None) -> Dict[str, Any]:
         """
         Combine step results into final answer.
         
@@ -531,9 +563,9 @@ You can use tools like calculator or web search if needed.
             Dictionary with synthesis results (content and tokens)
         """
         prompt = f"Task: {task}\nResults: {json.dumps(list(zip(steps, results)))}\nFinal answer:"
-        return self._call_llm(prompt, temperature=self.temperature)
+        return self._call_llm(prompt, temperature=self.temperature, call_counter=call_counter)
 
-    def _execute_tool(self, name: str, args: Dict) -> Any:
+    def _execute_tool(self, name: str, args: Dict, step_index: int = None) -> Any:
         """
         Execute a specific tool.
         
@@ -563,7 +595,11 @@ You can use tools like calculator or web search if needed.
             event_type='tool_call',
             start_time=tool_start,
             end_time=tool_start,  # Will be updated at end
-            metadata={'tool': name, 'args': args}
+            metadata={
+                'tool': name, 
+                'args': args,
+                'step': step_index
+                }
         )
         
         result = None
@@ -602,7 +638,7 @@ You can use tools like calculator or web search if needed.
         
         return result
 
-    def _call_llm(self, prompt: str, temperature: Optional[float] = None) -> Dict[str, Any]:
+    def _call_llm(self, prompt: str, temperature: Optional[float] = None, call_counter: int = None) -> Dict[str, Any]:
         """
         Make actual API call to the LLM provider.
         
@@ -757,8 +793,24 @@ You can use tools like calculator or web search if needed.
                     tokens = {}
                     logger.warning(f"Unexpected API response format")
             
-            api_latency_ms = (time.time() - api_start) * 1000
+            api_end = time.time()
+            api_latency_ms = (api_end - api_start) * 1000
+
             self._api_latencies.append(api_latency_ms)  # ← NEW: store latency
+            # Emit LLM call event
+            phase = 'planning' if self._call_count == 1 else 'execution'
+            self._emit_event(
+                phase=phase,
+                event_type='llm_call',
+                start_time=api_start,
+                end_time=api_end,
+                metadata={
+                    'call_number': self._call_count,
+                    'temperature': temp,
+                    'tokens': tokens,
+                    'model': self.config.get('model_id')
+                }
+            )
 
             if not hasattr(self, '_effective_kbps_list'):
                 self._effective_kbps_list = []
@@ -846,4 +898,6 @@ You can use tools like calculator or web search if needed.
             'metadata': metadata or {}
         }
         self._events.append(event)
-        dprint(f"📝 Event: {phase}.{event_type} ({event['duration_ns']/1e6:.2f}ms)")    
+        dprint(f"📝 Event: {phase}.{event_type} ({event['duration_ns']/1e6:.2f}ms)") 
+        print(f"🔔 EVENT CREATED: {phase}.{event_type}")
+           
