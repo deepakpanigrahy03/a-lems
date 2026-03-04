@@ -1,0 +1,67 @@
+{
+  "cloud": {
+    "linear": {
+      "name": "Groq Llama 3.3 70B",
+      "provider": "groq",
+      "api_endpoint": "https://api.groq.com/openai/v1/chat/completions",
+      "api_key_env": "GROQ_API_KEY",
+      "model_id": "llama-3.3-70b-versatile",
+      "max_tokens": 1024,
+      "temperature": 0.7,
+      "tools_supported": false
+    },
+    "agentic": {
+      "name": "Groq Llama 3.3 70B (Agentic)",
+      "provider": "groq",
+      "api_endpoint": "https://api.groq.com/openai/v1/chat/completions",
+      "api_key_env": "GROQ_API_KEY",
+      "model_id": "llama-3.3-70b-versatile",
+      "max_tokens": 2048,
+      "temperature": 0.7,
+      "tools_supported": true,
+      "tools": ["web_search", "calculator"]
+    },
+    "openrouter_linear": {
+      "name": "OpenRouter Llama 3.3 70B Free",
+      "provider": "openrouter",
+      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_id": "meta-llama/llama-3.3-70b-instruct:free",
+      "max_tokens": 1024,
+      "temperature": 0.7,
+      "tools_supported": false
+    },
+    "openrouter_agentic": {
+      "name": "OpenRouter Llama 3.3 70B Free (Agentic)",
+      "provider": "openrouter",
+      "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "model_id": "meta-llama/llama-3.3-70b-instruct:free",
+      "max_tokens": 2048,
+      "temperature": 0.7,
+      "tools_supported": true,
+      "tools": ["web_search", "calculator"]
+    }
+  },
+  "local": {
+    "linear": {
+      "name": "Ollama Local Model",
+      "provider": "ollama",
+      "api_endpoint": "http://localhost:11434/api/generate",
+      "model_id": "llama3.2:latest",
+      "max_tokens": 1024,
+      "temperature": 0.7,
+      "tools_supported": false
+    },
+    "agentic": {
+      "name": "Ollama Local Model (Agentic)",
+      "provider": "ollama",
+      "api_endpoint": "http://localhost:11434/api/generate",
+      "model_id": "llama3.2:latest",
+      "max_tokens": 2048,
+      "temperature": 0.7,
+      "tools_supported": true,
+      "tools": ["web_search", "calculator"]
+    }
+  }
+}

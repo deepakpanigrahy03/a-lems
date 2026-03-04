@@ -1,0 +1,571 @@
+#!/usr/bin/env python3
+"""
+A-LEMS Hardware Detection Utility
+==================================
+Detects all hardware capabilities and saves to config file.
+Includes automatic backup and permission handling.
+
+THIS IS THE DETECTION PHASE ONLY:
+- May require sudo for full detection (turbostat/MSR access)
+- Saves column names to config - NO sudo flags stored
+- Module 1 will use these column names WITHOUT sudo
+
+Usage:
+    # First run (with sudo for full detection)
+    sudo python scripts/detect_hardware.py --output config/hw_config.json --merge
+    
+    # Subsequent runs (no sudo needed, uses cached data)
+    python scripts/detect_hardware.py --output config/hw_config.json --merge
+    
+    # Just view hardware info
+    python scripts/detect_hardware.py --verbose
+"""
+
+import os
+import sys
+import json
+import glob
+import platform
+import argparse
+import subprocess
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any, Optional, List, Tuple
+
+# ============================================================================
+# BACKUP FUNCTION WITH PERMISSION HANDLING
+# ============================================================================
+
+def create_backup(file_path: Path, max_backups: int = 5) -> Optional[Path]:
+    """
+    Create a timestamped backup of a file before modifying it.
+    
+    Args:
+        file_path: Path to the file to back up
+        max_backups: Maximum number of backups to keep
+    
+    Returns:
+        Path to the backup file, or None if file doesn't exist
+    """
+    if not file_path.exists():
+        return None
+    
+    # Create backups directory if it doesn't exist
+    backup_dir = file_path.parent / 'backups'
+    
+    # Check if backup_dir exists and is writable
+    if backup_dir.exists():
+        if not os.access(backup_dir, os.W_OK):
+            print(f"⚠️  Backup directory {backup_dir} is not writable.")
+            print(f"   Run this command to fix: sudo chown -R $USER:$USER {backup_dir}")
+            print(f"   Or run this script with sudo for this operation.")
+            return None
+    else:
+        # Try to create the directory
+        try:
+            backup_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            print(f"⚠️  Cannot create backup directory {backup_dir}")
+            print(f"   Run this command to fix: sudo mkdir -p {backup_dir} && sudo chown $USER:$USER {backup_dir}")
+            return None
+    
+    # Create timestamped backup
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_path = backup_dir / f"{file_path.name}.{timestamp}.bak"
+    
+    try:
+        # Copy the file
+        shutil.copy2(file_path, backup_path)
+        print(f"💾 Backup created: {backup_path}")
+    except PermissionError:
+        print(f"⚠️  Cannot write backup to {backup_path}")
+        print(f"   Check permissions on {backup_dir}")
+        return None
+    
+    # Clean up old backups (keep only max_backups most recent)
+    try:
+        backups = sorted(backup_dir.glob(f"{file_path.name}.*.bak"))
+        if len(backups) > max_backups:
+            for old_backup in backups[:-max_backups]:
+                old_backup.unlink()
+                print(f"   Removed old backup: {old_backup.name}")
+    except Exception as e:
+        print(f"⚠️  Could not clean old backups: {e}")
+    
+    return backup_path
+
+# ============================================================================
+# TURBOSTAT DETECTION (with sudo during detection ONLY)
+# ============================================================================
+def find_real_turbostat() -> Optional[str]:
+    """Find the real turbostat binary (not the wrapper script)."""
+    # Check kernel-specific path first (Ubuntu's standard location)
+    kernel_release = platform.release()
+    real_path = f"/usr/lib/linux-tools/{kernel_release}/turbostat"
+    if os.path.exists(real_path):
+        return real_path
+    
+    # Try to find via dpkg (Debian/Ubuntu)
+    try:
+        result = subprocess.run(
+            ['dpkg', '-L', 'linux-tools-common'],
+            capture_output=True, text=True
+        )
+        for line in result.stdout.split('\n'):
+            if 'turbostat' in line and not line.endswith('.gz'):
+                if os.path.exists(line) and not os.path.islink(line):
+                    return line
+    except:
+        pass
+    
+    # Try to follow symlinks from the wrapper
+    wrapper = shutil.which("turbostat")
+    if wrapper and os.path.islink(wrapper):
+        real_path = os.path.realpath(wrapper)
+        if os.path.exists(real_path):
+            return real_path
+    
+    return None
+
+
+def detect_turbostat_columns() -> Dict[str, Any]:
+    """
+    Detect which turbostat columns are available using Python's built-in CSV parser.
+    No external dependencies!
+    """
+    import csv
+    import io
+    
+    turbostat_config = {
+        "available": False,
+        "columns": {},
+        "available_metrics": [],
+        "raw_columns": [],
+        "msr_access": False,
+        "error": None
+    }
+    
+    turbostat_path = shutil.which("turbostat")
+    if not turbostat_path:
+        turbostat_config["error"] = "turbostat not installed"
+        return turbostat_config
+    
+    try:
+        # Run turbostat with sudo
+        cmd = ["sudo", "-n", turbostat_path, "--quiet", "--show", "all", "sleep", "0.1"]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+        
+        if result.returncode != 0:
+            turbostat_config["error"] = "turbostat failed"
+            return turbostat_config
+        
+        # turbostat writes data to stderr
+        lines = result.stderr.strip().split('\n')
+        
+        # Find the header line (first line with tabs and column names)
+        header_line = None
+        for line in lines:
+            if '\t' in line and any(key in line for key in ['MHz', 'C1', 'CPU', 'Pkg']):
+                header_line = line
+                break
+        
+        if not header_line:
+            turbostat_config["error"] = "Could not find header line"
+            return turbostat_config
+        
+        # Parse header using CSV module (handles tabs properly)
+        reader = csv.reader([header_line], delimiter='\t')
+        available_columns = next(reader)
+        turbostat_config["raw_columns"] = available_columns
+        turbostat_config["available"] = True
+        turbostat_config["msr_access"] = True
+        turbostat_config["real_binary"] = find_real_turbostat()
+        
+        # Define what we're looking for
+        wanted_metrics = {
+            # C-states
+            'c1_residency': ['C1ACPI%', 'C1%', 'POLL%'],
+            'c2_residency': ['C2ACPI%', 'C2%'],
+            'c3_residency': ['C3ACPI%', 'C3%'],
+            'c6_residency': ['CPU%c6', 'C6%'],
+            'c7_residency': ['CPU%c7', 'C7%'],
+            'c8_residency': ['Pkg%pc8', 'C8%'],
+            'c9_residency': ['Pkg%pc9', 'C9%'],
+            'c10_residency': ['Pk%pc10', 'Pkg%pc10', 'C10%'],
+            
+            # GPU
+            'gfx_rc6': ['GFX%rc6', 'RC6%'],
+            'gfx_freq': ['GFXMHz', 'GTMHz'],
+            
+            # Temperature
+            'package_temp': ['PkgTmp', 'PkgTemp', 'CPU_Temp'],
+            
+            # Frequency
+            'bzy_mhz': ['Bzy_MHz'],
+            'tsc_mhz': ['TSC_MHz'],
+            'avg_mhz': ['Avg_MHz'],
+            
+            # Power
+            'pkg_watts': ['PkgWatt'],
+            'cor_watts': ['CorWatt'],
+            'gfx_watts': ['GFXWatt'],
+            'ram_watts': ['RAMWatt'],
+            
+            # Other
+            'ipc': ['IPC'],
+            'irq': ['IRQ'],
+            'busy_percent': ['Busy%'],
+        }
+        
+        # Find which columns exist
+        column_mapping = {}
+        available_metrics = []
+        
+        for metric, possible_names in wanted_metrics.items():
+            for name in possible_names:
+                if name in available_columns:
+                    column_mapping[metric] = name
+                    # Track available C-states
+                    if metric.startswith('c') and metric[1].isdigit():
+                        c_num = metric[1:3].rstrip('_')
+                        if c_num not in available_metrics:
+                            available_metrics.append(c_num)
+                    break
+        
+        # Also scan for any C-state columns we might have missed
+        for col in available_columns:
+            if col.startswith('C') and '%' in col:
+                c_num = col.replace('C', '').replace('%', '').replace('ACPI', '')
+                if c_num.isdigit() and c_num not in available_metrics:
+                    available_metrics.append(c_num)
+            elif col.startswith('CPU%c'):
+                c_num = col.replace('CPU%c', '')
+                if c_num.isdigit() and c_num not in available_metrics:
+                    available_metrics.append(c_num)
+        
+        turbostat_config["columns"] = column_mapping
+        turbostat_config["available_metrics"] = sorted(list(set(available_metrics)))
+        turbostat_config["detection_method"] = "csv_parser"
+        
+    except Exception as e:
+        turbostat_config["error"] = str(e)
+    
+    return turbostat_config
+
+# ============================================================================
+# RAPL DETECTION
+# ============================================================================
+
+def detect_rapl_paths() -> Tuple[Dict[str, str], List[str]]:
+    """Detect RAPL paths and available domains."""
+    rapl_paths = {}
+    rapl_domains = []
+    
+    # Check both possible locations
+    search_paths = [
+        "/sys/class/powercap/intel-rapl*",
+        "/sys/devices/virtual/powercap/intel-rapl*"
+    ]
+    
+    for pattern in search_paths:
+        for base in glob.glob(pattern):
+            if os.path.isdir(base) or os.path.islink(base):
+                # Follow symlink if needed
+                if os.path.islink(base):
+                    target = os.readlink(base)
+                    if not target.startswith('/'):
+                        target = os.path.join(os.path.dirname(base), target)
+                    base = os.path.realpath(target)
+                
+                energy_file = os.path.join(base, "energy_uj")
+                name_file = os.path.join(base, "name")
+                
+                if os.path.exists(energy_file):
+                    # Get domain name
+                    if os.path.exists(name_file):
+                        with open(name_file, 'r') as f:
+                            domain_name = f.read().strip()
+                    else:
+                        domain_name = os.path.basename(base)
+                    
+                    # Clean up domain name
+                    domain_name = domain_name.replace('intel-rapl:', '')
+                    
+                    if domain_name not in rapl_paths:
+                        rapl_paths[domain_name] = energy_file
+                        rapl_domains.append(domain_name)
+    
+    return rapl_paths, rapl_domains
+
+# ============================================================================
+# THERMAL DETECTION
+# ============================================================================
+
+def detect_thermal_paths() -> Tuple[Dict[str, str], Optional[str]]:
+    """Detect thermal zones and identify package temperature."""
+    thermal_paths = {}
+    package_temp = None
+    
+    for zone in glob.glob("/sys/class/thermal/thermal_zone*"):
+        temp_file = os.path.join(zone, "temp")
+        type_file = os.path.join(zone, "type")
+        
+        if os.path.exists(temp_file) and os.path.exists(type_file):
+            with open(type_file, 'r') as f:
+                zone_type = f.read().strip()
+            thermal_paths[zone_type] = temp_file
+            
+            # Identify package temperature
+            if any(pkg in zone_type.lower() for pkg in ['pkg', 'package', 'x86']):
+                package_temp = zone_type
+    
+    return thermal_paths, package_temp
+
+# ============================================================================
+# MSR DETECTION
+# ============================================================================
+
+def detect_msr_devices() -> List[str]:
+    """Detect available MSR devices."""
+    msr_devices = []
+    cpu_count = os.cpu_count() or 8
+    
+    for cpu in range(cpu_count):
+        msr_path = f"/dev/cpu/{cpu}/msr"
+        if os.path.exists(msr_path):
+            msr_devices.append(msr_path)
+    
+    return msr_devices
+
+# ============================================================================
+# CPU FREQUENCY DETECTION
+# ============================================================================
+
+def detect_cpufreq_paths() -> Dict[str, str]:
+    """Detect CPU frequency scaling paths."""
+    cpufreq_paths = {}
+    freq_base = "/sys/devices/system/cpu/cpu0/cpufreq"
+    
+    if os.path.exists(freq_base):
+        for fname in ["scaling_cur_freq", "scaling_max_freq", "scaling_min_freq"]:
+            path = os.path.join(freq_base, fname)
+            if os.path.exists(path):
+                cpufreq_paths[fname] = path
+    
+    return cpufreq_paths
+
+# ============================================================================
+# CPU INFO
+# ============================================================================
+
+def get_cpu_info() -> Dict[str, Any]:
+    """Get CPU core information."""
+    logical = os.cpu_count() or 8
+    physical = logical // 2 if logical > 1 else 1
+    
+    # Try to get actual physical core count
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            cores = set()
+            for line in f:
+                if line.startswith('core id'):
+                    cores.add(line.strip().split(':')[-1].strip())
+            if cores:
+                physical = len(cores)
+    except:
+        pass
+    
+    return {
+        "physical_cores": physical,
+        "logical_cores": logical,
+        "cores_list": list(range(logical))
+    }
+
+# ============================================================================
+# MAIN DETECTION FUNCTION
+# ============================================================================
+
+def detect_all_hardware(verbose: bool = False) -> Dict[str, Any]:
+    """Run all hardware detection and return complete config."""
+    
+    if verbose:
+        print("\n🔍 Detecting hardware...")
+    
+    rapl_paths, rapl_domains = detect_rapl_paths()
+    if verbose:
+        print(f"   ✅ RAPL: {len(rapl_paths)} domains")
+    
+    thermal_paths, package_temp = detect_thermal_paths()
+    if verbose:
+        print(f"   ✅ Thermal: {len(thermal_paths)} zones")
+    
+    msr_devices = detect_msr_devices()
+    if verbose:
+        print(f"   ✅ MSR: {len(msr_devices)} devices")
+    
+    cpufreq_paths = detect_cpufreq_paths()
+    if verbose:
+        print(f"   ✅ CPU Freq: {len(cpufreq_paths)} paths")
+    
+    cpu_info = get_cpu_info()
+    if verbose:
+        print(f"   ✅ CPU: {cpu_info['physical_cores']} physical, {cpu_info['logical_cores']} logical")
+    
+    turbostat_config = detect_turbostat_columns()
+    if verbose:
+        if turbostat_config["available"]:
+            cols = len(turbostat_config["columns"])
+            print(f"   ✅ Turbostat: {cols} columns detected")
+        else:
+            print(f"   ⚠️  Turbostat: Not available")
+    
+    return {
+        "metadata": {
+            "detected_at": datetime.now().isoformat(),
+            "hostname": platform.node(),
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine()
+        },
+        "rapl": {
+            "paths": rapl_paths,
+            "available_domains": rapl_domains,
+            "has_dram": any('dram' in d.lower() for d in rapl_domains)
+        },
+        "thermal": {
+            "paths": thermal_paths,
+            "package_temp": package_temp
+        },
+        "msr": {
+            "devices": msr_devices,
+            "count": len(msr_devices)
+        },
+        "cpufreq": {
+            "paths": cpufreq_paths
+        },
+        "cpu": cpu_info,
+        "turbostat": turbostat_config  # NO sudo flags, just columns!
+    }
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="A-LEMS Hardware Detection Utility",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+EXAMPLES:
+  # First run (with sudo for full detection)
+  sudo python scripts/detect_hardware.py --output config/hw_config.json --merge
+  
+  # Subsequent runs (no sudo needed)
+  python scripts/detect_hardware.py --output config/hw_config.json --merge
+  
+  # Just view hardware info
+  python scripts/detect_hardware.py --verbose
+  
+NOTE: 
+  - Sudo is ONLY needed during first detection to access turbostat/MSR
+  - The generated config contains ONLY column names, NO sudo flags
+  - Module 1 will use these column names WITHOUT sudo
+        """
+    )
+    parser.add_argument("--output", "-o", type=str, help="Output file path")
+    parser.add_argument("--merge", "-m", action="store_true", 
+                       help="Merge with existing config instead of overwriting")
+    parser.add_argument("--verbose", "-v", action="store_true", 
+                       help="Show detailed output")
+    parser.add_argument("--backup-count", type=int, default=5,
+                       help="Number of backups to keep (default: 5)")
+    parser.add_argument("--no-backup", action="store_true",
+                       help="Disable automatic backup (not recommended)")
+    args = parser.parse_args()
+    
+    # Detect hardware
+    new_config = detect_all_hardware(verbose=args.verbose)
+    
+    # Handle output
+    if args.output:
+        output_path = Path(args.output)
+        
+        # Create parent directories if needed
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # CREATE BACKUP BEFORE ANY MODIFICATION
+        if output_path.exists() and not args.no_backup:
+            backup_path = create_backup(output_path, args.backup_count)
+            if backup_path:
+                if args.verbose:
+                    print(f"✅ Existing config backed up")
+            else:
+                print("⚠️  Continuing without backup...")
+        
+        # Load existing config if merging
+        if args.merge and output_path.exists():
+            if args.verbose:
+                print(f"📂 Loading existing config: {output_path}")
+            try:
+                with open(output_path, 'r') as f:
+                    existing = json.load(f)
+                
+                # Merge new detection with existing
+                if args.verbose:
+                    print("🔄 Merging new detection with existing config...")
+                
+                # Update specific sections (preserve everything else)
+                existing['metadata'] = new_config['metadata']
+                existing['rapl'] = new_config['rapl']
+                existing['thermal'] = new_config['thermal']
+                existing['msr'] = new_config['msr']
+                existing['cpufreq'] = new_config['cpufreq']
+                existing['cpu'] = new_config['cpu']
+                existing['turbostat'] = new_config['turbostat']
+                
+                final_config = existing
+                if args.verbose:
+                    print("✅ Config merged successfully")
+            except Exception as e:
+                print(f"⚠️  Error reading existing config: {e}")
+                print("   Creating new config instead")
+                final_config = new_config
+        else:
+            final_config = new_config
+            if args.verbose:
+                print("📝 Creating new config file")
+        
+        # Save
+        try:
+            with open(output_path, 'w') as f:
+                json.dump(final_config, f, indent=2)
+            print(f"✅ Hardware config saved to: {output_path}")
+        except PermissionError:
+            print(f"❌ Permission denied writing to {output_path}")
+            print(f"   Try: sudo chown $USER:$USER {output_path.parent}")
+            return 1
+        
+        # Summary
+        if args.verbose:
+            print("\n📊 Summary:")
+            print(f"   RAPL domains: {len(final_config['rapl']['paths'])}")
+            print(f"   Thermal zones: {len(final_config['thermal']['paths'])}")
+            print(f"   MSR devices: {final_config['msr']['count']}")
+            
+            if final_config['turbostat']['available']:
+                cols = len(final_config['turbostat']['columns'])
+                print(f"   Turbostat columns: {cols}")
+                if final_config['turbostat']['available_metrics']:
+                    metrics = ', '.join(final_config['turbostat']['available_metrics'])
+                    print(f"   Available C-states: {metrics}")
+            else:
+                print(f"   Turbostat: Not available")
+    else:
+        # Print to console
+        print(json.dumps(new_config, indent=2))
+    
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

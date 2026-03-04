@@ -1,0 +1,291 @@
+{
+  "metadata": {
+    "generated": "2026-02-24",
+    "total_countries": 30,
+    "data_sources": {
+      "carbon": "Ember 2023 (approximated for 2026)",
+      "water": "UN-Water AQUASTAT 2025 / EIA estimates",
+      "methane": "IEA Methane Tracker 2026 / EPA estimates",
+      "note": "These are approximate values for testing. Replace with official data for research."
+    }
+  },
+  "US": {
+    "carbon_intensity": 0.385,
+    "carbon_source": "Ember 2023 (US average)",
+    "water_intensity": 2.0,
+    "water_source": "EIA 2025 estimate",
+    "methane_leakage": 0.5,
+    "methane_source": "EPA 2026 estimate",
+    "data_quality": "high"
+  },
+  "CA": {
+    "carbon_intensity": 0.120,
+    "carbon_source": "Ember 2023 (Canada average)",
+    "water_intensity": 1.8,
+    "water_source": "UN-Water 2025 estimate",
+    "methane_leakage": 0.3,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "GB": {
+    "carbon_intensity": 0.212,
+    "carbon_source": "Ember 2023 (UK average)",
+    "water_intensity": 1.5,
+    "water_source": "UK Environment Agency 2025",
+    "methane_leakage": 0.4,
+    "methane_source": "BEIS 2026 estimate",
+    "data_quality": "high"
+  },
+  "DE": {
+    "carbon_intensity": 0.301,
+    "carbon_source": "Ember 2023 (Germany average)",
+    "water_intensity": 1.8,
+    "water_source": "Destatis 2025 estimate",
+    "methane_leakage": 0.3,
+    "methane_source": "DENA 2026 estimate",
+    "data_quality": "high"
+  },
+  "FR": {
+    "carbon_intensity": 0.052,
+    "carbon_source": "Ember 2023 (France average)",
+    "water_intensity": 2.2,
+    "water_source": "ADEME 2025 estimate",
+    "methane_leakage": 0.1,
+    "methane_source": "GRTgaz 2026 estimate",
+    "data_quality": "high"
+  },
+  "IT": {
+    "carbon_intensity": 0.285,
+    "carbon_source": "Ember 2023 (Italy average)",
+    "water_intensity": 2.1,
+    "water_source": "ISPRA 2025 estimate",
+    "methane_leakage": 0.4,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "ES": {
+    "carbon_intensity": 0.190,
+    "carbon_source": "Ember 2023 (Spain average)",
+    "water_intensity": 2.3,
+    "water_source": "MITECO 2025 estimate",
+    "methane_leakage": 0.3,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "NL": {
+    "carbon_intensity": 0.320,
+    "carbon_source": "Ember 2023 (Netherlands average)",
+    "water_intensity": 1.9,
+    "water_source": "CBS 2025 estimate",
+    "methane_leakage": 0.5,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "SE": {
+    "carbon_intensity": 0.013,
+    "carbon_source": "Ember 2023 (Sweden average)",
+    "water_intensity": 1.2,
+    "water_source": "SEPA 2025 estimate",
+    "methane_leakage": 0.05,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "NO": {
+    "carbon_intensity": 0.007,
+    "carbon_source": "Ember 2023 (Norway average)",
+    "water_intensity": 1.0,
+    "water_source": "NVE 2025 estimate",
+    "methane_leakage": 0.02,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "CH": {
+    "carbon_intensity": 0.025,
+    "carbon_source": "Ember 2023 (Switzerland average)",
+    "water_intensity": 1.5,
+    "water_source": "FOEN 2025 estimate",
+    "methane_leakage": 0.1,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "PL": {
+    "carbon_intensity": 0.650,
+    "carbon_source": "Ember 2023 (Poland average)",
+    "water_intensity": 2.8,
+    "water_source": "GUS 2025 estimate",
+    "methane_leakage": 0.8,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "CZ": {
+    "carbon_intensity": 0.420,
+    "carbon_source": "Ember 2023 (Czechia average)",
+    "water_intensity": 2.4,
+    "water_source": "CZSO 2025 estimate",
+    "methane_leakage": 0.6,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "RU": {
+    "carbon_intensity": 0.320,
+    "carbon_source": "Ember 2023 (Russia average)",
+    "water_intensity": 2.5,
+    "water_source": "Rosstat 2025 estimate",
+    "methane_leakage": 1.5,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "low"
+  },
+  "CN": {
+    "carbon_intensity": 0.555,
+    "carbon_source": "Ember 2023 (China average)",
+    "water_intensity": 2.8,
+    "water_source": "MWR 2025 estimate",
+    "methane_leakage": 1.0,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "IN": {
+    "carbon_intensity": 0.708,
+    "carbon_source": "Ember 2023 (India average)",
+    "water_intensity": 3.5,
+    "water_source": "MoJS 2025 estimate",
+    "methane_leakage": 1.2,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "JP": {
+    "carbon_intensity": 0.435,
+    "carbon_source": "Ember 2023 (Japan average)",
+    "water_intensity": 2.2,
+    "water_source": "METI 2025 estimate",
+    "methane_leakage": 0.5,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "KR": {
+    "carbon_intensity": 0.415,
+    "carbon_source": "Ember 2023 (South Korea average)",
+    "water_intensity": 2.3,
+    "water_source": "KEEI 2025 estimate",
+    "methane_leakage": 0.5,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "AU": {
+    "carbon_intensity": 0.623,
+    "carbon_source": "Ember 2023 (Australia average)",
+    "water_intensity": 2.6,
+    "water_source": "DISER 2025 estimate",
+    "methane_leakage": 0.7,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "NZ": {
+    "carbon_intensity": 0.090,
+    "carbon_source": "Ember 2023 (New Zealand average)",
+    "water_intensity": 1.8,
+    "water_source": "MBIE 2025 estimate",
+    "methane_leakage": 0.2,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "ZA": {
+    "carbon_intensity": 0.856,
+    "carbon_source": "Ember 2023 (South Africa average)",
+    "water_intensity": 3.2,
+    "water_source": "DWS 2025 estimate",
+    "methane_leakage": 1.3,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "BR": {
+    "carbon_intensity": 0.074,
+    "carbon_source": "Ember 2023 (Brazil average)",
+    "water_intensity": 4.0,
+    "water_source": "ANA 2025 estimate",
+    "methane_leakage": 0.2,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "high"
+  },
+  "AR": {
+    "carbon_intensity": 0.320,
+    "carbon_source": "Ember 2023 (Argentina average)",
+    "water_intensity": 2.9,
+    "water_source": "MINEM 2025 estimate",
+    "methane_leakage": 0.6,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "MX": {
+    "carbon_intensity": 0.380,
+    "carbon_source": "Ember 2023 (Mexico average)",
+    "water_intensity": 2.5,
+    "water_source": "CONAGUA 2025 estimate",
+    "methane_leakage": 0.6,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "SA": {
+    "carbon_intensity": 0.580,
+    "carbon_source": "Ember 2023 (Saudi Arabia average)",
+    "water_intensity": 3.0,
+    "water_source": "MEWA 2025 estimate",
+    "methane_leakage": 1.1,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "low"
+  },
+  "AE": {
+    "carbon_intensity": 0.420,
+    "carbon_source": "Ember 2023 (UAE average)",
+    "water_intensity": 3.5,
+    "water_source": "MOCCAE 2025 estimate",
+    "methane_leakage": 0.9,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "low"
+  },
+  "EG": {
+    "carbon_intensity": 0.460,
+    "carbon_source": "Ember 2023 (Egypt average)",
+    "water_intensity": 3.3,
+    "water_source": "MWRI 2025 estimate",
+    "methane_leakage": 1.0,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "low"
+  },
+  "NG": {
+    "carbon_intensity": 0.340,
+    "carbon_source": "Ember 2023 (Nigeria average)",
+    "water_intensity": 3.0,
+    "water_source": "FMWR 2025 estimate",
+    "methane_leakage": 1.4,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "low"
+  },
+  "ID": {
+    "carbon_intensity": 0.620,
+    "carbon_source": "Ember 2023 (Indonesia average)",
+    "water_intensity": 3.2,
+    "water_source": "PUPR 2025 estimate",
+    "methane_leakage": 1.2,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "TH": {
+    "carbon_intensity": 0.510,
+    "carbon_source": "Ember 2023 (Thailand average)",
+    "water_intensity": 2.8,
+    "water_source": "DWR 2025 estimate",
+    "methane_leakage": 0.8,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  },
+  "VN": {
+    "carbon_intensity": 0.440,
+    "carbon_source": "Ember 2023 (Vietnam average)",
+    "water_intensity": 2.9,
+    "water_source": "MONRE 2025 estimate",
+    "methane_leakage": 0.7,
+    "methane_source": "IEA 2026 estimate",
+    "data_quality": "medium"
+  }
+}

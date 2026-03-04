@@ -1,0 +1,20 @@
+metadata:
+  last_updated: '2026-02-19'
+  source: IPCC Sixth Assessment Report (AR6), 2021
+  source_url: https://www.ipcc.ch/report/ar6/wg1/chapter/chapter-7/
+  verification_notes: Values from Table 7.SM.7
+CH4:
+  20_year: 81
+  100_year: 28
+  source:
+    name: IPCC AR6, Chapter 7, Table 7.SM.7
+    url: https://www.ipcc.ch/report/ar6/wg1/chapter/chapter-7/
+    year: 2021
+    table: 7.SM.7
+N2O:
+  20_year: 273
+  100_year: 273
+  source:
+    name: IPCC AR6, Chapter 7, Table 7.SM.7
+    url: https://www.ipcc.ch/report/ar6/wg1/chapter/chapter-7/
+    year: 2021

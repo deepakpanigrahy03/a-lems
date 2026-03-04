@@ -1,0 +1,84 @@
+metadata:
+  generated: '2026-02-19'
+  total_countries: 248
+  data_sources:
+    population: World Bank WDI 2025
+    gdp: World Bank WDI 2025
+    household_energy: IEA Energy Balances 2025 (partial)
+countries:
+  US:
+    name: United States
+    population: 334000000
+    population_source:
+      name: US Census Bureau - Population Estimates Program (V2025)
+      url: https://www.census.gov/programs-surveys/popest/data/data-sets.html
+      year: 2025
+    gdp_per_capita: 76399
+    gdp_source:
+      name: World Bank - World Development Indicators 2025
+      url: https://data.worldbank.org/indicator/NY.GDP.PCAP.KD
+      year: 2025
+    household_daily_kwh: 30.0
+    household_size: 2.5
+    household_source:
+      name: US Energy Information Administration - Annual Energy Outlook 2025
+      url: https://www.eia.gov/outlooks/aeo/tables_ref.php
+      year: 2025
+    data_quality: high
+  DE:
+    name: Germany
+    population: 83200000
+    population_source:
+      name: Destatis - Population 2025
+      url: https://www.destatis.de/EN/Themes/Society-Environment/Population/_node.html
+      year: 2025
+    gdp_per_capita: 51200
+    gdp_source:
+      name: World Bank - World Development Indicators 2025
+      url: https://data.worldbank.org/indicator/NY.GDP.PCAP.KD
+      year: 2025
+    household_daily_kwh: 15.0
+    household_size: 2.0
+    household_source:
+      name: BDEW 2025
+      url: https://www.bdew.de/energie/stromverbrauch-im-haushalt/
+      year: 2025
+    data_quality: high
+  FR:
+    name: France
+    population: 67800000
+    population_source:
+      name: INSEE - Demographic Report 2025
+      url: https://www.insee.fr/en/statistiques/1892086
+      year: 2025
+    gdp_per_capita: 44900
+    gdp_source:
+      name: World Bank - World Development Indicators 2025
+      url: https://data.worldbank.org/indicator/NY.GDP.PCAP.KD
+      year: 2025
+    household_daily_kwh: 18.0
+    household_size: 2.2
+    household_source:
+      name: RTE 2025
+      url: https://www.rte-france.com/en/eco2mix/electricity-consumption-data
+      year: 2025
+    data_quality: high
+  IN:
+    name: India
+    population: 1417000000
+    population_source:
+      name: World Bank - World Development Indicators 2025
+      url: https://data.worldbank.org/indicator/SP.POP.TOTL
+      year: 2025
+    gdp_per_capita: 2500
+    gdp_source:
+      name: World Bank - World Development Indicators 2025
+      url: https://data.worldbank.org/indicator/NY.GDP.PCAP.KD
+      year: 2025
+    household_daily_kwh: 10.0
+    household_size: 4.4
+    household_source:
+      name: IEA - Energy Balances 2025 (India estimate)
+      url: https://www.iea.org/countries/india
+      year: 2025
+    data_quality: medium
