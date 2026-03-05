@@ -222,6 +222,12 @@ class RunsRepository:
         # Extract ml_features
         ml = run_data.get('ml_features', {})
         sus = run_data.get('sustainability', {})
+
+        pkg_raw_uj = ml.get('pkg_energy_uj', 0)
+        core_raw_uj = ml.get('core_energy_uj', 0)
+        uncore_raw_uj = ml.get('uncore_energy_uj', 0)
+        dram_raw_uj = ml.get('dram_energy_uj', 0)
+          
         
         # Extract and compute fields
         fields = self._extract_from_ml_features(ml)
@@ -263,6 +269,7 @@ class RunsRepository:
                 exp_id, hw_id, baseline_id, run_number, workflow_type,
                 start_time_ns, end_time_ns, duration_ns,
                 total_energy_uj, dynamic_energy_uj, baseline_energy_uj, avg_power_watts,
+                pkg_energy_uj, core_energy_uj, uncore_energy_uj, dram_energy_uj,
                 instructions, cycles, ipc, cache_misses, cache_references, cache_miss_rate,
                 page_faults, major_page_faults, minor_page_faults,
                 context_switches_voluntary, context_switches_involuntary, total_context_switches,
@@ -287,6 +294,7 @@ class RunsRepository:
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 ?, ?, ?,
+                ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?,
@@ -315,6 +323,7 @@ class RunsRepository:
             exp_id, hw_id, baseline_id, fields['run_number'], ml.get('workflow_type', 'unknown'),
             start_time_ns, end_time_ns, duration_ns,
             fields['total_energy_uj'], fields['total_energy_uj'], None, fields['avg_power_watts'],
+            pkg_raw_uj, core_raw_uj, uncore_raw_uj, dram_raw_uj,
             fields['instructions'], fields['cycles'], fields['ipc'],
             fields['cache_misses'], fields['cache_references'], fields['cache_miss_rate'],
             fields['page_faults'], fields['major_page_faults'], fields['minor_page_faults'],

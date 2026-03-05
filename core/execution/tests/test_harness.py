@@ -225,7 +225,7 @@ def main():
     # Create runner and ensure baseline
     # ========================================================================
     runner = ExperimentRunner(config, args)
-    runner.ensure_baseline(harness)
+    baseline = runner.ensure_baseline(harness)
 
 
     # ========================================================================
@@ -270,7 +270,7 @@ def main():
             db_config = runner.config.get_db_config()
             
             # Prepare data using runner
-            all_runs = runner.prepare_run_data(results)
+            all_runs = runner.prepare_run_data(results, baseline.baseline_id)
             energy_samples_list = runner.convert_energy_samples(results)
             cpu_samples_list = runner.get_cpu_samples(results)
             interrupt_samples_list = runner.get_interrupt_samples(results)

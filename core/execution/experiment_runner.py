@@ -122,7 +122,7 @@ class ExperimentRunner:
     # ========================================================================
     # DUPLICATE CODE 4: Run data preparation (identical in both scripts)
     # ========================================================================
-    def prepare_run_data(self, results) -> List[Dict]:
+    def prepare_run_data(self, results, baseline_id=None) -> List[Dict]:
         """Extract run data from ml_dataset - identical in both scripts"""
         all_runs = []
         if 'ml_dataset' in results:
@@ -136,6 +136,7 @@ class ExperimentRunner:
                             'water': {'milliliters': rd.get('water_ml', 0)},
                             'methane': {'grams': rd.get('methane_mg', 0)}
                         },
+                        'baseline_id': baseline_id,
                         'harness_timestamp': datetime.now().isoformat()
                     }
                     all_runs.append(run_package)
@@ -149,6 +150,7 @@ class ExperimentRunner:
                             'water': {'milliliters': rd.get('water_ml', 0)},
                             'methane': {'grams': rd.get('methane_mg', 0)}
                         },
+                        'baseline_id': baseline_id,
                         'harness_timestamp': datetime.now().isoformat()
                     }
                     all_runs.append(run_package)

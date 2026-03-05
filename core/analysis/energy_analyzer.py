@@ -84,6 +84,7 @@ class EnergyAnalyzer:
         
         if baseline:
             # How much energy the system would use if completely idle
+            print(f"🔍 DEBUG - raw.duration_seconds: {raw.duration_seconds}")
             idle_uj = baseline.estimate_energy_uj(raw.duration_seconds).get('package-0', 0)
             
             # How much energy just the cores would use idle
