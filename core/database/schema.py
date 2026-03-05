@@ -121,7 +121,10 @@ CREATE TABLE IF NOT EXISTS runs (
     dynamic_energy_uj INTEGER,
     baseline_energy_uj INTEGER,
     avg_power_watts REAL,
-
+    pkg_energy_uj INTEGER,      -- Raw package energy
+    core_energy_uj INTEGER,      -- Raw core energy
+    uncore_energy_uj INTEGER,    -- Raw uncore energy
+    dram_energy_uj INTEGER,      -- Raw DRAM energy
     -- Performance counters
     instructions BIGINT,
     cycles BIGINT,
@@ -497,3 +500,63 @@ FROM runs r
 JOIN experiments e ON r.exp_id = e.exp_id
 LEFT JOIN orchestration_tax_summary ots ON r.run_id = ots.agentic_run_id;
 """
+# ========================================================================
+# View: orchestration_analysis - Derived metrics for tax calculation
+# ========================================================================
+CREATE_ORCHESTRATION_ANALYSIS = """
+CREATE VIEW IF NOT EXISTS orchestration_analysis AS
+SELECT 
+    r.run_id,
+    r.exp_id,
+    r.workflow_type,
+    r.run_number,
+    
+    -- Raw energies (Joules)
+    r.pkg_energy_uj/1e6 as pkg_energy_j,
+    r.core_energy_uj/1e6 as core_energy_j,
+    r.uncore_energy_uj/1e6 as uncore_energy_j,
+    r.dram_energy_uj/1e6 as dram_energy_j,
+    
+    -- Timing
+    r.duration_ns/1e9 as duration_sec,
+    
+    -- Baseline values (idle energy during run)
+    ib.package_power_watts * (r.duration_ns/1e9) as baseline_pkg_j,
+    ib.core_power_watts * (r.duration_ns/1e9) as baseline_core_j,
+    ib.uncore_power_watts * (r.duration_ns/1e9) as baseline_uncore_j,
+    
+    -- Derived metrics (YOUR FORMULAS!)
+    (r.pkg_energy_uj/1e6) - (ib.package_power_watts * (r.duration_ns/1e9)) as workload_energy_j,
+    (r.core_energy_uj/1e6) - (ib.core_power_watts * (r.duration_ns/1e9)) as reasoning_energy_j,
+    (r.uncore_energy_uj/1e6) - (ib.uncore_power_watts * (r.duration_ns/1e9)) as orchestration_tax_j,
+    
+    -- Efficiency metrics
+    ((r.core_energy_uj/1e6) - (ib.core_power_watts * (r.duration_ns/1e9))) / 
+        (r.instructions/1e9) as joules_per_billion_instructions,
+    r.instructions * 1.0 / r.cycles as ipc,
+    r.cache_misses * 1.0 / r.cache_references as cache_miss_rate,
+    
+    -- Ratios (what proportion of energy went where?)
+    CASE 
+        WHEN (r.pkg_energy_uj/1e6) > 0 
+        THEN (r.core_energy_uj/1e6) / (r.pkg_energy_uj/1e6) 
+        ELSE 0 
+    END as core_share,
+    
+    CASE 
+        WHEN (r.pkg_energy_uj/1e6) > 0 
+        THEN (r.uncore_energy_uj/1e6) / (r.pkg_energy_uj/1e6) 
+        ELSE 0 
+    END as uncore_share,
+    
+    -- Metadata
+    e.provider,
+    e.task_name,
+    e.country_code
+
+FROM runs r
+JOIN experiments e ON r.exp_id = e.exp_id
+JOIN idle_baselines ib ON r.baseline_id = ib.baseline_id
+WHERE r.baseline_id IS NOT NULL;
+"""
+

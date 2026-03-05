@@ -45,7 +45,8 @@ from .schema import (
     CREATE_ENERGY_SAMPLES,
     CREATE_CPU_SAMPLES,
     CREATE_INTERRUPT_SAMPLES,
-    CREATE_ML_VIEW
+    CREATE_ML_VIEW,
+    CREATE_ORCHESTRATION_ANALYSIS
 )
 
 
@@ -247,6 +248,7 @@ class SQLiteAdapter(DatabaseInterface):
         self.conn.executescript(CREATE_CPU_SAMPLES)
         self.conn.executescript(CREATE_INTERRUPT_SAMPLES)
         self.conn.execute(CREATE_ML_VIEW)
+        self.conn.execute(CREATE_ORCHESTRATION_ANALYSIS)
         
         # Commit explicitly (DDL should be committed)
         self.conn.commit()
@@ -567,3 +569,4 @@ class SQLiteAdapter(DatabaseInterface):
                 (workflow,)
             )
         return self.execute("SELECT * FROM ml_features")
+    
