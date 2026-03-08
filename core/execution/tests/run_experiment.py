@@ -89,62 +89,80 @@ def run_provider_task(harness, runner, task, provider, repetitions, cool_down, a
         linear_results = []
         agentic_results = []
         taxes = []
+        runs_completed = 0
         
         # ========================================================================
         # Repetition loop
         # ========================================================================
-        for rep in range(repetitions):
-            print(f"\n      {'─'*50}")
-            print(f"      Repetition {rep+1}/{repetitions}")
-            print(f"      {'─'*50}")
-            
-            # Run linear
-            linear_result = harness.run_linear(
-                executor=linear,
-                prompt=task['prompt'],
-                task_id=task['id'],
-                is_cloud=(provider in ['cloud', 'openrouter']),
-                country_code=args.country,
-                run_number=rep+1
-            )
-            
-            # Run agentic
-            agentic_result = harness.run_agentic(
-                executor=agentic,
-                task=task['prompt'],
-                task_id=task['id'],
-                is_cloud=(provider in ['cloud', 'openrouter']),
-                country_code=args.country,
-                run_number=rep+1
-            )
-            
-            # Store
-            linear_results.append(linear_result)
-            agentic_results.append(agentic_result)
-            
-            # Calculate tax
-            linear_energy = linear_result['ml_features']['energy_j']
-            agentic_energy = agentic_result['ml_features']['energy_j']
-            tax = agentic_energy / linear_energy if linear_energy > 0 else 0
-            taxes.append(tax)
-            
-            print(f"\n         Linear:  {linear_energy:.4f} J")
-            print(f"         Agentic: {agentic_energy:.4f} J")
-            print(f"         Tax: {tax:.2f}x")
-            
-            # Insert to database
-            if args.save_db and db:
-                runner.save_pair(db, exp_id, hw_id, linear_result, agentic_result, rep+1)
-                print(f"         ✅ Pair {rep+1}/{repetitions} saved")
+        try:
+            for rep in range(repetitions):
+                print(f"\n      {'─'*50}")
+                print(f"      Repetition {rep+1}/{repetitions}")
+                print(f"      {'─'*50}")
                 
-                # Update progress in real-time
-                runs_completed = (rep + 1) * 2
-                runner.update_progress(db, exp_id, runs_completed)
+                # Run linear
+                linear_result = harness.run_linear(
+                    executor=linear,
+                    prompt=task['prompt'],
+                    task_id=task['id'],
+                    is_cloud=(provider in ['cloud', 'openrouter']),
+                    country_code=args.country,
+                    run_number=rep+1
+                )
+                
+                # Run agentic
+                agentic_result = harness.run_agentic(
+                    executor=agentic,
+                    task=task['prompt'],
+                    task_id=task['id'],
+                    is_cloud=(provider in ['cloud', 'openrouter']),
+                    country_code=args.country,
+                    run_number=rep+1
+                )
+                
+                # Store
+                linear_results.append(linear_result)
+                agentic_results.append(agentic_result)
+                
+                # Calculate tax
+                linear_energy = linear_result['ml_features']['energy_j']
+                agentic_energy = agentic_result['ml_features']['energy_j']
+                tax = agentic_energy / linear_energy if linear_energy > 0 else 0
+                taxes.append(tax)
+                
+                print(f"\n         Linear:  {linear_energy:.4f} J")
+                print(f"         Agentic: {agentic_energy:.4f} J")
+                print(f"         Tax: {tax:.2f}x")
+                
+                # Insert to database
+                if args.save_db and db:
+                    runner.save_pair(db, exp_id, hw_id, linear_result, agentic_result, rep+1)
+                    print(f"         ✅ Pair {rep+1}/{repetitions} saved")
+                    
+                    # Update progress in real-time
+                    runs_completed = (rep + 1) * 2
+                    runner.update_progress(db, exp_id, runs_completed)
+                
+                # Cool down
+                if rep < repetitions - 1:
+                    print(f"\n         ⏳ Cooling down {cool_down}s...")
+                    time.sleep(cool_down)
+                    
+        except (Exception, KeyboardInterrupt) as e:
+            print(f"\n   ❌ ERROR in {provider}/{task['name']}: {e}")
+            import traceback
+            traceback.print_exc()
             
-            # Cool down
-            if rep < repetitions - 1:
-                print(f"\n         ⏳ Cooling down {cool_down}s...")
-                time.sleep(cool_down)
+            if db and exp_id:
+                error_msg = str(e) if str(e) else "KeyboardInterrupt (user cancelled)"
+                runner.update_status(
+                    db, exp_id, 'failed', 
+                    runs_completed, 
+                    error=error_msg
+                )
+                print(f"   ⚠️ Experiment {exp_id} marked as failed after {runs_completed} runs")
+            
+            return None
         
         # ========================================================================
         # UPDATE EXPERIMENT STATUS - SUCCESS
