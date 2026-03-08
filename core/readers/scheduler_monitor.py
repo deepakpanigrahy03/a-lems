@@ -74,6 +74,8 @@ class SchedulerMonitor:
         self._interrupt_samples = []
         self._last_interrupt_counts = None
         self._last_sample_time_ns = None
+        self._start_epoch_ns = None
+        self._start_monotonic_ns = None
 
     def read_context_switches(self) -> Tuple[int, int]:
         """
@@ -247,7 +249,19 @@ class SchedulerMonitor:
         self._interrupt_sampling_active = True
         self._interrupt_samples = []
         self._last_interrupt_counts = self._read_total_interrupts()
-        self._last_sample_time_ns = time.monotonic_ns()
+        
+        # Capture clock alignment ONCE at the beginning
+        start_mono = time.monotonic_ns()
+        start_epoch = time.time_ns()
+        
+        self._start_monotonic_ns = start_mono
+        self._start_epoch_ns = start_epoch
+        self._last_sample_time_ns = start_mono
+        
+        logger.debug(f"Interrupt sampling started - epoch: {start_epoch}, mono: {start_mono}")
+
+
+
 
     def _read_total_interrupts(self) -> int:
         """Read total interrupt count from /proc/stat."""
@@ -264,8 +278,12 @@ class SchedulerMonitor:
         """Clear interrupt samples buffer for new run."""
         self._interrupt_samples = []
         self._last_interrupt_counts = self._read_total_interrupts()
+        
+        # DO NOT reset the start times here!
+        # Only update the last sample time for delta calculation
         self._last_sample_time_ns = time.monotonic_ns()
-        logger.debug("Interrupt samples reset for new run")
+        
+        logger.debug("Interrupt samples reset for new run (start times preserved)")
 
 
 
@@ -274,26 +292,33 @@ class SchedulerMonitor:
         if not self._interrupt_sampling_active:
             return
         
-        print(f"🔍 DEBUG: sample_interrupts() called at time {time.time():.3f}")
-
-        current_time_ns = time.monotonic_ns()
+        monotonic_now = time.monotonic_ns()
         current_counts = self._read_total_interrupts()
-        logger.debug(f"🔍 INTERRUPT DEBUG: counts={current_counts}, last={self._last_interrupt_counts}") 
-
+        
+        # Convert monotonic to epoch time
+        if self._start_epoch_ns is not None and self._start_monotonic_ns is not None:
+            epoch_ns = int(self._start_epoch_ns + (monotonic_now - self._start_monotonic_ns))
+        else:
+            # Fallback if start times not set (should not happen)
+            epoch_ns = monotonic_now
+            logger.warning("Start times not set for interrupt sampling")
+        
+        logger.debug(f"🔍 INTERRUPT DEBUG: counts={current_counts}, last={self._last_interrupt_counts}")
+        
         if self._last_interrupt_counts is not None and self._last_sample_time_ns is not None:
-            time_delta_s = (current_time_ns - self._last_sample_time_ns) / 1e9
+            time_delta_s = (monotonic_now - self._last_sample_time_ns) / 1e9
             if time_delta_s > 0:
                 count_delta = current_counts - self._last_interrupt_counts
                 rate = count_delta / time_delta_s
                 logger.debug(f"🔍 INTERRUPT RATE: {rate:.2f} IRQ/s")
-
+                
                 self._interrupt_samples.append({
-                    'timestamp_ns': current_time_ns,
+                    'timestamp_ns': epoch_ns,  # Now in epoch time!
                     'interrupts_per_sec': rate
                 })
-
+        
         self._last_interrupt_counts = current_counts
-        self._last_sample_time_ns = current_time_ns
+        self._last_sample_time_ns = monotonic_now
 
     def stop_interrupt_sampling(self) -> list:
         """Stop and return interrupt samples."""

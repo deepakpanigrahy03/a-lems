@@ -91,3 +91,31 @@ class TaxRepository:
                      orchestration_tax_uj, tax_percent)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (linear_id, agentic_id, linear_uj, agentic_uj, tax_uj, tax_percent))
+
+    def create_tax_summary_for_pair(self, linear_id: int, agentic_id: int,
+                                    linear_uj: int, agentic_uj: int,
+                                    linear_orchestration_uj: int = 0,
+                                    agentic_orchestration_uj: int = 0) -> None:
+        """
+        Create tax summary for ONE specific pair.
+        
+        Args:
+            linear_id: Linear run ID
+            agentic_id: Agentic run ID
+            linear_uj: Linear dynamic energy in microjoules
+            agentic_uj: Agentic dynamic energy in microjoules
+            linear_orchestration_uj: Linear orchestration overhead
+            agentic_orchestration_uj: Agentic orchestration overhead
+        """
+        tax_uj = agentic_uj - linear_uj
+        tax_percent = (tax_uj / agentic_uj * 100) if agentic_uj > 0 else 0
+        
+        self.db.conn.execute("""
+            INSERT INTO orchestration_tax_summary
+            (linear_run_id, agentic_run_id, linear_dynamic_uj, agentic_dynamic_uj,
+             orchestration_tax_uj, tax_percent,
+             linear_orchestration_uj, agentic_orchestration_uj)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (linear_id, agentic_id, linear_uj, agentic_uj, 
+              tax_uj, tax_percent,
+              linear_orchestration_uj, agentic_orchestration_uj))

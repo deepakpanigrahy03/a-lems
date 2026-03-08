@@ -179,7 +179,7 @@ class ExperimentRunner:
     # NEW FEATURE 1: Create experiment with group_id and status
     # ========================================================================
     def create_experiment(self, db, task_id, task_name, provider, 
-                          linear_config, country_code,  repetitions) -> int:
+                          linear_config, country_code,  repetitions, optimizer=False) -> int:
         """Create experiment with session tracking (NEW)"""
         experiment_meta = {
             'name': f"{task_id}_{provider}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -192,7 +192,8 @@ class ExperimentRunner:
             'group_id': self.group_id,      # NEW
             'status': 'running',            # NEW
             'started_at': datetime.now().isoformat(),  # NEW
-            'runs_total': repetitions * 2  # linear + agentic
+            'runs_total': repetitions * 2,  # linear + agentic
+            'optimization_enabled': 1 if optimizer else 0
         }
         return db.insert_experiment(experiment_meta)
     
@@ -213,7 +214,30 @@ class ExperimentRunner:
         set_clause = ', '.join([f"{k}=?" for k in updates.keys()])
         values = list(updates.values()) + [exp_id]
         db.db.execute(f"UPDATE experiments SET {set_clause} WHERE exp_id=?", values)
+    def update_progress(self, db, exp_id: int, runs_completed: int):
+        """
+        Update progress of an experiment without changing status.
+        
+        Args:
+            db: Database connection
+            exp_id: Experiment ID
+            runs_completed: Number of runs completed so far
+        """
+        db.db.execute(
+            "UPDATE experiments SET runs_completed = ? WHERE exp_id = ?",
+            (runs_completed, exp_id)
+        )
+        print(f"   📊 Progress: {runs_completed}/{self._get_total_runs(db, exp_id)} runs")
     
+    def _get_total_runs(self, db, exp_id: int) -> int:
+        """Get total runs expected for experiment"""
+        result = db.db.execute(
+            "SELECT runs_total FROM experiments WHERE exp_id = ?",
+            (exp_id,)
+        )
+        return result[0]['runs_total'] if result else 0
+
+
     # ========================================================================
     # NEW FEATURE 3: Multi-provider helper
     # ========================================================================
@@ -248,4 +272,105 @@ class ExperimentRunner:
         if 'interrupt_samples' in results:
             samples = results['interrupt_samples']
             print(f"   Found {len(samples)} interrupt samples (ready for insertion)")
-        return samples        
+        return samples 
+    def save_pair(self, db, exp_id, hw_id, linear_result, agentic_result, rep_num):
+        """Save one pair of runs with all samples."""
+        
+        # Set run_number
+        linear_result['ml_features']['run_number'] = rep_num
+        agentic_result['ml_features']['run_number'] = rep_num
+
+        linear_copy = linear_result.copy()
+        agentic_copy = agentic_result.copy()
+        linear_copy['baseline_id'] = linear_copy['ml_features'].get('baseline_id')
+        agentic_copy['baseline_id'] = agentic_copy['ml_features'].get('baseline_id')
+        
+        with db.transaction():
+            # Insert linear run
+            linear_id = db.insert_run(exp_id, hw_id, linear_result)
+            
+            # Linear energy samples
+            if 'energy_samples' in linear_result:
+                converted = []
+                for sample in linear_result['energy_samples']:
+                    if len(sample) == 2 and isinstance(sample[1], dict):
+                        timestamp, energy_dict = sample
+                        converted.append({
+                            'timestamp_ns': int(timestamp * 1_000_000_000),
+                            'pkg_energy_uj': energy_dict.get('package-0', 0),
+                            'core_energy_uj': energy_dict.get('core', 0),
+                            'uncore_energy_uj': energy_dict.get('uncore', 0),
+                            'dram_energy_uj': 0
+                        })
+                if converted:
+                    db.insert_energy_samples(linear_id, converted)
+            
+            # Linear CPU samples
+            if 'cpu_samples' in linear_result:
+                db.insert_cpu_samples(linear_id, linear_result['cpu_samples'])
+            
+            # Linear interrupt samples
+            if 'interrupt_samples' in linear_result:
+                db.insert_interrupt_samples(linear_id, linear_result['interrupt_samples'])
+            
+            # Insert agentic run
+            agentic_id = db.insert_run(exp_id, hw_id, agentic_result)
+            
+            # Agentic energy samples
+            if 'energy_samples' in agentic_result:
+                converted = []
+                for sample in agentic_result['energy_samples']:
+                    if len(sample) == 2 and isinstance(sample[1], dict):
+                        timestamp, energy_dict = sample
+                        converted.append({
+                            'timestamp_ns': int(timestamp * 1_000_000_000),
+                            'pkg_energy_uj': energy_dict.get('package-0', 0),
+                            'core_energy_uj': energy_dict.get('core', 0),
+                            'uncore_energy_uj': energy_dict.get('uncore', 0),
+                            'dram_energy_uj': 0
+                        })
+                if converted:
+                    db.insert_energy_samples(agentic_id, converted)
+            
+            # Agentic CPU samples
+            if 'cpu_samples' in agentic_result:
+                db.insert_cpu_samples(agentic_id, agentic_result['cpu_samples'])
+            
+            # Agentic interrupt samples
+            if 'interrupt_samples' in agentic_result:
+                db.insert_interrupt_samples(agentic_id, agentic_result['interrupt_samples'])
+            
+            # Agentic orchestration events
+            if 'orchestration_events' in agentic_result:
+                db.insert_orchestration_events(agentic_id, agentic_result['orchestration_events'])
+            
+            # Tax summary for this pair
+            linear_uj = linear_result['layer3_derived']['energy_uj']['workload']
+            agentic_uj = agentic_result['layer3_derived']['energy_uj']['workload']
+            linear_orchestration_uj = linear_result['ml_features'].get('orchestration_tax_uj', 0)
+            agentic_orchestration_uj = agentic_result['ml_features'].get('orchestration_tax_uj', 0)
+            
+
+            print(f"🔍 DEBUG - linear_orchestration_uj from ml_features: {linear_result['ml_features'].get('orchestration_tax_uj')}")
+            print(f"🔍 DEBUG - agentic_orchestration_uj from ml_features: {agentic_result['ml_features'].get('orchestration_tax_uj')}")  
+
+            linear_orchestration_uj = linear_result['layer3_derived']['energy_uj'].get('orchestration_tax', 0)
+            agentic_orchestration_uj = agentic_result['layer3_derived']['energy_uj'].get('orchestration_tax', 0) 
+            print(f"🔍 DEBUG - linear energy_uj keys: {linear_result['layer3_derived']['energy_uj'].keys()}")
+            print(f"🔍 DEBUG - agentic energy_uj keys: {agentic_result['layer3_derived']['energy_uj'].keys()}")
+            print(f"🔍 DEBUG - linear energy_uj content: {linear_result['layer3_derived']['energy_uj']}")
+            print(f"🔍 DEBUG - linear energy_uj content: {agentic_result['layer3_derived']['energy_uj']}")
+        
+
+            db.create_tax_summary_for_pair(
+            linear_id, agentic_id, 
+            linear_uj, agentic_uj,
+            linear_orchestration_uj, agentic_orchestration_uj  
+        )
+            
+
+        
+        print(f"   ✅ Pair {rep_num} saved (linear: {linear_id}, agentic: {agentic_id})")
+        return linear_id, agentic_id
+
+

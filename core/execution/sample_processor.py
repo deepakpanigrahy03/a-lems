@@ -9,6 +9,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,15 @@ def process_energy_samples(energy_engine) -> tuple:
                 })
             elif len(sample) == 2 and isinstance(sample[1], (int, float)):
                 # This is an interrupt sample: (timestamp, value)
+                interrupt_timestamp, interrupt_value = sample
+                print(f"🔍 INTERRUPT RAW - timestamp: {interrupt_timestamp}, type: {type(interrupt_timestamp)}")
+                print(f"🔍 INTERRUPT RAW - value: {interrupt_value}")
+                print(f"🔍 INTERRUPT CALC - divided by 1e9: {interrupt_timestamp / 1e9}")
+                print(f"🔍 INTERRUPT CALC - epoch time: {time.time()}")
+                
                 interrupt_samples.append({
-                    'timestamp_ns': sample[0],
-                    'interrupts_per_sec': sample[1]
+                    'timestamp_ns': int(interrupt_timestamp),  
+                    'interrupts_per_sec': interrupt_value
                 })
             else:
                 logger.debug(f"⚠️ Unknown sample format: {sample}")

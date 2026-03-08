@@ -369,7 +369,7 @@ class EnergyEngine:
         # STEP 1: Snapshot readers - capture START values
         # ====================================================================
         rapl_start = self.rapl.read_energy()
-        scheduler_start = self.scheduler.read_all()
+        self.scheduler_start = self.scheduler.read_all()
         
         # ====================================================================
         # Capture MSR thermal snapshot at START
@@ -389,7 +389,7 @@ class EnergyEngine:
 
         self.start_readings = {
             'rapl': rapl_start,
-            'scheduler': scheduler_start,
+            'scheduler': self.scheduler_start,
             'sensor': self.sensor.read_temperatures(),
             'msr_thermal': msr_thermal_start,  # Store start thermal state
         }
@@ -674,7 +674,12 @@ class EnergyEngine:
             
             # thermal (sensor)
             thermal=sensor_end.to_dict() if hasattr(sensor_end, 'to_dict') else sensor_end,
-            
+
+            # Swap Start and end fileds
+
+            scheduler_start=self.scheduler_start,
+            scheduler_end=scheduler_end,
+
             # scheduler (snapshot with delta)
             scheduler_metrics=scheduler_delta,
             

@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>A-LEMS · Energy Measurement System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0c10;--s1:#10131a;--s2:#161b24;--s3:#1c232f;
+  --bd:#222836;--bd2:#2c3445;
+  --txt:#bec8d6;--txt2:#7a8899;--txt3:#49576a;--wht:#e2eaf2;
+  --acc:#2563eb;--acc2:#1d4ed8;
+  --grn:#16a34a;--grn2:#15803d;
+  --red:#dc2626;--amb:#d97706;
+  --sky:#0891b2;--pur:#7c3aed;
+  --em:#059669;
+  --ff:'IBM Plex Sans',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--ff);background:var(--bg);color:var(--txt);font-size:13px;line-height:1.5;display:flex;flex-direction:column;}
+
+/* ─── TOPBAR ─── */
+#topbar{height:42px;min-height:42px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 14px;gap:14px;flex-shrink:0;z-index:200;}
+.logo{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--wht);display:flex;align-items:center;gap:7px;letter-spacing:.04em;}
+.logo-pulse{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:lpulse 2s ease infinite;}
+@keyframes lpulse{0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,.5);}60%{box-shadow:0 0 0 5px rgba(37,99,235,0);}}
+.tb-div{width:1px;height:20px;background:var(--bd);}
+.tb-kv{display:flex;align-items:center;gap:5px;}
+.tb-k{font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;}
+.tb-v{font-family:var(--mono);font-size:11px;color:var(--wht);}
+.tb-v.red{color:var(--red);}
+.tb-v.grn{color:var(--grn);}
+.tb-v.amb{color:var(--amb);}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.mode-badge{font-size:9px;font-family:var(--mono);padding:2px 8px;border-radius:2px;letter-spacing:.05em;}
+.mode-full{background:rgba(22,163,74,.1);color:var(--grn);border:1px solid rgba(22,163,74,.25);}
+.mode-ro{background:rgba(217,119,6,.1);color:var(--amb);border:1px solid rgba(217,119,6,.25);}
+
+/* ─── LAYOUT ─── */
+#shell{display:flex;flex:1;overflow:hidden;}
+#sidebar{width:210px;min-width:210px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;}
+
+/* ─── SIDEBAR NAV ─── */
+.nav-sect{padding:14px 12px 4px;font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.1em;font-weight:500;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:6px 13px;font-size:12px;color:var(--txt2);cursor:pointer;border-left:2px solid transparent;transition:all .12s;user-select:none;}
+.nav-item:hover{color:var(--txt);background:rgba(255,255,255,.02);}
+.nav-item.on{color:var(--wht);background:rgba(37,99,235,.07);border-left-color:var(--acc);}
+.nav-icon{width:13px;text-align:center;font-size:11px;}
+.nav-badge{margin-left:auto;font-size:9px;font-family:var(--mono);padding:1px 5px;background:var(--s3);border-radius:2px;color:var(--txt3);}
+.nav-item.on .nav-badge{background:rgba(37,99,235,.15);color:var(--acc);}
+.sys-info{margin-top:auto;padding:10px 12px;border-top:1px solid var(--bd);}
+.sys-row{display:flex;justify-content:space-between;padding:2px 0;}
+.sys-k{font-size:9px;color:var(--txt3);font-family:var(--mono);}
+.sys-v{font-size:9px;color:var(--txt2);font-family:var(--mono);}
+
+/* ─── PAGE ─── */
+.page{display:none;padding:16px;}
+.page.on{display:block;}
+.pg-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd);}
+.pg-title{font-size:13px;font-weight:600;color:var(--wht);}
+.pg-sub{font-size:10px;color:var(--txt3);}
+.pg-sub-right{margin-left:auto;font-size:10px;color:var(--txt3);font-family:var(--mono);}
+
+/* ─── GRID ─── */
+.g{display:grid;gap:10px;}
+.g2{grid-template-columns:1fr 1fr;}
+.g3{grid-template-columns:1fr 1fr 1fr;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g5{grid-template-columns:repeat(5,1fr);}
+.g6{grid-template-columns:repeat(6,1fr);}
+.mb{margin-bottom:10px;}
+
+/* ─── CARD ─── */
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:5px;}
+.cp{padding:12px 14px;}
+
+/* ─── SECTION HEAD ─── */
+.sh{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bd);}
+.sh-t{font-size:11px;font-weight:600;color:var(--wht);}
+.sh-s{font-size:9px;color:var(--txt3);margin-left:auto;}
+
+/* ─── METRIC CARD ─── */
+.mc{background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:10px 12px;position:relative;overflow:hidden;}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;}
+.mc.c-grn::before{background:var(--grn);}
+.mc.c-red::before{background:var(--red);}
+.mc.c-amb::before{background:var(--amb);}
+.mc.c-acc::before{background:var(--acc);}
+.mc.c-sky::before{background:var(--sky);}
+.mc.c-pur::before{background:var(--pur);}
+.mc-lbl{font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;}
+.mc-val{font-family:var(--mono);font-size:19px;font-weight:500;color:var(--wht);line-height:1.1;}
+.mc-sub{font-size:9px;color:var(--txt3);margin-top:3px;}
+.mc-tag{position:absolute;top:8px;right:8px;font-size:8px;font-family:var(--mono);padding:1px 5px;border-radius:2px;}
+.tag-red{background:rgba(220,38,38,.12);color:var(--red);border:1px solid rgba(220,38,38,.2);}
+.tag-grn{background:rgba(22,163,74,.1);color:var(--grn);border:1px solid rgba(22,163,74,.2);}
+.tag-amb{background:rgba(217,119,6,.1);color:var(--amb);border:1px solid rgba(217,119,6,.2);}
+.tag-acc{background:rgba(37,99,235,.1);color:var(--acc);border:1px solid rgba(37,99,235,.2);}
+.mc-bar{height:2px;background:var(--bd);border-radius:1px;margin-top:7px;}
+.mc-fill{height:100%;border-radius:1px;transition:width .5s;}
+
+/* ─── TABLE ─── */
+.tbl-wrap{overflow:auto;max-height:400px;scrollbar-width:thin;scrollbar-color:var(--bd) transparent;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+th{text-align:left;padding:5px 10px;font-size:9px;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;background:var(--s2);border-bottom:1px solid var(--bd);white-space:nowrap;position:sticky;top:0;z-index:5;}
+td{padding:5px 10px;border-bottom:1px solid rgba(34,40,54,.8);color:var(--txt);white-space:nowrap;}
+tr:hover td{background:rgba(255,255,255,.015);}
+td.mono{font-family:var(--mono);font-size:10px;}
+.c-g{color:var(--grn);} .c-r{color:var(--red);} .c-a{color:var(--amb);} .c-b{color:var(--acc);} .c-s{color:var(--sky);}
+
+/* ─── BADGE ─── */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-family:var(--mono);padding:1px 6px;border-radius:2px;border:1px solid;}
+.b-g{color:var(--grn);background:rgba(22,163,74,.08);border-color:rgba(22,163,74,.2);}
+.b-r{color:var(--red);background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2);}
+.b-a{color:var(--amb);background:rgba(217,119,6,.08);border-color:rgba(217,119,6,.2);}
+.b-b{color:var(--acc);background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.2);}
+.b-s{color:var(--sky);background:rgba(8,145,178,.08);border-color:rgba(8,145,178,.2);}
+.b-p{color:var(--pur);background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.2);}
+.b-pulse{animation:lpulse 1.8s infinite;}
+
+/* ─── FORM ─── */
+.fl{display:block;font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:500;}
+select,input,textarea{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:3px;color:var(--txt);font-family:var(--ff);font-size:12px;padding:6px 9px;outline:none;transition:border-color .12s;}
+select:focus,input:focus,textarea:focus{border-color:var(--acc);}
+textarea{resize:vertical;min-height:50px;font-family:var(--mono);font-size:10px;}
+select option{background:var(--s2);}
+.fg{margin-bottom:10px;}
+.btn-grid{display:grid;gap:3px;}
+.bopt{padding:6px 9px;background:var(--s2);border:1px solid var(--bd);border-radius:3px;color:var(--txt2);font-size:11px;cursor:pointer;text-align:left;transition:all .12s;}
+.bopt:hover{border-color:var(--acc);color:var(--txt);}
+.bopt.on{background:rgba(37,99,235,.08);border-color:var(--acc);color:var(--wht);}
+.bopt .meta{font-size:9px;color:var(--txt3);font-family:var(--mono);margin-top:1px;}
+.ctabs{display:flex;gap:3px;margin-bottom:8px;}
+.ctab{flex:1;padding:5px;border:1px solid var(--bd);border-radius:3px;background:var(--s2);font-size:10px;color:var(--txt3);cursor:pointer;text-align:center;transition:all .12s;font-family:var(--mono);}
+.ctab.on{background:rgba(37,99,235,.12);border-color:var(--acc);color:var(--wht);}
+.run-btn{width:100%;padding:8px;background:var(--acc);border:none;border-radius:3px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s;letter-spacing:.02em;font-family:var(--ff);}
+.run-btn:hover{background:var(--acc2);}
+.run-btn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ─── PROGRESS ─── */
+.prog-track{height:2px;background:var(--bd);border-radius:1px;margin:6px 0;overflow:hidden;}
+.prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--sky));border-radius:1px;transition:width .3s;}
+
+/* ─── TERMINAL ─── */
+.term{background:#070a0e;border:1px solid var(--bd);border-radius:3px;padding:8px 10px;font-family:var(--mono);font-size:10px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bd) transparent;}
+.t-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.t-title{font-size:9px;color:var(--txt3);}
+.tl{line-height:1.9;color:#3d6b4a;}
+.ts{color:var(--txt3);margin-right:5px;}
+.t-hi{color:#52b86a;} .t-w{color:var(--amb);} .t-e{color:var(--red);} .t-i{color:var(--sky);}
+
+/* ─── PHASE BAR ─── */
+.phase-bar{display:flex;height:20px;border-radius:3px;overflow:hidden;gap:1px;margin:6px 0;}
+.ph{display:flex;align-items:center;justify-content:center;font-size:8px;font-family:var(--mono);color:rgba(255,255,255,.8);overflow:hidden;white-space:nowrap;}
+
+/* ─── SPLIT BAR ─── */
+.srow{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.slbl{font-size:10px;color:var(--txt3);width:110px;flex-shrink:0;}
+.strack{flex:1;height:4px;background:var(--s3);border-radius:2px;overflow:hidden;}
+.sfill{height:100%;border-radius:2px;transition:width .5s;}
+.sval{font-family:var(--mono);font-size:9px;color:var(--txt2);width:70px;text-align:right;}
+
+/* ─── ANNOTATION ─── */
+.ann{border-radius:3px;padding:6px 10px;font-size:10px;color:var(--txt2);margin-top:6px;line-height:1.6;}
+.ann strong{color:var(--wht);}
+.ann.warn{background:rgba(217,119,6,.06);border-left:2px solid var(--amb);}
+.ann.info{background:rgba(37,99,235,.06);border-left:2px solid var(--acc);}
+.ann.good{background:rgba(22,163,74,.06);border-left:2px solid var(--grn);}
+.ann.err{background:rgba(220,38,38,.06);border-left:2px solid var(--red);}
+
+/* ─── ANALYSIS CARD ─── */
+.ac{background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:12px 14px;border-left:3px solid;}
+.ac-t{font-size:11px;font-weight:600;margin-bottom:7px;}
+.ac-f{font-size:10px;color:var(--txt2);line-height:1.7;padding-left:8px;border-left:1px solid var(--bd2);margin-bottom:5px;}
+.ac-f strong{color:var(--wht);}
+.ac-f em{font-style:normal;font-family:var(--mono);font-size:9px;color:var(--txt);}
+
+/* ─── LOADING ─── */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--txt3);font-size:11px;gap:8px;}
+.spin{width:14px;height:14px;border:2px solid var(--bd2);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty{padding:30px;text-align:center;color:var(--txt3);font-size:11px;}
+
+/* ─── SAMPLE EXPLORER TIMELINE ─── */
+.timeline-wrap{position:relative;}
+.event-gantt{display:flex;flex-direction:column;gap:3px;padding:10px 0;}
+.gantt-row{display:flex;align-items:center;gap:8px;font-size:10px;}
+.gantt-lbl{width:80px;color:var(--txt3);font-family:var(--mono);font-size:9px;text-align:right;flex-shrink:0;}
+.gantt-track{flex:1;height:18px;background:var(--s3);border-radius:2px;position:relative;overflow:hidden;}
+.gantt-seg{position:absolute;top:0;height:100%;border-radius:2px;display:flex;align-items:center;padding:0 4px;font-size:8px;font-family:var(--mono);color:rgba(255,255,255,.8);overflow:hidden;white-space:nowrap;}
+.gantt-dur{font-size:9px;color:var(--txt3);font-family:var(--mono);width:60px;flex-shrink:0;}
+
+/* ─── C-STATE ─── */
+.cstate-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+.cstate-lbl{font-size:9px;color:var(--txt3);font-family:var(--mono);width:28px;}
+.cstate-bar-wrap{flex:1;height:12px;background:var(--s3);border-radius:2px;overflow:hidden;}
+.cstate-bar-fill{height:100%;border-radius:2px;transition:width .5s;}
+.cstate-val{font-size:9px;font-family:var(--mono);color:var(--txt2);width:40px;text-align:right;}
+
+/* ─── EXP LIST ─── */
+.exp-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:3px;cursor:pointer;transition:background .1s;}
+.exp-row:hover{background:var(--s2);}
+.exp-row.sel{background:rgba(37,99,235,.07);border-left:2px solid var(--acc);padding-left:6px;}
+.edot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
+
+.divider{height:1px;background:var(--bd);margin:10px 0;}
+
+/* Chart.js global defaults applied via JS */
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo"><div class="logo-pulse"></div>A-LEMS<span style="color:var(--txt3);font-weight:300"> / Energy Measurement</span></div>
+  <div class="tb-div"></div>
+  <div class="tb-kv"><span class="tb-k">Experiments</span><span class="tb-v" id="tb-exps">—</span></div>
+  <div class="tb-kv"><span class="tb-k">Runs</span><span class="tb-v" id="tb-runs">—</span></div>
+  <div class="tb-kv"><span class="tb-k">Avg Linear</span><span class="tb-v grn" id="tb-lin">—</span></div>
+  <div class="tb-kv"><span class="tb-k">Avg Agentic</span><span class="tb-v amb" id="tb-age">—</span></div>
+  <div class="tb-kv"><span class="tb-k">Tax</span><span class="tb-v red" id="tb-tax">—</span></div>
+  <div class="tb-kv"><span class="tb-k">Peak</span><span class="tb-v red" id="tb-peak">—</span></div>
+  <div class="tb-right">
+    <span class="mode-badge" id="mode-badge">loading…</span>
+  </div>
+</div>
+
+<div id="shell">
+<div id="sidebar">
+  <div class="nav-sect">Analysis</div>
+  <div class="nav-item on"  onclick="nav(this,'overview')">  <span class="nav-icon">◈</span>Overview      <span class="nav-badge" id="nb-overview">—</span></div>
+  <div class="nav-item"     onclick="nav(this,'energy')">    <span class="nav-icon">⚡</span>Energy        <span class="nav-badge" id="nb-energy">—</span></div>
+  <div class="nav-item"     onclick="nav(this,'cpu')">       <span class="nav-icon">▣</span>CPU &amp; C-States<span class="nav-badge" id="nb-cpu">—</span></div>
+  <div class="nav-item"     onclick="nav(this,'scheduler')"> <span class="nav-icon">⇌</span>Scheduler     <span class="nav-badge" id="nb-sched">—</span></div>
+  <div class="nav-item"     onclick="nav(this,'domains')">   <span class="nav-icon">◉</span>Domains       </div>
+  <div class="nav-item"     onclick="nav(this,'tax')">       <span class="nav-icon">▲</span>Tax Attribution<span class="nav-badge" id="nb-tax">—</span></div>
+  <div class="nav-item"     onclick="nav(this,'anomalies')"> <span class="nav-icon">⚠</span>Anomalies     <span class="nav-badge" id="nb-anom" style="color:var(--red);">—</span></div>
+  <div class="nav-sect">Operational</div>
+  <div class="nav-item"     onclick="nav(this,'execute')">   <span class="nav-icon">▶</span>Execute Run   </div>
+  <div class="nav-item"     onclick="nav(this,'explorer')">  <span class="nav-icon">⊞</span>Sample Explorer</div>
+  <div class="nav-item"     onclick="nav(this,'experiments')"><span class="nav-icon">≡</span>Experiments   <span class="nav-badge" id="nb-exps2">—</span></div>
+  <div class="sys-info" id="sys-info">
+    <div class="sys-row"><span class="sys-k">mode</span><span class="sys-v" id="si-mode">—</span></div>
+    <div class="sys-row"><span class="sys-k">db</span><span class="sys-v" id="si-db">—</span></div>
+    <div class="sys-row"><span class="sys-k">gov</span><span class="sys-v" id="si-gov">—</span></div>
+    <div class="sys-row"><span class="sys-k">turbo</span><span class="sys-v" id="si-turbo">—</span></div>
+  </div>
+</div>
+
+<div id="content">
+
+<!-- ═══ OVERVIEW ═══ -->
+<div class="page on" id="p-overview">
+  <div class="pg-hdr">
+    <span class="pg-title">Overview</span>
+    <span class="pg-sub">All experiments · measured energy vs orchestration tax</span>
+    <span class="pg-sub-right" id="ov-updated">Loading…</span>
+  </div>
+  <div class="g g6 mb" id="ov-kpis">
+    <div class="loading"><div class="spin"></div>Loading…</div>
+  </div>
+  <div class="g g2 mb">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Orchestration Tax — Phase Breakdown</span><span class="sh-s">agentic runs · measured</span></div>
+      <div id="ov-phases"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Energy Tax Breakdown</span><span class="sh-s">measured contributors</span></div>
+      <div id="ov-splits"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+  </div>
+  <div class="g g3">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">IPC vs Cache Miss</span></div>
+      <div style="height:180px;"><canvas id="c-scatter"></canvas></div>
+      <div class="ann info" id="ann-scatter"></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Energy Distribution (log)</span></div>
+      <div style="height:180px;"><canvas id="c-edist"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Duration vs Energy</span></div>
+      <div style="height:180px;"><canvas id="c-dur-e"></canvas></div>
+      <div class="ann info" id="ann-dure"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ENERGY ═══ -->
+<div class="page" id="p-energy">
+  <div class="pg-hdr"><span class="pg-title">Energy Analysis</span><span class="pg-sub">RAPL PKG+CORE+DRAM domains</span></div>
+  <div class="g g5 mb" id="en-kpis"><div class="loading"><div class="spin"></div></div></div>
+  <div class="g g2 mb">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Energy per Run (sorted, log)</span></div>
+      <div style="height:220px;"><canvas id="c-en-sorted"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Energy/Token by segment</span></div>
+      <div style="height:220px;"><canvas id="c-ept"></canvas></div>
+      <div class="ann warn">API latency drives energy in cloud runs — CPU spins idle during wait, RAPL charges proportionally.</div>
+    </div>
+  </div>
+  <div class="g g3">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Energy vs API Latency</span></div>
+      <div style="height:170px;"><canvas id="c-e-api"></canvas></div>
+      <div class="ann info">Longer API wait = more idle RAPL drain. IN network adds ~2.4× energy purely from latency overhead.</div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Carbon by provider/region</span></div>
+      <div style="height:170px;"><canvas id="c-carbon"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Sustainability — Water &amp; Methane</span></div>
+      <div style="height:170px;"><canvas id="c-sustain"></canvas></div>
+      <div class="ann info">Water usage and methane leakage calculated per run from grid intensity factors.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CPU & C-STATES ═══ -->
+<div class="page" id="p-cpu">
+  <div class="pg-hdr"><span class="pg-title">CPU &amp; C-State Analysis</span><span class="pg-sub">IPC · frequency · residency · thermal</span></div>
+  <div class="card cp mb">
+    <div class="sh"><span class="sh-t">C-State Residency — Live measured from cpu_samples</span><span class="sh-s" id="cs-sample-count">—</span></div>
+    <div class="g g2" id="cstate-panels"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+  <div class="g g3 mb">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">IPC Distribution</span></div>
+      <div style="height:180px;"><canvas id="c-ipc-hist"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">IPC vs Frequency</span></div>
+      <div style="height:180px;"><canvas id="c-ipc-freq"></canvas></div>
+      <div class="ann info">Cloud runs: frequency irrelevant (IO-bound). Local: frequency correlates with IPC (compute-bound).</div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Thermal Profile</span></div>
+      <div style="height:180px;"><canvas id="c-thermal"></canvas></div>
+      <div class="ann warn" id="ann-thermal">Loading thermal data…</div>
+    </div>
+  </div>
+  <div class="g g2">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Cache Miss vs Energy</span></div>
+      <div style="height:170px;"><canvas id="c-miss-e"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Kernel vs User Time</span></div>
+      <div style="height:170px;"><canvas id="c-kuser"></canvas></div>
+      <div class="ann info">Cloud: low kernel time (avg ~20ms) — user-space IO wait dominates. Local: high user time — pure compute in inference loop.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCHEDULER ═══ -->
+<div class="page" id="p-scheduler">
+  <div class="pg-hdr"><span class="pg-title">OS Scheduler Analysis</span><span class="pg-sub">Thread migrations · context switches · IRQ rates</span></div>
+  <div class="g g5 mb" id="sched-kpis"><div class="loading"><div class="spin"></div></div></div>
+  <div class="g g2 mb">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Thread Migrations vs Duration</span></div>
+      <div style="height:210px;"><canvas id="c-mig-dur"></canvas></div>
+      <div class="ann info">r²≈0.89: duration is the strongest migration predictor. Each extra second adds ~112 migrations on average. Phase transitions in agentic runs drive bursts.</div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Voluntary vs Involuntary Context Switches</span></div>
+      <div style="height:210px;"><canvas id="c-ctx"></canvas></div>
+      <div class="ann err">Involuntary switches (preemptions) spike in local inference — kernel preempts model thread → cache state loss → explains miss rate elevation.</div>
+    </div>
+  </div>
+  <div class="g g2">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Interrupt Rate per Run</span></div>
+      <div style="height:170px;"><canvas id="c-irq"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Migrations → Cache Miss</span></div>
+      <div style="height:170px;"><canvas id="c-mig-miss"></canvas></div>
+      <div class="ann info">Causal chain: agentic phases → more migrations → cache eviction → elevated miss rate → IPC degradation.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DOMAINS ═══ -->
+<div class="page" id="p-domains">
+  <div class="pg-hdr"><span class="pg-title">Domain Energy Breakdown</span><span class="pg-sub">PKG · CORE · UNCORE · DRAM — baseline-corrected via orchestration_analysis</span></div>
+  <div class="g g4 mb" id="dom-kpis"><div class="loading"><div class="spin"></div></div></div>
+  <div class="g g2 mb">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Domain Shares — PKG vs CORE vs UNCORE vs DRAM</span></div>
+      <div style="height:220px;"><canvas id="c-dom-stacked"></canvas></div>
+      <div class="ann info">CORE share tells you if tax is compute. UNCORE share = interconnect/LLC. DRAM = memory bandwidth cost.</div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Workload vs Baseline vs Tax Energy</span></div>
+      <div style="height:220px;"><canvas id="c-dom-tax"></canvas></div>
+      <div class="ann warn">Workload = PKG − idle baseline. Tax = uncore overhead above baseline. Reasoning = core − idle.</div>
+    </div>
+  </div>
+  <div class="card cp">
+    <div class="sh"><span class="sh-t">Per-run domain breakdown</span></div>
+    <div class="tbl-wrap"><table id="tbl-domains">
+      <thead><tr><th>Run</th><th>Type</th><th>Task</th><th>PKG J</th><th>Core J</th><th>Uncore J</th><th>DRAM J</th><th>Workload J</th><th>Tax J</th><th>Core%</th><th>Uncore%</th></tr></thead>
+      <tbody id="tbody-domains"><tr><td colspan="11" class="empty">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ═══ TAX ATTRIBUTION ═══ -->
+<div class="page" id="p-tax">
+  <div class="pg-hdr"><span class="pg-title">Tax Attribution</span><span class="pg-sub">Root-cause analysis of orchestration overhead</span></div>
+  <div class="g g3 mb" id="tax-cards">
+    <div class="loading"><div class="spin"></div></div>
+  </div>
+  <div class="card cp mb">
+    <div class="sh"><span class="sh-t">All tax pairs</span><span class="sh-s" id="tax-pair-count">—</span></div>
+    <div class="tbl-wrap"><table id="tbl-tax">
+      <thead><tr><th>Pair</th><th>Task</th><th>Provider</th><th>Country</th><th>Linear J</th><th>Agentic J</th><th>Tax J</th><th>Tax %</th><th>Plan ms</th><th>Exec ms</th><th>Synth ms</th><th>LLM calls</th><th>Tools</th></tr></thead>
+      <tbody id="tbody-tax"><tr><td colspan="13" class="empty">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+  <div class="g g2">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Tax % distribution</span></div>
+      <div style="height:180px;"><canvas id="c-tax-dist"></canvas></div>
+    </div>
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Tax vs LLM calls</span></div>
+      <div style="height:180px;"><canvas id="c-tax-llm"></canvas></div>
+      <div class="ann warn">Each additional LLM call adds measurable orchestration overhead — planning chain cost scales super-linearly.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ANOMALIES ═══ -->
+<div class="page" id="p-anomalies">
+  <div class="pg-hdr"><span class="pg-title">Anomaly Detection</span><span class="pg-sub">Runs flagged as >2σ outliers on energy, IPC, cache miss, thermal, IRQ</span></div>
+  <div class="card cp mb">
+    <div class="tbl-wrap" style="max-height:300px;"><table id="tbl-anom">
+      <thead><tr><th>Run</th><th>Exp</th><th>Type</th><th>Task</th><th>Provider</th><th>Energy J</th><th>IPC</th><th>Cache Miss%</th><th>Thermal Δ</th><th>IRQ/s</th><th>Flags</th></tr></thead>
+      <tbody id="tbody-anom"><tr><td colspan="11" class="empty">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+  <div class="card cp" id="anom-analysis">
+    <div class="sh"><span class="sh-t">Anomaly root-cause summary</span></div>
+    <div id="anom-cards" class="g g3"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+</div>
+
+<!-- ═══ EXECUTE ═══ -->
+<div class="page" id="p-execute">
+  <div class="pg-hdr"><span class="pg-title">Execute Run</span><span class="pg-sub" id="exec-mode-sub">Loading capabilities…</span></div>
+  <div style="display:grid;grid-template-columns:270px 1fr;gap:12px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="card cp">
+        <div class="fl" style="margin-bottom:6px;">Model / Provider</div>
+        <select id="sel-model" onchange="updateExecMode()"></select>
+        <div style="margin-top:8px;">
+          <div class="fl" style="margin-bottom:6px;">Complexity</div>
+          <div class="ctabs">
+            <div class="ctab on" onclick="setLvl(this,'simple')">Simple<br><span style="font-size:8px;">0 tools</span></div>
+            <div class="ctab" onclick="setLvl(this,'L1')">L1<br><span style="font-size:8px;">1–2 tools</span></div>
+            <div class="ctab" onclick="setLvl(this,'L2')">L2<br><span style="font-size:8px;">3–5 tools</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card cp">
+        <div class="fl" style="margin-bottom:5px;">Task</div>
+        <div class="btn-grid" id="task-grid">
+          <div class="bopt on" onclick="selTask(this)" data-tok="50"  data-dur="500">Capital query<div class="meta">geo · 0 tools · ~50 tok</div></div>
+          <div class="bopt"    onclick="selTask(this)" data-tok="50"  data-dur="450">Arithmetic<div class="meta">math · 0 tools · ~50 tok</div></div>
+          <div class="bopt"    onclick="selTask(this)" data-tok="150" data-dur="1800">Stock price lookup<div class="meta">finance · 1 tool · ~150 tok</div></div>
+          <div class="bopt"    onclick="selTask(this)" data-tok="300" data-dur="2400">Code review<div class="meta">dev · 1 tool · ~300 tok</div></div>
+          <div class="bopt"    onclick="selTask(this)" data-tok="500" data-dur="6000">Comparative research<div class="meta">analysis · 4 tools · ~500 tok</div></div>
+          <div class="bopt"    onclick="selTask(this)" data-tok="1200" data-dur="15000">Deep research<div class="meta">research · 6 tools · ~1.2k tok</div></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div class="fl">Custom prompt</div>
+          <textarea id="custom-prompt" placeholder="Override task prompt…"></textarea>
+        </div>
+      </div>
+      <div class="card cp">
+        <div class="fg">
+          <div class="fl">Grid Region</div>
+          <select id="sel-region">
+            <option value="US" data-cf="0.386">🇺🇸 United States — 0.386 kg/kWh</option>
+            <option value="DE" data-cf="0.311">🇩🇪 Germany — 0.311 kg/kWh</option>
+            <option value="FR" data-cf="0.052">🇫🇷 France — 0.052 kg/kWh</option>
+            <option value="NO" data-cf="0.011">🇳🇴 Norway — 0.011 kg/kWh</option>
+            <option value="IN" data-cf="0.820">🇮🇳 India — 0.820 kg/kWh</option>
+            <option value="AU" data-cf="0.541">🇦🇺 Australia — 0.541 kg/kWh</option>
+          </select>
+        </div>
+        <div class="fg">
+          <div class="fl">Repetitions</div>
+          <select id="sel-reps">
+            <option value="3">3 reps</option>
+            <option value="5">5 reps</option>
+            <option value="10">10 reps</option>
+            <option value="30" selected>30 reps (standard)</option>
+          </select>
+        </div>
+        <button class="run-btn" id="run-btn" onclick="doRun()">▶ Run Dual Benchmark</button>
+        <div class="prog-track"><div class="prog-fill" id="exec-prog"></div></div>
+        <div style="font-size:9px;color:var(--txt3);font-family:var(--mono);text-align:center;" id="exec-status">Ready</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="g g2">
+        <div class="card cp">
+          <div class="t-hdr"><span class="t-title">LINEAR — single pass</span><span class="badge b-g" id="lin-badge">READY</span></div>
+          <div class="term" id="term-lin" style="height:200px;"><div class="tl"><span class="ts">[0000]</span>Awaiting run…</div></div>
+        </div>
+        <div class="card cp">
+          <div class="t-hdr"><span class="t-title">AGENTIC — orchestration loop</span><span class="badge b-a" id="age-badge">QUEUED</span></div>
+          <div class="term" id="term-age" style="height:200px;"><div class="tl"><span class="ts">[0000]</span>Waiting…</div></div>
+        </div>
+      </div>
+      <div id="exec-results" style="display:none;">
+        <div class="g g6 mb" id="exec-kpis"></div>
+        <div class="g g2">
+          <div class="card cp">
+            <div class="sh"><span class="sh-t">Energy comparison</span></div>
+            <div id="exec-bars"></div>
+          </div>
+          <div class="card cp">
+            <div class="sh"><span class="sh-t">Tax attribution</span></div>
+            <div id="exec-attribution" style="font-size:10px;color:var(--txt2);line-height:1.8;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card cp" id="exec-live-chart-card" style="display:none;">
+        <div class="sh"><span class="sh-t">Live energy accumulation</span><span class="sh-s" id="live-chart-sub">streaming…</span></div>
+        <div style="height:160px;"><canvas id="c-live-energy"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SAMPLE EXPLORER ═══ -->
+<div class="page" id="p-explorer">
+  <div class="pg-hdr"><span class="pg-title">Sample Explorer</span><span class="pg-sub">100Hz energy + CPU + interrupt timeseries per run</span></div>
+  <div style="display:grid;grid-template-columns:220px 1fr;gap:12px;align-items:start;">
+    <div class="card cp">
+      <div class="sh"><span class="sh-t">Select Run</span></div>
+      <input type="text" placeholder="Filter…" oninput="filterExpRuns(this.value)" style="margin-bottom:8px;">
+      <div style="max-height:500px;overflow-y:auto;" id="explorer-run-list">
+        <div class="loading"><div class="spin"></div></div>
+      </div>
+    </div>
+    <div id="explorer-detail">
+      <div class="card cp empty">Select a run to explore its 100Hz samples</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EXPERIMENTS ═══ -->
+<div class="page" id="p-experiments">
+  <div class="pg-hdr"><span class="pg-title">Saved Experiments</span><span class="pg-sub">All experiments · click to inspect runs</span></div>
+  <div style="display:grid;grid-template-columns:240px 1fr;gap:12px;align-items:start;">
+    <div class="card cp">
+      <input type="text" placeholder="Filter experiments…" oninput="filterExps(this.value)" style="margin-bottom:8px;">
+      <div style="max-height:520px;overflow-y:auto;" id="exp-list">
+        <div class="loading"><div class="spin"></div></div>
+      </div>
+    </div>
+    <div id="exp-detail">
+      <div class="card cp empty">Select an experiment to inspect</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- #content -->
+</div><!-- #shell -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// API LAYER — swap base URL to point at remote machine if needed
+// ═══════════════════════════════════════════════════════════════
+const BASE = '';   // empty = same origin; set to 'http://remotehost:8765' for remote
+
+const API = {
+  get: (path) => fetch(BASE + path).then(r => { if(!r.ok) throw new Error(r.statusText); return r.json(); }),
+  post: (path, body) => fetch(BASE + path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r => r.json()),
+  ws: (path) => new WebSocket((BASE || location.origin).replace('http','ws') + path),
+  runs:        ()       => API.get('/api/runs'),
+  experiments: ()       => API.get('/api/experiments'),
+  experiment:  (id)     => API.get(`/api/experiments/${id}`),
+  run:         (id)     => API.get(`/api/runs/${id}`),
+  energySamples:(id)    => API.get(`/api/runs/${id}/samples/energy`),
+  cpuSamples:  (id)     => API.get(`/api/runs/${id}/samples/cpu`),
+  irqSamples:  (id)     => API.get(`/api/runs/${id}/samples/interrupts`),
+  events:      (id)     => API.get(`/api/runs/${id}/events`),
+  overview:    ()       => API.get('/api/analysis/overview'),
+  tax:         ()       => API.get('/api/analysis/tax'),
+  domains:     ()       => API.get('/api/analysis/domains'),
+  cstates:     ()       => API.get('/api/analysis/cstates'),
+  anomalies:   ()       => API.get('/api/analysis/anomalies'),
+  baselines:   ()       => API.get('/api/analysis/baselines'),
+  capabilities:()       => API.get('/api/capabilities'),
+  execute:     (body)   => API.post('/api/execute', body),
+  status:      (id)     => API.get(`/api/execute/status/${id}`),
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let _runs = [], _exps = [], _tax = [], _overview = {}, _domains = [], _cstates = [], _anomalies = [];
+let _charts = {};
+let _curLvl = 'simple';
+let _running = false;
+let _liveWs = null;
+
+// ═══════════════════════════════════════════════════════════════
+// CHART DEFAULTS
+// ═══════════════════════════════════════════════════════════════
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 9;
+Chart.defaults.color = '#49576a';
+const GC = 'rgba(34,40,54,.9)';
+const CO = {
+  grn:'rgba(22,163,74,.85)',grnD:'rgba(22,163,74,.12)',
+  red:'rgba(220,38,38,.85)',redD:'rgba(220,38,38,.1)',
+  amb:'rgba(217,119,6,.85)',ambD:'rgba(217,119,6,.1)',
+  acc:'rgba(37,99,235,.85)',accD:'rgba(37,99,235,.1)',
+  sky:'rgba(8,145,178,.85)',skyD:'rgba(8,145,178,.1)',
+  pur:'rgba(124,58,237,.85)',purD:'rgba(124,58,237,.1)',
+};
+const BASE_OPTS = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{labels:{font:{size:9}, boxWidth:10, padding:8}}},
+  scales:{
+    x:{grid:{color:GC}, ticks:{color:'#49576a',font:{size:9}}},
+    y:{grid:{color:GC}, ticks:{color:'#49576a',font:{size:9}}}
+  }
+};
+
+function mkChart(id, type, data, opts={}) {
+  if(_charts[id]) { _charts[id].destroy(); }
+  const el = document.getElementById(id);
+  if(!el) return null;
+  _charts[id] = new Chart(el, {type, data, options:{...BASE_OPTS, ...opts,
+    plugins:{...BASE_OPTS.plugins, ...(opts.plugins||{})},
+    scales:{...BASE_OPTS.scales, ...(opts.scales||{})}
+  }});
+  return _charts[id];
+}
+
+const avg = a => a.length ? a.reduce((s,v)=>s+(v||0),0)/a.length : 0;
+const fj  = v => v != null ? (+v).toFixed(3)+'J' : '—';
+const fms = v => v != null ? (+v).toFixed(0)+'ms' : '—';
+const fmt = (v,u,d=2) => v != null ? (+v).toFixed(d)+u : '—';
+
+function colorByModel(r) {
+  if(r.provider==='local') return CO.red;
+  return r.country_code==='IN' ? CO.amb : CO.grn;
+}
+function colorByModelD(r) {
+  if(r.provider==='local') return CO.redD;
+  return r.country_code==='IN' ? CO.ambD : CO.grnD;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+async function boot() {
+  try {
+    const [caps, overview, runs, exps, tax, domains, cstates, anomalies] = await Promise.all([
+      API.capabilities(),
+      API.overview(),
+      API.runs(),
+      API.experiments(),
+      API.tax(),
+      API.domains(),
+      API.cstates(),
+      API.anomalies(),
+    ]);
+
+    _runs = runs;
+    _exps = exps;
+    _tax  = tax;
+    _overview = overview;
+    _domains = domains;
+    _cstates = cstates;
+    _anomalies = anomalies;
+
+    // topbar
+    document.getElementById('tb-exps').textContent  = overview.total_experiments || exps.length;
+    document.getElementById('tb-runs').textContent  = overview.total_runs || runs.length;
+    document.getElementById('tb-lin').textContent   = fj(overview.avg_linear_j);
+    document.getElementById('tb-age').textContent   = fj(overview.avg_agentic_j);
+    document.getElementById('tb-peak').textContent  = fj(overview.max_energy_j);
+    const taxRatio = overview.avg_agentic_j && overview.avg_linear_j
+      ? (overview.avg_agentic_j / overview.avg_linear_j).toFixed(1)+'×' : '—';
+    document.getElementById('tb-tax').textContent = taxRatio;
+
+    const badge = document.getElementById('mode-badge');
+    badge.textContent = caps.mode === 'full' ? '● Full Mode' : '● Read-Only';
+    badge.className = 'mode-badge ' + (caps.mode === 'full' ? 'mode-full' : 'mode-ro');
+
+    document.getElementById('si-mode').textContent = caps.mode;
+    document.getElementById('si-db').textContent   = caps.db_path.split('/').pop();
+    const runWithGov = runs.find(r=>r.governor);
+    if(runWithGov) {
+      document.getElementById('si-gov').textContent   = runWithGov.governor || '—';
+      document.getElementById('si-turbo').textContent = runWithGov.turbo_enabled ? 'ON' : 'OFF';
+    }
+
+    // badge counts
+    document.getElementById('nb-overview').textContent  = overview.total_runs || '—';
+    document.getElementById('nb-energy').textContent    = overview.total_runs || '—';
+    document.getElementById('nb-cpu').textContent       = overview.total_runs || '—';
+    document.getElementById('nb-sched').textContent     = overview.total_runs || '—';
+    document.getElementById('nb-tax').textContent       = tax.length || '—';
+    document.getElementById('nb-anom').textContent      = anomalies.length || '0';
+    document.getElementById('nb-exps2').textContent     = exps.length || '—';
+
+    // populate execute model dropdown
+    const modelSel = document.getElementById('sel-model');
+    const providers = [...new Set(runs.map(r=>r.provider).filter(Boolean))];
+    providers.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p === 'cloud' ? '☁  Cloud (Groq)' : '⬡  Local (Ollama)';
+      modelSel.appendChild(opt);
+    });
+    if(!providers.length) {
+      const opt = document.createElement('option'); opt.value='cloud'; opt.textContent='☁ Cloud'; modelSel.appendChild(opt);
+    }
+    if(!caps.harness_available) {
+      document.getElementById('run-btn').disabled = true;
+      document.getElementById('exec-mode-sub').textContent = '⚠ Read-only mode — connect via SSH to measurement machine to enable execution';
+      document.getElementById('exec-status').textContent = 'Harness not available';
+    } else {
+      document.getElementById('exec-mode-sub').textContent = 'Harness available — live execution enabled';
+    }
+
+    // render all pages
+    renderOverview();
+    renderEnergy();
+    renderCpu();
+    renderScheduler();
+    renderDomains();
+    renderTax();
+    renderAnomalies();
+    buildExperimentsList();
+    buildExplorerList();
+
+    document.getElementById('ov-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+
+  } catch(e) {
+    console.error('Boot failed:', e);
+    document.getElementById('ov-updated').textContent = '⚠ Could not connect to server — is it running?';
+    document.getElementById('mode-badge').textContent = '⚠ Offline';
+    document.getElementById('mode-badge').className = 'mode-badge mode-ro';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════════
+function renderOverview() {
+  const ov = _overview;
+  const taxMult = ov.avg_agentic_j && ov.avg_linear_j ? (ov.avg_agentic_j/ov.avg_linear_j) : 0;
+
+  document.getElementById('ov-kpis').innerHTML = `
+    <div class="mc c-grn"><div class="mc-lbl">Avg Linear Energy</div><div class="mc-val">${fj(ov.avg_linear_j)}</div><div class="mc-sub">${ov.linear_runs||0} linear runs</div><div class="mc-bar"><div class="mc-fill" style="width:${Math.min(100,(ov.avg_linear_j||0)/((ov.avg_agentic_j||1))*100)}%;background:var(--grn);"></div></div></div>
+    <div class="mc c-red"><div class="mc-lbl">Avg Agentic Energy</div><div class="mc-val">${fj(ov.avg_agentic_j)}</div><div class="mc-sub">${ov.agentic_runs||0} agentic runs</div><div class="mc-tag tag-red">${taxMult.toFixed(1)}×</div><div class="mc-bar"><div class="mc-fill" style="width:100%;background:var(--red);"></div></div></div>
+    <div class="mc c-amb"><div class="mc-lbl">Avg Planning Time</div><div class="mc-val">${fms(ov.avg_planning_ms)}</div><div class="mc-sub">${ov.avg_planning_ms ? ((ov.avg_planning_ms/(ov.avg_planning_ms+ov.avg_execution_ms+ov.avg_synthesis_ms))*100).toFixed(0)+'% of agentic time' : 'agentic runs only'}</div></div>
+    <div class="mc c-sky"><div class="mc-lbl">Peak IPC</div><div class="mc-val">${fmt(ov.max_ipc,'',3)}</div><div class="mc-sub">avg ${fmt(ov.avg_ipc,'',3)}</div></div>
+    <div class="mc c-pur"><div class="mc-lbl">Avg Carbon</div><div class="mc-val">${fmt(ov.avg_carbon_mg,'mg',3)}</div><div class="mc-sub">total ${fmt(ov.total_carbon_mg,'mg',2)} CO₂e</div></div>
+    <div class="mc c-acc"><div class="mc-lbl">Total Energy</div><div class="mc-val">${fmt(ov.total_energy_j,'J',1)}</div><div class="mc-sub">${ov.total_runs||0} runs · ${ov.total_experiments||0} experiments</div></div>
+  `;
+
+  // Phase breakdown from real tax data
+  const agenticRuns = _runs.filter(r=>r.workflow_type==='agentic'&&r.planning_time_ms);
+  const avgPlan  = avg(agenticRuns.map(r=>r.planning_time_ms||0));
+  const avgExec  = avg(agenticRuns.map(r=>r.execution_time_ms||0));
+  const avgSynth = avg(agenticRuns.map(r=>r.synthesis_time_ms||0));
+  const total    = avgPlan+avgExec+avgSynth||1;
+  const pp = (avgPlan/total*100).toFixed(0);
+  const ep = (avgExec/total*100).toFixed(0);
+  const sp = (avgSynth/total*100).toFixed(0);
+
+  document.getElementById('ov-phases').innerHTML = agenticRuns.length ? `
+    <div style="font-size:9px;color:var(--txt3);margin-bottom:6px;">Based on ${agenticRuns.length} agentic runs with phase data</div>
+    <div class="phase-bar">
+      <div class="ph" style="width:${pp}%;background:#7c3a0a;">${pp}% Plan</div>
+      <div class="ph" style="width:${ep}%;background:#1a3a6b;">${ep}% Exec</div>
+      <div class="ph" style="width:${sp}%;background:#2a1060;">${sp}% Synth</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;">
+      <div style="text-align:center;"><div style="font-family:var(--mono);font-size:12px;color:var(--amb);">${avgPlan.toFixed(0)}ms</div><div style="font-size:9px;color:var(--txt3);">Planning avg</div><div style="font-size:9px;color:var(--txt3);">pure overhead</div></div>
+      <div style="text-align:center;"><div style="font-family:var(--mono);font-size:12px;color:var(--acc);">${avgExec.toFixed(0)}ms</div><div style="font-size:9px;color:var(--txt3);">Execution avg</div><div style="font-size:9px;color:var(--txt3);">tool latency</div></div>
+      <div style="text-align:center;"><div style="font-family:var(--mono);font-size:12px;color:var(--pur);">${avgSynth.toFixed(0)}ms</div><div style="font-size:9px;color:var(--txt3);">Synthesis avg</div><div style="font-size:9px;color:var(--txt3);">context merge</div></div>
+    </div>
+    <div class="ann warn" style="margin-top:8px;">Planning phase (${pp}%) is pure overhead — LLM constructs a plan before any useful work. Memoizing plans for repeated task patterns could recover this entirely.</div>
+  ` : `<div class="empty">No agentic runs with phase data yet</div>`;
+
+  // Splits
+  const linMig = avg(_runs.filter(r=>r.workflow_type==='linear').map(r=>r.thread_migrations||0));
+  const ageMig = avg(_runs.filter(r=>r.workflow_type==='agentic').map(r=>r.thread_migrations||0));
+  const taxPct = avg(_tax.map(t=>t.tax_percent||0));
+  document.getElementById('ov-splits').innerHTML = `
+    <div class="srow"><div class="slbl">Planning overhead</div><div class="strack"><div class="sfill" style="width:${pp}%;background:var(--amb);"></div></div><div class="sval">${pp}% of time</div></div>
+    <div class="srow"><div class="slbl">Tool API latency</div><div class="strack"><div class="sfill" style="width:${ep}%;background:var(--acc);"></div></div><div class="sval">${ep}% of time</div></div>
+    <div class="srow"><div class="slbl">Synthesis</div><div class="strack"><div class="sfill" style="width:${sp}%;background:var(--pur);"></div></div><div class="sval">${sp}% of time</div></div>
+    <div class="srow"><div class="slbl">Agentic energy tax</div><div class="strack"><div class="sfill" style="width:${Math.min(100,taxPct)}%;background:var(--red);"></div></div><div class="sval">${taxPct.toFixed(1)}% avg</div></div>
+    <div class="srow"><div class="slbl">Extra migrations</div><div class="strack"><div class="sfill" style="width:${Math.min(100,ageMig/(linMig||1)*50)}%;background:var(--sky);"></div></div><div class="sval">+${(ageMig-linMig).toFixed(0)} avg</div></div>
+    <div class="srow"><div class="slbl">Cache miss Δ</div>
+      ${(()=>{const lm=avg(_runs.filter(r=>r.workflow_type==='linear').map(r=>r.cache_miss_rate||0))*100;const am=avg(_runs.filter(r=>r.workflow_type==='agentic').map(r=>r.cache_miss_rate||0))*100;const d=(am-lm).toFixed(1);return `<div class="strack"><div class="sfill" style="width:${Math.min(100,Math.abs(parseFloat(d))*5)}%;background:var(--amb);"></div></div><div class="sval">+${d}pp</div>`})()}
+    </div>
+  `;
+
+  // Charts
+  const linear  = _runs.filter(r=>r.workflow_type==='linear');
+  const agentic = _runs.filter(r=>r.workflow_type==='agentic');
+  mkChart('c-scatter','scatter',{datasets:[
+    {label:'Linear',  data:linear.map(r=>({x:+(r.cache_miss_rate||0)*100,y:+(r.ipc||0)})),  backgroundColor:CO.grn,pointRadius:4},
+    {label:'Agentic', data:agentic.map(r=>({x:+(r.cache_miss_rate||0)*100,y:+(r.ipc||0)})), backgroundColor:CO.amb,pointRadius:4},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'Cache Miss %',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'IPC',color:'#49576a',font:{size:9}}}}});
+
+  const eSort = [..._runs].filter(r=>r.energy_j).sort((a,b)=>a.energy_j-b.energy_j);
+  mkChart('c-edist','bar',{
+    labels: eSort.map(r=>`${r.run_id}`),
+    datasets:[{label:'Energy J',data:eSort.map(r=>+r.energy_j),
+      backgroundColor:eSort.map(r=>colorByModelD(r)),borderColor:eSort.map(r=>colorByModel(r)),borderWidth:1}]
+  },{plugins:{legend:{display:false}},scales:{x:{...BASE_OPTS.scales.x,ticks:{display:false}},y:{...BASE_OPTS.scales.y,type:'logarithmic'}}});
+
+  mkChart('c-dur-e','scatter',{datasets:[
+    {label:'Linear',  data:linear.filter(r=>r.energy_j).map(r=>({x:+(r.duration_ms||0)/1000,y:+(r.pkg_j||0)})),  backgroundColor:CO.grn,pointRadius:4},
+    {label:'Agentic', data:agentic.filter(r=>r.energy_j).map(r=>({x:+(r.duration_ms||0)/1000,y:+(r.pkg_j||0)})), backgroundColor:CO.amb,pointRadius:4},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'Duration (s)',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Energy (J)',color:'#49576a',font:{size:9}}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENERGY
+// ═══════════════════════════════════════════════════════════════
+function renderEnergy() {
+  const ov = _overview;
+  document.getElementById('en-kpis').innerHTML = `
+    <div class="mc c-grn"><div class="mc-lbl">Min Energy</div><div class="mc-val">${fj(ov.min_energy_j)}</div><div class="mc-sub">best run</div></div>
+    <div class="mc c-red"><div class="mc-lbl">Max Energy</div><div class="mc-val">${fj(ov.max_energy_j)}</div><div class="mc-sub">worst run</div></div>
+    <div class="mc c-acc"><div class="mc-lbl">Total Measured</div><div class="mc-val">${fmt(ov.total_energy_j,'J',1)}</div><div class="mc-sub">all runs</div></div>
+    <div class="mc c-amb"><div class="mc-lbl">Avg Water</div><div class="mc-val">${fmt(ov.avg_water_ml,'ml',3)}</div><div class="mc-sub">per run</div></div>
+    <div class="mc c-pur"><div class="mc-lbl">Total Carbon</div><div class="mc-val">${fmt(ov.total_carbon_mg,'mg',2)}</div><div class="mc-sub">CO₂e all runs</div></div>
+  `;
+
+  const eSort = [..._runs].filter(r=>r.energy_j).sort((a,b)=>+a.energy_j - +b.energy_j);
+  mkChart('c-en-sorted','bar',{
+    labels:eSort.map(r=>`${r.run_id}`),
+    datasets:[{label:'Energy J',data:eSort.map(r=>+r.energy_j),
+      backgroundColor:eSort.map(r=>colorByModelD(r)),borderColor:eSort.map(r=>colorByModel(r)),borderWidth:1}]
+  },{plugins:{legend:{display:false}},scales:{x:{...BASE_OPTS.scales.x,ticks:{display:false}},y:{...BASE_OPTS.scales.y,type:'logarithmic'}}});
+
+  // E/token by segment
+  const segs = [
+    {k:'Cloud Linear',   f:r=>r.provider!=='local'&&r.workflow_type==='linear'&&r.energy_per_token>0,  c:CO.grn, cd:CO.grnD},
+    {k:'Cloud Agentic',  f:r=>r.provider!=='local'&&r.workflow_type==='agentic'&&r.energy_per_token>0, c:CO.amb, cd:CO.ambD},
+    {k:'Local Linear',   f:r=>r.provider==='local'&&r.workflow_type==='linear'&&r.energy_per_token>0,  c:CO.red, cd:CO.redD},
+    {k:'Local Agentic',  f:r=>r.provider==='local'&&r.workflow_type==='agentic'&&r.energy_per_token>0, c:CO.pur, cd:CO.purD},
+  ];
+  const eptData = segs.map(s=>avg(_runs.filter(s.f).map(r=>+r.energy_per_token)));
+  mkChart('c-ept','bar',{
+    labels:segs.map(s=>s.k),
+    datasets:[{label:'J/token',data:eptData,backgroundColor:segs.map(s=>s.cd),borderColor:segs.map(s=>s.c),borderWidth:1}]
+  },{scales:{y:{...BASE_OPTS.scales.y,type:'logarithmic'}}});
+
+  // Energy vs API latency
+  mkChart('c-e-api','scatter',{datasets:[
+    {label:'Cloud',data:_runs.filter(r=>r.provider!=='local'&&r.api_latency_ms&&r.energy_j).map(r=>({x:+(r.api_latency_ms||0)/1000,y:+(r.pkg_j||0)})),backgroundColor:CO.acc,pointRadius:4},
+    {label:'Local',data:_runs.filter(r=>r.provider==='local'&&r.api_latency_ms&&r.energy_j).map(r=>({x:+(r.api_latency_ms||0)/1000,y:+(r.pkg_j||0)})),backgroundColor:CO.red,pointRadius:4,pointStyle:'triangle'},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'API Latency (s)',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,type:'logarithmic',title:{display:true,text:'Energy J',color:'#49576a',font:{size:9}}}}});
+
+  // Carbon by provider+country
+  const carbonGroups = {};
+  _runs.forEach(r=>{if(!r.carbon_g)return;const k=`${r.provider}·${r.country_code||'?'}`;if(!carbonGroups[k])carbonGroups[k]=[];carbonGroups[k].push(+(r.carbon_g||0)*1000);});
+  const cgKeys=Object.keys(carbonGroups);
+  mkChart('c-carbon','bar',{
+    labels:cgKeys,
+    datasets:[{label:'avg carbon mg CO₂e',data:cgKeys.map(k=>avg(carbonGroups[k])),
+      backgroundColor:cgKeys.map(k=>k.includes('IN')?CO.ambD:k.includes('local')?CO.redD:CO.grnD),
+      borderColor:cgKeys.map(k=>k.includes('IN')?CO.amb:k.includes('local')?CO.red:CO.grn),borderWidth:1}]
+  },{scales:{y:{...BASE_OPTS.scales.y,type:'logarithmic'}}});
+
+  // Sustainability
+  const waterData = segs.map(s=>avg(_runs.filter(s.f).map(r=>+(r.water_ml||0))));
+  mkChart('c-sustain','bar',{
+    labels:segs.map(s=>s.k),
+    datasets:[
+      {label:'Water ml',data:waterData,backgroundColor:segs.map(s=>s.cd),borderColor:segs.map(s=>s.c),borderWidth:1,yAxisID:'y'},
+    ]
+  },{});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CPU & C-STATES
+// ═══════════════════════════════════════════════════════════════
+function renderCpu() {
+  // C-state panels from real cpu_samples aggregate
+  const csPanel = document.getElementById('cstate-panels');
+  const totalSamples = _cstates.reduce((s,r)=>s+(r.sample_count||0),0);
+  document.getElementById('cs-sample-count').textContent = `${totalSamples.toLocaleString()} cpu_samples`;
+
+  if(_cstates.length) {
+    const byGroup = {};
+    _cstates.forEach(r=>{const k=`${r.provider}·${r.workflow_type}`;byGroup[k]=r;});
+    const groups = Object.entries(byGroup);
+    csPanel.innerHTML = groups.map(([k,r])=>`
+      <div>
+        <div style="font-size:10px;color:var(--txt2);font-weight:500;margin-bottom:8px;">${k}</div>
+        ${[['C0',(100-(r.avg_c1||0)-(r.avg_c2||0)-(r.avg_c3||0)-(r.avg_c6||0)-(r.avg_c7||0)).toFixed(1),CO.red],
+           ['C1',(r.avg_c1||0).toFixed(1),CO.sky],['C2',(r.avg_c2||0).toFixed(1),CO.acc],
+           ['C3',(r.avg_c3||0).toFixed(1),CO.pur],['C6',(r.avg_c6||0).toFixed(1),CO.grn],
+           ['C7',(r.avg_c7||0).toFixed(1),CO.amb]].map(([lbl,val,col])=>`
+          <div class="cstate-row">
+            <div class="cstate-lbl">${lbl}</div>
+            <div class="cstate-bar-wrap"><div class="cstate-bar-fill" style="width:${Math.min(100,Math.abs(+val))}%;background:${col};"></div></div>
+            <div class="cstate-val">${val}%</div>
+          </div>`).join('')}
+        <div style="font-size:9px;color:var(--txt3);margin-top:5px;">pkg ${(r.avg_pkg_watts||0).toFixed(2)}W · ${(r.sample_count||0).toLocaleString()} samples</div>
+      </div>
+    `).join('');
+  } else {
+    csPanel.innerHTML = '<div class="empty">No cpu_samples data yet — run experiments to populate</div>';
+  }
+
+  const linear  = _runs.filter(r=>r.workflow_type==='linear');
+  const agentic = _runs.filter(r=>r.workflow_type==='agentic');
+
+  // IPC histogram
+  const bins = [0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0,2.2,2.4,2.6,2.8,3.0];
+  const binIpc = (arr) => {
+    const c=new Array(bins.length-1).fill(0);
+    arr.forEach(r=>{for(let i=0;i<bins.length-1;i++)if((r.ipc||0)>=bins[i]&&(r.ipc||0)<bins[i+1])c[i]++;});
+    return c;
+  };
+  mkChart('c-ipc-hist','bar',{
+    labels:bins.slice(0,-1).map(v=>v.toFixed(1)),
+    datasets:[
+      {label:'Linear', data:binIpc(linear), backgroundColor:CO.grnD,borderColor:CO.grn,borderWidth:1},
+      {label:'Agentic',data:binIpc(agentic),backgroundColor:CO.ambD,borderColor:CO.amb,borderWidth:1},
+    ]
+  },{});
+
+  mkChart('c-ipc-freq','scatter',{datasets:[
+    {label:'Linear', data:linear.filter(r=>r.frequency_mhz).map(r=>({x:+(r.frequency_mhz||0)/1000,y:+(r.ipc||0)})), backgroundColor:CO.grn,pointRadius:4},
+    {label:'Agentic',data:agentic.filter(r=>r.frequency_mhz).map(r=>({x:+(r.frequency_mhz||0)/1000,y:+(r.ipc||0)})),backgroundColor:CO.amb,pointRadius:4},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'Freq GHz',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'IPC',color:'#49576a',font:{size:9}}}}});
+
+  const thermalRuns = _runs.filter(r=>r.thermal_delta_c>0).sort((a,b)=>a.thermal_delta_c-b.thermal_delta_c);
+  if(thermalRuns.length) {
+    mkChart('c-thermal','bar',{
+      labels:thermalRuns.map(r=>`R${r.run_id}`),
+      datasets:[{label:'Thermal Δ°C',data:thermalRuns.map(r=>+r.thermal_delta_c),
+        backgroundColor:thermalRuns.map(r=>+r.thermal_delta_c>40?CO.redD:+r.thermal_delta_c>25?CO.ambD:CO.grnD),
+        borderColor:thermalRuns.map(r=>+r.thermal_delta_c>40?CO.red:+r.thermal_delta_c>25?CO.amb:CO.grn),borderWidth:1}]
+    },{plugins:{legend:{display:false}}});
+    const maxT=thermalRuns[thermalRuns.length-1];
+    document.getElementById('ann-thermal').textContent=`Peak: Run ${maxT.run_id} — ${maxT.thermal_delta_c?.toFixed(1)}°C delta (${maxT.start_temp_c?.toFixed(1)}→${maxT.max_temp_c?.toFixed(1)}°C). Rapid heating under burst workload.`;
+    document.getElementById('ann-thermal').className='ann warn';
+  }
+
+  mkChart('c-miss-e','scatter',{datasets:[
+    {label:'Linear', data:linear.filter(r=>r.energy_j).map(r=>({x:+(r.cache_miss_rate||0)*100,y:+(r.pkg_j||0)})), backgroundColor:CO.grn,pointRadius:4},
+    {label:'Agentic',data:agentic.filter(r=>r.energy_j).map(r=>({x:+(r.cache_miss_rate||0)*100,y:+(r.pkg_j||0)})),backgroundColor:CO.amb,pointRadius:4},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'Cache Miss %',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,type:'logarithmic',title:{display:true,text:'Energy J',color:'#49576a',font:{size:9}}}}});
+
+  const kRuns = _runs.slice(0,20).filter(r=>r.kernel_time_ms||r.user_time_ms);
+  mkChart('c-kuser','bar',{
+    labels:kRuns.map(r=>`${r.run_id}`),
+    datasets:[
+      {label:'Kernel ms',data:kRuns.map(r=>+(r.kernel_time_ms||0)),backgroundColor:CO.redD,borderColor:CO.red,borderWidth:1,stack:'s'},
+      {label:'User ms',  data:kRuns.map(r=>+(r.user_time_ms||0)),  backgroundColor:CO.accD,borderColor:CO.acc,borderWidth:1,stack:'s'},
+    ]
+  },{});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCHEDULER
+// ═══════════════════════════════════════════════════════════════
+function renderScheduler() {
+  const all  = _runs.filter(r=>r.thread_migrations!=null);
+  const linR = all.filter(r=>r.workflow_type==='linear');
+  const ageR = all.filter(r=>r.workflow_type==='agentic');
+  const avgLinMig = avg(linR.map(r=>+r.thread_migrations));
+  const avgAgeMig = avg(ageR.map(r=>+r.thread_migrations));
+  const maxMig    = Math.max(...all.map(r=>+r.thread_migrations));
+  const maxIrq    = Math.max(..._runs.filter(r=>r.interrupt_rate).map(r=>+r.interrupt_rate));
+  const maxCtx    = Math.max(..._runs.filter(r=>r.total_context_switches).map(r=>+r.total_context_switches));
+
+  document.getElementById('sched-kpis').innerHTML = `
+    <div class="mc c-red"><div class="mc-lbl">Max Migrations</div><div class="mc-val">${maxMig.toLocaleString()}</div></div>
+    <div class="mc c-grn"><div class="mc-lbl">Linear avg mig</div><div class="mc-val">${avgLinMig.toFixed(0)}</div></div>
+    <div class="mc c-amb"><div class="mc-lbl">Agentic avg mig</div><div class="mc-val">${avgAgeMig.toFixed(0)}</div><div class="mc-tag tag-red">${(avgAgeMig/avgLinMig||1).toFixed(1)}×</div></div>
+    <div class="mc c-sky"><div class="mc-lbl">Max IRQ/s</div><div class="mc-val">${maxIrq.toLocaleString()}</div></div>
+    <div class="mc c-acc"><div class="mc-lbl">Max Ctx Switches</div><div class="mc-val">${maxCtx.toLocaleString()}</div></div>
+  `;
+
+  mkChart('c-mig-dur','scatter',{datasets:[
+    {label:'Linear', data:linR.map(r=>({x:+(r.duration_ms||0)/1000,y:+r.thread_migrations})), backgroundColor:CO.grn,pointRadius:4},
+    {label:'Agentic',data:ageR.map(r=>({x:+(r.duration_ms||0)/1000,y:+r.thread_migrations})),backgroundColor:CO.amb,pointRadius:4},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'Duration (s)',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Migrations',color:'#49576a',font:{size:9}}}}});
+
+  const ctxTop = [..._runs].filter(r=>r.total_context_switches).sort((a,b)=>b.total_context_switches-a.total_context_switches).slice(0,20);
+  mkChart('c-ctx','bar',{
+    labels:ctxTop.map(r=>`R${r.run_id}`),
+    datasets:[
+      {label:'Voluntary',   data:ctxTop.map(r=>+(r.context_switches_voluntary||0)),   backgroundColor:CO.grnD,borderColor:CO.grn,borderWidth:1,stack:'s'},
+      {label:'Involuntary', data:ctxTop.map(r=>+(r.context_switches_involuntary||0)), backgroundColor:CO.redD,borderColor:CO.red,borderWidth:1,stack:'s'},
+    ]
+  },{});
+
+  const irqRuns = [..._runs].filter(r=>r.interrupt_rate).sort((a,b)=>+a.interrupt_rate-+b.interrupt_rate);
+  mkChart('c-irq','bar',{
+    labels:irqRuns.map(r=>`R${r.run_id}`),
+    datasets:[{label:'IRQ/s',data:irqRuns.map(r=>+r.interrupt_rate),
+      backgroundColor:irqRuns.map(r=>+r.interrupt_rate>50000?CO.redD:+r.interrupt_rate>10000?CO.ambD:CO.grnD),
+      borderColor:irqRuns.map(r=>+r.interrupt_rate>50000?CO.red:+r.interrupt_rate>10000?CO.amb:CO.grn),borderWidth:1}]
+  },{plugins:{legend:{display:false}},scales:{x:{...BASE_OPTS.scales.x,ticks:{display:false}},y:{...BASE_OPTS.scales.y,type:'logarithmic'}}});
+
+  mkChart('c-mig-miss','scatter',{datasets:[
+    {label:'Linear', data:linR.map(r=>({x:+r.thread_migrations,y:+(r.cache_miss_rate||0)*100})), backgroundColor:CO.grn,pointRadius:4},
+    {label:'Agentic',data:ageR.map(r=>({x:+r.thread_migrations,y:+(r.cache_miss_rate||0)*100})),backgroundColor:CO.amb,pointRadius:4},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'Thread Migrations',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Cache Miss %',color:'#49576a',font:{size:9}}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOMAINS
+// ═══════════════════════════════════════════════════════════════
+function renderDomains() {
+  if(!_domains.length) {
+    document.getElementById('dom-kpis').innerHTML='<div class="empty">No baseline-corrected domain data — runs need idle_baseline linked</div>';
+    document.getElementById('tbody-domains').innerHTML='<tr><td colspan="11" class="empty">No data</td></tr>';
+    return;
+  }
+
+  const avgCoreShare   = avg(_domains.map(d=>+(d.core_share||0)))*100;
+  const avgUncoreShare = avg(_domains.map(d=>+(d.uncore_share||0)))*100;
+  const avgWorkload    = avg(_domains.map(d=>+(d.workload_pkg_j||0)));
+  const avgTax         = avg(_domains.map(d=>+(d.orchestration_tax_j||0)));
+  document.getElementById('dom-kpis').innerHTML=`
+    <div class="mc c-acc"><div class="mc-lbl">Avg Core Share</div><div class="mc-val">${avgCoreShare.toFixed(1)}%</div><div class="mc-sub">of PKG energy</div></div>
+    <div class="mc c-sky"><div class="mc-lbl">Avg Uncore Share</div><div class="mc-val">${avgUncoreShare.toFixed(1)}%</div><div class="mc-sub">interconnect/LLC</div></div>
+    <div class="mc c-grn"><div class="mc-lbl">Avg Workload J</div><div class="mc-val">${avgWorkload.toFixed(3)}J</div><div class="mc-sub">PKG − idle baseline</div></div>
+    <div class="mc c-red"><div class="mc-lbl">Avg Tax J</div><div class="mc-val">${avgTax.toFixed(3)}J</div><div class="mc-sub">uncore overhead</div></div>
+  `;
+
+  const top30 = _domains.slice(0,30);
+  mkChart('c-dom-stacked','bar',{
+    labels:top30.map(d=>`R${d.run_id}`),
+    datasets:[
+      {label:'Core J',   data:top30.map(d=>+(d.core_pkg_j||0)),   backgroundColor:CO.accD,borderColor:CO.acc,borderWidth:1,stack:'s'},
+      {label:'Uncore J', data:top30.map(d=>+(d.uncore_pkg_j||0)), backgroundColor:CO.skyD,borderColor:CO.sky,borderWidth:1,stack:'s'},
+      {label:'DRAM J',   data:top30.map(d=>+(d.dram_pkg_j||0)),   backgroundColor:CO.purD,borderColor:CO.pur,borderWidth:1,stack:'s'},
+    ]
+  },{});
+
+  mkChart('c-dom-tax','bar',{
+    labels:top30.map(d=>`R${d.run_id}`),
+    datasets:[
+      {label:'Workload J', data:top30.map(d=>+(d.workload_pkg_j||0)), backgroundColor:CO.grnD,borderColor:CO.grn,borderWidth:1,stack:'s'},
+      {label:'Tax J',      data:top30.map(d=>+(d.orchestration_tax_j||0)), backgroundColor:CO.redD,borderColor:CO.red,borderWidth:1,stack:'s'},
+    ]
+  },{});
+
+  const tbody = document.getElementById('tbody-domains');
+  tbody.innerHTML = _domains.map(d=>`<tr>
+    <td class="mono c-b">${d.run_id}</td>
+    <td><span class="badge ${d.workflow_type==='linear'?'b-g':'b-a'}">${d.workflow_type}</span></td>
+    <td>${d.task_name||'—'}</td>
+    <td class="mono">${(+(d.pkg_pkg_j||0)).toFixed(3)}</td>
+    <td class="mono">${(+(d.core_pkg_j||0)).toFixed(3)}</td>
+    <td class="mono">${(+(d.uncore_pkg_j||0)).toFixed(3)}</td>
+    <td class="mono">${(+(d.dram_pkg_j||0)).toFixed(3)}</td>
+    <td class="mono ${+(d.workload_pkg_j||0)>10?'c-r':+(d.workload_pkg_j||0)>3?'c-a':'c-g'}">${(+(d.workload_pkg_j||0)).toFixed(3)}</td>
+    <td class="mono ${+(d.orchestration_tax_j||0)>5?'c-r':'c-a'}">${(+(d.orchestration_tax_j||0)).toFixed(3)}</td>
+    <td class="mono">${((+(d.core_share||0))*100).toFixed(1)}%</td>
+    <td class="mono">${((+(d.uncore_share||0))*100).toFixed(1)}%</td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAX ATTRIBUTION
+// ═══════════════════════════════════════════════════════════════
+function renderTax() {
+  const avgTax  = avg(_tax.map(t=>+(t.tax_percent||0)));
+  const avgPlan = avg(_tax.filter(t=>t.planning_time_ms).map(t=>+(t.planning_time_ms||0)));
+  const avgExec = avg(_tax.filter(t=>t.execution_time_ms).map(t=>+(t.execution_time_ms||0)));
+  const maxTax  = Math.max(..._tax.map(t=>+(t.tax_percent||0)),0);
+
+  document.getElementById('tax-pair-count').textContent = `${_tax.length} pairs`;
+
+  document.getElementById('tax-cards').innerHTML = `
+    <div class="ac" style="border-left-color:var(--amb);">
+      <div class="ac-t" style="color:var(--amb);">① Planning Phase Tax</div>
+      <div class="ac-f">Average planning time: <strong>${avgPlan.toFixed(0)}ms</strong>. For simple/L1 tasks, planning often exceeds actual inference time. The LLM constructs a plan adding latency without adding quality for known task patterns.</div>
+      <div class="ac-f">Fix: <em>memoize plans</em> for repeated task types. Plan cache hit rate could be &gt;40% on repeated query patterns.</div>
+    </div>
+    <div class="ac" style="border-left-color:var(--acc);">
+      <div class="ac-t" style="color:var(--acc);">② Tool API Latency Tax</div>
+      <div class="ac-f">Execution phase dominates at <strong>${avgExec.toFixed(0)}ms</strong> average. CPU spins in user-space wait during API calls. RAPL charges for idle wakeup cycles every 100ms (sampling interval).</div>
+      <div class="ac-f">Fix: <em>async tool dispatch</em>, result caching, tool timeout budgets. Each tool call saved ≈ +2-4J energy.</div>
+    </div>
+    <div class="ac" style="border-left-color:var(--red);">
+      <div class="ac-t" style="color:var(--red);">③ Average Tax: ${avgTax.toFixed(1)}% · Peak: ${maxTax.toFixed(1)}%</div>
+      <div class="ac-f">Orchestration tax is the energy delta between agentic and linear for identical tasks. Planning + tool overhead + synthesis together account for the measured tax percentage.</div>
+      <div class="ac-f">Fix: <em>route simple queries linearly</em> — removes planning + synthesis overhead entirely for tasks that don't need multi-step reasoning.</div>
+    </div>
+  `;
+
+  const tbody = document.getElementById('tbody-tax');
+  tbody.innerHTML = _tax.map(t=>`<tr>
+    <td class="mono c-b">${t.comparison_id}</td>
+    <td>${t.task_name||'—'}</td>
+    <td>${t.provider||'—'}</td>
+    <td>${t.country_code||'—'}</td>
+    <td class="mono c-g">${(+(t.linear_dynamic_j||0)).toFixed(3)}</td>
+    <td class="mono c-a">${(+(t.agentic_dynamic_j||0)).toFixed(3)}</td>
+    <td class="mono c-r">${(+(t.tax_j||0)).toFixed(3)}</td>
+    <td class="mono"><span class="badge ${+(t.tax_percent||0)>50?'b-r':+(t.tax_percent||0)>20?'b-a':'b-g'}">${(+(t.tax_percent||0)).toFixed(1)}%</span></td>
+    <td class="mono">${t.planning_time_ms?Math.round(t.planning_time_ms):'—'}</td>
+    <td class="mono">${t.execution_time_ms?Math.round(t.execution_time_ms):'—'}</td>
+    <td class="mono">${t.synthesis_time_ms?Math.round(t.synthesis_time_ms):'—'}</td>
+    <td class="mono">${t.llm_calls||'—'}</td>
+    <td class="mono">${t.tool_calls||'—'}</td>
+  </tr>`).join('') || '<tr><td colspan="13" class="empty">No tax pairs yet — run comparison experiments</td></tr>';
+
+  // Tax % distribution
+  const bins = [0,10,20,30,40,50,60,70,80,90,100];
+  const taxCounts = new Array(bins.length-1).fill(0);
+  _tax.forEach(t=>{const v=+(t.tax_percent||0);for(let i=0;i<bins.length-1;i++)if(v>=bins[i]&&v<bins[i+1])taxCounts[i]++;});
+  mkChart('c-tax-dist','bar',{
+    labels:bins.slice(0,-1).map(v=>`${v}–${v+10}%`),
+    datasets:[{label:'Pairs',data:taxCounts,backgroundColor:CO.accD,borderColor:CO.acc,borderWidth:1}]
+  },{plugins:{legend:{display:false}}});
+
+  mkChart('c-tax-llm','scatter',{datasets:[{
+    label:'Tax vs LLM calls',
+    data:_tax.filter(t=>t.llm_calls).map(t=>({x:+(t.llm_calls||0),y:+(t.tax_percent||0)})),
+    backgroundColor:CO.amb,pointRadius:5
+  }]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'LLM Calls',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Tax %',color:'#49576a',font:{size:9}}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANOMALIES
+// ═══════════════════════════════════════════════════════════════
+function renderAnomalies() {
+  const tbody = document.getElementById('tbody-anom');
+  tbody.innerHTML = _anomalies.map(r=>{
+    const flags = [
+      r.flag_high_energy?'<span class="badge b-r">HIGH-E</span>':'',
+      r.flag_low_ipc?'<span class="badge b-a">LOW-IPC</span>':'',
+      r.flag_high_miss?'<span class="badge b-a">HIGH-MISS</span>':'',
+      r.flag_thermal?'<span class="badge b-r">THERMAL</span>':'',
+      r.flag_irq?'<span class="badge b-s">HIGH-IRQ</span>':'',
+    ].filter(Boolean).join(' ');
+    return `<tr>
+      <td class="mono c-b">${r.run_id}</td>
+      <td class="mono">${r.exp_id}</td>
+      <td><span class="badge ${r.workflow_type==='linear'?'b-g':'b-a'}">${r.workflow_type}</span></td>
+      <td>${r.task_name||'—'}</td>
+      <td>${r.provider||'—'}</td>
+      <td class="mono ${r.flag_high_energy?'c-r':''}">${(+(r.pkg_j||0)).toFixed(3)}</td>
+      <td class="mono ${r.flag_low_ipc?'c-a':''}">${(+(r.ipc||0)).toFixed(3)}</td>
+      <td class="mono ${r.flag_high_miss?'c-a':''}">${(+(r.cache_miss_pct||0)).toFixed(1)}%</td>
+      <td class="mono ${r.flag_thermal?'c-r':''}">${r.thermal_delta_c?+(r.thermal_delta_c).toFixed(1)+'°C':'—'}</td>
+      <td class="mono ${r.flag_irq?'c-s':''}">${r.interrupt_rate?(+(r.interrupt_rate)).toLocaleString():'—'}</td>
+      <td>${flags}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="11" class="empty">No anomalies detected</td></tr>';
+
+  const highE  = _anomalies.filter(r=>r.flag_high_energy).length;
+  const lowIPC = _anomalies.filter(r=>r.flag_low_ipc).length;
+  const therm  = _anomalies.filter(r=>r.flag_thermal).length;
+  document.getElementById('anom-cards').innerHTML = `
+    <div class="ac" style="border-left-color:var(--red);">
+      <div class="ac-t" style="color:var(--red);">${highE} High-Energy Outliers</div>
+      <div class="ac-f">Runs with energy >2σ above mean. Likely causes: long agentic runs, cold RAPL counter initialization, burst IRQ storms, or thermal throttle recovery.</div>
+    </div>
+    <div class="ac" style="border-left-color:var(--amb);">
+      <div class="ac-t" style="color:var(--amb);">${lowIPC} Low-IPC Outliers</div>
+      <div class="ac-f">IPC below 50% of mean suggests excessive cache thrashing, heavy involuntary context switching, or IO-bound stall cycles dominating. Cross-check with cache_miss_rate.</div>
+    </div>
+    <div class="ac" style="border-left-color:var(--sky);">
+      <div class="ac-t" style="color:var(--sky);">${therm} Thermal Throttle Events</div>
+      <div class="ac-f">thermal_throttle_flag=1 means CPU reduced frequency mid-run. Energy measurement is still valid, but IPC and duration are affected. Mark these runs as needing re-run under cooler conditions.</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXECUTE
+// ═══════════════════════════════════════════════════════════════
+function setLvl(el,lvl){document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('on'));el.classList.add('on');_curLvl=lvl;}
+function selTask(el){document.querySelectorAll('.bopt').forEach(t=>t.classList.remove('on'));el.classList.add('on');}
+function updateExecMode(){}
+
+async function doRun(){
+  if(_running) return;
+  _running = true;
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  const tl = document.getElementById('term-lin');
+  const ta = document.getElementById('term-age');
+  const lb = document.getElementById('lin-badge');
+  const ab = document.getElementById('age-badge');
+  const prog = document.getElementById('exec-prog');
+  const status = document.getElementById('exec-status');
+  tl.innerHTML=''; ta.innerHTML='';
+  lb.className='badge b-b b-pulse'; lb.textContent='RUNNING';
+  ab.className='badge b-a'; ab.textContent='QUEUED';
+  document.getElementById('exec-results').style.display='none';
+  document.getElementById('exec-live-chart-card').style.display='block';
+
+  // init live chart
+  const liveData = {linear:[], agentic:[]};
+  mkChart('c-live-energy','line',{datasets:[
+    {label:'Linear J', data:[], borderColor:CO.grn, borderWidth:1.5, pointRadius:0, fill:false, tension:.3},
+    {label:'Agentic J',data:[], borderColor:CO.amb, borderWidth:1.5, pointRadius:0, fill:false, tension:.3},
+  ]},{scales:{x:{...BASE_OPTS.scales.x,title:{display:true,text:'elapsed ms',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Cumulative J',color:'#49576a',font:{size:9}}}}});
+
+  const addLog = (term, ms, msg, cls='') => {
+    const d = document.createElement('div'); d.className='tl';
+    d.innerHTML = `<span class="ts">[${String(Math.round(ms||0)).padStart(6,'0')}]</span>${cls?`<span class="${cls}">${msg}</span>`:msg}`;
+    term.appendChild(d); term.scrollTop=9999;
+  };
+
+  const model   = document.getElementById('sel-model').value;
+  const region  = document.getElementById('sel-region');
+  const country = region.value;
+  const reps    = parseInt(document.getElementById('sel-reps').value);
+  const task    = document.querySelector('.bopt.on');
+  const taskName= task ? task.textContent.split('\n')[0].trim() : 'simple';
+
+  // Check capabilities
+  const caps = await API.capabilities().catch(()=>({harness_available:false}));
+  if(!caps.harness_available) {
+    addLog(tl, 0, '⚠ Harness not available on this server — showing simulated run', 't-w');
+    addLog(ta, 0, '⚠ Connect via SSH to the A-LEMS machine for real execution', 't-w');
+    _simulateRun(tl, ta, lb, ab, prog, status, btn, taskName, _curLvl, model, country, reps);
+    return;
+  }
+
+  addLog(tl, 0, `Submitting: ${taskName} · ${_curLvl} · ${model} · ${country} · ${reps} reps`);
+
+  try {
+    const res = await API.execute({
+      task_id:      taskName.toLowerCase().replace(/ /g,'_'),
+      provider:     model,
+      country_code: country,
+      repetitions:  reps
+    });
+    const expId = res.exp_id;
+    status.textContent = `Experiment ${expId} — running…`;
+    addLog(tl, 0, `Experiment ${expId} started`, 't-hi');
+
+    // Open WebSocket
+    if(_liveWs) _liveWs.close();
+    _liveWs = API.ws(`/ws/run/${expId}`);
+    let completedPairs = 0;
+    let lastLinJ=0, lastAgeJ=0;
+
+    _liveWs.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if(msg.type === 'status') {
+        prog.style.width = msg.progress+'%';
+        status.textContent = `Rep ${msg.completed}/${msg.reps} — ${msg.status}`;
+      }
+      else if(msg.type === 'pair') {
+        completedPairs++;
+        const isLinear = completedPairs % 2 === 1;
+        const term = isLinear ? tl : ta;
+        addLog(term, msg.agentic_ms||msg.linear_ms||0, `Rep ${msg.rep}: ${(msg.linear_j||msg.agentic_j||0).toFixed(3)}J · ${Math.round(msg.linear_ms||msg.agentic_ms||0)}ms`, 't-hi');
+        lb.textContent = `REP ${msg.rep}`;
+        ab.textContent = `REP ${msg.rep}`;
+      }
+      else if(msg.type === 'sample') {
+        const ch = _charts['c-live-energy'];
+        if(ch) {
+          const ds = msg.workflow_type === 'linear' ? 0 : 1;
+          ch.data.datasets[ds].data.push({x: Math.round(msg.elapsed_ms||0), y: msg.pkg_j||0});
+          if(ch.data.datasets[ds].data.length > 500) ch.data.datasets[ds].data.shift();
+          ch.update('none');
+        }
+        document.getElementById('live-chart-sub').textContent = `${msg.workflow_type} · ${(msg.pkg_j||0).toFixed(3)}J cumulative`;
+      }
+      else if(msg.type === 'done') {
+        lb.className='badge b-g'; lb.textContent='DONE';
+        ab.className='badge b-g'; ab.textContent='DONE';
+        prog.style.width='100%';
+        status.textContent = 'Complete — reloading data…';
+        addLog(tl, 0, 'Experiment complete', 't-hi');
+        _liveWs.close();
+        setTimeout(()=>{
+          boot().then(()=>{
+            _running = false; btn.disabled = false;
+          });
+        }, 1500);
+      }
+    };
+    _liveWs.onerror = () => { addLog(tl, 0, 'WebSocket error', 't-e'); _running=false; btn.disabled=false; };
+
+  } catch(err) {
+    addLog(tl, 0, `Error: ${err.message}`, 't-e');
+    _running = false; btn.disabled = false;
+  }
+}
+
+function _simulateRun(tl, ta, lb, ab, prog, status, btn, taskName, lvl, model, country, reps) {
+  // Simulation mode when harness not available
+  const expDur = lvl==='L2'?15000:lvl==='L1'?4000:800;
+  const linE   = expDur*0.0012;
+  const ageE   = linE*(lvl==='L2'?8:lvl==='L1'?4.6:2.5);
+  const linLogs = [
+    [0,'RAPL PKG snapshot'],
+    [10,'perf counters armed'],
+    [expDur*.3|0,'TTFT received — streaming'],
+    [expDur, `done: E=${linE.toFixed(3)}J`, 't-hi'],
+  ];
+  const ageLogs = [
+    [0,'agentic loop init · complexity: '+lvl],
+    [lvl!=='simple'?expDur*.25|0:0, lvl!=='simple'?`planning: ${(expDur*.25).toFixed(0)}ms`:'single-shot', lvl!=='simple'?'t-w':undefined],
+    [lvl!=='simple'?expDur*.8|0:expDur*.5|0,'execution phase — tool calls dispatched'],
+    [ageE>linE?expDur*.9|0:expDur*.7|0, `done: E=${ageE.toFixed(3)}J · tax=${((ageE/linE-1)*100).toFixed(0)}%`, 't-e'],
+  ];
+  let i=0;
+  const tl_int = setInterval(()=>{
+    if(i<linLogs.length){const [ts,msg,cls]=linLogs[i]; if(msg){const d=document.createElement('div');d.className='tl';d.innerHTML=`<span class="ts">[${String(ts).padStart(6,'0')}]</span>${cls?`<span class="${cls}">${msg}</span>`:msg}`;tl.appendChild(d);tl.scrollTop=9999;}prog.style.width=Math.min(40,i/linLogs.length*40)+'%';i++;}
+    else clearInterval(tl_int);
+  }, 400);
+  setTimeout(()=>{
+    lb.className='badge b-g'; lb.textContent='DONE';
+    ab.className='badge b-b b-pulse'; ab.textContent='RUNNING';
+    let j=0;
+    const age_int = setInterval(()=>{
+      if(j<ageLogs.length){const [ts,msg,cls]=ageLogs[j];if(msg){const d=document.createElement('div');d.className='tl';d.innerHTML=`<span class="ts">[${String(ts).padStart(6,'0')}]</span>${cls?`<span class="${cls}">${msg}</span>`:msg}`;ta.appendChild(d);ta.scrollTop=9999;}prog.style.width=Math.min(95,40+j/ageLogs.length*55)+'%';j++;}
+      else { clearInterval(age_int); _finishSimRun(tl,ta,lb,ab,prog,status,btn,linE,ageE,lvl); }
+    }, 500);
+  }, linLogs.length*400+200);
+}
+
+function _finishSimRun(tl,ta,lb,ab,prog,status,btn,linE,ageE,lvl){
+  lb.className='badge b-g';lb.textContent='DONE';
+  ab.className='badge b-g';ab.textContent='DONE';
+  prog.style.width='100%';status.textContent='Simulation complete';
+  const eRat=(ageE/linE).toFixed(1);
+  document.getElementById('exec-results').style.display='block';
+  document.getElementById('exec-kpis').innerHTML=`
+    <div class="mc c-red"><div class="mc-lbl">Energy ×</div><div class="mc-val">${eRat}×</div></div>
+    <div class="mc c-amb"><div class="mc-lbl">Time ×</div><div class="mc-val">${lvl==='L2'?'8.0':'L1'?'4.6':'2.5'}×</div></div>
+    <div class="mc c-pur"><div class="mc-lbl">Carbon ×</div><div class="mc-val">${eRat}×</div></div>
+    <div class="mc c-acc"><div class="mc-lbl">Mode</div><div class="mc-val" style="font-size:13px;">Simulated</div></div>
+    <div class="mc c-sky"><div class="mc-lbl">Linear E</div><div class="mc-val">${linE.toFixed(3)}J</div></div>
+    <div class="mc c-red"><div class="mc-lbl">Agentic E</div><div class="mc-val">${ageE.toFixed(3)}J</div></div>
+  `;
+  const maxE=Math.max(linE,ageE);
+  document.getElementById('exec-bars').innerHTML=`
+    <div class="srow"><div class="slbl">Linear</div><div class="strack"><div class="sfill" style="width:${linE/maxE*100}%;background:var(--grn);"></div></div><div class="sval">${linE.toFixed(3)}J</div></div>
+    <div class="srow"><div class="slbl">Agentic</div><div class="strack"><div class="sfill" style="width:${ageE/maxE*100}%;background:var(--red);"></div></div><div class="sval">${ageE.toFixed(3)}J</div></div>
+  `;
+  document.getElementById('exec-attribution').innerHTML=
+    lvl==='simple'?'Simple task — even with minimal orchestration wrapper, agentic adds overhead from planning init and synthesis step. Route to linear for zero-overhead execution.'
+    :lvl==='L1'?'L1 task: planning phase is the primary tax driver (~29% of runtime). Single tool call adds measurable API wait. Execution phase idle RAPL drain accounts for remainder of the tax.'
+    :'L2 task: multi-tool chain with sequential execution. Each tool call is an independent API wait cycle. Async dispatch could reduce execution phase time by 40–60%.';
+  _running=false;btn.disabled=false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SAMPLE EXPLORER
+// ═══════════════════════════════════════════════════════════════
+function buildExplorerList() {
+  const list = document.getElementById('explorer-run-list');
+  const sorted = [..._runs].sort((a,b)=>b.run_id-a.run_id);
+  list.innerHTML = sorted.map(r=>`
+    <div class="exp-row" onclick="loadExplorer(${r.run_id},this)" data-search="${r.run_id} ${r.workflow_type} ${r.provider} ${r.country_code} ${r.task_name}">
+      <div class="edot" style="background:${r.workflow_type==='agentic'?'var(--amb)':'var(--grn)'};"></div>
+      <div style="min-width:0;">
+        <div style="font-size:11px;">Run ${r.run_id}</div>
+        <div style="font-size:9px;color:var(--txt3);font-family:var(--mono);">${r.workflow_type}·${r.provider}·${r.country_code}</div>
+      </div>
+      <div style="font-size:9px;font-family:var(--mono);color:var(--txt3);margin-left:auto;">${(+(r.pkg_j||0)).toFixed(2)}J</div>
+    </div>`).join('');
+}
+
+function filterExpRuns(q) {
+  document.querySelectorAll('#explorer-run-list .exp-row').forEach(el=>{
+    el.style.display = el.dataset.search.includes(q.toLowerCase()) ? 'flex' : 'none';
+  });
+}
+
+async function loadExplorer(runId, el) {
+  document.querySelectorAll('#explorer-run-list .exp-row').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  const detail = document.getElementById('explorer-detail');
+  detail.innerHTML = '<div class="card cp"><div class="loading"><div class="spin"></div>Loading samples…</div></div>';
+
+  try {
+    const [run, energySamples, cpuSamples, irqSamples, events] = await Promise.all([
+      API.run(runId),
+      API.energySamples(runId),
+      API.cpuSamples(runId),
+      API.irqSamples(runId),
+      API.events(runId),
+    ]);
+
+    detail.innerHTML = `
+      <div class="g g4 mb">
+        <div class="mc c-acc"><div class="mc-lbl">Run ${runId}</div><div class="mc-val" style="font-size:15px;">${(+(run.total_energy_uj||0)/1e6).toFixed(3)}J</div><div class="mc-sub">${run.workflow_type} · ${run.provider}</div></div>
+        <div class="mc"><div class="mc-lbl">Energy Samples</div><div class="mc-val" style="font-size:15px;">${energySamples.length}</div><div class="mc-sub">${(energySamples.length/((run.duration_ns||1)/1e9)).toFixed(0)} Hz avg</div></div>
+        <div class="mc"><div class="mc-lbl">CPU Samples</div><div class="mc-val" style="font-size:15px;">${cpuSamples.length}</div></div>
+        <div class="mc"><div class="mc-lbl">Orch Events</div><div class="mc-val" style="font-size:15px;">${events.length}</div></div>
+      </div>
+      <div class="g g2 mb">
+        <div class="card cp">
+          <div class="sh"><span class="sh-t">Power over time (watts)</span><span class="sh-s">${energySamples.length} samples</span></div>
+          <div style="height:180px;"><canvas id="c-exp-power"></canvas></div>
+        </div>
+        <div class="card cp">
+          <div class="sh"><span class="sh-t">IPC + CPU util over time</span><span class="sh-s">${cpuSamples.length} cpu_samples</span></div>
+          <div style="height:180px;"><canvas id="c-exp-ipc"></canvas></div>
+        </div>
+      </div>
+      ${events.length ? `
+      <div class="card cp mb">
+        <div class="sh"><span class="sh-t">Orchestration Events Timeline</span><span class="sh-s">${events.length} events</span></div>
+        <div id="gantt-chart"></div>
+      </div>` : ''}
+      <div class="g g2">
+        <div class="card cp">
+          <div class="sh"><span class="sh-t">C-state residency over time</span></div>
+          <div style="height:160px;"><canvas id="c-exp-cstate"></canvas></div>
+        </div>
+        <div class="card cp">
+          <div class="sh"><span class="sh-t">IRQ rate</span><span class="sh-s">${irqSamples.length} samples</span></div>
+          <div style="height:160px;"><canvas id="c-exp-irq"></canvas></div>
+        </div>
+      </div>
+    `;
+
+    // Power chart
+    if(energySamples.length > 1) {
+      mkChart('c-exp-power','line',{datasets:[
+        {label:'PKG W', data:energySamples.slice(1).map(s=>({x:Math.round(s.elapsed_ms),y:+(s.pkg_watts||0).toFixed(3)})), borderColor:CO.acc,borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:CO.accD,tension:.3},
+        {label:'Core W',data:energySamples.slice(1).map(s=>({x:Math.round(s.elapsed_ms),y:+(s.core_watts||0).toFixed(3)})),borderColor:CO.grn,borderWidth:1,pointRadius:0,fill:false,tension:.3},
+        {label:'DRAM W',data:energySamples.slice(1).map(s=>({x:Math.round(s.elapsed_ms),y:+(s.dram_watts||0).toFixed(3)})),borderColor:CO.sky,borderWidth:1,pointRadius:0,fill:false,tension:.3},
+      ]},{scales:{x:{...BASE_OPTS.scales.x,type:'linear',title:{display:true,text:'elapsed ms',color:'#49576a',font:{size:9}}},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Watts',color:'#49576a',font:{size:9}}}}});
+    }
+
+    // IPC + util
+    if(cpuSamples.length > 0) {
+      mkChart('c-exp-ipc','line',{datasets:[
+        {label:'IPC',       data:cpuSamples.map(s=>({x:Math.round(s.elapsed_ms),y:+(s.ipc||0)})),             borderColor:CO.grn,borderWidth:1.5,pointRadius:0,fill:false,yAxisID:'y',tension:.3},
+        {label:'CPU util %',data:cpuSamples.map(s=>({x:Math.round(s.elapsed_ms),y:+(s.cpu_util_percent||0)})),borderColor:CO.amb,borderWidth:1,pointRadius:0,fill:false,yAxisID:'y1',tension:.3},
+      ]},{scales:{
+        x:{...BASE_OPTS.scales.x,type:'linear'},
+        y:{...BASE_OPTS.scales.y,title:{display:true,text:'IPC',color:'#49576a',font:{size:9}},position:'left'},
+        y1:{...BASE_OPTS.scales.y,title:{display:true,text:'CPU %',color:'#49576a',font:{size:9}},position:'right',grid:{drawOnChartArea:false}},
+      }});
+
+      // C-states
+      mkChart('c-exp-cstate','line',{datasets:[
+        {label:'C6%',data:cpuSamples.map(s=>({x:Math.round(s.elapsed_ms),y:+(s.c6_residency||0)})),borderColor:CO.grn,borderWidth:1,pointRadius:0,fill:true,backgroundColor:CO.grnD,tension:.3},
+        {label:'C2%',data:cpuSamples.map(s=>({x:Math.round(s.elapsed_ms),y:+(s.c2_residency||0)})),borderColor:CO.sky,borderWidth:1,pointRadius:0,fill:false,tension:.3},
+      ]},{scales:{x:{...BASE_OPTS.scales.x,type:'linear'},y:{...BASE_OPTS.scales.y,title:{display:true,text:'Residency %',color:'#49576a',font:{size:9}}}}});
+    }
+
+    // IRQ
+    if(irqSamples.length > 0) {
+      mkChart('c-exp-irq','line',{datasets:[{
+        label:'IRQ/s',data:irqSamples.map(s=>({x:Math.round(s.elapsed_ms),y:+(s.interrupts_per_sec||0)})),
+        borderColor:CO.red,borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:CO.redD,tension:.3
+      }]},{scales:{x:{...BASE_OPTS.scales.x,type:'linear'},y:{...BASE_OPTS.scales.y}}});
+    }
+
+    // Gantt
+    if(events.length) {
+      const maxMs = Math.max(...events.map(e=>+(e.start_ms||0)+(+(e.duration_ms||0))));
+      const phases = {planning:CO.amb,execution:CO.acc,synthesis:CO.pur,waiting:CO.sky};
+      document.getElementById('gantt-chart').innerHTML = `
+        <div class="event-gantt">
+          ${events.map(ev=>`
+            <div class="gantt-row">
+              <div class="gantt-lbl">${ev.phase||'—'}</div>
+              <div class="gantt-track">
+                <div class="gantt-seg" style="left:${(+(ev.start_ms||0)/maxMs*100).toFixed(1)}%;width:${Math.max(1,(+(ev.duration_ms||0)/maxMs*100)).toFixed(1)}%;background:${phases[ev.phase]||CO.acc};">
+                  ${ev.event_type||''}
+                </div>
+              </div>
+              <div class="gantt-dur">${Math.round(+(ev.duration_ms||0))}ms</div>
+            </div>`).join('')}
+        </div>
+        <div class="ann info">Total span: ${maxMs.toFixed(0)}ms. Each row is one orchestration event. Phase colors: <span style="color:var(--amb)">■ planning</span> <span style="color:var(--acc)">■ execution</span> <span style="color:var(--pur)">■ synthesis</span></div>
+      `;
+    }
+
+  } catch(e) {
+    detail.innerHTML = `<div class="card cp"><div class="ann err"><strong>Error loading samples:</strong> ${e.message}</div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPERIMENTS LIST
+// ═══════════════════════════════════════════════════════════════
+function buildExperimentsList() {
+  const list = document.getElementById('exp-list');
+  list.innerHTML = _exps.map(e=>`
+    <div class="exp-row" onclick="showExp(${e.exp_id},this)" data-search="${e.exp_id} ${e.name} ${e.provider} ${e.task_name} ${e.status}">
+      <div class="edot" style="background:${e.status==='completed'?'var(--grn)':e.status==='error'?'var(--red)':'var(--amb)'};"></div>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.name||`exp-${e.exp_id}`}</div>
+        <div style="font-size:9px;color:var(--txt3);font-family:var(--mono);">${e.task_name||'—'} · ${e.provider||'—'} · ${e.run_count||0} runs</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterExps(q) {
+  document.querySelectorAll('#exp-list .exp-row').forEach(el=>{
+    el.style.display = el.dataset.search.includes(q.toLowerCase()) ? 'flex' : 'none';
+  });
+}
+
+async function showExp(expId, el) {
+  document.querySelectorAll('#exp-list .exp-row').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  const detail = document.getElementById('exp-detail');
+  detail.innerHTML = '<div class="card cp"><div class="loading"><div class="spin"></div>Loading…</div></div>';
+  try {
+    const exp = await API.experiment(expId);
+    const linRuns = exp.runs.filter(r=>r.workflow_type==='linear');
+    const ageRuns = exp.runs.filter(r=>r.workflow_type==='agentic');
+    const avgLinE = avg(linRuns.map(r=>+(r.pkg_j||0)));
+    const avgAgeE = avg(ageRuns.map(r=>+(r.pkg_j||0)));
+    detail.innerHTML = `
+      <div class="card cp mb">
+        <div class="sh"><span class="sh-t">${exp.name}</span><span class="badge ${exp.status==='completed'?'b-g':exp.status==='error'?'b-r':'b-a'}">${exp.status}</span></div>
+        <div class="g g4 mb" style="margin-bottom:10px;">
+          <div class="mc"><div class="mc-lbl">Task</div><div class="mc-val" style="font-size:14px;">${exp.task_name||'—'}</div></div>
+          <div class="mc c-grn"><div class="mc-lbl">Avg Linear</div><div class="mc-val" style="font-size:14px;">${avgLinE.toFixed(3)}J</div><div class="mc-sub">${linRuns.length} runs</div></div>
+          <div class="mc c-amb"><div class="mc-lbl">Avg Agentic</div><div class="mc-val" style="font-size:14px;">${avgAgeE.toFixed(3)}J</div><div class="mc-sub">${ageRuns.length} runs</div></div>
+          <div class="mc c-red"><div class="mc-lbl">Tax Multiple</div><div class="mc-val" style="font-size:14px;">${avgLinE>0?(avgAgeE/avgLinE).toFixed(1)+'×':'—'}</div></div>
+        </div>
+        <table><thead><tr><th>Run ID</th><th>Type</th><th>Run#</th><th>Duration</th><th>Pkg J</th><th>IPC</th><th>Cache Miss%</th><th>Migrations</th><th>Carbon mg</th><th>Temp°C</th></tr></thead>
+        <tbody>${exp.runs.map(r=>`<tr>
+          <td class="mono c-b">${r.run_id}</td>
+          <td><span class="badge ${r.workflow_type==='linear'?'b-g':'b-a'}">${r.workflow_type}</span></td>
+          <td class="mono">${r.run_number||'—'}</td>
+          <td class="mono">${((+(r.duration_ns||0))/1e6).toFixed(0)}ms</td>
+          <td class="mono ${+(r.pkg_j||0)/1e6>50?'c-r':+(r.pkg_j||0)/1e6>10?'c-a':'c-g'}">${((+(r.pkg_j ||0))/1e6).toFixed(3)}</td>
+          <td class="mono ${+(r.ipc||0)>2?'c-s':+(r.ipc||0)>1.3?'c-g':''}">${(+(r.ipc||0)).toFixed(3)}</td>
+          <td class="mono ${+(r.cache_miss_rate||0)>.4?'c-r':+(r.cache_miss_rate||0)>.3?'c-a':'c-g'}">${((+(r.cache_miss_rate||0))*100).toFixed(1)}%</td>
+          <td class="mono">${(+(r.thread_migrations||0)).toLocaleString()}</td>
+          <td class="mono">${((+(r.carbon_g||0))*1000).toFixed(4)}</td>
+          <td class="mono ${+(r.package_temp_celsius||0)>80?'c-r':+(r.package_temp_celsius||0)>70?'c-a':''}">${r.package_temp_celsius?+(r.package_temp_celsius).toFixed(1):'—'}</td>
+        </tr>`).join('')}</tbody></table>
+        ${exp.tax.length?`
+        <div class="divider"></div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:6px;">Tax summary (${exp.tax.length} pairs)</div>
+        <table><thead><tr><th>Linear J</th><th>Agentic J</th><th>Tax J</th><th>Tax %</th></tr></thead>
+        <tbody>${exp.tax.map(t=>`<tr>
+          <td class="mono c-g">${(+(t.linear_dynamic_j||0)).toFixed(3)}</td>
+          <td class="mono c-a">${(+(t.agentic_dynamic_j||0)).toFixed(3)}</td>
+          <td class="mono c-r">${(+(t.tax_j||0)).toFixed(3)}</td>
+          <td class="mono"><span class="badge ${+(t.tax_percent||0)>50?'b-r':+(t.tax_percent||0)>20?'b-a':'b-g'}">${(+(t.tax_percent||0)).toFixed(1)}%</span></td>
+        </tr>`).join('')}</tbody></table>`:``}
+      </div>`;
+  } catch(e) {
+    detail.innerHTML = `<div class="card cp"><div class="ann err"><strong>Error:</strong> ${e.message}</div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function nav(el, id) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('p-'+id).classList.add('on');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>

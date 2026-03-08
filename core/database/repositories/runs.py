@@ -150,7 +150,14 @@ class RunsRepository:
             'c3_time_seconds': ml.get('c3_time_seconds', 0),
             'c6_time_seconds': ml.get('c6_time_seconds', 0),
             'c7_time_seconds': ml.get('c7_time_seconds', 0),
-            
+            # ... swap fields ...
+            'swap_total_mb': ml.get('swap_total_mb'),
+            'swap_end_free_mb': ml.get('swap_end_free_mb'),
+            'swap_start_used_mb': ml.get('swap_start_used_mb'),
+            'swap_end_used_mb': ml.get('swap_end_used_mb'),
+            'swap_start_cached_mb': ml.get('swap_start_cached_mb'),
+            'swap_end_cached_mb': ml.get('swap_end_cached_mb'),
+            'swap_end_percent': ml.get('swap_end_percent'),           
             # MSR
             'wakeup_latency_us': ml.get('wakeup_latency_us', 0),
             'interrupt_rate': ml.get('interrupt_rate', 0),
@@ -227,6 +234,10 @@ class RunsRepository:
         core_raw_uj = ml.get('core_energy_uj', 0)
         uncore_raw_uj = ml.get('uncore_energy_uj', 0)
         dram_raw_uj = ml.get('dram_energy_uj', 0)
+        baseline_energy_uj=ml.get('idle_energy_uj',0)
+
+        print(f"🔍 RUNS DEBUG - pkg_raw_uj: {pkg_raw_uj}, baseline_energy_uj: {baseline_energy_uj}")
+        print(f"🔍 RUNS DEBUG - dynamic will be: {max(pkg_raw_uj - baseline_energy_uj, 0)}")
           
         
         # Extract and compute fields
@@ -260,7 +271,9 @@ class RunsRepository:
             methane_mg = sus.get('methane', {}).get('grams')
         
         # Run state hash
-        baseline_id = run_data.get('baseline_id')
+        baseline_id = run_data.get('baseline_id')     
+        if baseline_id is None and 'ml_features' in run_data:
+            baseline_id = run_data['ml_features'].get('baseline_id')
         run_state_hash = self._compute_run_state_hash(ml, hw_id, baseline_id)
         
         # Insert the run
@@ -278,6 +291,8 @@ class RunsRepository:
                 package_temp_celsius, baseline_temp_celsius, start_temp_c, max_temp_c, min_temp_c, thermal_delta_c,
                 thermal_during_experiment, thermal_now_active, thermal_since_boot, experiment_valid,
                 c2_time_seconds, c3_time_seconds, c6_time_seconds, c7_time_seconds,
+                swap_total_mb, swap_end_free_mb, swap_start_used_mb,
+                swap_end_used_mb, swap_start_cached_mb, swap_end_cached_mb, swap_end_percent,
                 wakeup_latency_us, interrupt_rate, thermal_throttle_flag,
                 rss_memory_mb, vms_memory_mb,
                 total_tokens, prompt_tokens, completion_tokens,
@@ -304,6 +319,8 @@ class RunsRepository:
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, ?,
+                ?, ?, ?, 
+                ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?,
                 ?, ?, ?,
@@ -322,7 +339,7 @@ class RunsRepository:
         params = (
             exp_id, hw_id, baseline_id, fields['run_number'], ml.get('workflow_type', 'unknown'),
             start_time_ns, end_time_ns, duration_ns,
-            fields['total_energy_uj'], fields['total_energy_uj'], None, fields['avg_power_watts'],
+            pkg_raw_uj, max(pkg_raw_uj - baseline_energy_uj, 0), baseline_energy_uj, fields['avg_power_watts'],
             pkg_raw_uj, core_raw_uj, uncore_raw_uj, dram_raw_uj,
             fields['instructions'], fields['cycles'], fields['ipc'],
             fields['cache_misses'], fields['cache_references'], fields['cache_miss_rate'],
@@ -338,6 +355,8 @@ class RunsRepository:
             fields['thermal_since_boot'], fields['experiment_valid'],
             fields['c2_time_seconds'], fields['c3_time_seconds'],
             fields['c6_time_seconds'], fields['c7_time_seconds'],
+            fields.get('swap_total_mb'), fields.get('swap_end_free_mb'), fields.get('swap_start_used_mb'), fields.get('swap_end_used_mb'),
+            fields.get('swap_start_cached_mb'), fields.get('swap_end_cached_mb'),fields.get('swap_end_percent'), 
             fields['wakeup_latency_us'], fields['interrupt_rate'], fields['thermal_throttle_flag'],
             fields['rss_memory_mb'], fields['vms_memory_mb'],
             fields['total_tokens'], fields['prompt_tokens'], fields['completion_tokens'],
