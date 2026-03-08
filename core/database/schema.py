@@ -414,8 +414,28 @@ CREATE TABLE IF NOT EXISTS interrupt_samples (
 CREATE INDEX IF NOT EXISTS idx_interrupt_run_time ON interrupt_samples(run_id, timestamp_ns);
 """
 
+
 # ========================================================================
-# View 10: ml_features (flattened for ML)
+# Table:10 thermal_samples - 1Hz thermal telemetry
+# ========================================================================
+THERMAL_SAMPLES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS thermal_samples (
+    sample_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL,
+    timestamp_ns INTEGER NOT NULL,
+    sample_time_s REAL,
+    cpu_temp REAL,
+    system_temp REAL,
+    wifi_temp REAL,
+    throttle_event INTEGER DEFAULT 0,
+    all_zones_json TEXT,
+    sensor_count INTEGER,
+    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+);
+CREATE INDEX IF NOT EXISTS idx_thermal_run_time ON thermal_samples(run_id, timestamp_ns);
+"""
+# ========================================================================
+# View 11: ml_features (flattened for ML)
 # ========================================================================
 CREATE_ML_VIEW = """
 CREATE VIEW IF NOT EXISTS ml_features AS

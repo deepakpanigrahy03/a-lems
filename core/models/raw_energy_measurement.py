@@ -12,9 +12,10 @@ Author: Deepak Panigrahy
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, Tuple
 from datetime import datetime
 import json
+
 
 
 @dataclass
@@ -69,13 +70,17 @@ class RawEnergyMeasurement:
     # ====================================================================
     # NEW: Thermal derived fields (from EnergyEngine calculations)
     # ====================================================================
+
     thermal_during_experiment: Optional[int] = None  # 1 if throttling occurred during experiment
     thermal_now_active: Optional[int] = None         # 1 if throttling active at end
     thermal_since_boot: Optional[int] = None         # 1 if system has ever throttled since boot    
     # Sampling data
     samples: List[tuple] = field(default_factory=list)
     sampling_rate_hz: float = 0.0
-    
+
+    # Thermal samples (1Hz)
+    thermal_samples: List[Tuple[float, Dict, bool]] = field(default_factory=list)  
+
     # Additional context
     metadata: Dict[str, Any] = field(default_factory=dict)
     

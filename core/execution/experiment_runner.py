@@ -107,7 +107,43 @@ class ExperimentRunner:
         else:
             print(f"\n📏 Using existing baseline: {harness.baseline.baseline_id}")
             return harness.baseline
-    
+    def aggregate_run_stats(self, run_id: int, cpu_samples: List[Dict], interrupt_samples: List[Dict]) -> Dict:
+        """
+        Compute aggregated statistics for a run from samples.
+        This will populate runs table with correct averages.
+        """
+        stats = {
+            'run_id': run_id,
+            'cpu_busy_mhz': 0.0,
+            'cpu_avg_mhz': 0.0,
+            'package_temp_celsius': 0.0,
+            'max_temp_c': 0.0,
+            'min_temp_c': 0.0,
+            'interrupt_rate': 0.0
+        }
+        
+        # Aggregate CPU samples
+        if cpu_samples:
+            busy_freqs = [s.get('cpu_busy_mhz', 0) for s in cpu_samples if s.get('cpu_busy_mhz')]
+            avg_freqs = [s.get('cpu_avg_mhz', 0) for s in cpu_samples if s.get('cpu_avg_mhz')]
+            temps = [s.get('package_temp', 0) for s in cpu_samples if s.get('package_temp')]
+            
+            if busy_freqs:
+                stats['cpu_busy_mhz'] = sum(busy_freqs) / len(busy_freqs)
+            if avg_freqs:
+                stats['cpu_avg_mhz'] = sum(avg_freqs) / len(avg_freqs)
+            if temps:
+                stats['package_temp_celsius'] = sum(temps) / len(temps)
+                stats['max_temp_c'] = max(temps)
+                stats['min_temp_c'] = min(temps)
+        
+        # Aggregate interrupt samples
+        if interrupt_samples:
+            irq_rates = [s.get('interrupts_per_sec', 0) for s in interrupt_samples if s.get('interrupts_per_sec')]
+            if irq_rates:
+                stats['interrupt_rate'] = sum(irq_rates) / len(irq_rates)
+        
+        return stats    
     # ========================================================================
     # DUPLICATE CODE 3: Database setup (similar in both scripts)
     # ========================================================================
@@ -312,7 +348,20 @@ class ExperimentRunner:
             # Linear interrupt samples
             if 'interrupt_samples' in linear_result:
                 db.insert_interrupt_samples(linear_id, linear_result['interrupt_samples'])
-            
+                
+            # Save thermal samples
+            if 'thermal_samples' in linear_result:
+                db.insert_thermal_samples(linear_id, linear_result['thermal_samples'])
+                print(f"🔍 DEBUG - Saving {len(linear_result['thermal_samples'])} thermal samples for run {linear_id}")
+
+                # After inserting samples, update runs with aggregated stats
+                linear_agg = self.aggregate_run_stats(
+                    linear_id,
+                    linear_result.get('cpu_samples', []),
+                    linear_result.get('interrupt_samples', [])
+                )
+                db.update_run_stats(linear_id, linear_agg)                
+           
             # Insert agentic run
             agentic_id = db.insert_run(exp_id, hw_id, agentic_result)
             
@@ -339,7 +388,17 @@ class ExperimentRunner:
             # Agentic interrupt samples
             if 'interrupt_samples' in agentic_result:
                 db.insert_interrupt_samples(agentic_id, agentic_result['interrupt_samples'])
-            
+
+            if 'thermal_samples' in agentic_result:
+                db.insert_thermal_samples(agentic_id, agentic_result['thermal_samples'])
+                print(f"🔍 DEBUG - Saving {len(agentic_result['thermal_samples'])} thermal samples for run {agentic_id}")                 
+
+                agentic_agg = self.aggregate_run_stats(
+                    agentic_id,
+                    agentic_result.get('cpu_samples', []),
+                    agentic_result.get('interrupt_samples', [])
+                )
+                db.update_run_stats(agentic_id, agentic_agg)            
             # Agentic orchestration events
             if 'orchestration_events' in agentic_result:
                 db.insert_orchestration_events(agentic_id, agentic_result['orchestration_events'])

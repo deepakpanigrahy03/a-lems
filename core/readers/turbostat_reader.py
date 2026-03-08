@@ -35,6 +35,8 @@ import signal
 import threading
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
+from io import StringIO
+import re 
 
 # ============================================================================
 # Fix Python path – ensures we can import sibling modules
@@ -399,14 +401,13 @@ class TurbostatReader:
     
     def _parse_continuous_output(self, output: str) -> Optional[pd.DataFrame]:
         """
-        Parse continuous turbostat output when using --Summary mode.
+        Parse continuous turbostat output.
         
-        In --Summary mode, turbostat outputs:
-        - Header line with column names
-        - Pairs of rows per interval (package summary + extra)
-        - Blank lines between intervals
-        
-        We take the first row of each pair (even indices) as the package summary.
+        Rules:
+        - Header: first non-numeric line (not ending with "sec")
+        - Data rows: lines starting with a digit
+        - Column order: preserved exactly as turbostat outputs
+        - NO timestamp added here - Energy Engine handles timestamps
         """
         if not output or len(output.strip()) < 10:
             print("⚠️ Turbostat output too short or empty")
@@ -415,77 +416,70 @@ class TurbostatReader:
         try:
             lines = output.strip().split('\n')
             
-            # ====================================================================
-            # Get the columns we requested (from column_map values)
-            # ====================================================================
-            raw_columns = list(self.column_map.values())
-            if not raw_columns:
-                print("❌ No column_map defined in turbostat config")
-                return None
-
-            print(f"📋 Expecting {len(raw_columns)} columns: {raw_columns[:5]}...")
-
-            # ====================================================================
-            # Collect only package summary rows (first row of each pair)
-            # ====================================================================
+            # Debug: Show first few raw lines
+            print(f"\n🔍 RAW TURBOSTAT LINES ({len(lines)} total):")
+            for i, line in enumerate(lines[:10]):
+                print(f"   Line {i:2d}: '{line}'")
+            
+            header_columns = None
             data_lines = []
-            line_count = 0
-            skipped = 0
-
+            
             for line in lines:
                 line = line.strip()
                 if not line:
                     continue
                 
-                # Skip header line
-                if 'C1ACPI%' in line or not line[0].isdigit():
-                    skipped += 1
+                # Skip interval line (ends with "sec")
+                if line.endswith("sec"):
                     continue
                 
-                parts = line.split()
-                
-                # Only accept rows with correct column count
-                if len(parts) != len(raw_columns):
-                    skipped += 1
+                # Safer header detection using regex
+                # Header is first line that doesn't start with a digit
+                if header_columns is None and not re.match(r'^\d', line):
+                    header_columns = re.split(r'\s+', line)
+                    print(f"📋 Header detected: {header_columns}")
                     continue
                 
-                # Take every other row (package summary)
-                if line_count % 2 == 0:
-                    data_lines.append(line)
-                line_count += 1
-
-            if not data_lines:
-                print(f"❌ No valid package summary rows found (skipped {skipped})")
+                # Data rows: lines starting with a digit
+                if header_columns and re.match(r'^\d', line):
+                    parts = re.split(r'\s+', line)
+                    
+                    # Only take up to number of header columns
+                    if len(parts) >= len(header_columns):
+                        data_lines.append(' '.join(parts[:len(header_columns)]))
+            
+            if not header_columns or not data_lines:
+                print("❌ No turbostat data detected")
                 return None
-
-            print(f"✅ Found {len(data_lines)} package summary rows (skipped {skipped} lines)")
-
+            
+            print(f"✅ Found {len(data_lines)} data rows")
+            
             # ====================================================================
-            # Parse with pandas
+            # Parse with pandas using actual header columns
             # ====================================================================
             from io import StringIO
             data_str = '\n'.join(data_lines)
-
+            
             df = pd.read_csv(
                 StringIO(data_str),
-                sep=r'\s+',  # Split on any whitespace
-                names=raw_columns,
+                sep=r'\s+',
+                names=header_columns,
                 engine='python'
             )
-
+            
             # Convert all columns to numeric
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
-
-            print(f"✅ Parsed {len(df)} turbostat rows with {len(df.columns)} columns")
+            
+            print(f"✅ Parsed {len(df)} rows with columns: {list(df.columns)[:5]}...")
             return df
-
+            
         except Exception as e:
-            print(f"❌ Failed to parse turbostat output: {e}")
+            print(f"❌ Turbostat parse error: {e}")
             import traceback
             traceback.print_exc()
             return None
-
+        
     def get_column_mapping(self) -> Dict[str, str]:
         """
         Get mapping from turbostat column names to internal metric names.
@@ -508,62 +502,42 @@ class TurbostatReader:
 
     def compute_summary(self, df: pd.DataFrame) -> Dict[str, float]:
         """
-        Compute summary statistics from turbostat dataframe.
-        
-        This is where the actual research data is extracted:
-        - Only package-level rows (CPU == "-") are used
-        - Statistics: mean, standard deviation, min, max, median
-        
-        IMPORTANT: We take MEAN of interval percentages, NOT delta.
-        Each row is already a percentage for that 100ms interval.
-        
-        Args:
-            df: DataFrame from continuous monitoring
-            
-        Returns:
-            Dictionary with comprehensive statistics for all metrics
+        Compute summary statistics using reverse_map for canonical names.
         """
         summary = {}
         
         if df is None or df.empty:
             return summary
         
-        # Filter to package-level rows only
-        # CPU column with "-" represents package summary
-        if 'CPU' in df.columns:
-            package_df = df[df["CPU"] == "-"]
-            if package_df.empty:
-                logger.warning("No package-level rows found, using all data")
-                package_df = df
-        else:
-            package_df = df
-        
-        # Compute comprehensive statistics for each column
-        for col in package_df.columns:
-            # Skip non-numeric identifier columns
-            if col in ['CPU', 'Core', 'Package']:
-                continue
-                
+        # Use all rows (turbostat already gives package summary)
+        for col in df.columns:
+            # Map to internal canonical name if available
+            internal_name = self.reverse_map.get(col, col)
+            
             try:
-                # Ensure column is numeric
-                numeric_values = pd.to_numeric(package_df[col], errors='coerce')
-                numeric_values = numeric_values.dropna()
+                numeric_values = pd.to_numeric(df[col], errors='coerce').dropna()
                 
                 if len(numeric_values) > 0:
-                    # Store all statistics: mean, std, min, max, median
-                    # This gives complete picture of behavior during workload
-                    summary[f"{col}_mean"] = numeric_values.mean()
-                    summary[f"{col}_std"] = numeric_values.std()
-                    summary[f"{col}_min"] = numeric_values.min()
-                    summary[f"{col}_max"] = numeric_values.max()
-                    summary[f"{col}_median"] = numeric_values.median()
+                    # Store statistics with canonical names
+                    summary[f"{internal_name}_mean"] = numeric_values.mean()
+                    summary[f"{internal_name}_std"] = numeric_values.std()
+                    summary[f"{internal_name}_min"] = numeric_values.min()
+                    summary[f"{internal_name}_max"] = numeric_values.max()
+                    summary[f"{internal_name}_median"] = numeric_values.median()
+                    
+                    # Special handling for frequencies (keep for backward compatibility)
                     if col == 'Bzy_MHz':
-                        summary['frequency_mean'] = numeric_values.mean()
-                        summary['frequency_min'] = numeric_values.min()
-                        summary['frequency_max'] = numeric_values.max()
-                        summary['frequency_stddev'] = numeric_values.std() if len(numeric_values) > 1 else 0.0                    
+                        summary['frequency_busy_mhz'] = numeric_values.mean()
+                        summary['frequency_busy_min'] = numeric_values.min()
+                        summary['frequency_busy_max'] = numeric_values.max()
+                        
+                    if col == 'Avg_MHz':
+                        summary['frequency_avg_mhz'] = numeric_values.mean()
+                        summary['frequency_avg_min'] = numeric_values.min()
+                        summary['frequency_avg_max'] = numeric_values.max()
+                        
             except Exception as e:
-                logger.debug(f"Could not compute statistics for column {col}: {e}")
+                logger.debug(f"Could not process column {col}: {e}")
         
         return summary
 

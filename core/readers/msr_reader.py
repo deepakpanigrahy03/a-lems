@@ -374,40 +374,59 @@ class MSRReader:
     def snapshot_cstate_counters(self, cpu: int = 0, pin: bool = True) -> Dict[str, Any]:
         """
         Snapshot raw C-state residency MSR counters.
-        Returns RAW counter values with timestamp (NO unit conversion).
         
-        This is the SINGLE source of truth for C-state measurements.
-        Unit conversion happens AFTER delta calculation using TSC frequency.
+        Returns RAW counter values with timestamp. This is the SINGLE source of truth
+        for C-state measurements. Unit conversion happens AFTER delta calculation
+        using TSC frequency.
         
         Args:
             cpu: CPU core to read from (default 0)
             pin: Whether to pin thread to CPU
             
         Returns:
-            Dictionary with:
-                - timestamp: time.time() when snapshot taken
-                - counters: dict of raw counter values for c2, c3, c6, c7
+            Dictionary with timestamp and counters (NEVER contains None values)
         """
+        # Initialize counters dictionary
         counters = {}
+        # Track which reads succeeded for debugging
+        read_status = {}
         
+        # Map state names to MSR addresses
         msr_map = {
-            'c2': 0x3F8,
-            'c3': 0x3F9,
-            'c6': 0x3FA,
-            'c7': 0x3FB
+            'c2': 0x3F8,   # MSR_PKG_C2_RESIDENCY
+            'c3': 0x3F9,   # MSR_PKG_C3_RESIDENCY
+            'c6': 0x3FA,   # MSR_PKG_C6_RESIDENCY
+            'c7': 0x3FB    # MSR_PKG_C7_RESIDENCY
         }
         
+        # Read each C-state counter
         for state, addr in msr_map.items():
             try:
+                # Attempt to read MSR value
                 value = self.read_msr(addr, cpu, pin=pin)
-                counters[state] = value
+                
+                # CRITICAL FIX: Convert None to 0 explicitly
+                if value is None:
+                    logger.debug(f"MSR read for {state} returned None, using 0")
+                    counters[state] = 0
+                    read_status[state] = False
+                else:
+                    counters[state] = value
+                    read_status[state] = True
+                    
             except Exception as e:
+                # Any exception means we couldn't read this counter
                 logger.debug(f"Failed to read {state} MSR: {e}")
                 counters[state] = 0
+                read_status[state] = False
         
+        # Return complete snapshot with metadata
         return {
             'timestamp': time.time(),
-            'counters': counters
+            'counters': counters,
+            'read_status': read_status,      # For debugging failed reads
+            'cpu': cpu,                       # Record which CPU was used
+            'method': 'helper' if self.helper_available else 'direct'
         }
     
     def calculate_wakeup_delta(self, start_counters: Dict[str, int], 
@@ -898,33 +917,77 @@ class MSRReader:
                 current_cstates = self.snapshot_cstate_counters()
                 print(f"🔵 MSR_READER - current_cstates: {current_cstates}")            
             # ====================================================================
-            # NEW: Calculate per-run C-state deltas if start snapshot exists
+            # Calculate per-run C-state deltas if start snapshot exists
             # ====================================================================
-            if hasattr(self, '_cstate_start') and self._cstate_start:
+            if hasattr(self, '_cstate_start') and self._cstate_start is not None:
+                # Get current snapshot of C-state counters
                 current_cstates = self.snapshot_cstate_counters()
                 deltas = {}
                 
+                # Safely extract counters dictionaries with type checking
+                if isinstance(self._cstate_start, dict):
+                    start_counters = self._cstate_start.get('counters', {})
+                else:
+                    # Handle case where _cstate_start is not a dictionary
+                    logger.warning("_cstate_start is not a dictionary, using empty counters")
+                    start_counters = {}
+                
+                if isinstance(current_cstates, dict):
+                    end_counters = current_cstates.get('counters', {})
+                else:
+                    logger.warning("current_cstates is not a dictionary, using empty counters")
+                    end_counters = {}
+                
+                # Calculate delta for each C-state
                 for state in ['c2', 'c3', 'c6', 'c7']:
-                    start_val = self._cstate_start.get(state, 0)
-                    end_val = current_cstates.get(state, 0)
+                    # Step 1: Get values with defaults
+                    start_val = start_counters.get(state, 0)
+                    end_val = end_counters.get(state, 0)
+                    
+                    # Step 2: Explicitly handle None values
+                    if start_val is None:
+                        start_val = 0
+                        logger.debug(f"start_val for {state} was None, using 0")
+                    if end_val is None:
+                        end_val = 0
+                        logger.debug(f"end_val for {state} was None, using 0")
+                    
+                    # Step 3: Ensure values are integers
+                    try:
+                        start_val = int(start_val)
+                    except (TypeError, ValueError):
+                        start_val = 0
+                        logger.debug(f"start_val for {state} couldn't be converted, using 0")
+                    
+                    try:
+                        end_val = int(end_val)
+                    except (TypeError, ValueError):
+                        end_val = 0
+                        logger.debug(f"end_val for {state} couldn't be converted, using 0")
+                    
+                    # Step 4: Safe subtraction
                     delta_ticks = max(0, end_val - start_val)
                     
-                    # Convert to seconds using TSC frequency
-                    if self.tsc_frequency_hz:
+                    # Step 5: Convert to seconds using TSC frequency
+                    if self.tsc_frequency_hz and delta_ticks > 0:
                         delta_seconds = delta_ticks / self.tsc_frequency_hz
                     else:
-                        delta_seconds = delta_ticks / 2.8e9  # Fallback
+                        delta_seconds = delta_ticks / 2.8e9
+                        if delta_ticks > 0:
+                            logger.debug(f"Using fallback TSC frequency for {state}")
                     
+                    # Store in seconds
                     deltas[f'{state}_time_seconds'] = delta_seconds
                 
-                # Add to top level for easy DB access
+                # Add deltas to top level for easy database access
                 metrics.update(deltas)
-                # ========== ADD THESE 3 LINES ==========
+                
+                # Debug output
                 print(f"🔵 MSR_READER_ID: {id(metrics)}")
                 print(f"🔵 MSR_READER_VALUE: c2={metrics.get('c2_time_seconds', 0):.3f}s")
                 print(f"🔵 MSR_READER_KEYS: {list(metrics.keys())}")
-                # ========================================
                 
+                # Store raw deltas in dynamic section
                 metrics['dynamic']['cstate_deltas'] = deltas
                 
                 logger.debug(f"C-state deltas calculated: {deltas}")
@@ -979,6 +1042,100 @@ class MSRReader:
             logger.error(f"Error reading dynamic MSR metrics: {e}")
             
         return metrics
+
+
+    # ------------------------------------------------------------------------
+    # Safe counter access helper - prevents NoneType errors
+    # ------------------------------------------------------------------------
+    def safe_get_counter(self, counters_dict: Optional[Dict], state: str, default: int = 0) -> int:
+        """
+        Safely extract a counter value, ensuring it's a number.
+        
+        Use this method whenever accessing C-state counters to avoid NoneType errors.
+        This provides a single point of defense against None values, missing keys,
+        and type conversion issues.
+        
+        Args:
+            counters_dict: Dictionary possibly containing counter values
+            state: State name ('c2', 'c3', 'c6', 'c7')
+            default: Default value if not found or invalid
+            
+        Returns:
+            Integer counter value (always a number, never None)
+        """
+        # Case 1: Dictionary is None
+        if counters_dict is None:
+            logger.debug(f"counters_dict is None for state {state}, using default {default}")
+            return default
+        
+        # Case 2: Get value with default
+        value = counters_dict.get(state, default)
+        
+        # Case 3: Value is None
+        if value is None:
+            logger.debug(f"Value for state {state} is None, using default {default}")
+            return default
+        
+        # Case 4: Value exists but might not be convertible to int
+        try:
+            return int(value)
+        except (TypeError, ValueError) as e:
+            logger.debug(f"Could not convert {state} value {value} to int: {e}, using default {default}")
+            return default
+
+    # ------------------------------------------------------------------------
+    # Debug helper - inspect C-state snapshot integrity
+    # ------------------------------------------------------------------------
+    def debug_cstate_snapshots(self):
+        """
+        Debug method to check C-state snapshot integrity.
+        
+        Call this when experiencing issues with C-state calculations to verify
+        that snapshots contain expected data structures and no None values.
+        """
+        print("\n" + "="*60)
+        print("🔍 C-STATE SNAPSHOT DEBUG")
+        print("="*60)
+        
+        # Check if _cstate_start exists
+        if not hasattr(self, '_cstate_start'):
+            print("❌ No _cstate_start attribute found")
+            return
+        
+        print(f"✓ _cstate_start exists")
+        print(f"  Type: {type(self._cstate_start)}")
+        
+        # Examine _cstate_start structure
+        if isinstance(self._cstate_start, dict):
+            print(f"  Keys: {list(self._cstate_start.keys())}")
+            
+            # Check counters sub-dictionary
+            counters = self._cstate_start.get('counters', {})
+            print(f"  counters type: {type(counters)}")
+            print(f"  counters keys: {list(counters.keys())}")
+            
+            # Check each expected C-state
+            print("\n  C-state values:")
+            for state in ['c2', 'c3', 'c6', 'c7']:
+                val = counters.get(state)
+                val_type = type(val).__name__ if val is not None else "NoneType"
+                status = "✅" if val is not None and isinstance(val, int) else "❌"
+                print(f"    {status} {state}: {val} (type: {val_type})")
+            
+            # Check timestamp
+            ts = self._cstate_start.get('timestamp')
+            if ts:
+                print(f"\n  Timestamp: {ts}")
+            
+            # Check read_status if present
+            read_status = self._cstate_start.get('read_status')
+            if read_status:
+                print(f"  Read status: {read_status}")
+        else:
+            print(f"❌ _cstate_start is not a dictionary: {self._cstate_start}")
+        
+        print("="*60)
+
 
     # ------------------------------------------------------------------------
     # Wake-up latency measurement (baseline only)

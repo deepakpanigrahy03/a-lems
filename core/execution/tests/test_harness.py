@@ -265,55 +265,72 @@ def main():
     all_linear = []
     all_agentic = []
     all_taxes = []
+    runs_completed = 0  # Add this line
     
-    for rep in range(repetitions):
-        print(f"\n{'─'*50}")
-        print(f"📋 Repetition {rep+1}/{repetitions}")
-        print(f"{'─'*50}")
+    try:
+        for rep in range(repetitions):
+            print(f"\n{'─'*50}")
+            print(f"📋 Repetition {rep+1}/{repetitions}")
+            print(f"{'─'*50}")
+            
+            # Run linear
+            linear_result = harness.run_linear(
+                executor=linear,
+                prompt=task_prompt,
+                task_id=task_id,
+                is_cloud=(args.provider == 'cloud'),
+                country_code=country_code,
+                run_number=rep+1
+            )
+            
+            # Run agentic
+            agentic_result = harness.run_agentic(
+                executor=agentic,
+                task=task_prompt,
+                task_id=task_id,
+                is_cloud=(args.provider == 'cloud'),
+                country_code=country_code,
+                run_number=rep+1
+            )
+            
+            # Store for stats
+            all_linear.append(linear_result)
+            all_agentic.append(agentic_result)
+            
+            # Calculate tax
+            linear_energy = linear_result['ml_features']['energy_j']
+            agentic_energy = agentic_result['ml_features']['energy_j']
+            tax = agentic_energy / linear_energy if linear_energy > 0 else 0
+            all_taxes.append(tax)
+            
+            print(f"\n   📊 Pair {rep+1}:")
+            print(f"      Linear:  {linear_energy:.4f} J")
+            print(f"      Agentic: {agentic_energy:.4f} J")
+            print(f"      Tax: {tax:.2f}x")
+            
+            # Insert to database
+            if args.save_db:
+                runner.save_pair(db, exp_id, hw_id, linear_result, agentic_result, rep+1)
+                runs_completed += 2  # Update after successful pair
+            
+            # Cool down
+            if rep < repetitions - 1:
+                print(f"\n⏳ Cooling down for {cool_down}s...")
+                time.sleep(cool_down)
+                
+    except (Exception, KeyboardInterrupt) as e:
+        print(f"\n❌ Experiment failed: {e}")
+        import traceback
+        traceback.print_exc()
         
-        # Run linear
-        linear_result = harness.run_linear(
-            executor=linear,
-            prompt=task_prompt,
-            task_id=task_id,
-            is_cloud=(args.provider == 'cloud'),
-            country_code=country_code,
-            run_number=rep+1
-        )
-        
-        # Run agentic
-        agentic_result = harness.run_agentic(
-            executor=agentic,
-            task=task_prompt,
-            task_id=task_id,
-            is_cloud=(args.provider == 'cloud'),
-            country_code=country_code,
-            run_number=rep+1
-        )
-        
-        # Store for stats
-        all_linear.append(linear_result)
-        all_agentic.append(agentic_result)
-        
-        # Calculate tax
-        linear_energy = linear_result['ml_features']['energy_j']
-        agentic_energy = agentic_result['ml_features']['energy_j']
-        tax = agentic_energy / linear_energy if linear_energy > 0 else 0
-        all_taxes.append(tax)
-        
-        print(f"\n   📊 Pair {rep+1}:")
-        print(f"      Linear:  {linear_energy:.4f} J")
-        print(f"      Agentic: {agentic_energy:.4f} J")
-        print(f"      Tax: {tax:.2f}x")
-        
-        # Insert to database
         if args.save_db:
-            runner.save_pair(db, exp_id, hw_id, linear_result, agentic_result, rep+1)
-        
-        # Cool down
-        if rep < repetitions - 1:
-            print(f"\n⏳ Cooling down for {cool_down}s...")
-            time.sleep(cool_down)
+            # Handle both regular exceptions and Ctrl+C
+            error_msg = str(e) if str(e) else "KeyboardInterrupt (user cancelled)"
+            runner.update_status(db, exp_id, 'failed', runs_completed, error_msg)
+            db.close()
+        return 1
+            
+            
     # ========================================================================
     # UPDATE EXPERIMENT STATUS - COMPLETE SOLUTION
     # ========================================================================

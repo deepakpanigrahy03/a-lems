@@ -239,6 +239,8 @@ class ExperimentHarness:
         run_end_perf = time.perf_counter()
         run_duration_sec = run_end_perf - run_start_perf
 
+
+
         dprint(f"🔍 DEBUG EXECUTION TIME - Linear compute: {exec_result.get('execution_time_ms', 0)} ms")
         dprint(f"🔍 DEBUG TOTAL MEASUREMENT - Duration: {run_duration_sec*1000:.1f} ms")
 
@@ -298,7 +300,36 @@ class ExperimentHarness:
         # ====================================================================
         energy_samples, interrupt_samples = process_energy_samples(self.energy_engine)  
         cpu_samples = process_cpu_samples(raw_energy, canonical_metrics, store_extra)
-              
+        # Process thermal samples
+        thermal_samples = []
+        temps = []
+        throttle_events = 0
+        start_time_ns = int(run_start_dt.timestamp() * 1e9)
+        
+        if hasattr(raw_energy, 'thermal_samples') and raw_energy.thermal_samples:
+            for ts, readings, throttled in raw_energy.thermal_samples:
+                time_since_start = (ts * 1e9 - start_time_ns) / 1e9
+                thermal_samples.append({
+                    'timestamp_ns': int(ts * 1e9),
+                    'sample_time_s': time_since_start,
+                    'cpu_temp': readings.get('cpu_temp'),
+                    'system_temp': readings.get('system_temp'),
+                    'wifi_temp': readings.get('wifi_temp'),
+                    'throttle_event': 1 if throttled else 0,
+                    'all_zones': readings
+                })
+                if readings.get('cpu_temp'):
+                    temps.append(readings['cpu_temp'])
+                if throttled:
+                    throttle_events += 1
+        
+        # Calculate thermal metrics
+        thermal_area = 0
+        if len(temps) > 1:
+            # Approximate thermal area (integral approximation)
+            thermal_area = sum(temps) / len(temps) * (max(temps) - min(temps))
+
+
         # ====================================================================
         # Calculate thermal metrics from CPU samples
         # ====================================================================
@@ -430,7 +461,16 @@ class ExperimentHarness:
                 'frequency_mhz': derived.frequency_mhz,
                 'package_temp_celsius': derived.package_temp_celsius,
                 'baseline_temp_celsius': self.baseline.cpu_temperature_c if self.baseline else None,
-                
+                'thermal_metrics': {
+                    'min_temp_c': min(temps) if temps else 0,
+                    'max_temp_c': max(temps) if temps else 0,
+                    'avg_temp_c': sum(temps)/len(temps) if temps else 0,
+                    'thermal_area': thermal_area,
+                    'throttle_events': throttle_events,
+                    'throttle_ratio': throttle_events / len(thermal_samples) if thermal_samples else 0,
+                },
+
+
                 # C-state metrics
                 'c2_time_seconds': derived.c2_time_seconds,
                 'c3_time_seconds': derived.c3_time_seconds,
@@ -498,7 +538,8 @@ class ExperimentHarness:
             },
             'energy_samples': energy_samples,
             'cpu_samples': cpu_samples,
-            'interrupt_samples': interrupt_samples,            
+            'interrupt_samples': interrupt_samples,
+            'thermal_samples': thermal_samples,             
             'harness_timestamp': datetime.now().isoformat(),
             'scientific_notes': {
                 'measurement_scope': 'client_side_orchestration_only',
@@ -614,6 +655,35 @@ class ExperimentHarness:
 
         energy_samples, interrupt_samples = process_energy_samples(self.energy_engine)
         cpu_samples = process_cpu_samples(raw_energy, canonical_metrics, store_extra)
+
+        # Process thermal samples
+        thermal_samples = []
+        temps = []
+        throttle_events = 0
+        start_time_ns = int(run_start_dt.timestamp() * 1e9)
+        
+        if hasattr(raw_energy, 'thermal_samples') and raw_energy.thermal_samples:
+            for ts, readings, throttled in raw_energy.thermal_samples:
+                time_since_start = (ts * 1e9 - start_time_ns) / 1e9
+                thermal_samples.append({
+                    'timestamp_ns': int(ts * 1e9),
+                    'sample_time_s': time_since_start,
+                    'cpu_temp': readings.get('cpu_temp'),
+                    'system_temp': readings.get('system_temp'),
+                    'wifi_temp': readings.get('wifi_temp'),
+                    'throttle_event': 1 if throttled else 0,
+                    'all_zones': readings
+                })
+                if readings.get('cpu_temp'):
+                    temps.append(readings['cpu_temp'])
+                if throttled:
+                    throttle_events += 1
+        
+        # Calculate thermal metrics
+        thermal_area = 0
+        if len(temps) > 1:
+            # Approximate thermal area (integral approximation)
+            thermal_area = sum(temps) / len(temps) * (max(temps) - min(temps))        
         # ====================================================================
         # Calculate thermal metrics from CPU samples
         # ====================================================================
@@ -762,6 +832,15 @@ class ExperimentHarness:
                 'package_temp_celsius': derived.package_temp_celsius,
                 'baseline_temp_celsius': self.baseline.cpu_temperature_c if self.baseline else None,
                 
+                'thermal_metrics': {
+                    'min_temp_c': min(temps) if temps else 0,
+                    'max_temp_c': max(temps) if temps else 0,
+                    'avg_temp_c': sum(temps)/len(temps) if temps else 0,
+                    'thermal_area': thermal_area,
+                    'throttle_events': throttle_events,
+                    'throttle_ratio': throttle_events / len(thermal_samples) if thermal_samples else 0,
+                },
+
                 # C-state metrics
                 'c2_time_seconds': derived.c2_time_seconds,
                 'c3_time_seconds': derived.c3_time_seconds,
@@ -847,7 +926,8 @@ class ExperimentHarness:
             },
             'energy_samples': energy_samples,
             'cpu_samples': cpu_samples,
-            'interrupt_samples': interrupt_samples,            
+            'interrupt_samples': interrupt_samples, 
+            'thermal_samples': thermal_samples,            
             'harness_timestamp': datetime.now().isoformat(),
             'scientific_notes': {
                 'measurement_scope': 'client_side_orchestration_only',
@@ -885,8 +965,11 @@ class ExperimentHarness:
             print(f"🔍 DEBUG HARNESS - Number of events: {len(result['orchestration_events'])}")
             if len(result['orchestration_events']) > 0:
                 print(f"🔍 DEBUG HARNESS - First event keys: {result['orchestration_events'][0].keys()}")                
-
-        dprint(f"✅ Harness complete: {derived.workload_energy_j:.4f}J workload energy")
+        # Debug to check if thermal_samples is in result
+        dprint(f"🔍 DEBUG - thermal_samples in result: {'thermal_samples' in result}")
+        if 'thermal_samples' in result:
+            dprint(f"🔍 DEBUG - Number of thermal samples: {len(result['thermal_samples'])}")
+        print(f"✅ Harness complete: {derived.workload_energy_j:.4f}J workload energy")
         return result
 
     def run_comparison(self, linear_executor, agentic_executor, task: str, task_id: str = None, 

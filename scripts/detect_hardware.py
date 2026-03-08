@@ -395,6 +395,34 @@ def detect_wakeup_idle_ms() -> int:
     print(f"   ✅ Wake-up idle period: {idle_ms} ms")
     return idle_ms
 
+def discover_thermal_zones():
+    """Map sensor types to paths dynamically (handles duplicates)"""
+    base = "/sys/class/thermal"
+    mapping = {}
+    
+    for entry in os.listdir(base):
+        if entry.startswith("thermal_zone"):
+            zone_path = os.path.join(base, entry)
+            try:
+                with open(os.path.join(zone_path, "type")) as f:
+                    sensor_type = f.read().strip()
+                temp_file = os.path.join(zone_path, "temp")
+                trip_point = os.path.join(zone_path, "trip_point_0_temp")
+                
+                throttle_temp = None
+                if os.path.exists(trip_point):
+                    with open(trip_point) as f:
+                        throttle_temp = int(f.read().strip()) / 1000.0
+                
+                if os.path.exists(temp_file):
+                    mapping.setdefault(sensor_type, []).append({
+                        "path": temp_file,
+                        "zone": entry,
+                        "throttle_temp": throttle_temp
+                    })
+            except Exception:
+                continue
+    return mapping
 
 def enhance_msr_config(existing_msr: Dict = None) -> Dict:
     """
@@ -942,7 +970,83 @@ NOTE:
                 # This will add cstate_counter_max, ring_bus_base_clock_mhz, wakeup_idle_ms
                 # if they don't already exist (preserves manually added values)
                 existing_msr = enhance_msr_config(existing_msr)
+
+                # ============================================================
+                # ENHANCE: Add thermal discovery with semantic mapping
+                # ============================================================
+                print("🔍 DEBUG: Entering thermal enhancement block")
+                if args.verbose:
+                    print("🔍 Discovering thermal zones...")
                 
+                # Discover thermal zones with duplicate handling
+                thermal_zones = discover_thermal_zones()
+                print("🔍 DEBUG: Entering thermal enhancement block")
+                
+                # Update thermal section with discovered zones
+                if 'thermal' not in existing:
+                    existing['thermal'] = {}
+                
+                existing['thermal']['discovered_zones'] = thermal_zones
+
+
+                # ============================================================
+                # ENHANCE: Add thermal discovery with semantic mapping
+                # ============================================================
+                print("🔍 DEBUG: Entering thermal enhancement block")
+                if args.verbose:
+                    print("🔍 Discovering thermal zones...")
+                
+                # Discover thermal zones with duplicate handling
+                thermal_zones = discover_thermal_zones()
+                print("🔍 DEBUG: Entering thermal enhancement block")
+                
+                # Update thermal section with discovered zones
+                if 'thermal' not in existing:
+                    existing['thermal'] = {}
+                
+                existing['thermal']['discovered_zones'] = thermal_zones
+                
+                # ====================================================================
+                # Create sensors_to_monitor from discovered zones with smart naming
+                # ====================================================================
+                sensors_to_monitor = {}
+                
+                for sensor_type in thermal_zones.keys():
+                    sensor_lower = sensor_type.lower()
+                    
+                    # Map known sensor types to stable roles
+                    if "x86_pkg_temp" in sensor_type or ("cpu" in sensor_lower and "temp" in sensor_lower):
+                        sensors_to_monitor["cpu_package"] = sensor_type
+                    elif "tcpu" in sensor_lower:
+                        sensors_to_monitor["cpu_alt"] = sensor_type
+                    elif "wifi" in sensor_lower or "iwlwifi" in sensor_lower:
+                        sensors_to_monitor["wifi"] = sensor_type
+                    elif "acpi" in sensor_lower or "int3400" in sensor_lower:
+                        sensors_to_monitor["system"] = sensor_type
+                    elif "sen" in sensor_lower and sensor_lower[3:].isdigit():
+                        # Keep SEN1, SEN2, etc. as themselves
+                        sensors_to_monitor[sensor_type] = sensor_type
+                    else:
+                        # For any other sensors, use their actual type as the key
+                        sensors_to_monitor[sensor_type] = sensor_type
+                
+                existing['thermal']['sensors_to_monitor'] = sensors_to_monitor
+                existing['thermal']['sampling_rate_hz'] = 1
+                existing['config_version'] = 2
+                
+                if args.verbose:
+                    discovered_count = sum(len(v) for v in thermal_zones.values())
+                    print(f"   ✅ Discovered {discovered_count} thermal sensors across {len(thermal_zones)} types")
+                    print(f"   ✅ Monitoring {len(sensors_to_monitor)} sensors with stable roles")
+
+
+
+                existing['thermal']['sampling_rate_hz'] = 1
+                existing['config_version'] = 2
+                
+                if args.verbose:
+                    discovered_count = sum(len(v) for v in thermal_zones.values())
+                    print(f"   ✅ Discovered {discovered_count} thermal sensors across {len(thermal_zones)} types")                
                 # Save back
                 existing['msr'] = existing_msr
                 
@@ -986,6 +1090,31 @@ NOTE:
             # Enhance new config with auto-detected MSR values
             if 'msr' in final_config:
                 final_config['msr'] = enhance_msr_config(final_config['msr'])
+            
+            # ============================================================
+            # ADD THERMAL ENHANCEMENT HERE
+            # ============================================================
+            if args.verbose:
+                print("🔍 Discovering thermal zones...")
+            
+            thermal_zones = discover_thermal_zones()
+            if 'thermal' not in final_config:
+                final_config['thermal'] = {}
+            
+            final_config['thermal']['discovered_zones'] = thermal_zones
+            final_config['thermal']['sensors_to_monitor'] = {
+                "cpu_package": "x86_pkg_temp",
+                "cpu_alt": "TCPU",
+                "wifi": "iwlwifi_1",
+                "system": "INT3400 Thermal"
+            }
+            final_config['thermal']['sampling_rate_hz'] = 1
+            final_config['config_version'] = 2
+            
+            if args.verbose:
+                discovered_count = sum(len(v) for v in thermal_zones.values())
+                print(f"   ✅ Discovered {discovered_count} thermal sensors")
+            
             if args.verbose:
                 print("📝 Creating new config file with auto-detected MSR values")
         

@@ -40,6 +40,7 @@ from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
 # Import the new raw measurement model (Layer 1)
 from core.models.raw_energy_measurement import RawEnergyMeasurement
+import requests 
 
 # ====================================================================
 # ADD THIS IMPORT
@@ -148,6 +149,7 @@ class EnergyEngine:
         self.msr = MSRReader(config)
         self.scheduler = SchedulerMonitor(config)
 
+        self.sensor.initialize() 
         # --------------------------------------------------------------------
         # Load settings from config – handle both dict and object formats
         # --------------------------------------------------------------------
@@ -191,6 +193,30 @@ class EnergyEngine:
         self._sampling_queue: queue.Queue = queue.Queue()
         self._sampling_active = False
         msr_available = (hasattr(self.msr, 'helper_available') and self.msr.helper_available) or self.msr.rdmsr_available
+        # ====================================================================
+        # Thermal sampling (1Hz)
+        # ====================================================================
+        self.thermal_queue = queue.Queue()
+        self.thermal_sampling_active = False
+        self.thermal_sampling_thread = None
+        self.thermal_config = config.get('thermal', {})
+        self.thermal_rate_hz = self.thermal_config.get('sampling_rate_hz', 1)
+
+        # Web UI settings - multiple servers support
+        webui_config = self.settings.get('webui', {})
+        self.webui_enabled = webui_config.get('enabled', False)
+        self.webui_servers = []
+        
+        if self.webui_enabled:
+            for server in webui_config.get('servers', []):
+                if server.get('active', False):
+                    self.webui_servers.append({
+                        'url': server['url'] + server.get('api_endpoint', '/api/update'),
+                        'name': server.get('name', 'unknown'),
+                        'timeout': webui_config.get('timeout_ms', 1) / 1000.0
+                    })
+        
+        self.current_run_id = None
 
         dprint("EnergyEngine initialized", readers={
             'rapl': self.rapl is not None,
@@ -200,6 +226,50 @@ class EnergyEngine:
             'msr': msr_available,
         })
 
+
+    def _start_thermal_sampling(self):
+        """Start thermal sampling thread"""
+        self.thermal_sampling_active = True
+        self.thermal_sampling_thread = threading.Thread(target=self._thermal_sampling_loop)
+        self.thermal_sampling_thread.daemon = True
+        self.thermal_sampling_thread.start()
+    
+    def _thermal_sampling_loop(self):
+        """Thermal sampling thread (1Hz default)"""
+        interval = 1.0 / self.thermal_rate_hz
+        next_sample = time.time()
+        
+        while self.thermal_sampling_active:
+            now = time.time()
+            if now >= next_sample:
+                # Read all thermal sensors
+                readings = self.sensor.read_all_thermal()
+                throttle_detected = False
+                
+                # Check for throttling conditions
+                for role, temp in readings.items():
+                    if temp and hasattr(self.sensor, 'throttle_thresholds'):
+                        threshold = self.sensor.throttle_thresholds.get(role)
+                        if threshold and temp > threshold:
+                            throttle_detected = True
+                
+                self.thermal_queue.put((now, readings, throttle_detected))
+                print(f"🔍 THERMAL DEBUG - Sample at {now}: {readings}") 
+                next_sample = now + interval  # Prevent drift
+            else:
+                time.sleep(min(0.1, next_sample - now))
+    
+    def _stop_thermal_sampling(self):
+        """Stop thermal sampling and collect remaining samples"""
+        self.thermal_sampling_active = False
+        if self.thermal_sampling_thread:
+            self.thermal_sampling_thread.join(timeout=2)
+        
+        # Collect any remaining samples
+        thermal_samples = []
+        while not self.thermal_queue.empty():
+            thermal_samples.append(self.thermal_queue.get())
+        return thermal_samples
     # ------------------------------------------------------------------------
     # Core pinning (Req 1.15)
     # ------------------------------------------------------------------------
@@ -298,6 +368,49 @@ class EnergyEngine:
                     self.scheduler.sample_interrupts()
                 sample_counter += 1             
 
+                #Sample interrupts every 10th iteration (10 Hz)
+                if self.collect_interrupt_samples and sample_counter % 10 == 0:
+                    print(f"🔍 DEBUG: ACTUALLY triggering interrupt at counter={sample_counter}")
+                    self.scheduler.sample_interrupts()
+                sample_counter += 1
+
+                # ========== ADD WEB UI CODE HERE ==========
+                # Send to all active Web UI servers (non-blocking)
+                if self.webui_enabled and self.current_run_id and self.webui_servers:
+                    for server in self.webui_servers:
+                        try:
+                            # Get latest CPU data if available
+                            cpu_data = {}
+                            if hasattr(self, 'turbostat') and self.turbostat:
+                                if hasattr(self.turbostat, 'get_latest_sample'):
+                                    cpu_data = self.turbostat.get_latest_sample() or {}
+                            
+                            # Get interrupt rate
+                            irq_rate = 0
+                            if hasattr(self, 'scheduler') and self.scheduler:
+                                irq_rate = getattr(self.scheduler, 'get_current_interrupt_rate', lambda: 0)()
+                            
+                            # Push raw sample to this server
+                            requests.post(
+                                server['url'],
+                                json={
+                                    'run_id': self.current_run_id,
+                                    'server': server['name'],
+                                    'timestamp': time.time(),
+                                    'cpu_busy_mhz': cpu_data.get('Bzy_MHz', 0),
+                                    'cpu_avg_mhz': cpu_data.get('Avg_MHz', 0),
+                                    'package_temp': cpu_data.get('PkgTmp', 0),
+                                    'pkg_power': energy.get('package-0', 0) / 1_000_000,
+                                    'interrupt_rate': irq_rate
+                                },
+                                timeout=server['timeout'],
+                                headers={'Connection': 'close'}
+                            )
+                        except Exception:
+                            pass  # Silent fail per server
+                # ========== END WEB UI CODE ==========
+
+
                 # Schedule next sample
                 next_sample += interval
                 sleep_time = max(0, next_sample - time.time())
@@ -315,6 +428,7 @@ class EnergyEngine:
 
     def _start_sampling(self) -> None:
         """Start the high‑frequency sampling thread."""
+        self._start_thermal_sampling()
         if self._sampling_thread and self._sampling_thread.is_alive():
             logger.warning("Sampling already active")
             return
@@ -370,6 +484,8 @@ class EnergyEngine:
         # ====================================================================
         rapl_start = self.rapl.read_energy()
         self.scheduler_start = self.scheduler.read_all()
+
+        self._start_thermal_sampling()
         
         # ====================================================================
         # Capture MSR thermal snapshot at START
@@ -479,7 +595,7 @@ class EnergyEngine:
         
         # Stop turbostat and get continuous data
         turbostat_data = self.turbostat.stop_monitoring()
-        
+        thermal_samples = self._stop_thermal_sampling()
         # ====================================================================
         # STEP 2: Capture snapshot readers END values
         # ====================================================================
@@ -506,6 +622,7 @@ class EnergyEngine:
         # Calculate C-state deltas (per-run, not cumulative)
         # ====================================================================
         cstate_deltas = {}
+        msr_metrics = {} 
         if hasattr(self, 'msr') and hasattr(self.msr, '_cstate_start') and self.msr._cstate_start:
             try:
                 self.msr._cstate_end = self.msr.snapshot_cstate_counters()
@@ -674,6 +791,7 @@ class EnergyEngine:
             
             # thermal (sensor)
             thermal=sensor_end.to_dict() if hasattr(sensor_end, 'to_dict') else sensor_end,
+            thermal_samples=thermal_samples,
 
             # Swap Start and end fileds
 

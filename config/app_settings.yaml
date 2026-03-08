@@ -73,3 +73,24 @@ alerts:
   temperature_threshold_celsius: 85
   power_threshold_watts: 50
   memory_threshold_mb: 3500
+webui:
+  enabled: true
+  servers:
+    - name: "live_view"
+      type: "streamlit"
+      url: "http://localhost:8501"
+      api_endpoint: "/api/update"
+      active: true
+    - name: "dashboard"
+      type: "grafana"
+      url: "http://localhost:3000"
+      api_endpoint: "/api/live"
+      active: false
+    - name: "custom"
+      type: "generic"
+      url: "http://localhost:8080"
+      api_endpoint: "/metrics"
+      active: false
+  sampling_rate_hz: 10
+  timeout_ms: 1  
+  

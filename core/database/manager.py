@@ -29,9 +29,11 @@ from .repositories import (
     RunsRepository,
     EventsRepository,
     SamplesRepository,
-    TaxRepository
+    TaxRepository,
+    ThermalRepository
 )
 from .base import DatabaseInterface
+
 
 
 class DatabaseManager:
@@ -76,6 +78,7 @@ class DatabaseManager:
         self.events = EventsRepository(self.db)
         self.samples = SamplesRepository(self.db)
         self.tax = TaxRepository(self.db)
+        self.thermal = ThermalRepository(self.db)
     
     def _connect(self) -> None:
         """Create database adapter and establish connection."""
@@ -161,7 +164,10 @@ class DatabaseManager:
     def create_tax_summaries(self, exp_id: int) -> None:
         """Create tax summaries for an experiment."""
         self.tax.create_tax_summaries(exp_id)
-    
+
+    def insert_thermal_samples(self, run_id: int, thermal_samples: List[Dict[str, Any]]) -> None:
+        """Insert thermal samples for a run."""
+        self.thermal.insert_thermal_samples(run_id, thermal_samples)    
     # ========================================================================
     # Query Methods (Delegated to Adapter)
     # ========================================================================
@@ -181,7 +187,9 @@ class DatabaseManager:
     def get_ml_data(self, workflow: Optional[str] = None) -> List[Dict[str, Any]]:
         """Retrieve flattened ML data."""
         return self.db.get_ml_data(workflow)
-    
+    def update_run_stats(self, run_id: int, stats: Dict) -> None:
+        """Update run with aggregated statistics from samples."""
+        self.runs.update_run_stats(run_id, stats)    
     # ========================================================================
     # Context Manager Support
     # ========================================================================
