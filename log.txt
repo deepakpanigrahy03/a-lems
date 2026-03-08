@@ -1,0 +1,844 @@
+
+======================================================================
+🔬 TESTING EXPERIMENT HARNESS
+======================================================================
+
+🌍 No country specified, using default: US
+
+📁 Loading configuration...
+📁 Config directory: /home/dpani/mydrive/a-lems/config
+📁 Loading /home/dpani/mydrive/a-lems/config/models.json
+✅ Successfully loaded models.json
+✅ Loaded models config: ['cloud', 'local']
+📁 Loading /home/dpani/mydrive/a-lems/config/hw_config.json
+✅ Successfully loaded hw_config.json
+✅ Loaded hardware config: ['metadata', 'rapl', 'thermal', 'msr', 'cpufreq', 'cpu', 'ring_bus', 'turbostat']
+📁 Loading /home/dpani/mydrive/a-lems/config/grid_intensity_2026.json
+✅ Successfully loaded grid_intensity_2026.json
+✅ Loaded grid intensity data for 31 countries
+🔍 RAW grid data keys: ['metadata', 'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'CH', 'PL', 'CZ', 'RU', 'CN', 'IN', 'JP', 'KR', 'AU', 'NZ', 'ZA', 'BR', 'AR', 'MX', 'SA', 'AE', 'EG', 'NG', 'ID', 'TH', 'VN']
+✅ India data found in config loader!
+   Carbon: 0.708
+
+📋 Using predefined task: Research Summary (level 3)
+   Prompt: Search for recent papers on AI energy consumption ...
+
+📋 Configuration:
+   Provider:     local
+   Country:      US
+   Task:         Research Summary
+   Repetitions:  3
+   Cool-down:    30s
+   Warmup:       Yes
+
+🤖 Getting local model configs...
+   Linear model:  TinyLlama 1B Offline
+   Agentic model: TinyLlama 1B Offline (Agentic)
+
+⚙️ Creating executors...
+   Optimizer:    Yes
+🔧 Creating harness...
+🔍 engine_config keys: ['metadata', 'rapl', 'thermal', 'msr', 'cpufreq', 'cpu', 'ring_bus', 'turbostat', 'settings']
+🔍 'rapl' in engine_config: True
+🔍 rapl paths: {'core': '/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/intel-rapl:0:0/energy_uj', 'package-0': '/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/energy_uj', 'uncore': '/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/intel-rapl:0:1/energy_uj'}
+
+🔍 GRID MANAGER received data from config loader
+   Type: <class 'dict'>
+   Keys: ['metadata', 'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'CH', 'PL', 'CZ', 'RU', 'CN', 'IN', 'JP', 'KR', 'AU', 'NZ', 'ZA', 'BR', 'AR', 'MX', 'SA', 'AE', 'EG', 'NG', 'ID', 'TH', 'VN']
+   ✅ India data in grid_data!
+      Carbon: 0.708
+📁 Config directory: /home/dpani/mydrive/a-lems/config
+📁 Loading /home/dpani/mydrive/a-lems/config/models.json
+✅ Successfully loaded models.json
+✅ Loaded models config: ['cloud', 'local']
+📁 Loading /home/dpani/mydrive/a-lems/config/hw_config.json
+✅ Successfully loaded hw_config.json
+✅ Loaded hardware config: ['metadata', 'rapl', 'thermal', 'msr', 'cpufreq', 'cpu', 'ring_bus', 'turbostat']
+📁 Loading /home/dpani/mydrive/a-lems/config/grid_intensity_2026.json
+✅ Successfully loaded grid_intensity_2026.json
+✅ Loaded grid intensity data for 31 countries
+🔍 RAW grid data keys: ['metadata', 'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'CH', 'PL', 'CZ', 'RU', 'CN', 'IN', 'JP', 'KR', 'AU', 'NZ', 'ZA', 'BR', 'AR', 'MX', 'SA', 'AE', 'EG', 'NG', 'ID', 'TH', 'VN']
+✅ India data found in config loader!
+   Carbon: 0.708
+
+📏 Using existing baseline: baseline_1772805020_23635
+
+🚀 Running test with 3 repetitions...
+
+──────────────────────────────────────────────────
+📋 Repetition 1/3
+──────────────────────────────────────────────────
+   Raw value: 2284650496 (hex: 0x882d0000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - START:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 DEBUG: counter=0, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=0
+🔍 DEBUG: counter=10, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=10
+🔍 DEBUG: counter=20, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=20
+🔍 DEBUG: counter=30, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=30
+🔍 DEBUG: counter=40, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=40
+🔍 DEBUG: counter=50, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=50
+🔍 DEBUG: counter=60, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=60
+🔍 DEBUG: counter=70, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=70
+🔍 DEBUG: counter=80, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=80
+🔍 DEBUG: counter=90, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=90
+🔍 DEBUG: counter=100, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=100
+🔍 DEBUG: counter=110, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=110
+🔍 DEBUG: counter=120, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=120
+🔍 DEBUG: counter=130, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=130
+🔍 DEBUG: counter=140, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=140
+🔍 DEBUG: counter=150, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=150
+🔍 DEBUG: counter=160, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=160
+🔍 DEBUG: counter=170, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=170
+🔍 DEBUG: counter=180, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=180
+🔍 DEBUG: counter=190, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=190
+🔍 DEBUG: counter=200, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=200
+🔍 DEBUG: counter=210, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=210
+🔍 DEBUG: counter=220, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=220
+🔍 DEBUG: counter=230, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=230
+🔍 DEBUG: counter=240, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=240
+🔍 DEBUG: counter=250, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=250
+🔍 DEBUG: counter=260, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=260
+🔍 DEBUG: counter=270, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=270
+🔍 DEBUG: counter=280, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=280
+🔍 DEBUG: counter=290, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=290
+🔍 DEBUG: counter=300, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=300
+🔍 DEBUG - Number of samples: 302
+🔍 DEBUG - First sample type: <class 'tuple'>
+🔍 DEBUG - First sample length: 2
+🔍 DEBUG - First sample content: (1772840518.1385992, {'core': 129313692820, 'package-0': 192954645439, 'uncore': 2876628683})
+🔍 DEBUG - Second sample content: (1772840518.1486797, {'core': 129313768504, 'package-0': 192954741630, 'uncore': 2876630636})
+📋 Expecting 21 columns: ['C1ACPI%', 'C2ACPI%', 'C3ACPI%', 'CPU%c6', 'CPU%c7']...
+✅ Found 30 package summary rows (skipped 1 lines)
+✅ Parsed 30 turbostat rows with 21 columns
+   Raw value: 2284257280 (hex: 0x88270000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - END:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 DEBUG scheduler_delta keys: ['voluntary_switches', 'involuntary_switches', 'user_time', 'system_time', 'load1', 'load5', 'load15', 'runnable', 'total_tasks', 'last_pid', 'swap']
+🔍 DEBUG run queue value: 0
+🔵 MSR_READER - _cstate_start exists: True
+🔵 MSR_READER - _cstate_start: {'timestamp': 1772840518.1378658, 'counters': {'c2': 20650470638755, 'c3': 0, 'c6': 0, 'c7': None}}
+🔵 MSR_READER - current_cstates: {'timestamp': 1772840524.3087492, 'counters': {'c2': 20651110558434, 'c3': 0, 'c6': 0, 'c7': None}}
+🔵 MSR_READER_ID: 136717739162368
+🔵 MSR_READER_VALUE: c2=0.000s
+🔵 MSR_READER_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds']
+   Raw value: 2284191744 (hex: 0x88260000)
+   Decoded: now=0, log=0
+   Raw value: 2284257280 (hex: 0x88270000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL DERIVED:
+   during_experiment: 0
+   now_active: 0
+   since_boot: 0
+🟡 RAW_ID: 136717739162368
+🟡 RAW_VALUE: c2=0.229s
+🟡 RAW_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds']
+
+======================================================================
+📊 ENERGY ENGINE COMPLETE SUMMARY
+======================================================================
+
+⏱️  Duration: 6.190s
+   Start: 1772840518.127, End: 1772840524.318
+
+⚡ RAPL Energy (µJ):
+   package-0:    101316330 µJ (101.316330 J)
+   core:     88068378 µJ (88.068378 J)
+   uncore:       666625 µJ (0.666625 J)
+
+📈 Performance Counters:
+   Instructions: 1,188,402,824
+   Cycles:       1,512,403,178
+   IPC:          0.79
+   Cache Refs:   53,298,931
+   Cache Misses: 14,362,482
+   Miss Rate:    26.95%
+   Page Faults:  5341 (major=0, minor=5341)
+   Ctx Switches: vol=17136, invol=0
+   Migrations:   642
+
+🌡️ Turbostat Summary (over 6.11s, 30 samples):
+   C‑state residencies (%):
+      C1ACPI%_mean: 1063.57
+      C2ACPI%_mean: 27.25
+      C3ACPI%_mean: 2756.30
+      CPU%c6_mean: 2806.43
+      CPU%c7_mean: 0.88
+      CorWatt_mean: 0.00
+   Frequency (MHz): mean=65, min=56, max=79, std=8.62
+
+   First 3 turbostat samples:
+      Sample 1: {'C1ACPI%': 539.0, 'C2ACPI%': 15.12, 'C3ACPI%': 3569.0, 'CPU%c6': 2799.0, 'CPU%c7': 1.85, 'Pkg%pc8': 896.0, 'Pkg%pc9': 26.06, 'Pk%pc10': 15.87, 'GFX%rc6': 43.0, 'GFXMHz': 0.0, 'PkgTmp': 31.59, 'Bzy_MHz': 69.0, 'TSC_MHz': 82.09, 'Avg_MHz': 383.0, 'PkgWatt': 0.0, 'CorWatt': 0.0, 'GFXWatt': 0.0, 'RAMWatt': 13.82, 'IPC': 11.52, 'IRQ': 0.41, 'Busy%': 0.0}
+      Sample 2: {'C1ACPI%': 1026.0, 'C2ACPI%': 25.74, 'C3ACPI%': 3933.0, 'CPU%c6': 2842.0, 'CPU%c7': 1.26, 'Pkg%pc8': 5334.0, 'Pkg%pc9': 40.67, 'Pk%pc10': 13.14, 'GFX%rc6': 21.66, 'GFXMHz': 0.0, 'PkgTmp': 5.77, 'Bzy_MHz': 69.0, 'TSC_MHz': 71.3, 'Avg_MHz': 400.0, 'PkgWatt': 0.0, 'CorWatt': 0.0, 'GFXWatt': 0.0, 'RAMWatt': 18.74, 'IPC': 15.89, 'IRQ': 0.72, 'Busy%': 0.0}
+      Sample 3: {'C1ACPI%': 2913.0, 'C2ACPI%': 70.92, 'C3ACPI%': 4047.0, 'CPU%c6': 2845.0, 'CPU%c7': 1.11, 'Pkg%pc8': 1068.0, 'Pkg%pc9': 9.27, 'Pk%pc10': 8.49, 'GFX%rc6': 11.62, 'GFXMHz': 0.0, 'PkgTmp': 4.75, 'Bzy_MHz': 71.0, 'TSC_MHz': 100.93, 'Avg_MHz': 400.0, 'PkgWatt': 0.0, 'CorWatt': 0.0, 'GFXWatt': 0.0, 'RAMWatt': 36.34, 'IPC': 34.0, 'IRQ': 0.0, 'Busy%': 0.0}
+
+🔧 MSR Metrics:
+
+🔄 Scheduler Metrics:
+   Voluntary Ctx Sw:   195
+   Involuntary Ctx Sw: 117
+   Thread Migrations:  0
+   Run Queue Length:    0.00
+   Kernel Time:         94.00 ms
+   User Time:           1232.00 ms
+
+📊 High‑Frequency Samples: 302 collected
+   First sample: (1772840518.1385992, {'core': 129313692820, 'package-0': 192954645439, 'uncore': 2876628683})
+
+======================================================================
+🔍 First 3 CPU samples:
+   Sample 0: {'timestamp_ns': 1772840518127346688, 'cpu_util_percent': 0.0, 'cpu_busy_mhz': 69.0, 'cpu_avg_mhz': 383.0, 'c1_residency': 5.39, 'c2_residency': 0.1512, 'c3_residency': 35.69, 'c6_residency': 27.99, 'c7_residency': 0.018500000000000003, 'pkg_c8_residency': 8.96, 'pkg_c9_residency': 0.2606, 'pkg_c10_residency': 0.15869999999999998, 'package_power': 0.0, 'dram_power': 13.82, 'gpu_rc6': 0.43, 'package_temp': 31.59, 'ipc': 1.152, 'extra_metrics_json': '{"GFXMHz": 0.0, "TSC_MHz": 82.09, "CorWatt": 0.0, "GFXWatt": 0.0, "IRQ": 0.41}'}
+   Sample 1: {'timestamp_ns': 1772840518227346688, 'cpu_util_percent': 0.0, 'cpu_busy_mhz': 69.0, 'cpu_avg_mhz': 400.0, 'c1_residency': 10.26, 'c2_residency': 0.25739999999999996, 'c3_residency': 39.33, 'c6_residency': 28.42, 'c7_residency': 0.0126, 'pkg_c8_residency': 53.34, 'pkg_c9_residency': 0.4067, 'pkg_c10_residency': 0.13140000000000002, 'package_power': 0.0, 'dram_power': 18.74, 'gpu_rc6': 0.21660000000000001, 'package_temp': 5.77, 'ipc': 1.589, 'extra_metrics_json': '{"GFXMHz": 0.0, "TSC_MHz": 71.3, "CorWatt": 0.0, "GFXWatt": 0.0, "IRQ": 0.72}'}
+   Sample 2: {'timestamp_ns': 1772840518327346688, 'cpu_util_percent': 0.0, 'cpu_busy_mhz': 71.0, 'cpu_avg_mhz': 400.0, 'c1_residency': 29.13, 'c2_residency': 0.7092, 'c3_residency': 40.47, 'c6_residency': 28.45, 'c7_residency': 0.0111, 'pkg_c8_residency': 10.68, 'pkg_c9_residency': 0.09269999999999999, 'pkg_c10_residency': 0.0849, 'package_power': 0.0, 'dram_power': 36.34, 'gpu_rc6': 0.1162, 'package_temp': 4.75, 'ipc': 3.4, 'extra_metrics_json': '{"GFXMHz": 0.0, "TSC_MHz": 100.93, "CorWatt": 0.0, "GFXWatt": 0.0, "IRQ": 0.0}'}
+🔍 DEBUG - Using MIN baseline: idle_uj=13.190J, idle_core=3.064J, idle_uncore=10.126J
+🔴 ANALYZER_VALUE: c2=0.229s, c3=0.000s
+🔴 ANALYZER_KEYS: c2=0.2285427425, c3=0.0
+   Raw value: 2284519424 (hex: 0x882b0000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - START:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🚀 Running original agentic code with optimizer...
+
+⚡ OPTIMIZER: Phase unknown → planning
+🔍 DEBUG: counter=0, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=0
+🔍 DEBUG: counter=10, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=10
+🔍 DEBUG: counter=20, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=20
+🔍 DEBUG: counter=30, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=30
+🔍 DEBUG: counter=40, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=40
+🔍 DEBUG: counter=50, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=50
+🔍 DEBUG: counter=60, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=60
+🔍 DEBUG: counter=70, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=70
+🔍 DEBUG: counter=80, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=80
+🔍 DEBUG: counter=90, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=90
+🔍 DEBUG: counter=100, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=100
+🔍 DEBUG: counter=110, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=110
+🔍 DEBUG: counter=120, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=120
+🔍 DEBUG: counter=130, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=130
+🔍 DEBUG: counter=140, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=140
+🔍 DEBUG: counter=150, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=150
+🔍 DEBUG: counter=160, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=160
+🔍 DEBUG: counter=170, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=170
+🔍 DEBUG: counter=180, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=180
+🔍 DEBUG: counter=190, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=190
+🔍 DEBUG: counter=200, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=200
+🔍 DEBUG: counter=210, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=210
+🔍 DEBUG: counter=220, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=220
+🔍 DEBUG: counter=230, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=230
+🔍 DEBUG: counter=240, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=240
+🔍 DEBUG: counter=250, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=250
+🔍 DEBUG: counter=260, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=260
+🔍 DEBUG: counter=270, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=270
+🔍 DEBUG: counter=280, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=280
+🔍 DEBUG: counter=290, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=290
+🔍 DEBUG: counter=300, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=300
+🔍 DEBUG: counter=310, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=310
+🔍 DEBUG: counter=320, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=320
+🔍 DEBUG: counter=330, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=330
+🔍 DEBUG: counter=340, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=340
+🔍 DEBUG: counter=350, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=350
+🔍 DEBUG: counter=360, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=360
+🔍 DEBUG: counter=370, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=370
+🔍 DEBUG: counter=380, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=380
+🔍 DEBUG: counter=390, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=390
+🔍 DEBUG: counter=400, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=400
+🔍 DEBUG: counter=410, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=410
+🔍 DEBUG: counter=420, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=420
+🔍 DEBUG: counter=430, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=430
+🔍 DEBUG: counter=440, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=440
+🔍 DEBUG: counter=450, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=450
+🔍 DEBUG: counter=460, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=460
+🔍 DEBUG: counter=470, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=470
+🔍 DEBUG: counter=480, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=480
+🔍 DEBUG: counter=490, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=490
+🔍 DEBUG: counter=500, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=500
+🔍 DEBUG: counter=510, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=510
+🔍 DEBUG: counter=520, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=520
+🔍 DEBUG: counter=530, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=530
+🔍 DEBUG: counter=540, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=540
+🔍 DEBUG: counter=550, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=550
+🔍 DEBUG: counter=560, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=560
+🔍 DEBUG: counter=570, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=570
+🔍 DEBUG: counter=580, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=580
+🔍 DEBUG: counter=590, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=590
+🔍 DEBUG: counter=600, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=600
+🔍 DEBUG: counter=610, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=610
+🔍 DEBUG: counter=620, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=620
+🔍 DEBUG: counter=630, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=630
+🔍 DEBUG: counter=640, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=640
+🔍 DEBUG: counter=650, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=650
+🔍 DEBUG: counter=660, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=660
+🔍 DEBUG: counter=670, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=670
+🔍 DEBUG: counter=680, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=680
+🔍 DEBUG: counter=690, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=690
+🔍 DEBUG: counter=700, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=700
+🔍 DEBUG: counter=710, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=710
+🔍 DEBUG: counter=720, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=720
+🔍 DEBUG: counter=730, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=730
+🔍 DEBUG: counter=740, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=740
+🔍 DEBUG: counter=750, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=750
+🔍 DEBUG: counter=760, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=760
+🔍 DEBUG: counter=770, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=770
+🔍 DEBUG: counter=780, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=780
+🔍 DEBUG: counter=790, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=790
+🔍 DEBUG: counter=800, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=800
+🔍 DEBUG: counter=810, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=810
+🔍 DEBUG: counter=820, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=820
+🔍 DEBUG: counter=830, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=830
+🔍 DEBUG: counter=840, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=840
+🔍 DEBUG: counter=850, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=850
+🔍 DEBUG: counter=860, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=860
+🔍 DEBUG: counter=870, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=870
+🔍 DEBUG: counter=880, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=880
+🔍 DEBUG: counter=890, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=890
+🔍 DEBUG: counter=900, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=900
+🔍 DEBUG: counter=910, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=910
+🔍 DEBUG: counter=920, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=920
+🔍 DEBUG: counter=930, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=930
+🔍 DEBUG: counter=940, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=940
+🔍 DEBUG: counter=950, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=950
+🔍 DEBUG: counter=960, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=960
+🔍 DEBUG: counter=970, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=970
+🔍 DEBUG: counter=980, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=980
+🔍 DEBUG: counter=990, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=990
+🔍 DEBUG: counter=1000, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1000
+🔍 DEBUG: counter=1010, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1010
+🔍 DEBUG: counter=1020, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1020
+🔍 DEBUG: counter=1030, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1030
+🔍 DEBUG: counter=1040, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1040
+🔍 DEBUG: counter=1050, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1050
+🔍 DEBUG: counter=1060, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1060
+🔍 DEBUG: counter=1070, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1070
+🔍 DEBUG: counter=1080, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1080
+🔍 DEBUG: counter=1090, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1090
+🔍 DEBUG: counter=1100, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1100
+🔍 DEBUG: counter=1110, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1110
+🔍 DEBUG: counter=1120, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1120
+🔍 DEBUG: counter=1130, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1130
+🔍 DEBUG: counter=1140, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1140
+🔍 DEBUG: counter=1150, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1150
+🔍 DEBUG: counter=1160, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1160
+🔔 EVENT CREATED: planning.llm_call
+🔔 EVENT CREATED: planning.planning
+🔍 DEBUG: counter=1170, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1170
+🔍 DEBUG: counter=1180, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1180
+🔍 DEBUG: counter=1190, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1190
+🔍 DEBUG: counter=1200, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1200
+🔍 DEBUG: counter=1210, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1210
+🔍 DEBUG: counter=1220, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1220
+🔍 DEBUG: counter=1230, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1230
+🔍 DEBUG: counter=1240, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1240
+🔍 DEBUG: counter=1250, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1250
+🔍 DEBUG: counter=1260, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1260
+🔍 DEBUG: counter=1270, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1270
+🔍 DEBUG: counter=1280, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1280
+🔍 DEBUG: counter=1290, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1290
+🔍 DEBUG: counter=1300, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1300
+🔍 DEBUG: counter=1310, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1310
+🔍 DEBUG: counter=1320, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1320
+🔍 DEBUG: counter=1330, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1330
+🔍 DEBUG: counter=1340, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1340
+🔍 DEBUG: counter=1350, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1350
+🔍 DEBUG: counter=1360, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1360
+🔍 DEBUG: counter=1370, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1370
+🔍 DEBUG: counter=1380, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1380
+🔍 DEBUG: counter=1390, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1390
+🔍 DEBUG: counter=1400, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1400
+🔍 DEBUG: counter=1410, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1410
+🔍 DEBUG: counter=1420, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1420
+🔍 DEBUG: counter=1430, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1430
+🔍 DEBUG: counter=1440, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1440
+🔍 DEBUG: counter=1450, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1450
+🔍 DEBUG: counter=1460, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1460
+🔍 DEBUG: counter=1470, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1470
+🔍 DEBUG: counter=1480, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1480
+🔍 DEBUG: counter=1490, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1490
+🔍 DEBUG: counter=1500, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1500
+🔍 DEBUG: counter=1510, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1510
+🔍 DEBUG: counter=1520, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1520
+🔍 DEBUG: counter=1530, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1530
+🔍 DEBUG: counter=1540, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1540
+🔍 DEBUG: counter=1550, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1550
+🔍 DEBUG: counter=1560, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1560
+🔍 DEBUG: counter=1570, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1570
+🔍 DEBUG: counter=1580, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1580
+🔍 DEBUG: counter=1590, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1590
+🔍 DEBUG: counter=1600, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1600
+🔍 DEBUG: counter=1610, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1610
+🔍 DEBUG: counter=1620, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1620
+🔍 DEBUG: counter=1630, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1630
+🔍 DEBUG: counter=1640, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1640
+🔍 DEBUG: counter=1650, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1650
+🔍 DEBUG: counter=1660, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1660
+🔍 DEBUG: counter=1670, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1670
+🔍 DEBUG: counter=1680, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1680
+🔍 DEBUG: counter=1690, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1690
+🔍 DEBUG: counter=1700, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1700
+🔍 DEBUG: counter=1710, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1710
+🔍 DEBUG: counter=1720, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1720
+🔍 DEBUG: counter=1730, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1730
+🔍 DEBUG: counter=1740, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1740
+🔍 DEBUG: counter=1750, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1750
+🔍 DEBUG: counter=1760, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1760
+🔍 DEBUG: counter=1770, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1770
+🔍 DEBUG: counter=1780, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1780
+🔍 DEBUG: counter=1790, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1790
+🔍 DEBUG: counter=1800, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1800
+🔍 DEBUG: counter=1810, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1810
+🔍 DEBUG: counter=1820, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1820
+🔍 DEBUG: counter=1830, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1830
+🔍 DEBUG: counter=1840, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1840
+🔍 DEBUG: counter=1850, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1850
+🔍 DEBUG: counter=1860, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1860
+🔍 DEBUG: counter=1870, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1870
+🔍 DEBUG: counter=1880, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1880
+🔍 DEBUG: counter=1890, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1890
+🔍 DEBUG: counter=1900, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1900
+🔍 DEBUG: counter=1910, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1910
+🔍 DEBUG: counter=1920, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1920
+🔍 DEBUG: counter=1930, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1930
+🔍 DEBUG: counter=1940, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1940
+🔍 DEBUG: counter=1950, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1950
+🔍 DEBUG: counter=1960, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1960
+🔍 DEBUG: counter=1970, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1970
+🔍 DEBUG: counter=1980, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1980
+🔍 DEBUG: counter=1990, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=1990
+🔍 DEBUG: counter=2000, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2000
+🔍 DEBUG: counter=2010, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2010
+🔍 DEBUG: counter=2020, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2020
+🔍 DEBUG: counter=2030, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2030
+🔍 DEBUG: counter=2040, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2040
+🔍 DEBUG: counter=2050, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2050
+🔍 DEBUG: counter=2060, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2060
+🔍 DEBUG: counter=2070, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2070
+🔍 DEBUG: counter=2080, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2080
+🔍 DEBUG: counter=2090, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2090
+🔍 DEBUG: counter=2100, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2100
+🔍 DEBUG: counter=2110, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2110
+🔍 DEBUG: counter=2120, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2120
+🔍 DEBUG: counter=2130, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2130
+🔍 DEBUG: counter=2140, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2140
+🔍 DEBUG: counter=2150, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2150
+🔍 DEBUG: counter=2160, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2160
+🔍 DEBUG: counter=2170, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2170
+🔍 DEBUG: counter=2180, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2180
+🔍 DEBUG: counter=2190, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2190
+🔍 DEBUG: counter=2200, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2200
+🔍 DEBUG: counter=2210, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2210
+🔍 DEBUG: counter=2220, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2220
+🔍 DEBUG: counter=2230, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2230
+🔍 DEBUG: counter=2240, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2240
+🔍 DEBUG: counter=2250, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2250
+🔍 DEBUG: counter=2260, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2260
+🔍 DEBUG: counter=2270, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2270
+🔍 DEBUG: counter=2280, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2280
+🔍 DEBUG: counter=2290, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2290
+🔍 DEBUG: counter=2300, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2300
+🔍 DEBUG: counter=2310, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2310
+🔍 DEBUG: counter=2320, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2320
+🔍 DEBUG: counter=2330, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2330
+🔍 DEBUG: counter=2340, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2340
+🔍 DEBUG: counter=2350, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2350
+🔍 DEBUG: counter=2360, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2360
+🔍 DEBUG: counter=2370, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2370
+🔔 EVENT CREATED: execution.llm_call
+🔍 DEBUG - added prompt: 67, now tokens[prompt] = 67
+🔍 DEBUG - added completion: 333, now tokens[completion] = 333
+🔍 DEBUG - added total: 400, now tokens[total] = 400
+🔍 DEBUG - accumulated tokens: {'prompt': 67, 'completion': 333, 'total': 400}
+🔍 DEBUG - tokens keys: dict_keys(['prompt', 'completion', 'total'])
+🔍 DEBUG: counter=2380, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2380
+🔍 DEBUG: counter=2390, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2390
+🔍 DEBUG: counter=2400, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=2400
+🔔 EVENT CREATED: synthesis.synthesis
+🔍 DEBUG - Number of samples: 2408
+🔍 DEBUG - First sample type: <class 'tuple'>
+🔍 DEBUG - First sample length: 2
+🔍 DEBUG - First sample content: (1772840524.434011, {'core': 129402817653, 'package-0': 193057427402, 'uncore': 2877394306})
+🔍 DEBUG - Second sample content: (1772840524.444071, {'core': 129402957729, 'package-0': 193057590549, 'uncore': 2877405292})
+📋 Expecting 21 columns: ['C1ACPI%', 'C2ACPI%', 'C3ACPI%', 'CPU%c6', 'CPU%c7']...
+✅ Found 235 package summary rows (skipped 1 lines)
+✅ Parsed 235 turbostat rows with 21 columns
+   Raw value: 2283929600 (hex: 0x88220000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - END:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 DEBUG scheduler_delta keys: ['voluntary_switches', 'involuntary_switches', 'user_time', 'system_time', 'load1', 'load5', 'load15', 'runnable', 'total_tasks', 'last_pid', 'swap']
+🔍 DEBUG run queue value: -1
+🔵 MSR_READER - _cstate_start exists: True
+🔵 MSR_READER - _cstate_start: {'timestamp': 1772840524.4321601, 'counters': {'c2': 20651111090604, 'c3': 0, 'c6': 0, 'c7': None}}
+🔵 MSR_READER - current_cstates: {'timestamp': 1772840572.8053825, 'counters': {'c2': 20656371640548, 'c3': 0, 'c6': 0, 'c7': None}}
+🔵 MSR_READER_ID: 136717736382528
+🔵 MSR_READER_VALUE: c2=0.000s
+🔵 MSR_READER_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds']
+   Raw value: 2283536384 (hex: 0x881c0000)
+   Decoded: now=0, log=0
+   Raw value: 2283732992 (hex: 0x881f0000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL DERIVED:
+   during_experiment: 0
+   now_active: 0
+   since_boot: 0
+🟡 RAW_ID: 136717736382528
+🟡 RAW_VALUE: c2=1.879s
+🟡 RAW_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds']
+
+======================================================================
+📊 ENERGY ENGINE COMPLETE SUMMARY
+======================================================================
+
+⏱️  Duration: 48.389s
+   Start: 1772840524.425, End: 1772840572.814
+
+⚡ RAPL Energy (µJ):
+   package-0:    874451070 µJ (874.451070 J)
+   core:    765537835 µJ (765.537835 J)
+   uncore:      2391595 µJ (2.391595 J)
+
+📈 Performance Counters:
+   Instructions: 32,975,121,845
+   Cycles:       30,416,831,324
+   IPC:          1.08
+   Cache Refs:   711,207,313
+   Cache Misses: 308,384,035
+   Miss Rate:    43.36%
+   Page Faults:  62519 (major=0, minor=62519)
+   Ctx Switches: vol=143757, invol=0
+   Migrations:   6,046
+
+🌡️ Turbostat Summary (over 48.27s, 235 samples):
+   C‑state residencies (%):
+      C1ACPI%_mean: 1312.85
+      C2ACPI%_mean: 34.13
+      C3ACPI%_mean: 2992.53
+      CPU%c6_mean: 2806.79
+      CPU%c7_mean: 0.87
+      CorWatt_mean: 0.00
+   Frequency (MHz): mean=74, min=59, max=89, std=10.51
+
+   First 3 turbostat samples:
+      Sample 1: {'C1ACPI%': 905.0, 'C2ACPI%': 25.22, 'C3ACPI%': 3588.0, 'CPU%c6': 2803.0, 'CPU%c7': 1.46, 'Pkg%pc8': 1790.0, 'Pkg%pc9': 45.45, 'Pk%pc10': 8.97, 'GFX%rc6': 20.51, 'GFXMHz': 0.0, 'PkgTmp': 10.41, 'Bzy_MHz': 68.0, 'TSC_MHz': 77.23, 'Avg_MHz': 400.0, 'PkgWatt': 0.0, 'CorWatt': 0.0, 'GFXWatt': 0.0, 'RAMWatt': 17.14, 'IPC': 14.41, 'IRQ': 0.67, 'Busy%': 0.0}
+      Sample 2: {'C1ACPI%': 1719.0, 'C2ACPI%': 46.55, 'C3ACPI%': 3687.0, 'CPU%c6': 2807.0, 'CPU%c7': 0.97, 'Pkg%pc8': 6155.0, 'Pkg%pc9': 22.57, 'Pk%pc10': 10.2, 'GFX%rc6': 20.84, 'GFXMHz': 0.0, 'PkgTmp': 8.78, 'Bzy_MHz': 75.0, 'TSC_MHz': 81.3, 'Avg_MHz': 400.0, 'PkgWatt': 0.0, 'CorWatt': 0.0, 'GFXWatt': 0.0, 'RAMWatt': 19.72, 'IPC': 17.14, 'IRQ': 0.53, 'Busy%': 0.0}
+      Sample 3: {'C1ACPI%': 3772.0, 'C2ACPI%': 99.77, 'C3ACPI%': 3802.0, 'CPU%c6': 2788.0, 'CPU%c7': 1.25, 'Pkg%pc8': 1509.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'GFX%rc6': 0.0, 'GFXMHz': 0.0, 'PkgTmp': 0.0, 'Bzy_MHz': 86.0, 'TSC_MHz': 74.01, 'Avg_MHz': 400.0, 'PkgWatt': 0.0, 'CorWatt': 0.0, 'GFXWatt': 0.0, 'RAMWatt': 41.73, 'IPC': 38.8, 'IRQ': 0.87, 'Busy%': 0.0}
+
+🔧 MSR Metrics:
+
+🔄 Scheduler Metrics:
+   Voluntary Ctx Sw:   540
+   Involuntary Ctx Sw: 1018
+   Thread Migrations:  0
+   Run Queue Length:    -1.00
+   Kernel Time:         448.00 ms
+   User Time:           12524.00 ms
+
+📊 High‑Frequency Samples: 2408 collected
+   First sample: (1772840524.434011, {'core': 129402817653, 'package-0': 193057427402, 'uncore': 2877394306})
+
+======================================================================
+🔍 First 3 CPU samples:
+   Sample 0: {'timestamp_ns': 1772840524425289728, 'cpu_util_percent': 0.0, 'cpu_busy_mhz': 68.0, 'cpu_avg_mhz': 400.0, 'c1_residency': 9.05, 'c2_residency': 0.2522, 'c3_residency': 35.88, 'c6_residency': 28.03, 'c7_residency': 0.0146, 'pkg_c8_residency': 17.9, 'pkg_c9_residency': 0.4545, 'pkg_c10_residency': 0.0897, 'package_power': 0.0, 'dram_power': 17.14, 'gpu_rc6': 0.2051, 'package_temp': 10.41, 'ipc': 1.441, 'extra_metrics_json': '{"GFXMHz": 0.0, "TSC_MHz": 77.23, "CorWatt": 0.0, "GFXWatt": 0.0, "IRQ": 0.67}'}
+   Sample 1: {'timestamp_ns': 1772840524525289472, 'cpu_util_percent': 0.0, 'cpu_busy_mhz': 75.0, 'cpu_avg_mhz': 400.0, 'c1_residency': 17.19, 'c2_residency': 0.46549999999999997, 'c3_residency': 36.87, 'c6_residency': 28.07, 'c7_residency': 0.0097, 'pkg_c8_residency': 61.55, 'pkg_c9_residency': 0.2257, 'pkg_c10_residency': 0.102, 'package_power': 0.0, 'dram_power': 19.72, 'gpu_rc6': 0.2084, 'package_temp': 8.78, 'ipc': 1.714, 'extra_metrics_json': '{"GFXMHz": 0.0, "TSC_MHz": 81.3, "CorWatt": 0.0, "GFXWatt": 0.0, "IRQ": 0.53}'}
+   Sample 2: {'timestamp_ns': 1772840524625289728, 'cpu_util_percent': 0.0, 'cpu_busy_mhz': 86.0, 'cpu_avg_mhz': 400.0, 'c1_residency': 37.72, 'c2_residency': 0.9976999999999999, 'c3_residency': 38.02, 'c6_residency': 27.88, 'c7_residency': 0.0125, 'pkg_c8_residency': 15.09, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 0.0, 'dram_power': 41.73, 'gpu_rc6': 0.0, 'package_temp': 0.0, 'ipc': 3.88, 'extra_metrics_json': '{"GFXMHz": 0.0, "TSC_MHz": 74.01, "CorWatt": 0.0, "GFXWatt": 0.0, "IRQ": 0.87}'}
+🔍 DEBUG - Using MIN baseline: idle_uj=103.102J, idle_core=23.950J, idle_uncore=79.152J
+🔴 ANALYZER_VALUE: c2=1.879s, c3=0.000s
+🔴 ANALYZER_KEYS: c2=1.8787678371428571, c3=0.0
+🔍 DEBUG - Captured 4 orchestration events from executor
+🔍 DEBUG HARNESS - orchestration_events in result: True
+🔍 DEBUG HARNESS - Number of events: 4
+🔍 DEBUG HARNESS - First event keys: dict_keys(['phase', 'event_type', 'start_time_ns', 'end_time_ns', 'duration_ns', 'metadata'])
+
+   📊 Pair 1:
+      Linear:  88.1267 J
+      Agentic: 771.3493 J
+      Tax: 8.75x
+🔍 RUNS DEBUG - pkg_raw_uj: 101316330, baseline_energy_uj: 13189645
+🔍 RUNS DEBUG - dynamic will be: 88126685
+🔍 RUNS DEBUG - pkg_raw_uj: 874451070, baseline_energy_uj: 103101747
+🔍 RUNS DEBUG - dynamic will be: 771349323
+🔍 DEBUG - linear_orchestration_uj from ml_features: 3122216
+🔍 DEBUG - agentic_orchestration_uj from ml_features: 29761665
+🔍 DEBUG - linear energy_uj keys: dict_keys(['package', 'core', 'dram', 'uncore', 'idle', 'workload', 'reasoning', 'orchestration_tax'])
+🔍 DEBUG - agentic energy_uj keys: dict_keys(['package', 'core', 'dram', 'uncore', 'idle', 'workload', 'reasoning', 'orchestration_tax'])
+🔍 DEBUG - linear energy_uj content: {'package': 101316330, 'core': 88068378, 'dram': None, 'uncore': 13247952, 'idle': 13189645, 'workload': 88126685, 'reasoning': 85004470, 'orchestration_tax': 3122216}

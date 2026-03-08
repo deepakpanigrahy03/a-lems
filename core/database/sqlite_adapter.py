@@ -266,8 +266,8 @@ class SQLiteAdapter(DatabaseInterface):
         cursor = self.conn.execute("""
             INSERT INTO experiments (
                 name, description, workflow_type, model_name, provider,
-                task_name, country_code, group_id, status, started_at, runs_total
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                task_name, country_code, group_id, status, started_at, runs_total,optimization_enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             experiment_data.get('name', 'unnamed'),
             experiment_data.get('description', ''),
@@ -279,7 +279,8 @@ class SQLiteAdapter(DatabaseInterface):
             experiment_data.get('group_id'),
             experiment_data.get('status', 'pending'),
             experiment_data.get('started_at'),
-            experiment_data.get('runs_total')
+            experiment_data.get('runs_total'),
+            experiment_data.get('optimization_enabled', 0) 
         ))
         return cursor.lastrowid
     

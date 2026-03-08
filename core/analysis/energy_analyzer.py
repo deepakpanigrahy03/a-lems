@@ -73,37 +73,40 @@ class EnergyAnalyzer:
         dram_uj = raw.dram_energy_uj or 0           # Memory energy (if available)
         
         # Uncore = package - core - dram (cache, memory controller, interconnect)
-        uncore_uj = max(0, package_uj - core_uj - dram_uj)
+        if hasattr(raw, 'uncore_uj') and raw.uncore_uj is not None:
+            uncore_uj = raw.uncore_uj
+        else:
+            uncore_uj = max(0, package_uj - core_uj - dram_uj)
         
         # ====================================================================
         # Step 2: Subtract idle energy if baseline is available
         # ====================================================================
         idle_uj = 0
         idle_core_uj = 0
+        idle_uncore_uj = 0
         baseline_id = None
         
         if baseline:
-            # How much energy the system would use if completely idle
-            print(f"🔍 DEBUG - raw.duration_seconds: {raw.duration_seconds}")
-            idle_uj = baseline.estimate_energy_uj(raw.duration_seconds).get('package-0', 0)
-            
-            # How much energy just the cores would use idle
-            core_power = baseline.power_watts.get('core', 0)
-            idle_core_uj = int(core_power * raw.duration_seconds * 1_000_000)
-            
+            # Use minimum baseline (2nd percentile) instead of mean
+            min_energy = baseline.min_energy_uj(raw.duration_seconds)
+            idle_uj = min_energy['package-0']
+            idle_core_uj = min_energy['core']
+            idle_uncore_uj = min_energy['uncore']
             baseline_id = baseline.baseline_id
+            
+            print(f"🔍 DEBUG - Using MIN baseline: idle_uj={idle_uj/1e6:.3f}J, idle_core={idle_core_uj/1e6:.3f}J, idle_uncore={idle_uncore_uj/1e6:.3f}J")
         
         # ====================================================================
         # Step 3: Calculate the three key metrics
         # ====================================================================
-        # Workload energy = total energy - what system would use idle
+        # Workload energy = total energy - min baseline
         workload_uj = max(0, package_uj - idle_uj)
         
-        # Reasoning energy = core energy - idle core energy (actual thinking)
+        # Reasoning energy = core energy - min core baseline
         reasoning_uj = max(0, core_uj - idle_core_uj)
         
-        # Orchestration tax = workload - reasoning (overhead of coordination)
-        tax_uj = max(0, workload_uj - reasoning_uj)
+        # Orchestration tax = uncore - min uncore baseline
+        tax_uj = max(0, uncore_uj - idle_uncore_uj)
         
         # ====================================================================
         # Step 4: Get performance counters - handle both dict and object

@@ -61,6 +61,9 @@ class RawEnergyMeasurement:
     turbostat: Dict[str, Any] = field(default_factory=dict)  # ADD THIS LINE
     thermal: Dict[str, Any] = field(default_factory=dict)
     power_state: Dict[str, Any] = field(default_factory=dict)
+    ##to capture schedular swap memory start and end snapshot
+    scheduler_start: Optional[Dict] = None
+    scheduler_end: Optional[Dict] = None        
     scheduler_metrics: Dict[str, Any] = field(default_factory=dict)
     msr_metrics: Dict[str, Any] = field(default_factory=dict)   
     # ====================================================================

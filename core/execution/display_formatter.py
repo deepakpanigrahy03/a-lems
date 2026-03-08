@@ -397,4 +397,20 @@ def display_workflow_comparison(linear_stats, agentic_stats):
         print(f"   {'Methane (mg)':<20} {linear_stats['methane']*1000:>15.6f} {agentic_stats['methane']*1000:>15.6f} "
               f"{methane_ratio:>10.2f}x")
         
-        print(f"   " + "-"*60)            
+        print(f"   " + "-"*60)    
+def display_pair_hardware(linear_results, agentic_results, title=None):
+    """Display hardware parameters for each pair."""
+    if title:
+        print("\n" + "="*70)
+        print(f"🔧 {title}")
+        print("="*70)
+    
+    for i in range(len(linear_results)):
+        print(f"\n{'─'*50}")
+        print(f"📊 PAIR {i+1}: Linear + Agentic")
+        print(f"{'─'*50}")
+        display_hardware([linear_results[i]], f"LINEAR Run {i+1}")
+        if i < len(agentic_results):
+            display_hardware([agentic_results[i]], f"AGENTIC Run {i+1}")
+    
+    display_ipc_analysis(linear_results, agentic_results)                

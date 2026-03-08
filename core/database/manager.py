@@ -193,3 +193,22 @@ class DatabaseManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context manager - close connection."""
         self.close()
+    def create_tax_summary_for_pair(self, linear_id: int, agentic_id: int,
+                                    linear_uj: int, agentic_uj: int,
+                                    linear_orchestration_uj: int = 0,
+                                    agentic_orchestration_uj: int = 0) -> None:
+        """
+        Create tax summary for one pair.
+        
+        Args:
+            exp_id: Experiment ID
+            linear_id: Linear run ID
+            agentic_id: Agentic run ID
+            linear_uj: Linear dynamic energy in microjoules
+            agentic_uj: Agentic dynamic energy in microjoules
+        """
+        self.tax.create_tax_summary_for_pair(
+            linear_id, agentic_id, linear_uj, agentic_uj,
+            linear_orchestration_uj, agentic_orchestration_uj
+        )
+                                                    

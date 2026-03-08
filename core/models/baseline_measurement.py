@@ -108,3 +108,47 @@ class BaselineMeasurement:
     def to_json(self) -> str:
         """Serialize to JSON."""
         return json.dumps(self.to_dict(), indent=2, default=str)
+    
+    @property
+    def min_power_watts(self) -> Dict[str, float]:
+        """
+        Estimate a lower-bound idle power for realistic baseline.
+        
+        Math: mean - 2*std_dev ≈ 2nd percentile (assuming normal distribution)
+        - 68% of values fall within mean ± 1σ
+        - 95% of values fall within mean ± 2σ
+        - 2.5% of values are below mean - 2σ
+        - So mean - 2σ represents ~2.5th percentile (conservative low bound)
+        
+        For non-normal distributions, this still gives a robust lower estimate
+        that eliminates most background noise while staying physically possible.
+        """
+        pkg = self.power_watts.get('package-0', 0)
+        core = self.power_watts.get('core', 0)
+        pkg_std = self.std_dev_watts.get('package-0', 0)
+        core_std = self.std_dev_watts.get('core', 0)
+        
+        # Use mean - 2*std (2nd percentile) as minimum baseline
+        # This ensures baseline is lower than most actual measurements
+        # while not being unrealistically low (like 0)
+        min_pkg = max(0, pkg - 2 * pkg_std)
+        min_core = max(0, core - 2 * core_std)
+        
+        # Uncore derived from package - core
+        # This assumes uncore power is the remainder after core
+        min_uncore = max(0, min_pkg - min_core)
+        
+        return {
+            'package-0': min_pkg,
+            'core': min_core,
+            'uncore': min_uncore
+        }
+    
+    def min_energy_uj(self, duration_seconds: float) -> Dict[str, int]:
+        """Convert minimum observed baseline watts into µJ for duration."""
+        pw = self.min_power_watts
+        return {
+            'package-0': int(pw['package-0'] * duration_seconds * 1_000_000),
+            'core': int(pw['core'] * duration_seconds * 1_000_000),
+            'uncore': int(pw['uncore'] * duration_seconds * 1_000_000),
+        }

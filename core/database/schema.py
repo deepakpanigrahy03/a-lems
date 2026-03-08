@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS experiments (
     completed_at TIMESTAMP,                  -- When experiment ended (TD8)
     error_message TEXT,                      -- Error if failed (TD8)
     runs_completed INTEGER DEFAULT 0,        -- Number of successful runs (TD8)
-    runs_total INTEGER                       -- Total runs planned (TD8)
+    runs_total INTEGER,
+    optimization_enabled INTEGER DEFAULT 0                                            -- Total runs planned (TD8)
     -- ========== NEW COLUMNS END ==========
 );
 """
@@ -166,6 +167,15 @@ CREATE TABLE IF NOT EXISTS runs (
     c3_time_seconds REAL,
     c6_time_seconds REAL,
     c7_time_seconds REAL,
+
+    --swap metrics
+    swap_total_mb REAL,
+    swap_end_free_mb REAL,
+    swap_start_used_mb REAL,
+    swap_end_used_mb REAL,
+    swap_start_cached_mb REAL,
+    swap_end_cached_mb REAL,
+    swap_end_percent REAL,
 
     -- MSR / wakeup
     wakeup_latency_us REAL,

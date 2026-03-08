@@ -76,6 +76,12 @@ from core.execution.display_formatter import (
 
 logger = logging.getLogger(__name__)
 
+def get_workflow_order(rep_num):
+    """Return (first, second) workflow order for repetition (1-based)."""
+    if rep_num % 2 == 1:  # Odd: 1,3,5...
+        return ('linear', 'agentic')
+    else:                 # Even: 2,4,6...
+        return ('agentic', 'linear')
 
 class ExperimentHarness:
     """
@@ -233,6 +239,9 @@ class ExperimentHarness:
         run_end_perf = time.perf_counter()
         run_duration_sec = run_end_perf - run_start_perf
 
+        dprint(f"🔍 DEBUG EXECUTION TIME - Linear compute: {exec_result.get('execution_time_ms', 0)} ms")
+        dprint(f"🔍 DEBUG TOTAL MEASUREMENT - Duration: {run_duration_sec*1000:.1f} ms")
+
         # ====================================================================
         # DEBUG: Check what's available in energy_engine
         # ====================================================================
@@ -338,7 +347,19 @@ class ExperimentHarness:
                 'context_switches': 0,
                 'note': 'Performance counters not available'
             }
-        
+        if hasattr(raw_energy, 'scheduler_metrics') and raw_energy.scheduler_metrics:
+            swap_metrics = raw_energy.scheduler_metrics.get('swap', {})
+        else:
+            swap_metrics = {}
+
+
+        # Get scheduler metrics with start/end swap values
+        scheduler_start = {}
+        scheduler_end = {}
+        if hasattr(raw_energy, 'scheduler_start') and raw_energy.scheduler_start:
+            scheduler_start = raw_energy.scheduler_start.get('swap', {})
+        if hasattr(raw_energy, 'scheduler_end') and raw_energy.scheduler_end:
+            scheduler_end = raw_energy.scheduler_end.get('swap', {})
 
         # ====================================================================
         # Step 6: Return ALL THREE LAYERS with ML features
@@ -391,7 +412,9 @@ class ExperimentHarness:
                 'pkg_energy_uj': derived.package_energy_uj,
                 'core_energy_uj': derived.core_energy_uj,
                 'uncore_energy_uj': derived.uncore_energy_uj,
-                'dram_energy_uj': derived.dram_energy_uj if hasattr(derived, 'dram_energy_uj') else 0,                
+                'dram_energy_uj': derived.dram_energy_uj if hasattr(derived, 'dram_energy_uj') else 0,  
+                'idle_energy_uj': derived.idle_energy_uj,
+                'orchestration_tax_uj': derived.orchestration_tax_uj,              
                 'cycles': derived.cycles,
                 'ipc': derived.ipc,
                 'cache_misses': derived.cache_misses,
@@ -413,7 +436,17 @@ class ExperimentHarness:
                 'c3_time_seconds': derived.c3_time_seconds,
                 'c6_time_seconds': derived.c6_time_seconds,
                 'c7_time_seconds': derived.c7_time_seconds,
-                
+
+                # Swap metrics 
+                'swap_total_mb': swap_metrics.get('swap_total_mb'),
+                'swap_end_free_mb': swap_metrics.get('swap_free_mb'),
+                'swap_start_used_mb': scheduler_start.get('swap_used_mb'),
+                'swap_end_used_mb': scheduler_end.get('swap_used_mb'),
+                'swap_start_cached_mb': scheduler_start.get('swap_cached_mb'),
+                'swap_end_cached_mb': scheduler_end.get('swap_cached_mb'),                
+                'swap_end_percent': swap_metrics.get('swap_percent'),
+
+
                 # Ring bus
                 'ring_bus_freq_mhz': derived.ring_bus_current_mhz,
                 'wakeup_latency_us': derived.wakeup_latency_us,
@@ -628,6 +661,19 @@ class ExperimentHarness:
                 'context_switches': 0,
                 'note': 'Performance counters not available'
             }
+        if hasattr(raw_energy, 'scheduler_metrics') and raw_energy.scheduler_metrics:
+            swap_metrics = raw_energy.scheduler_metrics.get('swap', {})
+        else:
+            swap_metrics = {}
+
+        # Get scheduler metrics with start/end swap values
+        scheduler_start = {}
+        scheduler_end = {}
+        if hasattr(raw_energy, 'scheduler_start') and raw_energy.scheduler_start:
+            scheduler_start = raw_energy.scheduler_start.get('swap', {})
+        if hasattr(raw_energy, 'scheduler_end') and raw_energy.scheduler_end:
+            scheduler_end = raw_energy.scheduler_end.get('swap', {})
+
         # ====================================================================
         # Capture system state AFTER run
         # ====================================================================
@@ -697,7 +743,9 @@ class ExperimentHarness:
                 'pkg_energy_uj': derived.package_energy_uj,
                 'core_energy_uj': derived.core_energy_uj,
                 'uncore_energy_uj': derived.uncore_energy_uj,
-                'dram_energy_uj': derived.dram_energy_uj if hasattr(derived, 'dram_energy_uj') else 0,                
+                'dram_energy_uj': derived.dram_energy_uj if hasattr(derived, 'dram_energy_uj') else 0,
+                'idle_energy_uj': derived.idle_energy_uj,
+                'orchestration_tax_uj': derived.orchestration_tax_uj,                 
                 'cycles': derived.cycles,
                 'ipc': derived.ipc,
                 'cache_misses': derived.cache_misses,
@@ -719,7 +767,17 @@ class ExperimentHarness:
                 'c3_time_seconds': derived.c3_time_seconds,
                 'c6_time_seconds': derived.c6_time_seconds,
                 'c7_time_seconds': derived.c7_time_seconds,
-                
+
+                # Swap metrics 
+                # Swap metrics 
+                'swap_total_mb': swap_metrics.get('swap_total_mb'),
+                'swap_end_free_mb': swap_metrics.get('swap_free_mb'),
+                'swap_start_used_mb': scheduler_start.get('swap_used_mb'),
+                'swap_end_used_mb': scheduler_end.get('swap_used_mb'),
+                'swap_start_cached_mb': scheduler_start.get('swap_cached_mb'),
+                'swap_end_cached_mb': scheduler_end.get('swap_cached_mb'),                
+                'swap_end_percent': swap_metrics.get('swap_percent'),
+
                 # Ring bus
                 'ring_bus_freq_mhz': derived.ring_bus_current_mhz,
                 'wakeup_latency_us': derived.wakeup_latency_us,
@@ -835,7 +893,8 @@ class ExperimentHarness:
                       cool_down: Optional[int] = None, n_repetitions: int = 30, 
                       include_warmup: bool = True, 
                       country_code: str = "US", hardware_info: Optional[Dict] = None, 
-                      save_to_db: bool = False) -> Dict[str, Any]:
+                      save_to_db: bool = False
+                      ) -> Dict[str, Any]:
         """
         Run multiple comparisons with warmup and statistical analysis.
         
@@ -889,42 +948,46 @@ class ExperimentHarness:
             dprint(f"📋 Repetition {i+1}/{n_repetitions}")
             dprint(f"{'─'*50}")
             
-            # Run linear
-            linear_result = self.run_linear(linear_executor, task, task_id, is_cloud,country_code=country_code, run_number=i+1)
+            # Determine workflow order for this repetition
+            first_workflow, second_workflow = get_workflow_order(i+1)
+            
+            # Execute first workflow
+            if first_workflow == 'linear':
+                linear_result = self.run_linear(linear_executor, task, task_id, is_cloud, country_code=country_code, run_number=i+1)
+                agentic_result = self.run_agentic(agentic_executor, task, task_id, is_cloud, country_code=country_code, run_number=i+1)
+            else:
+                agentic_result = self.run_agentic(agentic_executor, task, task_id, is_cloud, country_code=country_code, run_number=i+1)
+                linear_result = self.run_linear(linear_executor, task, task_id, is_cloud, country_code=country_code, run_number=i+1)
+
+
+            # Store results
             all_linear.append(linear_result)
-            # Collect samples from linear run
-            if 'energy_samples' in linear_result:
-                self._collected_samples['energy_samples'].extend(linear_result['energy_samples'])
-
-            if 'cpu_samples' in linear_result:
-                self._collected_samples['cpu_samples'].extend(linear_result['cpu_samples'])
-
-            if 'interrupt_samples' in linear_result:
-                self._collected_samples['interrupt_samples'].extend(linear_result['interrupt_samples'])
-
-            
-            # Cool‑down
-            dprint(f"⏳ Cool‑down: {cool_down}s")
-            time.sleep(cool_down)
-            
-            # Run agentic
-            agentic_result = self.run_agentic(agentic_executor, task, task_id, is_cloud, country_code=country_code, run_number=i+1 )
             all_agentic.append(agentic_result)
-            if 'energy_samples' in agentic_result:
-                self._collected_samples['energy_samples'].extend(agentic_result['energy_samples'])
-
-            if 'cpu_samples' in agentic_result:
-                self._collected_samples['cpu_samples'].extend(agentic_result['cpu_samples'])
-
-            if 'interrupt_samples' in agentic_result:
-                self._collected_samples['interrupt_samples'].extend(agentic_result['interrupt_samples'])
-
-
+            
+            # Collect samples from both runs
+            for result in [linear_result, agentic_result]:
+                if 'energy_samples' in result:
+                    self._collected_samples['energy_samples'].extend(result['energy_samples'])
+                if 'cpu_samples' in result:
+                    self._collected_samples['cpu_samples'].extend(result['cpu_samples'])
+                if 'interrupt_samples' in result:
+                    self._collected_samples['interrupt_samples'].extend(result['interrupt_samples'])
+            
+            # ====================================================================
+            # SAVE IMMEDIATELY if save_to_db is True
+            # ====================================================================
+            
+            # Cool‑down between repetitions (except last)
+            if i < n_repetitions - 1:
+                dprint(f"⏳ Cool‑down: {cool_down}s")
+                time.sleep(cool_down)
+            
+            # ====================================================================
+            # YOUR EXISTING TAX CALCULATION CODE (PRESERVED)
+            # ====================================================================
             ##temporary debug
             print(f"🔍 DEBUG: linear_result['layer3_derived'] keys = {linear_result['layer3_derived'].keys()}")
             
-            # Compute tax for this pair (using Layer 3 workload energy)
-            # DerivedEnergyMeasurement stores values in microjoules with '_uj' suffix
             # Compute tax for this pair (using Layer 3 workload energy)
             linear_layer3 = linear_result['layer3_derived']
             agentic_layer3 = agentic_result['layer3_derived']
@@ -949,6 +1012,9 @@ class ExperimentHarness:
                 agentic_energy = 0
             
             tax = agentic_energy / linear_energy if linear_energy > 0 else 0
+            all_taxes.append(tax)
+            
+
             all_taxes.append(tax)
 
             # ====================================================================

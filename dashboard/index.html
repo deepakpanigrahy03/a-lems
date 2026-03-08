@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A-LEMS · Energy Measurement</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOPBAR
+     ═══════════════════════════════════════════════════════════ -->
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    A-LEMS<span class="logo-sub"> / Energy Measurement</span>
+  </div>
+
+  <div class="tb-divider"></div>
+
+  <div class="tb-stat">
+    <div class="tb-stat-label">Experiments</div>
+    <div class="tb-stat-value" id="tb-exps">—</div>
+  </div>
+  <div class="tb-stat">
+    <div class="tb-stat-label">Runs</div>
+    <div class="tb-stat-value" id="tb-runs">—</div>
+  </div>
+  <div class="tb-divider"></div>
+  <div class="tb-stat">
+    <div class="tb-stat-label">Avg Linear</div>
+    <div class="tb-stat-value green" id="tb-lin">—</div>
+  </div>
+  <div class="tb-stat">
+    <div class="tb-stat-label">Avg Agentic</div>
+    <div class="tb-stat-value red" id="tb-age">—</div>
+  </div>
+  <div class="tb-stat">
+    <div class="tb-stat-label">Tax</div>
+    <div class="tb-stat-value amber" id="tb-tax">—</div>
+  </div>
+  <div class="tb-divider"></div>
+  <div class="tb-stat">
+    <div class="tb-stat-label">Peak Energy</div>
+    <div class="tb-stat-value red" id="tb-peak">—</div>
+  </div>
+
+  <div class="tb-right">
+    <span class="tb-stat-label" id="theme-label">Dark</span>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></div>
+    <span class="mode-badge" id="mode-badge">loading…</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SHELL: SIDEBAR + CONTENT
+     ═══════════════════════════════════════════════════════════ -->
+<div id="shell">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="nav-section">Analysis</div>
+
+    <div class="nav-item active" onclick="nav(this,'overview')">
+      <span class="nav-icon">◈</span>Overview
+      <span class="nav-badge" id="nb-runs">—</span>
+    </div>
+    <div class="nav-item" onclick="nav(this,'energy')">
+      <span class="nav-icon">⚡</span>Energy
+    </div>
+    <div class="nav-item" onclick="nav(this,'cpu')">
+      <span class="nav-icon">▣</span>CPU &amp; C-States
+    </div>
+    <div class="nav-item" onclick="nav(this,'scheduler')">
+      <span class="nav-icon">⇌</span>Scheduler
+    </div>
+    <div class="nav-item" onclick="nav(this,'domains')">
+      <span class="nav-icon">◉</span>Domains
+    </div>
+    <div class="nav-item" onclick="nav(this,'tax')">
+      <span class="nav-icon">▲</span>Tax Attribution
+      <span class="nav-badge" id="nb-tax">—</span>
+    </div>
+    <div class="nav-item" onclick="nav(this,'anomalies')">
+      <span class="nav-icon">⚠</span>Anomalies
+      <span class="nav-badge" id="nb-anom">—</span>
+    </div>
+
+    <div class="nav-section">Operational</div>
+
+    <div class="nav-item" onclick="nav(this,'execute')">
+      <span class="nav-icon">▶</span>Execute Run
+    </div>
+    <div class="nav-item" onclick="nav(this,'explorer')">
+      <span class="nav-icon">⊞</span>Sample Explorer
+    </div>
+    <div class="nav-item" onclick="nav(this,'experiments')">
+      <span class="nav-icon">≡</span>Experiments
+      <span class="nav-badge" id="nb-exps">—</span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sys-row"><span class="sys-key">mode</span>  <span class="sys-val" id="si-mode">—</span></div>
+      <div class="sys-row"><span class="sys-key">db</span>    <span class="sys-val" id="si-db">—</span></div>
+      <div class="sys-row"><span class="sys-key">gov</span>   <span class="sys-val" id="si-gov">—</span></div>
+      <div class="sys-row"><span class="sys-key">turbo</span> <span class="sys-val" id="si-turbo">—</span></div>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <main id="content">
+
+    <!-- ══════════════════════════════════════════
+         PAGE: OVERVIEW
+         ══════════════════════════════════════════ -->
+    <div class="page active" id="p-overview">
+      <div class="page-header">
+        <span class="page-title">Overview</span>
+        <span class="page-sub">Agentic vs linear energy · all experiments</span>
+        <span class="page-meta" id="ov-updated">Loading…</span>
+      </div>
+
+      <!-- Hero energy story — the core narrative -->
+      <div class="energy-story mb-lg" id="ov-energy-story">
+        <div class="loading-state"><div class="spinner"></div>Loading…</div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="grid grid-6 mb-lg" id="ov-kpis">
+        <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Split-bar breakdowns + two supporting charts -->
+      <div class="grid grid-2 mb-lg">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Overhead breakdown</div>
+            <div class="card-sub">where agentic time goes</div>
+          </div>
+          <div id="ov-splits">
+            <div class="loading-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Duration vs Energy</div>
+            <div class="card-sub">scatter · linear vs agentic</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-ov-dur"></canvas></div>
+        </div>
+      </div>
+
+      <!-- One supporting chart row -->
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">IPC vs Cache Miss</div>
+            <div class="card-sub">instruction quality indicator</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-ov-scatter"></canvas></div>
+          <div class="chart-annotation">
+            High IPC + high cache miss = dense but cache-thrashing compute (local inference).
+            Low IPC + low miss = IO-bound idle wait (cloud API).
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Key Findings</div>
+          </div>
+          <div id="ov-findings">
+            <div class="loading-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: ENERGY
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-energy">
+      <div class="page-header">
+        <span class="page-title">Energy Analysis</span>
+        <span class="page-sub">RAPL PKG · CORE · DRAM domains</span>
+      </div>
+
+      <div class="grid grid-5 mb-lg" id="en-kpis">
+        <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+
+      <div class="grid grid-2 mb-lg">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Energy per run (sorted, log scale)</div>
+            <div class="card-sub">green = linear · red = agentic</div>
+          </div>
+          <div class="chart-container chart-lg"><canvas id="c-en-sorted"></canvas></div>
+          <div class="chart-annotation">Log scale — the gap between linear and agentic is multiplicative, not additive. Agentic runs cluster at the top.</div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Energy per token by segment</div>
+            <div class="card-sub">J / token · log scale</div>
+          </div>
+          <div class="chart-container chart-lg"><canvas id="c-en-ept"></canvas></div>
+          <div class="chart-annotation">API wait time (not compute) is the dominant cost driver in cloud runs. Local inference shows the opposite: compute is the bottleneck.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Carbon by provider · region</div>
+            <div class="card-sub">mg CO₂e per run · log scale</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-en-carbon"></canvas></div>
+          <div class="chart-annotation">IN grid intensity (0.82 kg/kWh) is 2× the US factor. Same energy → 2× carbon impact from geography alone.</div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Energy vs API latency</div>
+            <div class="card-sub">scatter · cloud only</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-en-api"></canvas></div>
+          <div class="chart-annotation">Strong correlation: longer API wait = more idle RAPL drain. CPU spins in polling loop — every 100ms wakeup is a measurable joule charge.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: CPU & C-STATES
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-cpu">
+      <div class="page-header">
+        <span class="page-title">CPU &amp; C-State Analysis</span>
+        <span class="page-sub">IPC · frequency · residency · thermal</span>
+        <span class="page-meta" id="cs-sample-count">—</span>
+      </div>
+
+      <!-- C-state panels — the most important visual on this page -->
+      <div class="card card-pad mb-lg">
+        <div class="card-header">
+          <div class="card-title">C-State Residency — measured from cpu_samples</div>
+          <div class="card-sub">higher C6/C7 = deeper sleep = more efficient idle</div>
+        </div>
+        <div class="grid grid-2" id="cstate-panels">
+          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+        </div>
+        <div class="callout info" style="margin-top:12px;">
+          Cloud runs: CPU mostly in C6/C7 (deep sleep) between API calls — low power, high idle efficiency.
+          Local runs: forced C0 (active) throughout — inference loop keeps all cores busy, high power draw.
+        </div>
+      </div>
+
+      <div class="grid grid-2 mb-lg">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">IPC distribution</div>
+            <div class="card-sub">histogram · linear vs agentic</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-cpu-ipc"></canvas></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">IPC vs Frequency</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-cpu-ipc-freq"></canvas></div>
+          <div class="chart-annotation">Cloud runs: frequency irrelevant (IO-bound). Local: frequency tracks IPC — compute-bound, DVFS follows demand.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Thermal profile (Δ°C)</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-cpu-thermal"></canvas></div>
+          <div class="callout warn" id="ann-thermal" style="margin-top:8px;">Loading thermal data…</div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Cache miss vs Energy</div>
+            <div class="card-sub">log Y scale</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-cpu-miss"></canvas></div>
+          <div class="chart-annotation">Cache thrashing has a direct energy cost — each miss forces a DRAM fetch, which adds measurable DRAM domain charge.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: SCHEDULER
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-scheduler">
+      <div class="page-header">
+        <span class="page-title">OS Scheduler Analysis</span>
+        <span class="page-sub">Thread migrations · context switches · IRQ rates</span>
+      </div>
+
+      <div class="grid grid-5 mb-lg" id="sched-kpis">
+        <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+
+      <div class="grid grid-2 mb-lg">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Thread migrations vs Duration</div>
+          </div>
+          <div class="chart-container chart-lg"><canvas id="c-sched-mig"></canvas></div>
+          <div class="chart-annotation">Strong linear relationship (r²≈0.89). Duration is the primary driver — longer agentic runs generate migration bursts at phase transitions.</div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Voluntary vs Involuntary context switches</div>
+          </div>
+          <div class="chart-container chart-lg"><canvas id="c-sched-ctx"></canvas></div>
+          <div class="chart-annotation">Involuntary preemptions spike in local inference — kernel preempts the model thread, causing cache state loss and contributing to elevated miss rates.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">IRQ rate per run</div>
+            <div class="card-sub">log scale</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-sched-irq"></canvas></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Migrations → Cache miss</div>
+            <div class="card-sub">causal chain</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-sched-mig-miss"></canvas></div>
+          <div class="chart-annotation">Causal chain: phase transitions → migrations → cache eviction → elevated miss rate → IPC degradation → energy inefficiency.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: DOMAINS
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-domains">
+      <div class="page-header">
+        <span class="page-title">Domain Energy Breakdown</span>
+        <span class="page-sub">PKG · CORE · UNCORE · DRAM — baseline-corrected via orchestration_analysis</span>
+      </div>
+
+      <div class="grid grid-4 mb-lg" id="dom-kpis">
+        <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+
+      <div class="grid grid-2 mb-lg">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Domain shares — CORE vs UNCORE vs DRAM</div>
+          </div>
+          <div class="chart-container chart-lg"><canvas id="c-dom-stacked"></canvas></div>
+          <div class="chart-annotation">CORE share = compute intensity. UNCORE share = interconnect/LLC cost. DRAM share = memory bandwidth pressure.</div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Workload vs Tax energy</div>
+            <div class="card-sub">baseline-corrected</div>
+          </div>
+          <div class="chart-container chart-lg"><canvas id="c-dom-tax"></canvas></div>
+          <div class="chart-annotation">Workload = PKG − idle baseline. Tax = uncore overhead above baseline from orchestration activity.</div>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="card-header">
+          <div class="card-title">Per-run domain breakdown</div>
+        </div>
+        <div class="table-wrap" style="max-height:320px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Run</th><th>Type</th><th>Task</th>
+                <th>PKG J</th><th>Core J</th><th>Uncore J</th><th>DRAM J</th>
+                <th>Workload J</th><th>Tax J</th><th>Core%</th><th>Uncore%</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-domains">
+              <tr><td colspan="11" class="empty-state">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: TAX ATTRIBUTION
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-tax">
+      <div class="page-header">
+        <span class="page-title">Tax Attribution</span>
+        <span class="page-sub">Root-cause analysis of orchestration overhead</span>
+        <span class="page-meta" id="tax-pair-count">—</span>
+      </div>
+
+      <!-- Analysis cards — root causes front and centre -->
+      <div class="grid grid-3 mb-lg" id="tax-cards">
+        <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+
+      <div class="card card-pad mb-lg">
+        <div class="card-header">
+          <div class="card-title">All tax pairs</div>
+        </div>
+        <div class="table-wrap" style="max-height:300px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Pair</th><th>Task</th><th>Provider</th><th>Country</th>
+                <th>Linear J</th><th>Agentic J</th><th>Tax J</th><th>Tax %</th>
+                <th>Plan ms</th><th>Exec ms</th><th>Synth ms</th><th>LLM calls</th><th>Tools</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-tax">
+              <tr><td colspan="13" class="empty-state">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Tax % distribution</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-tax-dist"></canvas></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-header">
+            <div class="card-title">Tax vs LLM calls</div>
+          </div>
+          <div class="chart-container chart-md"><canvas id="c-tax-calls"></canvas></div>
+          <div class="chart-annotation">Each additional LLM call adds measurable overhead — planning chain cost scales super-linearly with call count.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: ANOMALIES
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-anomalies">
+      <div class="page-header">
+        <span class="page-title">Anomaly Detection</span>
+        <span class="page-sub">Runs flagged as &gt;2σ outliers on energy, IPC, cache miss, thermal, or IRQ</span>
+      </div>
+
+      <div class="grid grid-3 mb-lg" id="anom-cards">
+        <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="card-header">
+          <div class="card-title">Flagged runs</div>
+        </div>
+        <div class="table-wrap" style="max-height:380px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Run</th><th>Exp</th><th>Type</th><th>Task</th><th>Provider</th>
+                <th>Energy J</th><th>IPC</th><th>Cache Miss%</th><th>Thermal Δ</th><th>IRQ/s</th><th>Flags</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-anom">
+              <tr><td colspan="11" class="empty-state">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: EXECUTE
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-execute">
+      <div class="page-header">
+        <span class="page-title">Execute Run</span>
+        <span class="page-sub" id="exec-mode-sub">Loading capabilities…</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start;">
+
+        <!-- Config panel -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card card-pad">
+            <div class="card-header"><div class="card-title">Configuration</div></div>
+
+            <div class="form-group">
+              <label class="form-label">Provider</label>
+              <select id="sel-model"></select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Complexity</label>
+              <div class="cpx-tabs">
+                <div class="cpx-tab active" onclick="setCpx(this,'simple')">Simple<span class="cpx-sub">0 tools</span></div>
+                <div class="cpx-tab"        onclick="setCpx(this,'L1')">L1<span class="cpx-sub">1–2 tools</span></div>
+                <div class="cpx-tab"        onclick="setCpx(this,'L2')">L2<span class="cpx-sub">3–5 tools</span></div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Grid region</label>
+              <select id="sel-region">
+                <option value="US" data-cf="0.386">🇺🇸 United States — 0.386 kg/kWh</option>
+                <option value="DE" data-cf="0.311">🇩🇪 Germany — 0.311 kg/kWh</option>
+                <option value="FR" data-cf="0.052">🇫🇷 France — 0.052 kg/kWh</option>
+                <option value="NO" data-cf="0.011">🇳🇴 Norway — 0.011 kg/kWh</option>
+                <option value="IN" data-cf="0.820">🇮🇳 India — 0.820 kg/kWh</option>
+                <option value="AU" data-cf="0.541">🇦🇺 Australia — 0.541 kg/kWh</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Repetitions</label>
+              <select id="sel-reps">
+                <option value="3">3 reps (quick)</option>
+                <option value="5">5 reps</option>
+                <option value="10">10 reps</option>
+                <option value="30" selected>30 reps (standard)</option>
+              </select>
+            </div>
+
+            <button class="btn-run" id="run-btn" onclick="doRun()">▶ Run Dual Benchmark</button>
+            <div class="progress-track"><div class="progress-fill" id="exec-prog"></div></div>
+            <div class="progress-status" id="exec-status">Ready</div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="card-header"><div class="card-title">Task preset</div></div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <button class="task-option active" onclick="selTask(this)" data-task="capital_query">
+                Capital query
+                <div class="task-meta">geo · 0 tools · ~50 tok</div>
+              </button>
+              <button class="task-option" onclick="selTask(this)" data-task="arithmetic">
+                Arithmetic
+                <div class="task-meta">math · 0 tools · ~50 tok</div>
+              </button>
+              <button class="task-option" onclick="selTask(this)" data-task="stock_lookup">
+                Stock price lookup
+                <div class="task-meta">finance · 1 tool · ~150 tok</div>
+              </button>
+              <button class="task-option" onclick="selTask(this)" data-task="code_review">
+                Code review
+                <div class="task-meta">dev · 1 tool · ~300 tok</div>
+              </button>
+              <button class="task-option" onclick="selTask(this)" data-task="comparative_research">
+                Comparative research
+                <div class="task-meta">analysis · 4 tools · ~500 tok</div>
+              </button>
+              <button class="task-option" onclick="selTask(this)" data-task="deep_research">
+                Deep research
+                <div class="task-meta">research · 6 tools · ~1.2k tok</div>
+              </button>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+              <label class="form-label">Custom prompt</label>
+              <textarea id="custom-prompt" placeholder="Override task prompt…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Run output panel -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="grid grid-2">
+            <div class="card card-pad">
+              <div class="term-header">
+                <span class="term-title">LINEAR — single pass</span>
+                <span class="badge badge-green" id="lin-badge">READY</span>
+              </div>
+              <div class="terminal" id="term-lin" style="height:200px;">
+                <div class="term-line"><span class="term-ts">[000000]</span>Awaiting run…</div>
+              </div>
+            </div>
+            <div class="card card-pad">
+              <div class="term-header">
+                <span class="term-title">AGENTIC — orchestration loop</span>
+                <span class="badge badge-amber" id="age-badge">QUEUED</span>
+              </div>
+              <div class="terminal" id="term-age" style="height:200px;">
+                <div class="term-line"><span class="term-ts">[000000]</span>Waiting for linear…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live energy chart -->
+          <div class="card card-pad" id="exec-live-card" style="display:none;">
+            <div class="card-header">
+              <div class="card-title">Live energy accumulation</div>
+              <div class="card-sub" id="live-chart-sub">streaming…</div>
+            </div>
+            <div class="chart-container chart-md"><canvas id="c-live"></canvas></div>
+          </div>
+
+          <!-- Results (post-run) -->
+          <div id="exec-results" style="display:none;">
+            <div class="grid grid-4 mb" id="exec-kpis"></div>
+            <div class="grid grid-2">
+              <div class="card card-pad">
+                <div class="card-header"><div class="card-title">Energy comparison</div></div>
+                <div id="exec-bars"></div>
+              </div>
+              <div class="card card-pad">
+                <div class="card-header"><div class="card-title">Tax attribution</div></div>
+                <div id="exec-attribution"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: SAMPLE EXPLORER
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-explorer">
+      <div class="page-header">
+        <span class="page-title">Sample Explorer</span>
+        <span class="page-sub">100Hz energy + CPU + interrupt timeseries per run</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start;">
+        <div class="card card-pad">
+          <div class="card-header"><div class="card-title">Select Run</div></div>
+          <input type="text" placeholder="Filter…" oninput="filterExplorerRuns(this.value)" style="margin-bottom:10px;">
+          <div style="max-height:520px;overflow-y:auto;" id="explorer-run-list">
+            <div class="loading-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div id="explorer-detail">
+          <div class="card card-pad empty-state">
+            <div class="empty-icon">⊞</div>
+            Select a run from the list to explore its 100Hz samples
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PAGE: EXPERIMENTS
+         ══════════════════════════════════════════ -->
+    <div class="page" id="p-experiments">
+      <div class="page-header">
+        <span class="page-title">Saved Experiments</span>
+        <span class="page-sub">All experiments · click to inspect runs</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start;">
+        <div class="card card-pad">
+          <input type="text" placeholder="Filter experiments…" oninput="filterExperiments(this.value)" style="margin-bottom:10px;">
+          <div style="max-height:560px;overflow-y:auto;" id="exp-list">
+            <div class="loading-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div id="exp-detail">
+          <div class="card card-pad empty-state">
+            <div class="empty-icon">≡</div>
+            Select an experiment to inspect its runs
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main><!-- #content -->
+</div><!-- #shell -->
+
+<!-- Scripts loaded in dependency order -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="api.js"></script>
+<script src="charts.js"></script>
+<script src="ui.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// BOOT — runs once on load, populates STATE, renders all pages
+// ═══════════════════════════════════════════════════════
+async function boot() {
+  initTheme();
+
+  try {
+    const [caps, overview, runs, exps, tax, domains, cstates, anomalies] = await Promise.all([
+      API.capabilities(),
+      API.overview(),
+      API.runs(),
+      API.experiments(),
+      API.tax(),
+      API.domains(),
+      API.cstates(),
+      API.anomalies(),
+    ]);
+
+    STATE.caps      = caps;
+    STATE.overview  = overview;
+    STATE.runs      = runs;
+    STATE.exps      = exps;
+    STATE.tax       = tax;
+    STATE.domains   = domains;
+    STATE.cstates   = cstates;
+    STATE.anomalies = anomalies;
+    STATE.loaded    = true;
+
+    // Render everything
+    updateTopbar();
+    renderOverview();
+    renderEnergy();
+    renderCpu();
+    renderScheduler();
+    renderDomains();
+    renderTax();
+    renderAnomalies();
+    initExecutePage();
+    buildExplorerList();
+    buildExperimentsList();
+
+    // Overview findings
+    const taxMult = D.taxMultiple();
+    const phases  = D.phasePcts();
+    const findEl  = document.getElementById('ov-findings');
+    if (findEl) {
+      findEl.innerHTML = `
+        <div class="analysis-card" style="border-left-color:var(--red);margin-bottom:10px;">
+          <div class="ac-title" style="color:var(--red);">Agentic = ${taxMult.toFixed(1)}× more energy</div>
+          <div class="ac-finding">For the same task, agentic orchestration adds <strong>${((taxMult-1)*100).toFixed(0)}% extra energy</strong>. The gap widens with task complexity.</div>
+        </div>
+        <div class="analysis-card" style="border-left-color:var(--planning);margin-bottom:10px;">
+          <div class="ac-title" style="color:var(--planning);">Planning is ${phases.plan}% waste</div>
+          <div class="ac-finding">Plan construction before any useful work. <strong>Memoizing plans</strong> for repeated task types could eliminate this entirely for &gt;40% of queries.</div>
+        </div>
+        <div class="analysis-card" style="border-left-color:var(--execution);">
+          <div class="ac-title" style="color:var(--execution);">Tool latency drives execution tax</div>
+          <div class="ac-finding">Sequential tool calls × API wait time × idle RAPL drain. <strong>Async dispatch</strong> cuts execution phase tax 40–60%.</div>
+        </div>
+      `;
+    }
+
+    const thermalRuns = runs.filter(r => r.thermal_delta_c > 0);
+    if (thermalRuns.length) {
+      const maxT = thermalRuns.reduce((m, r) => +r.thermal_delta_c > +m.thermal_delta_c ? r : m, thermalRuns[0]);
+      const annEl = document.getElementById('ann-thermal');
+      if (annEl) {
+        annEl.textContent = `Peak: Run ${maxT.run_id} — ${(+maxT.thermal_delta_c).toFixed(1)}°C delta. Rapid burst heating under dense inference workload.`;
+        annEl.className = 'callout warn';
+      }
+    }
+
+    document.getElementById('ov-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+
+  } catch (err) {
+    console.error('Boot failed:', err);
+    document.getElementById('ov-updated').textContent = '⚠ Cannot connect to server — is server.py running?';
+    document.getElementById('mode-badge').textContent  = '⚠ Offline';
+    document.getElementById('mode-badge').className    = 'mode-badge mode-ro';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>

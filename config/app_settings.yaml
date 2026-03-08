@@ -49,9 +49,9 @@ experiment:
   # ====================================================================
   baseline:
     force_remeasure: false           # Set to false during development
-    duration_seconds: 10
-    num_samples: 3
-    pre_wait_seconds: 5
+    duration_seconds: 30
+    num_samples: 5
+    pre_wait_seconds: 10
   # true for production, false to use cache  
   
 # ===== NEW: MSR measurement settings =====
