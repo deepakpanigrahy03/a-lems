@@ -42,7 +42,8 @@ def parse_arguments():
     parser.add_argument("--country", type=str, default="US")
     parser.add_argument("--save-db", action="store_true")
     parser.add_argument("--providers", type=str, help="Comma-separated providers")
-    parser.add_argument("--verbose", action="store_true", help="Show detailed hardware output per pair")    
+    parser.add_argument("--verbose", action="store_true", help="Show detailed hardware output per pair")
+    parser.add_argument("--optimizer", action="store_true", help="Use optimizer wrapper")    
 
     return parser.parse_args()
 
@@ -76,8 +77,17 @@ def run_provider_task(harness, runner, task, provider, repetitions, cool_down, a
         print(f"   ❌ Failed to load {provider} configs, skipping...")
         return None
     
-    linear = LinearExecutor(linear_config)
-    agentic = AgenticExecutor(agentic_config)
+    if args.optimizer:
+        from core.execution.optimizer_wrapper import OptimizedExecutorWrapper
+        linear = OptimizedExecutorWrapper(linear_config, "linear")
+        agentic = OptimizedExecutorWrapper(agentic_config, "agentic")
+    else:
+        linear = LinearExecutor(linear_config)
+        agentic = AgenticExecutor(agentic_config)
+
+    print(f"   Optimizer:    {'Yes' if args.optimizer else 'No'}")    
+
+    
     
     # ========================================================================
     # Setup database for this provider-task
@@ -91,6 +101,7 @@ def run_provider_task(harness, runner, task, provider, repetitions, cool_down, a
         if args.save_db:
             db, hw_id = runner.setup_database()
             config.sync_task_categories(db.db.conn)
+            runner.ensure_baseline_in_db(db, harness)
             exp_id = runner.create_experiment(
                 db, task['id'], task['name'], provider,
                 linear_config, args.country, repetitions

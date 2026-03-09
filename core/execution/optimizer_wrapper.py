@@ -84,8 +84,12 @@ class SystemOptimizer:
 
     def _set_governor(self, governor):
         """Set CPU governor and track change"""
+        print(f"🔍 DEBUG - _set_governor called with: {governor}")
         old = self._read_governor()
+        print(f"🔍 DEBUG - Current governor: {old}")
+        
         if old != governor:
+            print(f"🔍 DEBUG - Governor needs to change from {old} to {governor}")
             path = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
             if self._apply_setting(path, governor):
                 self.changes_made.append({
@@ -96,6 +100,10 @@ class SystemOptimizer:
                     'to': governor
                 })
                 print(f"   ⚡ Governor: {old} → {governor}")
+            else:
+                print(f"🔍 DEBUG - Failed to set governor to {governor}")
+        else:
+            print(f"🔍 DEBUG - Governor already {governor}, no change needed")
 
     def _get_cstate_number(self, target_name):
         """Find state number for a given C-state name"""
@@ -202,18 +210,22 @@ class SystemOptimizer:
         # ====================================================================
         if phase == "planning":
             # Your data: planning takes 12-22s, mostly LLM wait
+            print("   📝 Planning: Setting powersave governor, enabling deep C-states")
+            
             self._set_governor("powersave")
             self._enable_cstates(deep=True)
             self._set_coalescing(True)
             
         elif phase == "llm_wait":
             # Your data: 10-20s network waits
+            print("   ⏳ LLM Wait: Setting powersave governor, enabling deep C-states")
             self._set_governor("powersave")
             self._enable_cstates(deep=True)
             self._set_coalescing(True)
             
         elif phase == "tool_exec":
             # Your data: CPU bursts need performance
+            print(f"🔍 DEBUG - ENTERING tool_exec phase") 
             self._set_governor("performance")
             self._enable_cstates(deep=False)
             self._set_coalescing(False)
@@ -248,6 +260,7 @@ class SystemOptimizer:
             elif 2 <= elapsed < 5:
                 self.set_phase("llm_wait")
             elif 5 <= elapsed < 7:
+                print(f"🔍 DEBUG - Should trigger tool_exec at {elapsed:.1f}s")
                 self.set_phase("tool_exec")
             elif 7 <= elapsed < 8:
                 self.set_phase("between_steps")
@@ -296,26 +309,53 @@ class SystemOptimizer:
         else:
             self._set_governor(available[0])  # first available
 
-class OptimizedAgenticWrapper:
+class OptimizedExecutorWrapper:
     """
-    Wraps the original agentic executor with optimization.
-    Compatible with test_harness.py - same interface!
+    Wraps ANY executor with real-time system optimization.
+    Compatible with both LinearExecutor and AgenticExecutor.
     """
     
-    def __init__(self, config=None):
-        self.config = config or {}
-        self.original = AgenticExecutor(config)
-        self.optimizer = None
+    def __init__(self, executor_or_config, workflow_type="agentic"):
+        """
+        Args:
+            executor_or_config: Either an executor instance OR config dict
+            workflow_type: 'linear' or 'agentic' - determines phase detection
+        """
+        self.workflow_type = workflow_type
         
+        # Handle both cases: config dict or existing executor
+        if isinstance(executor_or_config, dict):
+            # Create appropriate executor from config
+            if workflow_type == "agentic":
+                self.original = AgenticExecutor(executor_or_config)
+            else:
+                from core.execution.linear import LinearExecutor
+                self.original = LinearExecutor(executor_or_config)
+        elif executor_or_config is None:
+            # For standalone testing - create default executor
+            if workflow_type == "agentic":
+                self.original = AgenticExecutor({})
+            else:
+                from core.execution.linear import LinearExecutor
+                self.original = LinearExecutor({})
+        else:
+            # Use existing executor
+            self.original = executor_or_config
+            
+        self.optimizer = None
+    
     def execute_comparison(self, task):
-        """
-        Same interface as original agentic.py
-        But runs with real-time optimization
-        """
-        # Get current process ID
+        """For agentic workflow - matches original interface"""
+        return self._execute_with_optimizer(task, 'execute_comparison')
+    
+    def execute(self, task):
+        """For linear workflow"""
+        return self._execute_with_optimizer(task, 'execute')
+    
+    def _execute_with_optimizer(self, task, method_name):
+        """Common optimization logic"""
         pid = os.getpid()
         
-        # Create stop event
         import threading
         self.optimizer_stop = threading.Event()
         self.optimizer = SystemOptimizer(pid)
@@ -327,30 +367,32 @@ class OptimizedAgenticWrapper:
         optimizer_thread.daemon = True
         optimizer_thread.start()
         
-        # Run the original agentic code (NO CHANGES!)
-        print("🚀 Running original agentic code with optimizer...")
-        result = self.original.execute_comparison(task)
+        # Call appropriate method on original executor
+        executor_method = getattr(self.original, method_name)
+        result = executor_method(task)
         
-        # Signal optimizer to stop
         self.optimizer_stop.set()
         optimizer_thread.join(timeout=2)
         
         return result
     
-    # Pass through any other methods needed by test_harness
     def __getattr__(self, name):
+        """Pass through any other attributes to the original executor"""
         return getattr(self.original, name)
 
 
-# ========================================================================
-# Command-line wrapper for direct testing
-# ========================================================================
+# Keep the command-line test section at the bottom (unchanged)
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="What is 2+2?")
+    parser.add_argument("--type", type=str, default="agentic", choices=["agentic", "linear"])
     args = parser.parse_args()
     
-    wrapper = OptimizedAgenticWrapper()
-    result = wrapper.execute_comparison(args.task)
+    if args.type == "agentic":
+        wrapper = OptimizedExecutorWrapper(None, "agentic")
+        result = wrapper.execute_comparison(args.task)
+    else:
+        wrapper = OptimizedExecutorWrapper(None, "linear")
+        result = wrapper.execute(args.task)
     print(f"Result: {result['response']}")

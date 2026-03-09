@@ -131,8 +131,9 @@ class EnergyAnalyzer:
                 cycles = perf_data.cpu_cycles
                 cache_misses = perf_data.cache_misses
                 cache_references = perf_data.cache_references
-                major_faults = perf_data.major_page_faults
-                minor_faults = perf_data.minor_page_faults
+                major_faults = raw.perf.major_page_faults if hasattr(raw.perf, 'major_page_faults') else 0
+                minor_faults = raw.perf.minor_page_faults if hasattr(raw.perf, 'minor_page_faults') else 0
+
                 migrations = perf_data.thread_migrations
                 ipc = perf_data.instructions_per_cycle()
             
@@ -144,6 +145,7 @@ class EnergyAnalyzer:
                 cache_references = perf_data.get('cache_references', 0)
                 major_faults = perf_data.get('major_page_faults', 0)
                 minor_faults = perf_data.get('minor_page_faults', 0)
+
                 migrations = perf_data.get('thread_migrations', 0)
                 
                 # Calculate IPC if cycles > 0
@@ -151,6 +153,7 @@ class EnergyAnalyzer:
                     ipc = instructions / cycles
             
             page_faults = major_faults + minor_faults
+            print(f"🔍 DEBUG - Page faults extracted: major={major_faults}, minor={minor_faults}, total={major_faults + minor_faults}")
         
         # ====================================================================
         # Step 5: Get power states (C-states, frequencies) - handles both dict/object
