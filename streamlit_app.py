@@ -21,10 +21,57 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import json as _json
+try:
+    import requests as _req
+    _REQUESTS_OK = True
+except ImportError:
+    _REQUESTS_OK = False
+    class _req:
+        @staticmethod
+        def get(*a, **kw): raise RuntimeError("requests not installed")
+try:
+    import yaml as _yaml
+    _YAML_OK = True
+except ImportError:
+    _YAML_OK = False
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 DB_PATH      = Path(__file__).parent / "data" / "experiments.db"
 PROJECT_ROOT = Path(__file__).parent          # where manage.py / core/ lives
+
+# ── LIVE API + HUMAN INSIGHT HELPERS ─────────────────────────────────────────
+LIVE_API = "http://localhost:8765"
+
+_PHONE_CHARGE_J  = 36_000   # ~10Wh to fully charge a phone
+_WHATSAPP_MSG_J  = 0.003    # ~3mJ per message
+_GOOGLE_SEARCH_J = 1.0      # ~1J per Google search
+_BABY_FEED_ML    = 150.0    # ml per feed
+
+def _human_energy(joules: float):
+    if joules <= 0:
+        return []
+    ins = []
+    phone_pct = joules / _PHONE_CHARGE_J * 100
+    ins.append(("📱", f"{phone_pct:.5f}% of a full phone charge"))
+    led_ms = joules / 10 * 1000
+    ins.append(("💡", f"{led_ms:.1f}ms of a 10W LED bulb" if led_ms < 1000 else f"{led_ms/1000:.2f}s of a 10W LED"))
+    msgs = joules / _WHATSAPP_MSG_J
+    ins.append(("💬", f"≈{msgs:.0f} WhatsApp messages"))
+    searches = joules / _GOOGLE_SEARCH_J
+    ins.append(("🔍", f"≈{searches:.3f} Google searches"))
+    return ins
+
+def _human_water(ml: float) -> str:
+    if not ml or ml <= 0: return "—"
+    if ml < 1:   return f"{ml*1000:.1f}µl (raindrop≈50µl)"
+    if ml < 150: return f"{ml:.2f}ml ({ml/_BABY_FEED_ML*100:.1f}% of one baby feed)"
+    return f"{ml:.1f}ml ({ml/_BABY_FEED_ML:.1f}× baby feeds)"
+
+def _human_carbon(mg: float) -> str:
+    if not mg or mg <= 0: return "—"
+    car_mm = mg / 1000 / 120 * 1e6
+    return f"{mg:.3f}mg CO₂e ≈ {car_mm:.2f}mm of car driving"
 
 # ── PAGE CONFIG ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -120,6 +167,10 @@ PAGES = [
     ("▶  Execute Run",     "execute"),
     ("⊞  Sample Explorer", "explorer"),
     ("≡  Experiments",     "experiments"),
+    ("◑  Query Analysis",  "query_analysis"),
+    ("🔴  Live Monitor",   "live"),
+    ("💬  SQL Query",      "sql_query"),
+    ("⚙  Settings",        "settings"),
 ]
 
 with st.sidebar:
@@ -679,12 +730,31 @@ elif page_id == "execute":
     st.title("Execute Run")
     st.caption(f"Project root: `{PROJECT_ROOT}`  ·  venv must be activated before starting Streamlit")
 
-    # ── Available tasks (from DB + presets) ──────────────────────────────────
+    # ── Available tasks (from DB + tasks.yaml + presets) ─────────────────────
     _tl = q("SELECT DISTINCT task_name FROM experiments WHERE task_name IS NOT NULL ORDER BY task_name")
-    _known = _tl.task_name.tolist() if not _tl.empty else []
+    _known_db = _tl.task_name.tolist() if not _tl.empty else []
+
+    # Also load from tasks.yaml for tasks not yet run
+    _yaml_tasks = []
+    try:
+        if _YAML_OK:
+            import yaml as _yaml_exec
+            _ty = _yaml_exec.safe_load(open(PROJECT_ROOT / "config" / "tasks.yaml"))
+            _yaml_tasks = [t.get("id","") for t in (_ty or {}).get("tasks",[]) if t.get("id")]
+    except Exception:
+        pass
+
     PRESET_TASKS = ["simple","capital","research_summary","code_generation",
                     "stock_lookup","comparative_research","deep_research"]
-    all_tasks = list(dict.fromkeys(PRESET_TASKS + _known))
+    all_tasks = list(dict.fromkeys(PRESET_TASKS + _yaml_tasks + _known_db))
+    # Category map for display
+    _cat_map = {}
+    try:
+        if _YAML_OK:
+            _ty2 = _yaml_exec.safe_load(open(PROJECT_ROOT / "config" / "tasks.yaml"))
+            _cat_map = {t.get("id",""):t.get("category","") for t in (_ty2 or {}).get("tasks",[])}
+    except Exception:
+        pass
 
     # ── Two modes: batch (run_experiment) vs single (test_harness) ───────────
     tab_batch, tab_single = st.tabs([
@@ -692,48 +762,479 @@ elif page_id == "execute":
         "🔬 Single — test_harness (one task, fine-grained)",
     ])
 
-    def _stream_process(cmd_parts, cwd):
-        """Run cmd_parts, stream output live, return exit code."""
-        st.markdown("**Live output**")
-        out_ph    = st.empty()
-        prog_ph   = st.progress(0)
-        status_ph = st.empty()
+    # ── Gauge helpers (pure HTML/CSS — no JS needed) ──────────────────────────
+    def _gauge_html(value, vmin, vmax, label, unit, color, warn=None, danger=None):
+        """Render an SVG arc speedometer gauge."""
+        pct   = max(0, min(1, (value - vmin) / max(vmax - vmin, 1e-9)))
+        angle = -140 + pct * 280          # arc from -140° to +140°
+        rad   = 3.14159265 / 180
+        r     = 52
+        cx, cy = 60, 62
+        # arc end point
+        ex = cx + r * __import__('math').sin(angle * rad)
+        ey = cy - r * __import__('math').cos(angle * rad)
+        large = 1 if pct > 0.5 else 0
+        # Determine needle color
+        if danger and value >= danger:
+            nclr = "#ef4444"
+        elif warn and value >= warn:
+            nclr = "#f59e0b"
+        else:
+            nclr = color
+        # Background arc
+        bx = cx + r * __import__('math').sin(140 * rad)
+        by = cy - r * __import__('math').cos(140 * rad)
+        ex0 = cx - r * __import__('math').sin(140 * rad)
+        ey0 = cy - r * __import__('math').cos(140 * rad)
+        return f"""
+        <div style="text-align:center;padding:4px 0;">
+          <svg width="120" height="90" viewBox="0 0 120 90">
+            <path d="M {bx:.1f} {by:.1f} A {r} {r} 0 1 1 {ex0:.1f} {ey0:.1f}"
+                  fill="none" stroke="#1e2d45" stroke-width="8" stroke-linecap="round"/>
+            <path d="M {bx:.1f} {by:.1f} A {r} {r} 0 {large} 1 {ex:.1f} {ey:.1f}"
+                  fill="none" stroke="{nclr}" stroke-width="8" stroke-linecap="round"/>
+            <circle cx="{cx}" cy="{cy}" r="4" fill="{nclr}"/>
+            <text x="{cx}" y="{cy+4}" text-anchor="middle"
+                  font-size="14" font-weight="700" fill="#e8f0f8"
+                  font-family="monospace">{value:.1f}</text>
+            <text x="{cx}" y="{cy+18}" text-anchor="middle"
+                  font-size="7" fill="#7090b0">{unit}</text>
+            <text x="{cx}" y="82" text-anchor="middle"
+                  font-size="8" font-weight="600" fill="{nclr}">{label}</text>
+            <text x="6"  y="72" text-anchor="middle" font-size="6" fill="#3d5570">{vmin}</text>
+            <text x="114" y="72" text-anchor="middle" font-size="6" fill="#3d5570">{vmax}</text>
+          </svg>
+        </div>"""
+
+    def _bar_gauge_html(value, vmax, label, unit, color):
+        """Horizontal bar gauge for CPU util / IRQ."""
+        pct = max(0, min(100, value / max(vmax, 1) * 100))
+        return f"""
+        <div style="margin:6px 0 10px;">
+          <div style="display:flex;justify-content:space-between;
+                      font-size:9px;color:#7090b0;margin-bottom:3px;">
+            <span style="font-weight:600;color:#e8f0f8">{label}</span>
+            <span style="font-family:monospace;color:{color}">{value:.0f} {unit}</span>
+          </div>
+          <div style="background:#1e2d45;border-radius:3px;height:8px;overflow:hidden;">
+            <div style="background:{color};width:{pct:.1f}%;height:100%;
+                        border-radius:3px;transition:width 0.3s;"></div>
+          </div>
+        </div>"""
+
+    def _stream_and_gauge(cmd_parts, cwd, run_label=""):
+        """
+        Split-screen execution: terminal log (left 55%) + live gauges (right 45%).
+        Polls server.py every 2s for live samples while process runs.
+        Falls back gracefully if server is offline.
+        """
+        import math, time as _tm
+
+        out_col, gauge_col = st.columns([11, 9])
+
+        # ── Left: terminal ────────────────────────────────────────────────────
+        with out_col:
+            st.markdown(
+                "<div style='font-size:10px;font-weight:600;color:#7090b0;"
+                "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
+                "⬛ Terminal output</div>",
+                unsafe_allow_html=True)
+            prog_ph   = st.progress(0)
+            status_ph = st.empty()
+            out_ph    = st.empty()
+
+        # ── Right: live gauges ────────────────────────────────────────────────
+        with gauge_col:
+            st.markdown(
+                "<div style='font-size:10px;font-weight:600;color:#7090b0;"
+                "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
+                "⚡ Live telemetry</div>",
+                unsafe_allow_html=True)
+            phase_ph   = st.empty()
+            gauge_ph   = st.empty()
+            bar_ph     = st.empty()
+            insight_ph = st.empty()
+            mini_ph    = st.empty()
+
+        # ── Check server once ─────────────────────────────────────────────────
+        _srv_live = False
+        if _REQUESTS_OK:
+            for _ep in ["/health", "/api/system/status", "/"]:
+                try:
+                    if _req.get(f"{LIVE_API}{_ep}", timeout=1).status_code < 500:
+                        _srv_live = True
+                        break
+                except Exception:
+                    pass
+
+        # Initial gauge state
+        _last_pw = _last_tp = _last_util = _last_irq = 0.0
+        _last_core_w = _last_dram_w = 0.0
+        _last_ipc = 0.0
+        _phase_str = "starting"
+        _last_rid = int(q1("SELECT COALESCE(MAX(run_id),0) AS n FROM runs").get("n",0))
+        _energy_acc = []   # rolling pkg_w samples for human insight
+
+        def _refresh_gauges(rid):
+            nonlocal _last_pw, _last_tp, _last_util, _last_irq
+            nonlocal _last_core_w, _last_dram_w, _last_ipc, _phase_str
+            if not _REQUESTS_OK:
+                return
+            try:
+                _er = _req.get(f"{LIVE_API}/api/runs/{rid}/samples/energy", timeout=2).json()
+                _pw_rows = _er.get("power",[]) if isinstance(_er,dict) else []
+                if _pw_rows:
+                    _lp = _pw_rows[-1]
+                    _last_pw     = float(_lp.get("pkg_w",    _last_pw))
+                    _last_core_w = float(_lp.get("core_w",   _last_core_w))
+                    _last_dram_w = float(_lp.get("dram_w",   _last_dram_w))
+                    _energy_acc.append(_last_pw)
+                    if len(_energy_acc) > 60: _energy_acc.pop(0)
+            except Exception:
+                pass
+            try:
+                _cr = _req.get(f"{LIVE_API}/api/runs/{rid}/samples/cpu", timeout=2).json()
+                if isinstance(_cr,list) and _cr:
+                    _lc = _cr[-1]
+                    _last_tp   = float(_lc.get("package_temp", _last_tp))
+                    _last_util = float(_lc.get("cpu_util_percent", _last_util))
+                    _last_ipc  = float(_lc.get("ipc", _last_ipc))
+            except Exception:
+                pass
+            try:
+                _ir = _req.get(f"{LIVE_API}/api/runs/{rid}/samples/interrupts", timeout=2).json()
+                if isinstance(_ir,list) and _ir:
+                    _last_irq = float(_ir[-1].get("interrupts_per_sec", _last_irq))
+            except Exception:
+                pass
+
+        def _draw_gauges():
+            # Speedometer row: Pkg W · Core W · Temp °C
+            _g1 = _gauge_html(_last_pw,    0, 80,  "Pkg Power",  "W",   "#3b82f6",
+                               warn=50, danger=70)
+            _g2 = _gauge_html(_last_core_w,0, 60,  "Core Power", "W",   "#22c55e",
+                               warn=40, danger=55)
+            _g3 = _gauge_html(_last_tp,    30, 105,"Package",    "°C",  "#f59e0b",
+                               warn=80, danger=95)
+            gauge_ph.markdown(
+                f"<div style='display:flex;justify-content:space-around;'>"
+                f"{_g1}{_g2}{_g3}</div>",
+                unsafe_allow_html=True)
+
+            # Bar gauges: CPU util, IRQ, IPC
+            _b1 = _bar_gauge_html(_last_util, 100,  "CPU Util",  "%",    "#38bdf8")
+            _b2 = _bar_gauge_html(min(_last_irq,50000), 50000,
+                                              "IRQ Rate",  "/s",   "#f59e0b")
+            _b3 = _bar_gauge_html(_last_ipc,  3.0,  "IPC",       "inst/cycle","#a78bfa")
+            bar_ph.markdown(
+                f"<div style='padding:0 8px'>{_b1}{_b2}{_b3}</div>",
+                unsafe_allow_html=True)
+
+            # Phase badge
+            _pc = {"starting":"#7090b0","planning":"#f59e0b","execution":"#3b82f6",
+                   "synthesis":"#a78bfa","llm_wait":"#38bdf8",
+                   "complete":"#22c55e","running":"#22c55e"}.get(_phase_str,"#7090b0")
+            phase_ph.markdown(
+                f"<div style='font-size:10px;padding:4px 10px;background:{_pc}22;"
+                f"border:1px solid {_pc};border-radius:4px;display:inline-block;"
+                f"color:{_pc};margin-bottom:4px;'>"
+                f"● Phase: <b>{_phase_str}</b></div>",
+                unsafe_allow_html=True)
+
+            # Human insight
+            _avg_pw  = sum(_energy_acc)/len(_energy_acc) if _energy_acc else 0
+            _est_j   = _avg_pw * len(_energy_acc) * 2  # ~2s per poll tick
+            if _est_j > 0:
+                _hi = _human_energy(_est_j)
+                insight_ph.markdown(
+                    "<div style='font-size:8px;color:#3d5570;margin-top:4px;'>"
+                    "So far: "
+                    + " · ".join(f"{ic} {d}" for ic, d in _hi[:2])
+                    + "</div>", unsafe_allow_html=True)
+
+        # ── Launch process ────────────────────────────────────────────────────
         lines = []
         try:
             proc = subprocess.Popen(
                 cmd_parts, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, cwd=str(cwd), bufsize=1,
             )
+
+            _poll_count = 0
+            _gauge_every = 4   # update gauges every 4 lines (~2s at typical output rate)
+
             for raw in iter(proc.stdout.readline, ""):
                 line = raw.rstrip()
                 if not line:
                     continue
                 lines.append(line)
-                out_ph.code("\n".join(lines[-80:]), language="bash")
+
+                # Colour-code log lines
                 lo = line.lower()
-                # progress heuristics
+                _line_color = "#e8f0f8"
+                if any(k in lo for k in ["error","fail","exception","traceback"]):
+                    _line_color = "#ef4444"
+                elif any(k in lo for k in ["complete","saved","done","✅"]):
+                    _line_color = "#22c55e"
+                elif any(k in lo for k in ["planning","plan"]):
+                    _line_color = "#f59e0b"
+                    _phase_str  = "planning"
+                elif any(k in lo for k in ["execut","tool_call","tool call"]):
+                    _line_color = "#3b82f6"
+                    _phase_str  = "execution"
+                elif any(k in lo for k in ["synth","finaliz"]):
+                    _line_color = "#a78bfa"
+                    _phase_str  = "synthesis"
+                elif "run" in lo or "rep" in lo:
+                    _phase_str  = "running"
+
+                # Colour-code terminal output
+                _colored = "".join(
+                    f"<span style='color:{_line_color}'>{l}</span>\n"
+                    for l in lines[-60:]
+                )
+                out_ph.markdown(
+                    f"<div style='background:#050810;border:1px solid #1e2d45;"
+                    f"border-radius:4px;padding:8px 12px;font-family:monospace;"
+                    f"font-size:9px;line-height:1.5;height:340px;overflow-y:auto;'>"
+                    f"{_colored}</div>",
+                    unsafe_allow_html=True)
+
+                # Progress heuristic
                 for pat in ["rep ", "repetition ", "run "]:
                     if pat in lo and "/" in lo:
                         try:
                             seg = lo.split(pat)[-1].split("/")
                             d, t = int(seg[0].strip()), int(seg[1].split()[0])
-                            prog_ph.progress(min(d / t, 1.0))
-                            status_ph.caption(f"{d}/{t} complete")
+                            prog_ph.progress(min(d/t, 1.0))
+                            status_ph.caption(f"Rep {d}/{t}")
                         except Exception:
                             pass
                         break
-                if any(k in lo for k in ["complete", "saved", "finished", "done"]):
+                if any(k in lo for k in ["complete","saved","finished","done"]):
                     prog_ph.progress(1.0)
+                    _phase_str = "complete"
+
+                # Poll gauges periodically
+                _poll_count += 1
+                if _srv_live and _poll_count % _gauge_every == 0:
+                    # Detect if a new run was created since we started
+                    _new_rid = int(q1("SELECT COALESCE(MAX(run_id),0) AS n FROM runs").get("n",0))
+                    if _new_rid > _last_rid:
+                        _last_rid = _new_rid
+                    _refresh_gauges(_last_rid)
+                _draw_gauges()
+
             proc.wait()
+            _phase_str = "complete" if proc.returncode == 0 else "error"
+            _draw_gauges()
+
+            # ── Final human-insight summary ───────────────────────────────────
+            if _energy_acc:
+                _total_j = sum(_energy_acc) * 2
+                _hi_final = _human_energy(_total_j)
+                mini_ph.markdown(
+                    "<div style='background:#0f1520;border:1px solid #22c55e33;"
+                    "border-radius:6px;padding:8px 12px;margin-top:6px;'>"
+                    "<div style='font-size:9px;font-weight:600;color:#22c55e;"
+                    "margin-bottom:4px;'>⚡ Run energy summary</div>"
+                    + "".join(
+                        f"<div style='font-size:9px;color:#b8c8d8;margin:2px 0;'>{ic} {d}</div>"
+                        for ic, d in _hi_final
+                    ) + "</div>", unsafe_allow_html=True)
+
+            # ── Parse & render MASTER SUMMARY from terminal output ────────────
+            # Looks for lines like:
+            #   cloud   GSM8K Arithmetic   1.4600   4.1553   3.58x   [-0.82, 7.99]
+            # that appear between the === MASTER SUMMARY === header and the next ===
+            import re as _re
+            _summary_rows = []
+            _in_summary   = False
+            _saved_file   = None
+            for _line in lines:
+                _ll = _line.strip()
+                if "MASTER SUMMARY" in _ll:
+                    _in_summary = True
+                    continue
+                if _in_summary and _ll.startswith("==="):
+                    _in_summary = False
+                    continue
+                if _in_summary and _ll.startswith("---"):
+                    continue
+                if _in_summary and _ll and not _ll.startswith("Provider"):
+                    # Try to parse a data row:
+                    # provider  task_name  linear_j  agentic_j  tax  [ci_lo, ci_hi]
+                    _m = _re.match(
+                        r'^(\S+)\s+(.*?)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)x?\s*(\[.*?\])?',
+                        _ll
+                    )
+                    if _m:
+                        _prov, _task, _lin, _age, _tax, _ci = _m.groups()
+                        _lin_j = float(_lin)
+                        _age_j = float(_age)
+                        _tax_x = float(_tax)
+                        _summary_rows.append({
+                            "provider":   _prov,
+                            "task":       _task.strip(),
+                            "linear_j":   _lin_j,
+                            "agentic_j":  _age_j,
+                            "tax_x":      _tax_x,
+                            "ci":         _ci or "",
+                        })
+                # Detect saved file path
+                _fm = _re.search(r'Results saved to[:\s]+(\S+\.json)', _line)
+                if _fm:
+                    _saved_file = _fm.group(1)
+
+            if _summary_rows:
+                # Render the master summary card below the split-screen panel
+                st.markdown("---")
+                st.markdown(
+                    "<div style='font-size:13px;font-weight:700;color:#e8f0f8;"
+                    "letter-spacing:.05em;margin-bottom:12px;'>"
+                    "📊 Master Summary</div>",
+                    unsafe_allow_html=True)
+
+                # Colour scale for tax multiplier
+                def _tax_color(tx):
+                    if tx >= 10: return "#ef4444"
+                    if tx >= 5:  return "#f59e0b"
+                    if tx >= 3:  return "#38bdf8"
+                    return "#22c55e"
+
+                # Build styled HTML table
+                _rows_html = ""
+                for _r in _summary_rows:
+                    _tc   = _tax_color(_r["tax_x"])
+                    _diff = _r["agentic_j"] - _r["linear_j"]
+                    _diff_str = f"+{_diff:.2f}J" if _diff > 0 else f"{_diff:.2f}J"
+                    _diff_c   = "#ef4444" if _diff > 0 else "#22c55e"
+                    # bar widths proportional within row
+                    _max_j  = max(_r["linear_j"], _r["agentic_j"], 0.001)
+                    _lw     = _r["linear_j"]  / _max_j * 100
+                    _aw     = _r["agentic_j"] / _max_j * 100
+                    # Human insight for agentic energy
+                    _hi_row = _human_energy(_r["agentic_j"])
+                    _hi_str = _hi_row[0][1] if _hi_row else ""
+                    _rows_html += f"""
+                    <tr style="border-bottom:1px solid #1e2d45;">
+                      <td style="padding:10px 8px;font-size:10px;color:#7090b0;
+                                 white-space:nowrap;">{_r['provider']}</td>
+                      <td style="padding:10px 8px;font-size:10px;color:#e8f0f8;
+                                 min-width:180px;">{_r['task']}</td>
+                      <td style="padding:10px 8px;">
+                        <div style="font-size:10px;color:#22c55e;font-family:monospace;
+                                    margin-bottom:2px;">{_r['linear_j']:.4f}J</div>
+                        <div style="background:#1e2d45;border-radius:2px;height:5px;width:120px;">
+                          <div style="background:#22c55e;width:{_lw:.0f}%;height:100%;border-radius:2px;"></div>
+                        </div>
+                      </td>
+                      <td style="padding:10px 8px;">
+                        <div style="font-size:10px;color:#ef4444;font-family:monospace;
+                                    margin-bottom:2px;">{_r['agentic_j']:.4f}J</div>
+                        <div style="background:#1e2d45;border-radius:2px;height:5px;width:120px;">
+                          <div style="background:#ef4444;width:{_aw:.0f}%;height:100%;border-radius:2px;"></div>
+                        </div>
+                      </td>
+                      <td style="padding:10px 8px;text-align:center;">
+                        <span style="font-size:13px;font-weight:700;color:{_tc};
+                                     font-family:monospace;">{_r['tax_x']:.2f}×</span>
+                      </td>
+                      <td style="padding:10px 8px;font-size:9px;color:#3d5570;
+                                 font-family:monospace;">{_r['ci']}</td>
+                      <td style="padding:10px 8px;">
+                        <span style="font-size:{_diff_c};color:{_diff_c};
+                                     font-family:monospace;font-size:9px;">{_diff_str}</span>
+                        <div style="font-size:8px;color:#3d5570;margin-top:2px;">{_hi_str}</div>
+                      </td>
+                    </tr>"""
+
+                st.markdown(f"""
+                <div style="background:#0a0e1a;border:1px solid #1e2d45;
+                            border-radius:8px;overflow:hidden;margin-bottom:16px;">
+                  <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                      <tr style="background:#0f1520;border-bottom:2px solid #1e2d45;">
+                        <th style="padding:8px;font-size:9px;color:#3d5570;
+                                   text-align:left;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">Provider</th>
+                        <th style="padding:8px;font-size:9px;color:#3d5570;
+                                   text-align:left;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">Task</th>
+                        <th style="padding:8px;font-size:9px;color:#22c55e;
+                                   text-align:left;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">Linear</th>
+                        <th style="padding:8px;font-size:9px;color:#ef4444;
+                                   text-align:left;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">Agentic</th>
+                        <th style="padding:8px;font-size:9px;color:#f59e0b;
+                                   text-align:center;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">Tax</th>
+                        <th style="padding:8px;font-size:9px;color:#3d5570;
+                                   text-align:left;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">95% CI</th>
+                        <th style="padding:8px;font-size:9px;color:#3d5570;
+                                   text-align:left;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.08em;">Δ / Insight</th>
+                      </tr>
+                    </thead>
+                    <tbody>{_rows_html}</tbody>
+                  </table>
+                </div>""", unsafe_allow_html=True)
+
+                # Winner/loser highlights
+                if len(_summary_rows) > 1:
+                    _best  = min(_summary_rows, key=lambda r: r["tax_x"])
+                    _worst = max(_summary_rows, key=lambda r: r["tax_x"])
+                    _hcols = st.columns(3)
+                    _hcols[0].success(
+                        f"**✅ Lowest overhead**\n\n"
+                        f"{_best['provider']} · {_best['task'][:28]}\n\n"
+                        f"**{_best['tax_x']:.2f}×** tax"
+                    )
+                    _hcols[1].error(
+                        f"**⚠ Highest overhead**\n\n"
+                        f"{_worst['provider']} · {_worst['task'][:28]}\n\n"
+                        f"**{_worst['tax_x']:.2f}×** tax"
+                    )
+                    _avg_tax = sum(r["tax_x"] for r in _summary_rows) / len(_summary_rows)
+                    _hcols[2].info(
+                        f"**📈 Session average**\n\n"
+                        f"{len(_summary_rows)} comparisons\n\n"
+                        f"**{_avg_tax:.2f}×** mean tax"
+                    )
+
+                # Visualise summary inline
+                import pandas as _pd_sum
+                _sdf = _pd_sum.DataFrame(_summary_rows)
+                _sdf["label"] = _sdf["provider"] + " · " + _sdf["task"].str[:20]
+                _sfig = go.Figure()
+                _sfig.add_trace(go.Bar(
+                    name="Linear", x=_sdf["label"], y=_sdf["linear_j"],
+                    marker_color="#22c55e", text=_sdf["linear_j"].round(3),
+                    textposition="outside", textfont=dict(size=8)))
+                _sfig.add_trace(go.Bar(
+                    name="Agentic", x=_sdf["label"], y=_sdf["agentic_j"],
+                    marker_color="#ef4444", text=_sdf["agentic_j"].round(3),
+                    textposition="outside", textfont=dict(size=8)))
+                _sfig.update_layout(**PL, barmode="group", height=280,
+                    title="Linear vs Agentic energy — this session",
+                    xaxis_tickangle=20)
+                st.plotly_chart(_sfig, use_container_width=True)
+
+                if _saved_file:
+                    st.caption(f"💾 Results saved to `{_saved_file}`")
+
             return proc.returncode
+
         except FileNotFoundError:
-            st.error(
-                f"Cannot find `python`. Run Streamlit with the venv activated:\n\n"
+            out_ph.error(
+                f"Cannot find `python`. Activate the venv:\n\n"
                 f"```bash\ncd {cwd}\nsource venv/bin/activate\nstreamlit run streamlit_app.py\n```"
             )
             return -1
-        except Exception as e:
-            st.error(f"Unexpected error: {e}")
+        except Exception as ex:
+            out_ph.error(f"Unexpected error: {ex}")
             return -1
 
     # ══ TAB 1: run_experiment ═════════════════════════════════════════════════
@@ -742,11 +1243,108 @@ elif page_id == "execute":
 
         with col_cfg:
             st.markdown("**Tasks**")
-            tasks_input = st.text_input(
-                "Task IDs (comma-separated or 'all')",
-                value="simple,capital",
-                help="e.g.  simple,capital,research_summary  or  all",
-            )
+
+            # ── Task selector: multiselect from DB/yaml + custom entry ────────
+            _fmt_task = lambda t: f"{t}  [{_cat_map.get(t,'?')}]" if _cat_map.get(t) else t
+
+            _b_all = st.checkbox("Run ALL tasks", value=False, key="b_all_tasks")
+
+            if _b_all:
+                _selected_tasks = all_tasks
+                st.caption(f"All {len(all_tasks)} tasks selected")
+                tasks_input = "all"
+            else:
+                _selected_tasks = st.multiselect(
+                    "Select tasks",
+                    options=all_tasks,
+                    default=all_tasks[:2] if len(all_tasks) >= 2 else all_tasks,
+                    format_func=_fmt_task,
+                    key="b_task_multi",
+                    help="Tasks from DB + tasks.yaml. Add custom below.",
+                )
+
+                # ── Custom task writer ─────────────────────────────────────────
+                with st.expander("➕ Add a custom task", expanded=False):
+                    st.caption(
+                        "Define a new task inline. It will be saved to `config/tasks.yaml` "
+                        "with `category: custom` and added to the run."
+                    )
+                    _ct_id    = st.text_input("Task ID (no spaces)", key="ct_id",
+                                              placeholder="my_custom_task")
+                    _ct_name  = st.text_input("Display name", key="ct_name",
+                                              placeholder="My Custom Task")
+                    _ct_prompt= st.text_area("Prompt", key="ct_prompt", height=80,
+                                             placeholder="Explain quantum entanglement in simple terms.")
+                    _ct_level = st.selectbox("Complexity level",
+                                             ["easy","medium","hard"], index=1, key="ct_level")
+                    _ct_tools = st.number_input("Expected tool calls (0 = no tools)",
+                                                0, 20, 0, key="ct_tools")
+                    _ct_save  = st.button("💾 Save task to tasks.yaml", key="ct_save")
+
+                    if _ct_save:
+                        if not _ct_id.strip() or not _ct_prompt.strip():
+                            st.error("Task ID and Prompt are required.")
+                        elif " " in _ct_id.strip():
+                            st.error("Task ID must have no spaces.")
+                        else:
+                            _new_task = {
+                                "id":          _ct_id.strip(),
+                                "name":        _ct_name.strip() or _ct_id.strip(),
+                                "category":    "custom",
+                                "level":       _ct_level,
+                                "tool_calls":  int(_ct_tools),
+                                "prompt":      _ct_prompt.strip(),
+                            }
+                            _yaml_path = PROJECT_ROOT / "config" / "tasks.yaml"
+                            try:
+                                if _YAML_OK:
+                                    import yaml as _yaml_w
+                                    _existing = {}
+                                    if _yaml_path.exists():
+                                        _existing = _yaml_w.safe_load(_yaml_path.read_text()) or {}
+                                    _tlist = _existing.get("tasks", [])
+                                    # Update if exists, append if new
+                                    _ids = [t.get("id") for t in _tlist]
+                                    if _ct_id.strip() in _ids:
+                                        _tlist[_ids.index(_ct_id.strip())] = _new_task
+                                        st.success(f"Updated existing task `{_ct_id.strip()}`")
+                                    else:
+                                        _tlist.append(_new_task)
+                                        st.success(f"Added `{_ct_id.strip()}` with category=custom")
+                                    _existing["tasks"] = _tlist
+                                    _yaml_path.write_text(
+                                        _yaml_w.dump(_existing, allow_unicode=True, sort_keys=False)
+                                    )
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                else:
+                                    st.error("PyYAML not installed — run: pip install pyyaml")
+                            except Exception as _ye:
+                                st.error(f"Could not write tasks.yaml: {_ye}")
+
+                tasks_input = ",".join(_selected_tasks) if _selected_tasks else "simple"
+
+            if not _b_all and not _selected_tasks:
+                st.warning("Select at least one task.")
+
+            # Show selected task cards
+            if not _b_all and _selected_tasks:
+                _card_cols = st.columns(min(len(_selected_tasks), 3))
+                for _ci, _tn in enumerate(_selected_tasks[:9]):
+                    _cat = _cat_map.get(_tn, "?")
+                    _cc  = {"reasoning":"#f59e0b","coding":"#3b82f6","qa":"#22c55e",
+                             "summarization":"#38bdf8","classification":"#a78bfa",
+                             "extraction":"#e879f9","custom":"#ef4444"}.get(_cat, "#7090b0")
+                    _card_cols[_ci % 3].markdown(
+                        f"<div style='background:#0f1520;border:1px solid #1e2d45;"
+                        f"border-left:2px solid {_cc};border-radius:4px;"
+                        f"padding:4px 8px;margin:2px 0;font-size:9px;'>"
+                        f"<span style='color:#e8f0f8'>{_tn}</span> "
+                        f"<span style='color:{_cc}'>{_cat}</span></div>",
+                        unsafe_allow_html=True
+                    )
+                if len(_selected_tasks) > 9:
+                    st.caption(f"… and {len(_selected_tasks)-9} more")
             st.markdown("**Providers**")
             b_providers = st.multiselect("Providers", ["cloud","local"], default=["cloud"],
                                          key="b_prov")
@@ -796,12 +1394,11 @@ elif page_id == "execute":
                         capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=30,
                     )
                     st.code(r.stdout or r.stderr or "(no output)")
-
             elif b_run:
                 if not b_providers:
                     st.warning("Select at least one provider.")
                 else:
-                    rc = _stream_process(b_cmd, PROJECT_ROOT)
+                    rc = _stream_and_gauge(b_cmd, PROJECT_ROOT)
                     if rc == 0:
                         st.success("✅ Batch complete — click 🔄 Refresh to see results.")
                         st.cache_data.clear()
@@ -867,7 +1464,7 @@ elif page_id == "execute":
                     st.code(r.stdout or r.stderr or "(no output)")
 
             elif h_run:
-                rc = _stream_process(h_cmd, PROJECT_ROOT)
+                rc = _stream_and_gauge(h_cmd, PROJECT_ROOT)
                 if rc == 0:
                     st.success("✅ Run complete — click 🔄 Refresh to see results.")
                     st.cache_data.clear()
@@ -905,10 +1502,8 @@ elif page_id == "explorer":
 
         def _lbl(r):
             task = str(r.task_name or "?")[:22]
-            wf   = str(r.workflow_type or "?")
-            prov = str(r.provider or "?")
-            ej   = float(r.energy_j) if r.energy_j is not None else 0.0
-            return (f"Run {int(r.run_id):>4}  {wf:<8}  {prov:<6}  {ej:.3f}J  {task}")
+            return (f"Run {int(r.run_id):>4}  {r.workflow_type:<8}  "
+                    f"{r.provider:<6}  {r.energy_j:.3f}J  {task}")
 
         _labels = [_lbl(r) for _, r in _sel.iterrows()]
         _ids    = _sel.run_id.tolist()
@@ -1219,3 +1814,678 @@ elif page_id == "experiments":
             st.dataframe(exp_tax[sc3], use_container_width=True, hide_index=True)
     else:
         st.info("No experiments found.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: QUERY ANALYSIS
+# ══════════════════════════════════════════════════════════════════════════════
+elif page_id == "query_analysis":
+    st.title("Query Type Analysis")
+    st.caption("Energy · latency · tokens · sustainability — grouped by category and workflow")
+
+    # ── Level 1: category × workflow summary ──────────────────────────────────
+    cat_df, _e1 = q_safe("""
+        SELECT
+            COALESCE(tc.category, 'uncategorised')           AS category,
+            r.workflow_type,
+            COUNT(*)                                          AS runs,
+            ROUND(AVG(r.total_energy_uj)   / 1e6, 4)        AS avg_energy_j,
+            ROUND(AVG(r.dynamic_energy_uj) / 1e6, 4)        AS avg_dynamic_j,
+            ROUND(AVG(r.duration_ns)       / 1e9, 3)        AS avg_duration_s,
+            ROUND(AVG(r.total_tokens),            1)        AS avg_tokens,
+            ROUND(AVG(CASE WHEN r.total_tokens > 0
+                THEN r.total_energy_uj / r.total_tokens END) / 1e3, 4) AS avg_mj_per_token,
+            ROUND(AVG(r.total_energy_uj / 1e6 /
+                NULLIF(r.duration_ns / 1e9, 0)),             4) AS avg_j_per_sec,
+            ROUND(AVG(r.planning_time_ms),        1)        AS avg_plan_ms,
+            ROUND(AVG(r.execution_time_ms),       1)        AS avg_exec_ms,
+            ROUND(AVG(r.synthesis_time_ms),       1)        AS avg_synth_ms,
+            ROUND(AVG(r.carbon_g) * 1000,         4)        AS avg_carbon_mg,
+            ROUND(AVG(r.water_ml),                4)        AS avg_water_ml,
+            ROUND(AVG(es_agg.core_j),             4)        AS avg_core_j,
+            ROUND(AVG(es_agg.uncore_j),           4)        AS avg_uncore_j,
+            ROUND(AVG(es_agg.dram_j),             4)        AS avg_dram_j
+        FROM runs r
+        JOIN experiments e ON r.exp_id = e.exp_id
+        LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+        LEFT JOIN (
+            SELECT run_id,
+                   (MAX(core_energy_uj)   - MIN(core_energy_uj))   / 1e6 AS core_j,
+                   (MAX(uncore_energy_uj) - MIN(uncore_energy_uj)) / 1e6 AS uncore_j,
+                   (MAX(dram_energy_uj)   - MIN(dram_energy_uj))   / 1e6 AS dram_j
+            FROM energy_samples GROUP BY run_id
+        ) es_agg ON r.run_id = es_agg.run_id
+        GROUP BY COALESCE(tc.category,'uncategorised'), r.workflow_type
+        ORDER BY category, r.workflow_type
+    """)
+
+    if _e1:
+        st.error(f"Query error: {_e1}")
+    elif cat_df.empty:
+        st.info("No data — run experiments and ensure task_categories table is populated.")
+    else:
+        # KPI row
+        _lin_cat = cat_df[cat_df.workflow_type == "linear"]
+        _age_cat = cat_df[cat_df.workflow_type == "agentic"]
+        k1,k2,k3,k4,k5 = st.columns(5)
+        k1.metric("Categories",   cat_df.category.nunique())
+        k2.metric("Total runs",   int(cat_df.runs.sum()))
+        k3.metric("Best mJ/token",
+                  f"{cat_df.avg_mj_per_token.min():.4f}" if cat_df.avg_mj_per_token.notna().any() else "—")
+        k4.metric("Avg linear J", f"{_lin_cat.avg_energy_j.mean():.3f}J" if not _lin_cat.empty else "—")
+        k5.metric("Avg agentic J",f"{_age_cat.avg_energy_j.mean():.3f}J" if not _age_cat.empty else "—")
+
+        st.divider()
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Energy per query by category**")
+            fig = px.bar(cat_df.dropna(subset=["avg_energy_j"]),
+                         x="category", y="avg_energy_j", color="workflow_type",
+                         barmode="group", color_discrete_map=WF_COLORS,
+                         labels={"avg_energy_j":"Avg Energy (J)","category":"Category"})
+            st.plotly_chart(fl(fig), use_container_width=True)
+        with c2:
+            st.markdown("**Energy per token (mJ)**")
+            fig2 = px.bar(cat_df.dropna(subset=["avg_mj_per_token"]),
+                          x="category", y="avg_mj_per_token", color="workflow_type",
+                          barmode="group", color_discrete_map=WF_COLORS,
+                          labels={"avg_mj_per_token":"mJ / token","category":"Category"})
+            st.plotly_chart(fl(fig2), use_container_width=True)
+
+        c3, c4 = st.columns(2)
+        with c3:
+            st.markdown("**Phase time breakdown (agentic)**")
+            _ap = cat_df[cat_df.workflow_type == "agentic"].copy()
+            if not _ap.empty:
+                _ph = _ap[["category","avg_plan_ms","avg_exec_ms","avg_synth_ms"]].melt(
+                    id_vars="category", var_name="phase", value_name="ms")
+                _ph["phase"] = _ph["phase"].map({
+                    "avg_plan_ms":"Planning","avg_exec_ms":"Execution","avg_synth_ms":"Synthesis"})
+                fig3 = px.bar(_ph.dropna(), x="category", y="ms", color="phase",
+                              barmode="stack",
+                              color_discrete_map={"Planning":"#f59e0b","Execution":"#3b82f6","Synthesis":"#a78bfa"},
+                              labels={"ms":"ms","category":"Category"})
+                st.plotly_chart(fl(fig3), use_container_width=True)
+            else:
+                st.info("No agentic data.")
+        with c4:
+            st.markdown("**Hardware domain breakdown (linear)**")
+            _hl = cat_df[cat_df.workflow_type == "linear"].copy()
+            if not _hl.empty:
+                _hm = _hl[["category","avg_core_j","avg_uncore_j","avg_dram_j"]].melt(
+                    id_vars="category", var_name="domain", value_name="j")
+                _hm["domain"] = _hm["domain"].map(
+                    {"avg_core_j":"Core","avg_uncore_j":"Uncore","avg_dram_j":"DRAM"})
+                fig4 = px.bar(_hm.dropna(), x="category", y="j", color="domain",
+                              barmode="stack",
+                              color_discrete_map={"Core":"#3b82f6","Uncore":"#38bdf8","DRAM":"#a78bfa"},
+                              labels={"j":"Joules","category":"Category"})
+                st.plotly_chart(fl(fig4), use_container_width=True)
+            else:
+                st.info("No linear data.")
+
+        st.divider()
+
+        # ── Level 2: per-task ─────────────────────────────────────────────────
+        st.markdown("### Level 2 — Per-task detail")
+        _sel_cat = st.selectbox("Filter category",
+                                ["all"] + sorted(cat_df.category.dropna().unique().tolist()),
+                                key="qa_cat")
+        _cat_where = f"WHERE tc.category = '{_sel_cat}'" if _sel_cat != "all" else ""
+
+        task_df, _e2 = q_safe(f"""
+            SELECT e.task_name,
+                   COALESCE(tc.category,'uncategorised') AS category,
+                   r.workflow_type,
+                   COUNT(*) AS runs,
+                   ROUND(AVG(r.total_energy_uj)/1e6, 4)  AS avg_energy_j,
+                   ROUND(AVG(r.duration_ns)/1e9,    3)   AS avg_duration_s,
+                   ROUND(AVG(r.total_tokens),        1)  AS avg_tokens,
+                   ROUND(AVG(CASE WHEN r.total_tokens > 0
+                       THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_per_token,
+                   ROUND(AVG(r.carbon_g)*1000,       4)  AS avg_carbon_mg,
+                   ROUND(AVG(r.water_ml),            4)  AS avg_water_ml,
+                   ROUND(AVG(r.llm_calls),           1)  AS avg_llm_calls,
+                   ROUND(AVG(r.tool_calls),          1)  AS avg_tool_calls
+            FROM runs r
+            JOIN experiments e ON r.exp_id = e.exp_id
+            LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+            {_cat_where}
+            GROUP BY e.task_name, COALESCE(tc.category,'uncategorised'), r.workflow_type
+            ORDER BY avg_energy_j DESC
+        """)
+        if _e2:
+            st.error(_e2)
+        elif not task_df.empty:
+            fig5 = px.bar(task_df.dropna(subset=["avg_energy_j"]),
+                          x="task_name", y="avg_energy_j", color="workflow_type",
+                          barmode="group", color_discrete_map=WF_COLORS,
+                          hover_data=["category","avg_tokens","avg_mj_per_token"],
+                          labels={"avg_energy_j":"Avg Energy (J)","task_name":"Task"})
+            fig5.update_xaxes(tickangle=30)
+            st.plotly_chart(fl(fig5), use_container_width=True)
+            _sc = [c for c in ["task_name","category","workflow_type","runs","avg_energy_j",
+                                "avg_duration_s","avg_tokens","avg_mj_per_token",
+                                "avg_carbon_mg","avg_water_ml","avg_llm_calls","avg_tool_calls"]
+                   if c in task_df.columns]
+            st.dataframe(task_df[_sc], use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        # ── Level 3: human-scale insights ────────────────────────────────────
+        st.markdown("### Level 3 — Human-scale energy insights")
+        st.caption("Translating joules into things you can feel")
+
+        if not runs.empty and "task_name" in runs.columns:
+            _t_opts = sorted(runs.task_name.dropna().unique().tolist())
+            _sel_t  = st.selectbox("Select task to interpret", _t_opts, key="qa_human_task")
+            _tr     = runs[runs.task_name == _sel_t]
+
+            for _wf, _border in [("linear","#22c55e"),("agentic","#ef4444")]:
+                _wr = _tr[_tr.workflow_type == _wf]
+                if _wr.empty: continue
+                _ej  = float(_wr.energy_j.mean())
+                _wml = float(_wr.water_ml.mean())    if "water_ml"   in _wr.columns and _wr.water_ml.notna().any()   else 0
+                _cmg = float(_wr.carbon_g.mean()*1000) if "carbon_g" in _wr.columns and _wr.carbon_g.notna().any()  else 0
+                _tok = float(_wr.total_tokens.mean())  if "total_tokens" in _wr.columns and _wr.total_tokens.notna().any() else 0
+                _dur = float(_wr.duration_ms.mean()/1000) if "duration_ms" in _wr.columns and _wr.duration_ms.notna().any() else 0
+
+                _ins = _human_energy(_ej)
+                _ins_html = "".join(
+                    f"<div style='margin:2px 0;font-size:10px;color:#b8c8d8;'>{ic} {desc}</div>"
+                    for ic, desc in _ins)
+                st.markdown(f"""
+                <div style="background:#0f1520;border:1px solid #1e2d45;border-radius:8px;
+                            padding:14px 18px;margin-bottom:8px;border-left:3px solid {_border};">
+                  <div style="font-size:12px;font-weight:600;color:#e8f0f8;margin-bottom:6px;">
+                    {_wf.upper()} · {_sel_t}
+                    <span style="font-family:monospace;color:{_border};margin-left:12px;">
+                      {_ej:.4f}J</span>
+                    {f'<span style="font-size:9px;color:#3d5570;margin-left:8px;">{_tok:.0f} tokens · {_dur:.1f}s</span>' if _tok > 0 else ''}
+                  </div>
+                  {_ins_html}
+                  <div style="margin-top:8px;font-size:10px;color:#7090b0;border-top:1px solid #1e2d45;padding-top:6px;">
+                    💧 {_human_water(_wml)} &nbsp;·&nbsp; 🌱 {_human_carbon(_cmg)}
+                  </div>
+                </div>""", unsafe_allow_html=True)
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: RUN REPLAY (formerly Live Monitor)
+# Renamed — "live" only makes sense during execution.
+# This page lets you inspect any completed run as an interactive timeline.
+# ══════════════════════════════════════════════════════════════════════════════
+elif page_id == "live":
+    st.title("📼 Run Replay")
+    st.caption(
+        "Inspect any completed run as a full timeline · "
+        "Live gauges appear automatically in Execute Run during recording"
+    )
+
+    # ── Server status ─────────────────────────────────────────────────────────
+    _srv_ok2 = False
+    if _REQUESTS_OK:
+        for _ep in ["/health", "/api/system/status", "/"]:
+            try:
+                if _req.get(f"{LIVE_API}{_ep}", timeout=1.5).status_code < 500:
+                    _srv_ok2 = True
+                    break
+            except Exception:
+                pass
+
+    if not _srv_ok2:
+        st.warning(
+            "server.py is offline — start it for richer data: "
+            "uvicorn server:app --host 0.0.0.0 --port 8765 --reload  "
+            "(you can still browse completed runs from the local DB below)"
+        )
+
+    # ── Run picker ────────────────────────────────────────────────────────────
+    _rp_runs, _rp_err = q_safe("""
+        SELECT r.run_id, r.workflow_type, r.run_number,
+               e.task_name, e.provider,
+               ROUND(r.total_energy_uj/1e6,4) AS energy_j,
+               ROUND(r.duration_ns/1e9,2)     AS duration_s,
+               r.ipc, r.total_tokens
+        FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+        ORDER BY r.run_id DESC LIMIT 100
+    """)
+
+    if _rp_err or _rp_runs.empty:
+        st.info("No runs in DB yet — run an experiment first.")
+    else:
+        def _rp_lbl(row):
+            return (f"#{int(row.run_id):>4}  {str(row.workflow_type):<8}  "
+                    f"{str(row.task_name or '?'):<22}  "
+                    f"{row.energy_j:.3f}J  {row.duration_s:.1f}s")
+
+        _rp_opts  = {_rp_lbl(r): int(r.run_id) for _, r in _rp_runs.iterrows()}
+        _rp_sel   = st.selectbox("Select run to inspect", list(_rp_opts.keys()), key="rp_sel")
+        _rp_rid   = _rp_opts[_rp_sel]
+        _rp_row   = _rp_runs[_rp_runs.run_id == _rp_rid].iloc[0]
+
+        # KPI banner
+        _wf  = str(_rp_row.workflow_type)
+        _clr = "#22c55e" if _wf == "linear" else "#ef4444"
+        st.markdown(f"""
+        <div style="background:#0f1520;border:1px solid #1e2d45;border-radius:6px;
+                    padding:10px 16px;display:flex;gap:24px;flex-wrap:wrap;
+                    margin-bottom:8px;border-left:3px solid {_clr};">
+          <span style="font-size:11px;color:#7090b0;">Run <b style="color:#e8f0f8">#{_rp_rid}</b></span>
+          <span style="font-size:11px;font-weight:600;color:{_clr}">{_wf}</span>
+          <span style="font-size:11px;color:#7090b0;">task: <b style="color:#e8f0f8">{_rp_row.task_name}</b></span>
+          <span style="font-size:11px;color:#7090b0;">provider: <b style="color:#e8f0f8">{_rp_row.provider}</b></span>
+          <span style="font-size:11px;color:#7090b0;">energy: <b style="color:#f59e0b">{_rp_row.energy_j:.4f}J</b></span>
+          <span style="font-size:11px;color:#7090b0;">duration: <b style="color:#e8f0f8">{_rp_row.duration_s:.2f}s</b></span>
+        </div>""", unsafe_allow_html=True)
+
+        # Human insight for this run
+        _rp_hi = _human_energy(float(_rp_row.energy_j))
+        if _rp_hi:
+            st.markdown(
+                "<div style='font-size:9px;color:#3d5570;margin-bottom:12px;'>"
+                + " &nbsp;·&nbsp; ".join(f"{ic} {d}" for ic, d in _rp_hi)
+                + "</div>", unsafe_allow_html=True)
+
+        st.divider()
+
+        # ── Load sample data (server if available, else direct DB) ────────────
+        _load_src = "server" if _srv_ok2 else "db"
+        _e_rows, _c_rows, _i_rows = [], [], []
+
+        if _srv_ok2:
+            try:
+                _er = _req.get(f"{LIVE_API}/api/runs/{_rp_rid}/samples/energy", timeout=5).json()
+                _e_rows = _er.get("power", []) if isinstance(_er, dict) else []
+                _c_rows = _req.get(f"{LIVE_API}/api/runs/{_rp_rid}/samples/cpu", timeout=5).json()
+                _i_rows = _req.get(f"{LIVE_API}/api/runs/{_rp_rid}/samples/interrupts", timeout=5).json()
+                if not isinstance(_c_rows, list): _c_rows = []
+                if not isinstance(_i_rows, list): _i_rows = []
+            except Exception as _ex:
+                st.warning(f"Server fetch failed ({_ex}) — falling back to direct DB")
+                _load_src = "db"
+
+        if _load_src == "db":
+            _e_df, _ = q_safe(f"""
+                SELECT ROUND((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6,1) AS elapsed_ms,
+                       ROUND(pkg_energy_uj/1e6,6)    AS pkg_j,
+                       ROUND(core_energy_uj/1e6,6)   AS core_j,
+                       ROUND(dram_energy_uj/1e6,6)   AS dram_j
+                FROM energy_samples WHERE run_id={_rp_rid}
+                ORDER BY timestamp_ns
+            """)
+            # Compute instantaneous watts from cumulative J (MAX-MIN approach)
+            if not _e_df.empty:
+                _e_df["pkg_w"]  = _e_df["pkg_j"].diff()  / (_e_df["elapsed_ms"].diff()/1000).replace(0, float("nan"))
+                _e_df["core_w"] = _e_df["core_j"].diff() / (_e_df["elapsed_ms"].diff()/1000).replace(0, float("nan"))
+                _e_df["dram_w"] = _e_df["dram_j"].diff() / (_e_df["elapsed_ms"].diff()/1000).replace(0, float("nan"))
+                _e_rows = _e_df.dropna().to_dict("records")
+
+            _c_df, _ = q_safe(f"""
+                SELECT ROUND((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6,1) AS elapsed_ms,
+                       cpu_util_percent, package_temp, ipc, c6_residency, c1_residency
+                FROM cpu_samples WHERE run_id={_rp_rid} ORDER BY timestamp_ns
+            """)
+            _c_rows = _c_df.to_dict("records") if not _c_df.empty else []
+
+            _i_df, _ = q_safe(f"""
+                SELECT ROUND((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6,1) AS elapsed_ms,
+                       interrupts_per_sec
+                FROM interrupt_samples WHERE run_id={_rp_rid} ORDER BY timestamp_ns
+            """)
+            _i_rows = _i_df.to_dict("records") if not _i_df.empty else []
+
+        # ── Timeline scrubber ─────────────────────────────────────────────────
+        _max_t = 0
+        if _e_rows: _max_t = max(_max_t, _e_rows[-1].get("elapsed_ms",0))
+        if _c_rows: _max_t = max(_max_t, _c_rows[-1].get("elapsed_ms",0))
+
+        if _max_t > 0:
+            _t_range = st.slider(
+                "Timeline window (ms)",
+                min_value=0, max_value=int(_max_t),
+                value=(0, int(_max_t)),
+                step=max(1, int(_max_t//200)),
+                key="rp_trange",
+                help="Drag to zoom into a time window",
+            )
+            _t0, _t1 = _t_range
+
+            def _trim(rows, t0, t1):
+                return [r for r in rows
+                        if t0 <= r.get("elapsed_ms",0) <= t1]
+
+            _e_trim = _trim(_e_rows, _t0, _t1)
+            _c_trim = _trim(_c_rows, _t0, _t1)
+            _i_trim = _trim(_i_rows, _t0, _t1)
+        else:
+            _e_trim, _c_trim, _i_trim = _e_rows, _c_rows, _i_rows
+
+        # ── Charts ────────────────────────────────────────────────────────────
+        if not _e_trim and not _c_trim and not _i_trim:
+            st.info(
+                f"No sample data found for run #{_rp_rid}. "
+                "Samples are only stored when `--save-db` is used with high-frequency logging enabled."
+            )
+        else:
+            st.markdown(f"**Sample source: `{_load_src}` · "
+                        f"{len(_e_trim)} energy · {len(_c_trim)} CPU · {len(_i_trim)} IRQ samples "
+                        f"in window**")
+
+            def _replay_chart(rows, xcol, ycols, names, colors, ytitle, height=200):
+                if not rows: return None
+                _df = pd.DataFrame(rows)
+                fig = go.Figure()
+                for yc, nm, clr in zip(ycols, names, colors):
+                    if yc not in _df.columns: continue
+                    _sub = _df[[xcol, yc]].dropna()
+                    if _sub.empty: continue
+                    _r, _g, _b = int(clr[1:3],16), int(clr[3:5],16), int(clr[5:7],16)
+                    fig.add_trace(go.Scatter(
+                        x=_sub[xcol], y=_sub[yc], name=nm,
+                        line=dict(color=clr, width=1.5),
+                        fill="tozeroy" if nm == names[0] else None,
+                        fillcolor=f"rgba({_r},{_g},{_b},0.07)" if nm == names[0] else None,
+                    ))
+                fig.update_layout(**PL, height=height,
+                                  xaxis_title="elapsed ms", yaxis_title=ytitle)
+                return fig
+
+            r1c1, r1c2 = st.columns(2)
+            with r1c1:
+                st.markdown("**Power draw (W)**")
+                _f = _replay_chart(_e_trim, "elapsed_ms",
+                    ["pkg_w","core_w","dram_w"], ["Pkg","Core","DRAM"],
+                    ["#3b82f6","#22c55e","#a78bfa"], "Watts")
+                if _f: st.plotly_chart(_f, use_container_width=True)
+
+            with r1c2:
+                st.markdown("**Temperature (°C)**")
+                _f2 = _replay_chart(_c_trim, "elapsed_ms",
+                    ["package_temp"], ["Pkg Temp"],
+                    ["#ef4444"], "°C")
+                if _f2: st.plotly_chart(_f2, use_container_width=True)
+
+            r2c1, r2c2 = st.columns(2)
+            with r2c1:
+                st.markdown("**CPU utilisation (%)**")
+                _f3 = _replay_chart(_c_trim, "elapsed_ms",
+                    ["cpu_util_percent"], ["CPU Util"],
+                    ["#38bdf8"], "% util")
+                if _f3: st.plotly_chart(_f3, use_container_width=True)
+
+            with r2c2:
+                st.markdown("**IRQ rate**")
+                _f4 = _replay_chart(_i_trim, "elapsed_ms",
+                    ["interrupts_per_sec"], ["IRQ/s"],
+                    ["#f59e0b"], "IRQ/s")
+                if _f4: st.plotly_chart(_f4, use_container_width=True)
+
+            # C-state breakdown
+            if _c_trim and "c6_residency" in (_c_trim[0] if _c_trim else {}):
+                st.markdown("**C-state residency over time**")
+                _f5 = _replay_chart(_c_trim, "elapsed_ms",
+                    ["c6_residency","c1_residency"],
+                    ["C6 (deep sleep)","C1 (light idle)"],
+                    ["#22c55e","#f59e0b"], "Residency %", height=160)
+                if _f5: st.plotly_chart(_f5, use_container_width=True)
+
+            # Orchestration events timeline
+            _ev, _ev_e = q_safe(f"""
+                SELECT step_index, phase, event_type,
+                       ROUND((start_time_ns - MIN(start_time_ns) OVER ())/1e6,1) AS start_ms,
+                       ROUND(duration_ns/1e6,1)        AS duration_ms,
+                       ROUND(event_energy_uj/1e6,6)    AS event_j,
+                       ROUND(power_watts,2)             AS power_w
+                FROM orchestration_events
+                WHERE run_id={_rp_rid}
+                ORDER BY start_time_ns
+            """)
+            if not _ev.empty:
+                st.divider()
+                st.markdown("**Orchestration events timeline**")
+                PHASE_C = {"planning":"#f59e0b","execution":"#3b82f6",
+                           "synthesis":"#a78bfa","llm_wait":"#38bdf8"}
+                _ev_fig = go.Figure()
+                for _ph_name, _ph_clr in PHASE_C.items():
+                    _ph_rows = _ev[_ev.phase == _ph_name]
+                    if _ph_rows.empty: continue
+                    _r,_g,_b = int(_ph_clr[1:3],16),int(_ph_clr[3:5],16),int(_ph_clr[5:7],16)
+                    _ev_fig.add_trace(go.Bar(
+                        name=_ph_name.capitalize(),
+                        x=_ph_rows.start_ms,
+                        y=_ph_rows.duration_ms,
+                        marker_color=_ph_clr,
+                        marker_line_width=0,
+                        width=max(20, float(_ph_rows.duration_ms.mean()) * 0.8),
+                        hovertemplate=(
+                            "<b>%{customdata[0]}</b><br>"
+                            "start: %{x}ms<br>duration: %{y}ms<br>"
+                            "energy: %{customdata[1]:.6f}J<br>"
+                            "power: %{customdata[2]:.2f}W<extra></extra>"
+                        ),
+                        customdata=_ph_rows[["event_type","event_j","power_w"]].values,
+                    ))
+                _ev_fig.update_layout(**PL, height=220, barmode="overlay",
+                    xaxis_title="elapsed ms", yaxis_title="event duration ms")
+                st.plotly_chart(_ev_fig, use_container_width=True)
+                st.dataframe(_ev[["step_index","phase","event_type","start_ms",
+                                   "duration_ms","event_j","power_w"]].round(4),
+                             use_container_width=True, hide_index=True)
+
+elif page_id == "sql_query":
+    st.title("💬 SQL Query")
+    st.caption(f"Ad-hoc SELECT queries against `{DB_PATH.name}` · results exportable as CSV")
+
+    QUERY_LIBRARY = {
+        "— pick a preset —": "",
+        "Energy by category": (
+            "SELECT tc.category, r.workflow_type, COUNT(*) AS runs,\n"
+            "  ROUND(AVG(r.total_energy_uj)/1e6,4) AS avg_energy_j,\n"
+            "  ROUND(AVG(r.dynamic_energy_uj)/1e6,4) AS avg_dynamic_j\n"
+            "FROM runs r\n"
+            "JOIN experiments e ON r.exp_id=e.exp_id\n"
+            "LEFT JOIN task_categories tc ON e.task_name=tc.task_id\n"
+            "GROUP BY tc.category, r.workflow_type ORDER BY tc.category"
+        ),
+        "Tax breakdown by task": (
+            "SELECT tc.category, e.task_name,\n"
+            "  ROUND(AVG(ots.linear_dynamic_uj/1e6),4) AS linear_j,\n"
+            "  ROUND(AVG(ots.agentic_dynamic_uj/1e6),4) AS agentic_j,\n"
+            "  ROUND(AVG(ots.orchestration_tax_uj/1e6),4) AS tax_j,\n"
+            "  ROUND(AVG(ots.tax_percent),2) AS tax_pct\n"
+            "FROM orchestration_tax_summary ots\n"
+            "JOIN runs rl ON ots.linear_run_id=rl.run_id\n"
+            "JOIN experiments e ON rl.exp_id=e.exp_id\n"
+            "LEFT JOIN task_categories tc ON e.task_name=tc.task_id\n"
+            "GROUP BY tc.category, e.task_name"
+        ),
+        "Energy per token by model": (
+            "SELECT e.model_name, e.provider,\n"
+            "  ROUND(AVG(r.energy_per_token*1000),4) AS avg_mj_per_token,\n"
+            "  COUNT(*) AS runs\n"
+            "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
+            "WHERE r.total_tokens>0\n"
+            "GROUP BY e.model_name, e.provider ORDER BY avg_mj_per_token"
+        ),
+        "Carbon by provider · region": (
+            "SELECT e.provider, e.country_code,\n"
+            "  ROUND(SUM(r.carbon_g)*1000,3) AS total_carbon_mg,\n"
+            "  ROUND(SUM(r.water_ml),2) AS total_water_ml,\n"
+            "  COUNT(*) AS runs\n"
+            "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
+            "GROUP BY e.provider, e.country_code ORDER BY total_carbon_mg DESC"
+        ),
+        "Sample counts per run": (
+            "SELECT r.run_id, r.workflow_type, e.task_name,\n"
+            "  COUNT(DISTINCT es.sample_id) AS energy_samples,\n"
+            "  COUNT(DISTINCT cs.sample_id) AS cpu_samples\n"
+            "FROM runs r\n"
+            "JOIN experiments e ON r.exp_id=e.exp_id\n"
+            "LEFT JOIN energy_samples es ON r.run_id=es.run_id\n"
+            "LEFT JOIN cpu_samples cs ON r.run_id=cs.run_id\n"
+            "GROUP BY r.run_id ORDER BY r.run_id DESC LIMIT 20"
+        ),
+        "Recent runs": (
+            "SELECT r.run_id, r.workflow_type, e.task_name, e.provider,\n"
+            "  ROUND(r.total_energy_uj/1e6,4) AS energy_j,\n"
+            "  ROUND(r.duration_ns/1e9,2) AS duration_s,\n"
+            "  r.total_tokens, r.ipc\n"
+            "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
+            "ORDER BY r.run_id DESC LIMIT 30"
+        ),
+        "Sustainability report": (
+            "SELECT e.provider, tc.category,\n"
+            "  ROUND(SUM(r.carbon_g),4) AS total_carbon_g,\n"
+            "  ROUND(SUM(r.water_ml),2) AS total_water_ml,\n"
+            "  COUNT(*) AS runs\n"
+            "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
+            "LEFT JOIN task_categories tc ON e.task_name=tc.task_id\n"
+            "GROUP BY e.provider, tc.category"
+        ),
+    }
+
+    _preset = st.selectbox("Preset queries", list(QUERY_LIBRARY.keys()), key="sql_preset")
+    _default_sql = QUERY_LIBRARY.get(_preset, "")
+
+    _sql_input = st.text_area("SQL (SELECT only)", value=_default_sql, height=150,
+                               key="sql_input",
+                               placeholder="SELECT * FROM runs LIMIT 10")
+
+    _col_r, _col_l = st.columns([2, 1])
+    with _col_r:
+        _sql_run = st.button("▶ Run query", type="primary", key="sql_run")
+    with _col_l:
+        _row_limit = st.number_input("Row limit", 10, 10000, 500, step=100, key="sql_limit")
+
+    if _sql_run:
+        _cleaned = _sql_input.strip()
+        _upper   = _cleaned.upper()
+        _bad     = [kw for kw in ["DROP","DELETE","UPDATE","INSERT","ALTER","CREATE",
+                                   "REPLACE","ATTACH"] if kw in _upper]
+        if _bad:
+            st.error(f"Blocked keywords: {', '.join(_bad)}. SELECT only.")
+        elif not _cleaned:
+            st.warning("Enter a SQL query first.")
+        else:
+            if "LIMIT" not in _upper:
+                _cleaned = f"SELECT * FROM ({_cleaned}) _q LIMIT {int(_row_limit)}"
+            _result, _sql_err = q_safe(_cleaned)
+            if _sql_err:
+                st.error(f"SQL Error: {_sql_err}")
+            elif _result.empty:
+                st.info("Query returned 0 rows.")
+            else:
+                st.success(f"✓ {len(_result):,} rows")
+                st.dataframe(_result, use_container_width=True, hide_index=True)
+                st.download_button("⬇ Download CSV", data=_result.to_csv(index=False),
+                                   file_name="alems_query.csv", mime="text/csv",
+                                   key="sql_dl")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: SETTINGS
+# ══════════════════════════════════════════════════════════════════════════════
+elif page_id == "settings":
+    st.title("⚙ Settings")
+    st.caption("Read-only view of all A-LEMS configuration files + live DB statistics")
+
+    _cfg = PROJECT_ROOT / "config"
+
+    def _load_yaml(p):
+        if not _YAML_OK: return None, "pip install pyyaml"
+        try:
+            with open(p) as f: return _yaml.safe_load(f), None
+        except Exception as e: return None, str(e)
+
+    def _load_json(p):
+        try:
+            with open(p) as f: return _json.load(f), None
+        except Exception as e: return None, str(e)
+
+    # app_settings.yaml
+    _app, _app_e = _load_yaml(_cfg / "app_settings.yaml")
+    if _app_e:
+        st.error(f"app_settings.yaml: {_app_e}")
+    elif _app:
+        _db_eng = (_app.get("database") or {}).get("engine","?")
+        _sr     = ((_app.get("webui")      or {}).get("sampling_rate_hz"))          or "?"
+        _cd     = ((_app.get("experiment") or {}).get("cool_down_seconds"))         or "?"
+        _ta     = ((_app.get("alerts")     or {}).get("temperature_threshold_celsius")) or "?"
+        _di     = ((_app.get("experiment") or {}).get("default_iterations"))        or "?"
+        k1,k2,k3,k4,k5 = st.columns(5)
+        k1.metric("DB engine",     str(_db_eng))
+        k2.metric("Sampling",      f"{_sr}Hz")
+        k3.metric("Cool-down",     f"{_cd}s")
+        k4.metric("Temp alert",    f"{_ta}°C")
+        k5.metric("Default iters", str(_di))
+        with st.expander("app_settings.yaml", expanded=False):
+            st.json(_app)
+
+    st.divider()
+
+    # hw_config.json
+    _hw, _hw_e = _load_json(_cfg / "hw_config.json")
+    if _hw_e:
+        st.error(f"hw_config.json: {_hw_e}")
+    elif _hw:
+        _cpu  = _hw.get("cpu")       or {}
+        _rapl = _hw.get("rapl")      or {}
+        _ts   = _hw.get("turbostat") or {}
+        _meta = _hw.get("metadata")  or {}
+        h1,h2,h3,h4 = st.columns(4)
+        h1.metric("CPU", str(_cpu.get("model_name", _meta.get("cpu_model","?")))[:30])
+        h2.metric("Cores", str(_cpu.get("physical_cores", _cpu.get("cores","?"))))
+        _domains = _rapl.get("domains", _rapl.get("available_domains",[]))
+        h3.metric("RAPL domains", str(len(_domains or [])))
+        _ts_ok = _ts.get("available", _ts.get("found", False))
+        h4.metric("turbostat", "✅" if _ts_ok else "❌")
+        with st.expander("hw_config.json", expanded=False):
+            st.json(_hw)
+
+    st.divider()
+
+    # tasks.yaml
+    _tc, _tc_e = _load_yaml(_cfg / "tasks.yaml")
+    if _tc_e:
+        st.error(f"tasks.yaml: {_tc_e}")
+    elif _tc:
+        _tlist = _tc.get("tasks",[])
+        t1,t2 = st.columns(2)
+        t1.metric("Tasks defined", len(_tlist))
+        t2.metric("Categories",    len({t.get("category","") for t in _tlist}))
+        _tdf = pd.DataFrame([{
+            "id":t.get("id",""),"category":t.get("category",""),
+            "name":t.get("name",""),"level":t.get("level",""),
+            "tool_calls":t.get("tool_calls",0)} for t in _tlist])
+        st.dataframe(_tdf, use_container_width=True, hide_index=True)
+        with st.expander("tasks.yaml", expanded=False):
+            st.json(_tc)
+
+    st.divider()
+
+    # models.json
+    _mo, _mo_e = _load_json(_cfg / "models.json")
+    if _mo_e:
+        st.error(f"models.json: {_mo_e}")
+    elif _mo:
+        with st.expander("models.json", expanded=False):
+            st.json(_mo)
+
+    # DB stats
+    st.divider()
+    st.markdown("**Database row counts**")
+    _dbs, _dbs_e = q_safe("""
+        SELECT 'experiments'        AS tbl, COUNT(*) AS rows FROM experiments UNION ALL
+        SELECT 'runs',              COUNT(*) FROM runs                         UNION ALL
+        SELECT 'energy_samples',    COUNT(*) FROM energy_samples               UNION ALL
+        SELECT 'cpu_samples',       COUNT(*) FROM cpu_samples                  UNION ALL
+        SELECT 'interrupt_samples', COUNT(*) FROM interrupt_samples            UNION ALL
+        SELECT 'orchestration_events', COUNT(*) FROM orchestration_events      UNION ALL
+        SELECT 'task_categories',   COUNT(*) FROM task_categories
+    """)
+    if not _dbs_e and not _dbs.empty:
+        _dbs.columns = ["Table","Rows"]
+        st.dataframe(_dbs, use_container_width=True, hide_index=True)

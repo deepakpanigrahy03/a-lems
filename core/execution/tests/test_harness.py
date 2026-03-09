@@ -33,6 +33,7 @@ from core.execution.harness import ExperimentHarness
 from core.utils.debug import set_debug
 from core.utils.task_loader import load_tasks, get_task_by_id
 from core.database.manager import DatabaseManager
+from core.execution.optimizer_wrapper import OptimizedExecutorWrapper
 
 
 def get_country_from_ip():
@@ -210,14 +211,17 @@ def main():
     # Create executors and harness
     # ========================================================================
     print("\n⚙️ Creating executors...")
-    linear = LinearExecutor(linear_config)
+
 
 
     if args.optimizer:
-        from core.execution.optimizer_wrapper import OptimizedAgenticWrapper
-        agentic = OptimizedAgenticWrapper(agentic_config)
+        from core.execution.optimizer_wrapper import OptimizedExecutorWrapper
+        agentic = OptimizedExecutorWrapper(agentic_config, "agentic")
+        linear = OptimizedExecutorWrapper(linear_config, "linear")
     else:
-        agentic = AgenticExecutor(agentic_config)  
+        agentic = AgenticExecutor(agentic_config)
+        linear = LinearExecutor(linear_config)
+
     print(f"   Optimizer:    {'Yes' if args.optimizer else 'No'}") 
 
     # ========================================================================
