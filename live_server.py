@@ -22,6 +22,12 @@ app.add_middleware(
 # Store last 100 samples per run
 buffers = {}
 
+@app.get("/api/buffers")
+async def list_buffers():
+    return {
+        "active_run_ids": list(buffers.keys()),
+        "buffer_sizes": {str(k): len(v) for k, v in buffers.items()}
+    }
 @app.post("/api/update")
 async def update_sample(request: Request):
     data = await request.json()

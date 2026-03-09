@@ -47,10 +47,20 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def run_provider_task(harness, runner, task, provider, repetitions, cool_down, args):
+def run_provider_task(harness, runner, task, provider, repetitions, cool_down, args, config):
     """
     Run all repetitions for ONE provider-task combination.
     Returns stats dict or None if failed.
+    
+    Args:
+        harness: ExperimentHarness instance
+        runner: ExperimentRunner instance
+        task: Task dictionary
+        provider: Provider name
+        repetitions: Number of repetitions
+        cool_down: Cool down seconds
+        args: Command line arguments
+        config: ConfigLoader instance  
     """
     print(f"\n   {'='*60}")
     print(f"   📋 {provider} | {task['name']}")
@@ -80,6 +90,7 @@ def run_provider_task(harness, runner, task, provider, repetitions, cool_down, a
     try:
         if args.save_db:
             db, hw_id = runner.setup_database()
+            config.sync_task_categories(db.db.conn)
             exp_id = runner.create_experiment(
                 db, task['id'], task['name'], provider,
                 linear_config, args.country, repetitions
@@ -225,7 +236,7 @@ def run_provider_task(harness, runner, task, provider, repetitions, cool_down, a
             db.close()
 
 
-def run_task(harness, runner, task, providers, repetitions, cool_down, args):
+def run_task(harness, runner, task, providers, repetitions, cool_down, args, config):
     """
     Run one task across all providers.
     Returns list of stats for each provider.
@@ -235,7 +246,7 @@ def run_task(harness, runner, task, providers, repetitions, cool_down, args):
     for provider in providers:
         stats = run_provider_task(
             harness, runner, task, provider,
-            repetitions, cool_down, args
+            repetitions, cool_down, args, config 
         )
         if stats:
             results.append(stats)
@@ -310,7 +321,7 @@ def run_all_experiments(args):
         
         task_results = run_task(
             harness, runner, task, providers,
-            repetitions, cool_down, args
+            repetitions, cool_down, args, config
         )
         all_results.extend(task_results)
     

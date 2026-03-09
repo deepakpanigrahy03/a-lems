@@ -309,6 +309,64 @@ class ExperimentRunner:
             samples = results['interrupt_samples']
             print(f"   Found {len(samples)} interrupt samples (ready for insertion)")
         return samples 
+    
+    def ensure_baseline_in_db(self, db, harness):
+        """Save baseline to database once per experiment session."""
+        if not harness.baseline:
+            print("⚠️ No baseline available - foreign key constraints may fail")
+            return False
+            
+        if hasattr(self, '_baseline_saved'):
+            return True
+            
+        # Check if already in database
+        try:
+            result = db.execute(
+                "SELECT 1 FROM idle_baselines WHERE baseline_id = ?", 
+                (harness.baseline.baseline_id,)
+            )
+            if result.fetchone():
+                print(f"✅ Baseline {harness.baseline.baseline_id} already exists in database")
+                self._baseline_saved = True
+                return True
+        except Exception:
+            pass
+        
+        # Save baseline
+        try:
+            b = harness.baseline
+            metadata = b.metadata or {}
+            
+            baseline_dict = {
+                'baseline_id': b.baseline_id,
+                'timestamp': b.timestamp,
+                'package_power_watts': b.power_watts.get('package-0', 0),
+                'core_power_watts': b.power_watts.get('core', 0),
+                'uncore_power_watts': b.power_watts.get('uncore', 0),
+                'dram_power_watts': b.power_watts.get('dram', 0),
+                'duration_seconds': b.duration_seconds,
+                'sample_count': b.sample_count,
+                'package_std': b.std_dev_watts.get('package-0'),
+                'core_std': b.std_dev_watts.get('core'),
+                'uncore_std': b.std_dev_watts.get('uncore'),
+                'dram_std': b.std_dev_watts.get('dram'),
+                'governor': metadata.get('governor'),
+                'turbo': metadata.get('turbo'),
+                'background_cpu': metadata.get('background_cpu'),
+                'process_count': metadata.get('process_count'),
+                'method': b.method
+            }
+            
+            db.insert_baseline(baseline_dict)
+            self._baseline_saved = True
+            print(f"✅ Baseline {b.baseline_id} saved to database")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to save baseline: {e}")
+            return False
+
+
     def save_pair(self, db, exp_id, hw_id, linear_result, agentic_result, rep_num):
         """Save one pair of runs with all samples."""
         

@@ -150,6 +150,10 @@ CREATE TABLE IF NOT EXISTS runs (
     frequency_mhz REAL,
     ring_bus_freq_mhz REAL,
 
+    -- CPU metrics (aggregated from samples)
+    cpu_busy_mhz REAL,
+    cpu_avg_mhz REAL,
+
     -- Thermal metrics
     package_temp_celsius REAL,
     baseline_temp_celsius REAL,
@@ -291,6 +295,8 @@ CREATE TABLE IF NOT EXISTS orchestration_tax_summary (
     agentic_dynamic_uj INTEGER,
     orchestration_tax_uj INTEGER,
     tax_percent REAL,
+    linear_orchestration_uj INTEGER,    -- ← ADD THIS
+    agentic_orchestration_uj INTEGER,   -- ← ADD THIS    
     FOREIGN KEY(linear_run_id) REFERENCES runs(run_id),
     FOREIGN KEY(agentic_run_id) REFERENCES runs(run_id)
 );
@@ -589,4 +595,16 @@ JOIN experiments e ON r.exp_id = e.exp_id
 JOIN idle_baselines ib ON r.baseline_id = ib.baseline_id
 WHERE r.baseline_id IS NOT NULL;
 """
+
+# ========================================================================
+# Table: task_categories - Task to category mapping for analysis
+# ========================================================================
+TASK_CATEGORIES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS task_categories (
+    task_id TEXT PRIMARY KEY,
+    category TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_task_categories_id ON task_categories(task_id);
+"""
+
 
