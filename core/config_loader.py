@@ -369,4 +369,57 @@ class ConfigLoader:
         db_config.setdefault('backup_interval_hours', 24)
         
         return db_config
-        
+
+
+    def sync_task_categories(self, db_connection):
+        """Sync task categories from YAML to database using TaskLoader"""
+        try:
+            # Import here to avoid circular imports
+            from core.utils.task_loader import load_tasks
+            
+            # Load tasks using existing task loader
+            tasks = load_tasks()
+            
+            if not tasks:
+                print("⚠️ No tasks loaded from YAML")
+                return
+            
+            cursor = db_connection.cursor()
+            
+            # Clear existing
+            cursor.execute("DELETE FROM task_categories")
+            
+            # Insert all tasks with categories
+            count = 0
+            for task in tasks:
+                if 'id' in task and 'category' in task:
+                    cursor.execute(
+                        "INSERT INTO task_categories (task_id, category) VALUES (?, ?)",
+                        (task['id'], task['category'])
+                    )
+                    count += 1
+            
+            # Add fallback for custom queries
+            cursor.execute(
+                "INSERT OR IGNORE INTO task_categories (task_id, category) VALUES (?, ?)",
+                ('custom_query', 'custom')
+            )
+            
+            db_connection.commit()
+            print(f"✅ Synced {count} task categories from YAML")
+            
+            # Optional: Show summary
+            cursor.execute("""
+                SELECT category, COUNT(*) FROM task_categories 
+                GROUP BY category ORDER BY COUNT(*) DESC
+            """)
+            summary = cursor.fetchall()
+            if summary:
+                print("   Categories:")
+                for cat, cnt in summary:
+                    print(f"      • {cat}: {cnt}")
+                    
+        except Exception as e:
+            print(f"⚠️ Error syncing task categories: {e}")
+            import traceback
+            traceback.print_exc()

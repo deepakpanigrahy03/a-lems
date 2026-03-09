@@ -45,8 +45,10 @@ from .schema import (
     CREATE_ENERGY_SAMPLES,
     CREATE_CPU_SAMPLES,
     CREATE_INTERRUPT_SAMPLES,
+    THERMAL_SAMPLES_SCHEMA,
     CREATE_ML_VIEW,
-    CREATE_ORCHESTRATION_ANALYSIS
+    CREATE_ORCHESTRATION_ANALYSIS,
+    TASK_CATEGORIES_SCHEMA
 )
 
 
@@ -247,8 +249,12 @@ class SQLiteAdapter(DatabaseInterface):
         self.conn.executescript(CREATE_ENERGY_SAMPLES)
         self.conn.executescript(CREATE_CPU_SAMPLES)
         self.conn.executescript(CREATE_INTERRUPT_SAMPLES)
+        self.conn.executescript(TASK_CATEGORIES_SCHEMA)
+        self.conn.executescript(THERMAL_SAMPLES_SCHEMA)
         self.conn.execute(CREATE_ML_VIEW)
         self.conn.execute(CREATE_ORCHESTRATION_ANALYSIS)
+
+
         
         # Commit explicitly (DDL should be committed)
         self.conn.commit()

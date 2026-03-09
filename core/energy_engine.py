@@ -377,7 +377,9 @@ class EnergyEngine:
                 # ========== ADD WEB UI CODE HERE ==========
                 # Send to all active Web UI servers (non-blocking)
                 if self.webui_enabled and self.current_run_id and self.webui_servers:
+                    print(f"🔍 WEBUI: Sending data for run {self.current_run_id}")
                     for server in self.webui_servers:
+                        print(f"   To server: {server['url']}") 
                         try:
                             # Get latest CPU data if available
                             cpu_data = {}

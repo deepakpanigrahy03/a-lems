@@ -48,9 +48,9 @@ experiment:
   # NEW Baseline measurement control
   # ====================================================================
   baseline:
-    force_remeasure: false           # Set to false during development
-    duration_seconds: 30
-    num_samples: 5
+    force_remeasure: true           # Set to false during development
+    duration_seconds: 10
+    num_samples: 3
     pre_wait_seconds: 10
   # true for production, false to use cache  
   
