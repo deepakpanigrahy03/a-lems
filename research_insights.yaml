@@ -1,0 +1,249 @@
+# A-LEMS Research Insights Configuration
+# Each tab contains categorised research questions with SQL templates,
+# display type hints, and axis mappings.
+# SQL uses schema: runs, experiments, orchestration_tax_summary,
+#   orchestration_events, energy_samples, cpu_samples, interrupt_samples,
+#   task_categories, orchestration_analysis
+
+- tab: "Workflow Analysis"
+  questions:
+  - question: "Agentic vs Linear — energy overhead by task"
+    sql: |
+      SELECT e.task_name, r.workflow_type,
+        COUNT(*) AS runs,
+        ROUND(AVG(r.total_energy_uj)/1e6, 4) AS avg_energy_j,
+        ROUND(AVG(r.dynamic_energy_uj)/1e6, 4) AS avg_dynamic_j,
+        ROUND(AVG(r.duration_ns)/1e9, 3) AS avg_duration_s,
+        ROUND(AVG(r.total_tokens), 1) AS avg_tokens
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      GROUP BY e.task_name, r.workflow_type
+      ORDER BY avg_energy_j DESC
+    display:
+      type: grouped_bar
+      x: task_name
+      y: avg_energy_j
+      color: workflow_type
+
+  - question: "Orchestration tax ranking — which tasks suffer most?"
+    sql: |
+      SELECT e.task_name, e.provider,
+        ROUND(AVG(ots.orchestration_tax_uj)/1e6, 4) AS avg_tax_j,
+        ROUND(AVG(ots.tax_percent), 2) AS avg_tax_pct,
+        COUNT(*) AS comparisons
+      FROM orchestration_tax_summary ots
+      JOIN runs r ON ots.agentic_run_id=r.run_id
+      JOIN experiments e ON r.exp_id=e.exp_id
+      GROUP BY e.task_name, e.provider
+      ORDER BY avg_tax_j DESC LIMIT 20
+    display:
+      type: bar
+      x: task_name
+      y: avg_tax_j
+      highlight_column: avg_tax_pct
+
+  - question: "Which task categories benefit most from linear (least tax)?"
+    sql: |
+      SELECT tc.category, r.workflow_type,
+        ROUND(AVG(r.total_energy_uj)/1e6, 4) AS avg_energy_j,
+        ROUND(AVG(CASE WHEN r.total_tokens>0
+          THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_per_token
+      FROM runs r
+      JOIN experiments e ON r.exp_id=e.exp_id
+      LEFT JOIN task_categories tc ON e.task_name=tc.task_id
+      GROUP BY tc.category, r.workflow_type
+      ORDER BY avg_mj_per_token ASC
+    display:
+      type: grouped_bar
+      x: category
+      y: avg_mj_per_token
+      color: workflow_type
+
+- tab: "Phase Analysis"
+  questions:
+  - question: "Which phase consumes most energy in agentic workflows?"
+    sql: |
+      SELECT oe.phase,
+        COUNT(*) AS events,
+        ROUND(SUM(oe.event_energy_uj)/1e6, 4) AS total_j,
+        ROUND(AVG(oe.event_energy_uj)/1e6, 6) AS avg_j,
+        ROUND(AVG(oe.duration_ns)/1e6, 2) AS avg_ms,
+        ROUND(AVG(oe.power_watts), 3) AS avg_w
+      FROM orchestration_events oe
+      JOIN runs r ON oe.run_id=r.run_id
+      WHERE r.workflow_type='agentic'
+      GROUP BY oe.phase ORDER BY total_j DESC
+    display:
+      type: pie
+      value: total_j
+      names: phase
+
+  - question: "Planning time vs total energy — does more planning = more energy?"
+    sql: |
+      SELECT r.planning_time_ms,
+        ROUND(r.total_energy_uj/1e6, 4) AS energy_j,
+        r.workflow_type, e.task_name
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      WHERE r.workflow_type='agentic' AND r.planning_time_ms > 0
+    display:
+      type: scatter
+      x: planning_time_ms
+      y: energy_j
+      color: task_name
+
+  - question: "Tool call energy cost by task type"
+    sql: |
+      SELECT e.task_name,
+        ROUND(AVG(r.execution_time_ms), 2) AS avg_exec_ms,
+        ROUND(AVG(r.tool_calls), 2) AS avg_tool_calls,
+        ROUND(AVG(r.total_energy_uj)/1e6, 4) AS avg_energy_j,
+        ROUND(AVG(r.total_energy_uj/1e6) /
+              NULLIF(AVG(r.tool_calls),0), 4) AS j_per_tool_call
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      WHERE r.workflow_type='agentic' AND r.tool_calls > 0
+      GROUP BY e.task_name ORDER BY j_per_tool_call DESC
+    display:
+      type: bar
+      x: task_name
+      y: j_per_tool_call
+
+- tab: "Hardware Behavior"
+  questions:
+  - question: "Which hardware domain contributes most to agentic overhead?"
+    sql: |
+      SELECT task_name,
+        ROUND(SUM(core_j), 4)   AS core_j,
+        ROUND(SUM(uncore_j), 4) AS uncore_j,
+        ROUND(SUM(dram_j), 4)   AS dram_j
+      FROM (
+        SELECT e.task_name,
+          (MAX(es.core_energy_uj)   - MIN(es.core_energy_uj))   / 1e6 AS core_j,
+          (MAX(es.uncore_energy_uj) - MIN(es.uncore_energy_uj)) / 1e6 AS uncore_j,
+          (MAX(es.dram_energy_uj)   - MIN(es.dram_energy_uj))   / 1e6 AS dram_j
+        FROM runs r
+        JOIN experiments e ON r.exp_id=e.exp_id
+        JOIN energy_samples es ON r.run_id=es.run_id
+        WHERE r.workflow_type='agentic'
+        GROUP BY r.run_id, e.task_name
+      )
+      GROUP BY task_name
+      ORDER BY (core_j+uncore_j+dram_j) DESC LIMIT 15
+    display:
+      type: stacked_bar
+      x: task_name
+      segments: [core_j, uncore_j, dram_j]
+
+  - question: "Interrupt rate impact on orchestration tax"
+    sql: |
+      SELECT ROUND(r.interrupt_rate, 0) AS irq_per_sec,
+        ROUND(ots.orchestration_tax_uj/1e6, 4) AS tax_j,
+        e.task_name, e.provider
+      FROM runs r
+      JOIN orchestration_tax_summary ots ON r.run_id=ots.agentic_run_id
+      JOIN experiments e ON r.exp_id=e.exp_id
+      WHERE r.workflow_type='agentic'
+    display:
+      type: scatter
+      x: irq_per_sec
+      y: tax_j
+      color: task_name
+
+  - question: "Thermal impact — agentic vs linear temperature delta"
+    sql: |
+      SELECT r.workflow_type,
+        ROUND(AVG(r.thermal_delta_c), 2) AS avg_temp_rise_c,
+        ROUND(MAX(r.thermal_delta_c), 2) AS max_temp_rise_c,
+        SUM(r.thermal_throttle_flag) AS throttle_events,
+        COUNT(*) AS runs
+      FROM runs r GROUP BY r.workflow_type
+    display:
+      type: bar
+      x: workflow_type
+      y: avg_temp_rise_c
+
+- tab: "Efficiency & Sustainability"
+  questions:
+  - question: "Energy per token — model × provider heatmap"
+    sql: |
+      SELECT e.model_name, e.provider,
+        ROUND(AVG(CASE WHEN r.total_tokens>0
+          THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_per_token,
+        COUNT(*) AS runs
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      WHERE r.total_tokens > 0
+      GROUP BY e.model_name, e.provider
+      ORDER BY avg_mj_per_token
+    display:
+      type: heatmap
+      x: provider
+      y: model_name
+      value: avg_mj_per_token
+
+  - question: "Carbon footprint — agentic vs linear by provider"
+    sql: |
+      SELECT e.provider, r.workflow_type,
+        ROUND(AVG(r.carbon_g)*1000, 4) AS avg_carbon_mg,
+        ROUND(AVG(r.water_ml), 4) AS avg_water_ml,
+        COUNT(*) AS runs
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      GROUP BY e.provider, r.workflow_type
+    display:
+      type: grouped_bar
+      x: provider
+      y: avg_carbon_mg
+      color: workflow_type
+
+  - question: "Speed vs energy trade-off (Pareto frontier)"
+    sql: |
+      SELECT e.task_name, r.workflow_type,
+        ROUND(AVG(r.duration_ns)/1e9, 3) AS avg_duration_s,
+        ROUND(AVG(r.total_energy_uj)/1e6, 4) AS avg_energy_j,
+        ROUND(AVG(CASE WHEN r.total_tokens>0
+          THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_per_token,
+        e.provider
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      GROUP BY e.task_name, r.workflow_type, e.provider
+    display:
+      type: scatter
+      x: avg_duration_s
+      y: avg_energy_j
+      color: workflow_type
+
+- tab: "Optimisation & Prediction"
+  questions:
+  - question: "Break-even point — when does agentic become worth it?"
+    sql: |
+      SELECT e.task_name,
+        ROUND(AVG(CASE WHEN r.workflow_type='linear'
+          THEN r.total_energy_uj END)/1e6, 4) AS linear_j,
+        ROUND(AVG(CASE WHEN r.workflow_type='agentic'
+          THEN r.total_energy_uj END)/1e6, 4) AS agentic_j,
+        ROUND(AVG(CASE WHEN r.workflow_type='linear'
+          THEN r.total_tokens END), 1) AS linear_tokens,
+        ROUND(AVG(CASE WHEN r.workflow_type='agentic'
+          THEN r.total_tokens END), 1) AS agentic_tokens
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      GROUP BY e.task_name
+    display:
+      type: table
+
+  - question: "ML features dataset for tax prediction"
+    sql: |
+      SELECT * FROM ml_features LIMIT 200
+    display:
+      type: table
+      note: "Use this dataset for regression / ML tax prediction models"
+
+  - question: "Cache miss rate vs IPC — hardware efficiency signature"
+    sql: |
+      SELECT r.workflow_type,
+        ROUND(r.cache_miss_rate*100, 2) AS cache_miss_pct,
+        ROUND(r.ipc, 3) AS ipc,
+        ROUND(r.total_energy_uj/1e6, 4) AS energy_j,
+        e.task_name
+      FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
+      WHERE r.ipc > 0 AND r.cache_miss_rate > 0
+    display:
+      type: scatter
+      x: cache_miss_pct
+      y: ipc
+      color: workflow_type
