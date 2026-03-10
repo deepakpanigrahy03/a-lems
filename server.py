@@ -40,8 +40,69 @@ app = FastAPI(title="A-LEMS API", version="2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
 
+# ── Token auth — named per-researcher tokens ──────────────────────────────────
+# ALEMS_TOKENS_JSON = {"supervisor": "alems-xxx", "colleague": "alems-yyy", ...}
+_TOKENS_RAW  = os.environ.get("ALEMS_TOKENS_JSON", "")
+_TOKEN_MAP: dict = {}   # token_value → researcher_name
+
+try:
+    if _TOKENS_RAW:
+        _parsed = json.loads(_TOKENS_RAW)
+        # Support both {name: token} and flat string formats
+        if isinstance(_parsed, dict):
+            _TOKEN_MAP = {v: k for k, v in _parsed.items()}   # invert: token→name
+        elif isinstance(_parsed, str):
+            _TOKEN_MAP = {_parsed: "researcher"}
+except Exception:
+    pass
+
+# Fallback: single token from ALEMS_TOKEN env var
+_SINGLE_TOKEN = os.environ.get("ALEMS_TOKEN", "")
+if _SINGLE_TOKEN and not _TOKEN_MAP:
+    try:
+        _t = json.loads(_SINGLE_TOKEN)
+        if isinstance(_t, dict):
+            _TOKEN_MAP = {v: k for k, v in _t.items()}
+    except Exception:
+        _TOKEN_MAP = {_SINGLE_TOKEN: "researcher"}
+
+
+def _check_token(token: str = "") -> str:
+    """
+    Validates token. Returns researcher name if valid.
+    Raises 403 if invalid.
+    Returns "" if no tokens configured (local/open mode).
+    """
+    if not _TOKEN_MAP:
+        return "local"   # No tokens configured → open access
+    if token in _TOKEN_MAP:
+        return _TOKEN_MAP[token]   # Return researcher name
+    raise HTTPException(403, "Invalid token. Contact the lab owner for your token.")
+
 # Active run sessions: session_id -> dict
-_runs: dict = {}
+_runs: dict = {}   # sid → {status, log, progress, done, result}
+
+# ── Session persistence — survives server restarts ────────────────────────────
+import json as _json
+_SESSIONS_DIR = BASE / "logs" / "sessions"
+_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+def _save_session(sid: str):
+    try:
+        s = _runs[sid].copy()
+        s.pop("result", None)
+        (_SESSIONS_DIR / f"{sid}.json").write_text(_json.dumps(s))
+    except Exception:
+        pass
+
+def _load_session(sid: str) -> dict:
+    p = _SESSIONS_DIR / f"{sid}.json"
+    if p.exists():
+        try:
+            return _json.loads(p.read_text())
+        except Exception:
+            pass
+    return {}
 
 
 # ── DB helpers ───────────────────────────────────────────────────────────────
@@ -77,8 +138,8 @@ def get_experiments():
     return q("""
         SELECT e.*,
             COUNT(DISTINCT r.run_id)                                          AS run_count,
-            ROUND(AVG(CASE WHEN r.workflow_type='linear'  THEN r.pkg_energy_uj END)/1e6,4) AS avg_linear_j,
-            ROUND(AVG(CASE WHEN r.workflow_type='agentic' THEN r.pkg_energy_uj END)/1e6,4) AS avg_agentic_j,
+            ROUND(AVG(CASE WHEN r.workflow_type='linear'  THEN r.total_energy_uj END)/1e6,4) AS avg_linear_j,
+            ROUND(AVG(CASE WHEN r.workflow_type='agentic' THEN r.total_energy_uj END)/1e6,4) AS avg_agentic_j,
             ROUND(AVG(r.ipc),3)                                               AS avg_ipc,
             ROUND(AVG(r.cache_miss_rate)*100,1)                               AS avg_cache_miss_pct,
             ROUND(AVG(r.thread_migrations),0)                                 AS avg_migrations,
@@ -484,6 +545,7 @@ def system_status():
 
 @app.post("/api/run/start")
 async def start_run(payload: dict, background_tasks: BackgroundTasks):
+    _researcher = _check_token(payload.get("token", ""))
     """
     payload: {task_id, model, country_code, repetitions, cool_down}
     Returns session_id immediately. Poll /api/run/status/{id} or
@@ -491,60 +553,96 @@ async def start_run(payload: dict, background_tasks: BackgroundTasks):
     Works via SSH tunnel from any remote machine.
     """
     if not HARNESS_OK:
-        raise HTTPException(503,
-            "Harness not available. "
-            "SSH tunnel to the measurement machine: ssh -L 8765:localhost:8765 user@host")
+        raise HTTPException(503, "Harness not available on this machine.")
 
     sid = f"ses_{int(time.time()*1000)}"
     _runs[sid] = {"status": "starting", "log": [], "progress": 0.0,
-                  "done": False, "result": None}
+                  "done": False, "result": None,
+                  "researcher": _researcher}
 
     def _run():
+        import subprocess as _sp, sys as _sys
         try:
-            cfg      = ConfigLoader()
-            harness  = ExperimentHarness(cfg)
             task_id  = payload.get("task_id", "simple")
             country  = payload.get("country_code", "US")
             reps     = int(payload.get("repetitions", 3))
             cool     = int(payload.get("cool_down", 5))
-            model_k  = payload.get("model", "groq_llama")
+            provider = payload.get("provider", "cloud")
+            if provider not in ("cloud", "local"):
+                provider = "cloud"
 
-            _log(sid, f"Session {sid} started")
-            _log(sid, f"Task: {task_id}  Model: {model_k}  Region: {country}  Reps: {reps}")
+            _log(sid, f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            _log(sid, f"Session  : {sid}")
+            _log(sid, f"Triggered: {_researcher}")
+            _log(sid, f"Task     : {task_id}  Provider: {provider}")
+            _log(sid, f"Region   : {country}   Reps: {reps}")
+            _log(sid, f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-            _log(sid, "Measuring idle baseline...")
-            baseline = harness.measure_idle_baseline()
-            _log(sid, f"Baseline: {baseline.package_power_watts:.3f}W pkg  "
-                      f"{baseline.core_power_watts:.3f}W core")
+            # Choose module based on payload
+            # batch mode → run_experiment, single → test_harness
+            tasks_list = payload.get("tasks", [])
+            is_batch   = (len(tasks_list) > 1 or task_id == "batch")
 
-            model_cfg = cfg.get_model_config(model_k)
-            lin_exec  = LinearExecutor(model_cfg)
-            age_exec  = AgenticExecutor(model_cfg)
+            if is_batch:
+                prov_arg = ",".join(payload.get("providers", [provider]))
+                tasks_arg = ",".join(tasks_list) if tasks_list else task_id
+                cmd = [
+                    _sys.executable, "-m",
+                    "core.execution.tests.run_experiment",
+                    "--tasks",       tasks_arg,
+                    "--providers",   prov_arg,
+                    "--repetitions", str(reps),
+                    "--country",     country,
+                    "--cool-down",   str(cool),
+                    "--save-db",
+                ]
+            else:
+                cmd = [
+                    _sys.executable, "-m",
+                    "core.execution.tests.test_harness",
+                    "--task-id",     task_id,
+                    "--provider",    provider,
+                    "--repetitions", str(reps),
+                    "--country",     country,
+                    "--cool-down",   str(cool),
+                    "--save-db",
+                ]
+            _log(sid, f"CMD: {' '.join(cmd)}")
             _runs[sid]["status"] = "running"
 
-            def on_pair(lin, age, rep):
-                lj = lin.get("ml_features", {}).get("workload_energy_j", 0) or 0
-                aj = age.get("ml_features", {}).get("workload_energy_j", 0) or 0
-                _log(sid, f"Rep {rep}/{reps}  linear={lj:.3f}J  agentic={aj:.3f}J  "
-                          f"tax={aj-lj:.3f}J ({((aj-lj)/aj*100 if aj else 0):.1f}%)")
-                _runs[sid]["progress"] = rep / reps
-
-            result = harness.run_comparison(
-                lin_exec, age_exec, task_id,
-                country_code=country,
-                n_repetitions=reps,
-                cool_down=cool,
-                on_pair_complete=on_pair,
+            proc = _sp.Popen(
+                cmd, cwd=str(BASE),
+                stdout=_sp.PIPE, stderr=_sp.STDOUT,
+                text=True, bufsize=1,
             )
-            _runs[sid]["status"]  = "complete"
-            _runs[sid]["done"]    = True
-            _runs[sid]["result"]  = result
-            _log(sid, f"✅ Complete — {reps} pairs saved to DB")
+
+            rep_count = 0
+            for line in iter(proc.stdout.readline, ""):
+                line = line.rstrip()
+                if not line:
+                    continue
+                _log(sid, line)
+                # Track progress from output
+                if "Pair" in line and "saved" in line:
+                    rep_count += 1
+                    _runs[sid]["progress"] = rep_count / reps
+
+            proc.wait()
+            if proc.returncode == 0:
+                _runs[sid]["status"] = "complete"
+                _runs[sid]["done"]   = True
+                _log(sid, f"✅ Complete — {reps} pairs saved to DB")
+            else:
+                _runs[sid]["status"] = "error"
+                _runs[sid]["done"]   = True
+                _log(sid, f"❌ Process exited with code {proc.returncode}")
 
         except Exception as ex:
+            import traceback
             _runs[sid]["status"] = "error"
             _runs[sid]["done"]   = True
             _log(sid, f"❌ Error: {ex}")
+            _log(sid, traceback.format_exc().splitlines()[-1])
 
     background_tasks.add_task(_run)
     return {"session_id": sid, "status": "started"}
@@ -553,8 +651,12 @@ async def start_run(payload: dict, background_tasks: BackgroundTasks):
 @app.get("/api/run/status/{sid}")
 def run_status(sid: str):
     if sid not in _runs:
-        raise HTTPException(404, "Session not found")
-    s = _runs[sid]
+        # Try loading from disk (server may have restarted)
+        s = _load_session(sid)
+        if not s:
+            raise HTTPException(404, "Session not found")
+    else:
+        s = _runs[sid]
     return {
         "session_id": sid,
         "status":   s["status"],
@@ -567,6 +669,7 @@ def run_status(sid: str):
 
 def _log(sid, msg):
     _runs[sid]["log"].append(f"[{_ts()}] {msg}")
+    _save_session(sid)
 
 def _summarise(r):
     if not r: return None
@@ -723,158 +826,24 @@ def root():
         Place <code>dashboard.html</code> next to <code>server.py</code> then refresh.
         </h2>
     """)
-@app.get("/api/analysis/overview")
-def analysis_overview():
-    """Overview stats from runs table (always has data)"""
-    return q1("""
-        SELECT
-            COUNT(DISTINCT exp_id) AS total_experiments,
-            COUNT(run_id) AS total_runs,
-            ROUND(AVG(total_energy_uj)/1e6, 4) AS avg_energy_j,
-            ROUND(MAX(total_energy_uj)/1e6, 4) AS max_energy_j,
-            ROUND(AVG(ipc), 3) AS avg_ipc,
-            ROUND(AVG(cache_miss_rate)*100, 1) AS avg_cache_miss_pct
-        FROM runs
-    """)
 
-@app.get("/api/analysis/overview")
-def analysis_overview():
-    """Overview stats from runs table (always has data)"""
-    return q1("""
-        SELECT
-            COUNT(DISTINCT exp_id) AS total_experiments,
-            COUNT(run_id) AS total_runs,
-            ROUND(AVG(total_energy_uj)/1e6, 4) AS avg_energy_j,
-            ROUND(MAX(total_energy_uj)/1e6, 4) AS max_energy_j,
-            ROUND(AVG(ipc), 3) AS avg_ipc,
-            ROUND(AVG(cache_miss_rate)*100, 1) AS avg_cache_miss_pct
-        FROM runs
-    """)
 
-@app.get("/api/analysis/overview")
-def analysis_overview():
-    """Overview stats from runs table (always has data)"""
-    return q1("""
-        SELECT
-            COUNT(DISTINCT exp_id) AS total_experiments,
-            COUNT(run_id) AS total_runs,
-            ROUND(AVG(total_energy_uj)/1e6, 4) AS avg_energy_j,
-            ROUND(MAX(total_energy_uj)/1e6, 4) AS max_energy_j,
-            ROUND(AVG(ipc), 3) AS avg_ipc,
-            ROUND(AVG(cache_miss_rate)*100, 1) AS avg_cache_miss_pct
-        FROM runs
-    """)
-
-@app.get("/api/analysis/overview")
-def analysis_overview():
-    """Overview stats from runs table (always has data)"""
-    return q1("""
-        SELECT
-            COUNT(DISTINCT exp_id) AS total_experiments,
-            COUNT(run_id) AS total_runs,
-            ROUND(AVG(total_energy_uj)/1e6, 4) AS avg_energy_j,
-            ROUND(MAX(total_energy_uj)/1e6, 4) AS max_energy_j,
-            ROUND(AVG(ipc), 3) AS avg_ipc,
-            ROUND(AVG(cache_miss_rate)*100, 1) AS avg_cache_miss_pct
-        FROM runs
-    """)
-
-@app.get("/api/analysis/anomalies")
-def analysis_anomalies():
-    """Find outliers in energy consumption (simple version without STDEV)"""
-    return q("""
-        WITH stats AS (
-            SELECT AVG(total_energy_uj/1e6) as avg_e
-            FROM runs
-        )
-        SELECT 
-            r.run_id,
-            e.exp_id,
-            e.provider,
-            e.task_name,
-            r.workflow_type,
-            ROUND(r.total_energy_uj/1e6, 3) as energy_j,
-            ROUND(r.ipc, 3) as ipc,
-            ROUND(r.cache_miss_rate*100, 1) as cache_miss_pct,
-            CASE 
-                WHEN r.total_energy_uj/1e6 > s.avg_e * 3 THEN 'HIGH_ENERGY'
-                WHEN r.total_energy_uj/1e6 > s.avg_e * 2 THEN 'ABOVE_AVG'
-                WHEN r.total_energy_uj/1e6 < s.avg_e * 0.5 THEN 'LOW_ENERGY'
-                ELSE 'NORMAL'
-            END as flag
-        FROM runs r
-        JOIN experiments e ON r.exp_id = e.exp_id
-        CROSS JOIN stats s
-        WHERE r.total_energy_uj/1e6 > s.avg_e * 2 
-           OR r.total_energy_uj/1e6 < s.avg_e * 0.5
-        ORDER BY r.total_energy_uj/1e6 DESC
-        LIMIT 50
-    """)
-@app.get("/api/capabilities")
-def get_capabilities():
-    """Return system capabilities (harness availability, etc.)"""
+@app.get("/api/online")
+def online_status():
+    """Public endpoint — no auth. Tells the hosted dashboard if live mode is available."""
     return {
-        "harness_available": HARNESS_OK,
-        "mode": "live-execution" if HARNESS_OK else "read-only",
-        "db_path": str(DB),
-        "api_version": "2.0"
+        "online":        True,
+        "harness":       HARNESS_OK,
+        "version":       "2.0",
+        "auth_required": bool(_TOKEN_MAP),
+        "researchers":   list(_TOKEN_MAP.values()),   # names only, never tokens
     }
+
 @app.get("/health")
 def health():
     return {"status": "ok", "db": DB.exists(), "harness": HARNESS_OK}
 
-@app.get("/api/analysis/tax")
-def analysis_tax():
-    """Calculate tax on-the-fly from runs table"""
-    return q("""
-        SELECT 
-            r1.run_id as linear_run_id,
-            r2.run_id as agentic_run_id,
-            r1.exp_id,
-            e.provider,
-            e.task_name,
-            ROUND(r1.dynamic_energy_uj/1e6, 4) as linear_energy_j,
-            ROUND(r2.dynamic_energy_uj/1e6, 4) as agentic_energy_j,
-            ROUND((r2.dynamic_energy_uj - r1.dynamic_energy_uj)/1e6, 4) as tax_j,
-            ROUND((r2.dynamic_energy_uj - r1.dynamic_energy_uj) * 100.0 / 
-                   NULLIF(r2.dynamic_energy_uj, 0), 2) as tax_percent
-        FROM runs r1
-        JOIN runs r2 ON r1.exp_id = r2.exp_id 
-            AND r1.run_number = r2.run_number
-            AND r1.workflow_type = 'linear'
-            AND r2.workflow_type = 'agentic'
-        JOIN experiments e ON r1.exp_id = e.exp_id
-        WHERE r1.dynamic_energy_uj > 0 AND r2.dynamic_energy_uj > 0
-        ORDER BY r1.run_id DESC
-        LIMIT 50
-    """)
 
-@app.get("/api/analysis/domains")
-def analysis_domains():
-    """Domain energy breakdown from orchestration_analysis view"""
-    return q("""
-        SELECT * FROM orchestration_analysis 
-        ORDER BY run_id DESC 
-        LIMIT 100
-    """)
-
-@app.get("/api/analysis/cstates")
-def analysis_cstates():
-    """C-state residency by workflow and provider"""
-    return q("""
-        SELECT 
-            e.workflow_type,
-            e.provider,
-            COUNT(*) as run_count,
-            ROUND(AVG(r.c2_time_seconds), 3) as avg_c2,
-            ROUND(AVG(r.c3_time_seconds), 3) as avg_c3,
-            ROUND(AVG(r.c6_time_seconds), 3) as avg_c6,
-            ROUND(AVG(r.c7_time_seconds), 3) as avg_c7
-        FROM runs r
-        JOIN experiments e ON r.exp_id = e.exp_id
-        WHERE r.c2_time_seconds > 0
-        GROUP BY e.workflow_type, e.provider
-    """)
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import argparse

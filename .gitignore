@@ -1,24 +1,18 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
+*.pyc
+.venv/
 venv/
-ENV/
-env.bak/
-venv.bak/
 
-# Database
-data/
-*.db
-*.db-journal
+# Secrets — NEVER commit
+.alems_token
+.tunnel_state.json
+.env
+config/.env
 
-# Config with secrets (but keep templates)
-config/models.json
-config/hw_config.json
-!.env.example
+# Cloudflare credentials — NEVER commit
+.cloudflared/*.json
+.cloudflared/cert.pem
 
 # Logs
 logs/
@@ -26,14 +20,46 @@ logs/
 
 # OS
 .DS_Store
-Thumbs.db
 
-# IDE
+# Backups and temporary files
+*.bak
+*.bkp
+*.backup
+*.old
+*.corrupt
+*.zip
+*.deb
+*.json.bak
+*.yaml.bak
+
+# Data and database
+data/*.db
+data/*.db-*
+data/*.db-shm
+data/*.db-wal
+data/experiment_*.json
+data/ml_dataset_*.csv
+data/turbostat_raw/
+data/baselines/
+*.csv
+*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDE and system files
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Backups
 *~
-*.bak
+
+# Logs and temp
+logs/
+tmp/
+*.log
+.DS_Store

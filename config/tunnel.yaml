@@ -1,0 +1,10 @@
+# A-LEMS Tunnel Configuration
+# ════════════════════════════════════════════════════════════════
+
+# Shared access token — researchers enter this in the HF Space sidebar
+# Generate: python -c "import secrets; print('alems-'+secrets.token_urlsafe(12))"
+token: "alems-VHh2wqa6yFGERT_Y"
+
+# Path to your local HF Space git repo
+# tunnel_agent.py pushes the current tunnel URL here automatically
+hf_space_repo: "~/mydrive/hf-space"
