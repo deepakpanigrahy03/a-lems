@@ -1,0 +1,96 @@
+server:
+  host: 0.0.0.0
+  port: 8501
+  debug: false
+database:
+  # Choose engine: "sqlite" or "postgresql"
+  engine: "sqlite"
+  
+  # SQLite settings (used when engine = "sqlite")
+  sqlite:
+    path: "data/experiments.db"           # Separate from research.db
+    journal_mode: "WAL"                    # Better concurrency
+    timeout: 30                             # Connection timeout (seconds)
+    detect_types: 1                         # Enable type detection
+  
+  # PostgreSQL settings (used when engine = "postgresql")
+  postgresql:
+    host: "localhost"
+    port: 5432
+    database: "alems"
+    user: "alems_user" 
+    password: "${DB_PASSWORD}"              # Use environment variable
+    pool_size: 10
+    max_overflow: 20
+    pool_timeout: 30
+  
+  # Common settings for all engines
+  pool_pre_ping: true                        # Verify connections before use
+  backup_enabled: true                        # Keep your existing setting
+  backup_interval_hours: 24                    # Keep your existing setting
+paths:
+  log: logs/a-lems.log
+  data: data/
+  exports: exports/
+  temp: tmp/
+timeouts:
+  execution_seconds: 300
+  api_seconds: 30
+  measurement_seconds: 600
+  database_seconds: 10
+experiment:
+  default_iterations: 10
+  cool_down_seconds: 30
+  parallel_execution: true
+  max_concurrent_tasks: 2
+  save_raw_data: true
+  # ====================================================================
+  # NEW Baseline measurement control
+  # ====================================================================
+  baseline:
+    force_remeasure: false           # Set to false during development
+    duration_seconds: 10
+    num_samples: 3
+    pre_wait_seconds: 10
+  # true for production, false to use cache  
+  
+# ===== NEW: MSR measurement settings =====
+msr:
+  # Read APERF/MPERF for actual frequency? (adds slight overhead)
+  enable_aperf_mperf: false
+  # Number of samples for wake‑up latency measurement (used by baseline script)
+  wakeup_latency_iterations: 500
+  # Which CPU cores to test (for future multi‑core measurement)
+  measure_cores: [0]
+  # Whether to measure cores in parallel (future)
+  parallel_measurement: false  
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  rotation: 1 day
+  retention: 30 days
+alerts:
+  temperature_threshold_celsius: 85
+  power_threshold_watts: 50
+  memory_threshold_mb: 3500
+webui:
+  enabled: true
+  servers:
+    - name: "live_view"
+      type: "streamlit"
+      url: "http://localhost:8501"
+      api_endpoint: "/api/update"
+      active: true
+    - name: "dashboard"
+      type: "grafana"
+      url: "http://localhost:3000"
+      api_endpoint: "/api/live"
+      active: false
+    - name: "custom"
+      type: "generic"
+      url: "http://localhost:8080"
+      api_endpoint: "/metrics"
+      active: false
+  sampling_rate_hz: 10
+  timeout_ms: 1  
+  

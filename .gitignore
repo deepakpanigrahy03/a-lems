@@ -63,3 +63,11 @@ logs/
 tmp/
 *.log
 .DS_Store
+
+# Backups and junk
+*.bkp
+*.zip_bkp
+*_v0.py
+*_v4.py
+data/*.backup*
+data/*.bkup

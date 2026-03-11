@@ -1,0 +1,203 @@
+# config/research_questions.yaml
+categories:
+  - name: "Workflow Comparison"
+    description: "Compare linear vs agentic workflows"
+    icon: "🔄"
+    questions:
+      - id: q1
+        name: "Energy Comparison by Task Category"
+        description: "Compare total energy consumption between linear and agentic workflows across task categories"
+        sql_template: |
+          SELECT 
+              tc.category,
+              ROUND(AVG(CASE WHEN r.workflow_type = 'linear' THEN r.total_energy_uj/1e6 END), 3) as linear_energy_j,
+              ROUND(AVG(CASE WHEN r.workflow_type = 'agentic' THEN r.total_energy_uj/1e6 END), 3) as agentic_energy_j,
+              ROUND(AVG(CASE WHEN r.workflow_type = 'agentic' THEN r.total_energy_uj/1e6 END) /
+                    NULLIF(AVG(CASE WHEN r.workflow_type = 'linear' THEN r.total_energy_uj/1e6 END), 0), 2) as ratio,
+              ROUND(AVG(CASE WHEN r.workflow_type = 'agentic' THEN r.total_energy_uj/1e6 END) -
+                    AVG(CASE WHEN r.workflow_type = 'linear' THEN r.total_energy_uj/1e6 END), 3) as difference_j
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE tc.category IS NOT NULL
+          GROUP BY tc.category
+          ORDER BY ratio DESC;
+        chart_type: "bar"
+        x_axis: "category"
+        y_axis: ["linear_energy_j", "agentic_energy_j"]
+        insight_template: |
+          **{category}** tasks show agentic workflows consuming **{ratio}x** the energy of linear workflows.
+          The absolute difference is **{difference_j} Joules**.
+          
+      - id: q2
+        name: "Orchestration Tax by Task Category"
+        description: "What percentage of agentic energy is orchestration overhead?"
+        sql_template: |
+          SELECT 
+              tc.category,
+              COUNT(*) as sample_size,
+              ROUND(AVG(ots.tax_percent), 2) as avg_tax_percent,
+              ROUND(MIN(ots.tax_percent), 2) as min_tax,
+              ROUND(MAX(ots.tax_percent), 2) as max_tax,
+              ROUND(STDDEV(ots.tax_percent), 2) as tax_stddev
+          FROM orchestration_tax_summary ots
+          JOIN runs r ON ots.agentic_run_id = r.run_id
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE tc.category IS NOT NULL AND ots.tax_percent BETWEEN -1000 AND 1000
+          GROUP BY tc.category
+          ORDER BY avg_tax_percent DESC;
+        chart_type: "bar"
+        x_axis: "category"
+        y_axis: "avg_tax_percent"
+        error_bars: "tax_stddev"
+
+  - name: "Efficiency Metrics"
+    description: "Analyze energy efficiency across workflows"
+    icon: "⚡"
+    questions:
+      - id: q3
+        name: "Energy Per Token by Task Type"
+        description: "Which task types are most energy-efficient?"
+        sql_template: |
+          SELECT 
+              tc.category,
+              r.workflow_type,
+              ROUND(AVG(r.energy_per_token * 1000), 3) as mJ_per_token,
+              ROUND(AVG(r.total_tokens)) as avg_tokens
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE tc.category IS NOT NULL AND r.total_tokens > 0
+          GROUP BY tc.category, r.workflow_type
+          ORDER BY mJ_per_token;
+        chart_type: "grouped_bar"
+        x_axis: "category"
+        y_axis: "mJ_per_token"
+        group_by: "workflow_type"
+
+  - name: "Hardware Impact"
+    description: "Analyze hardware-level behavior"
+    icon: "🖥️"
+    questions:
+      - id: q4
+        name: "CPU C-State Usage by Workflow"
+        description: "Do agentic workflows prevent deep C-states?"
+        sql_template: |
+          SELECT 
+              r.workflow_type,
+              tc.category,
+              ROUND(AVG(r.c6_time_seconds), 3) as avg_c6_time,
+              ROUND(AVG(r.c7_time_seconds), 3) as avg_c7_time,
+              ROUND(AVG(r.duration_ns/1e9), 2) as avg_duration_sec
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE tc.category IS NOT NULL
+          GROUP BY r.workflow_type, tc.category;
+        chart_type: "bar"
+        x_axis: "category"
+        y_axis: ["avg_c6_time", "avg_c7_time"]
+        group_by: "workflow_type"
+
+  - name: "Thermal Analysis"
+    description: "Study thermal behavior of AI workflows"
+    icon: "🌡️"
+    questions:
+      - id: q5
+        name: "Peak Temperatures by Task Category"
+        description: "Which tasks cause highest CPU temperatures?"
+        sql_template: |
+          SELECT 
+              tc.category,
+              r.workflow_type,
+              ROUND(AVG(r.max_temp_c), 1) as avg_max_temp,
+              ROUND(AVG(r.thermal_delta_c), 1) as avg_temp_rise,
+              ROUND(AVG(r.duration_ns/1e9), 1) as duration_sec
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE tc.category IS NOT NULL AND r.max_temp_c > 0
+          GROUP BY tc.category, r.workflow_type
+          ORDER BY avg_max_temp DESC;
+        chart_type: "bar"
+        x_axis: "category"
+        y_axis: "avg_max_temp"
+        group_by: "workflow_type"
+
+  - name: "Provider Comparison"
+    description: "Compare cloud vs local providers"
+    icon: "☁️"
+    questions:
+      - id: q6
+        name: "Energy by Provider"
+        description: "Which provider is most energy-efficient?"
+        sql_template: |
+          SELECT 
+              e.provider,
+              tc.category,
+              ROUND(AVG(r.total_energy_uj/1e6), 3) as avg_energy_j,
+              ROUND(AVG(r.duration_ns/1e9), 2) as avg_duration_sec,
+              ROUND(AVG(r.energy_per_token * 1000), 3) as mJ_per_token
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE e.provider IS NOT NULL AND tc.category IS NOT NULL
+          GROUP BY e.provider, tc.category;
+        chart_type: "grouped_bar"
+        x_axis: "category"
+        y_axis: "avg_energy_j"
+        group_by: "provider"
+
+  - name: "Optimizer Impact"
+    description: "Measure optimizer effectiveness"
+    icon: "🚀"
+    questions:
+      - id: q7
+        name: "Energy Savings with Optimizer"
+        description: "How much energy does our optimizer save?"
+        sql_template: |
+          SELECT 
+              tc.category,
+              CASE WHEN e.optimization_enabled = 1 THEN 'Optimized' ELSE 'Baseline' END as mode,
+              ROUND(AVG(r.total_energy_uj/1e6), 3) as avg_energy_j,
+              ROUND(AVG(r.duration_ns/1e9), 2) as avg_duration_sec,
+              COUNT(*) as runs
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          WHERE tc.category IS NOT NULL
+          GROUP BY tc.category, e.optimization_enabled;
+        chart_type: "grouped_bar"
+        x_axis: "category"
+        y_axis: "avg_energy_j"
+        group_by: "mode"
+        insight_template: |
+          Optimizer saves **{savings_percent}%** energy on {category} tasks
+          with **{speed_impact}** impact on execution time.
+
+  - name: "Time Analysis"
+    description: "Analyze execution duration"
+    icon: "⏱️"
+    questions:
+      - id: q8
+        name: "Execution Time by Task"
+        description: "Which tasks take longest to execute?"
+        sql_template: |
+          SELECT 
+              e.task_name,
+              tc.category,
+              r.workflow_type,
+              ROUND(AVG(r.duration_ns/1e9), 2) as avg_seconds,
+              ROUND(MIN(r.duration_ns/1e9), 2) as min_seconds,
+              ROUND(MAX(r.duration_ns/1e9), 2) as max_seconds
+          FROM runs r
+          JOIN experiments e ON r.exp_id = e.exp_id
+          LEFT JOIN task_categories tc ON e.task_name = tc.task_id
+          GROUP BY e.task_name, tc.category, r.workflow_type
+          ORDER BY avg_seconds DESC
+          LIMIT 20;
+        chart_type: "bar"
+        x_axis: "task_name"
+        y_axis: "avg_seconds"
+        group_by: "workflow_type"

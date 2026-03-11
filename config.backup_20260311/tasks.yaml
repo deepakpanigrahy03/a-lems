@@ -1,0 +1,187 @@
+# config/tasks.yaml
+# A-LEMS Benchmark Task Suite with Categories
+
+tasks:
+
+# =====================================================
+# REASONING TASKS
+# =====================================================
+
+  - id: gsm8k_basic
+    category: reasoning
+    name: "GSM8K Arithmetic"
+    description: "Grade school arithmetic reasoning"
+    level: 1
+    tool_calls: 0
+    prompt: "If John has 5 apples and buys 7 more, how many apples does he have?"
+    tags: ["math", "gsm8k"]
+
+  - id: gsm8k_multi_step
+    category: reasoning
+    name: "Multi-step Arithmetic"
+    description: "Solve multi-step arithmetic problem"
+    level: 2
+    tool_calls: 0
+    prompt: "A train travels 60 miles per hour for 3 hours and then 40 miles per hour for 2 hours. What is the total distance traveled?"
+    tags: ["math"]
+
+  - id: logical_reasoning
+    category: reasoning
+    name: "Logical Deduction"
+    description: "Deductive reasoning task"
+    level: 2
+    tool_calls: 0
+    prompt: "All birds can fly. Penguins are birds. Can penguins fly? Explain briefly."
+    tags: ["logic"]
+
+  - id: commonsense_reasoning
+    category: reasoning
+    name: "Commonsense Reasoning"
+    description: "Basic commonsense reasoning"
+    level: 1
+    tool_calls: 0
+    prompt: "If you put ice in the sun for one hour, what will likely happen and why?"
+    tags: ["commonsense"]
+
+
+# =====================================================
+# CODING TASKS
+# =====================================================
+
+  - id: code_fibonacci
+    category: coding
+    name: "Fibonacci Function"
+    description: "Generate Python function"
+    level: 2
+    tool_calls: 0
+    prompt: "Write a Python function that returns the nth Fibonacci number."
+    tags: ["python", "codegen"]
+
+  - id: code_sorting
+    category: coding
+    name: "Sorting Algorithm"
+    description: "Implement sorting algorithm"
+    level: 2
+    tool_calls: 0
+    prompt: "Write Python code to implement the quicksort algorithm."
+    tags: ["algorithm"]
+
+  - id: bug_fixing
+    category: coding
+    name: "Bug Fixing"
+    description: "Fix syntax bug"
+    level: 2
+    tool_calls: 0
+    prompt: |
+      Fix the bug in this Python code:
+
+      def add_numbers(a,b)
+          return a + b
+    tags: ["debugging"]
+
+
+# =====================================================
+# QUESTION ANSWERING
+# =====================================================
+
+  - id: factual_qa
+    category: qa
+    name: "Factual Question"
+    description: "Simple factual QA"
+    level: 1
+    tool_calls: 0
+    prompt: "Who was the first president of the United States?"
+    tags: ["history"]
+
+  - id: science_qa
+    category: qa
+    name: "Science Question"
+    description: "Basic science question answering"
+    level: 1
+    tool_calls: 0
+    prompt: "What is the chemical symbol for water?"
+    tags: ["science"]
+
+  - id: geography_qa
+    category: qa
+    name: "Geography Question"
+    description: "Basic geography question"
+    level: 1
+    tool_calls: 0
+    prompt: "What is the capital city of Japan?"
+    tags: ["geography"]
+
+
+# =====================================================
+# SUMMARIZATION
+# =====================================================
+
+  - id: news_summary
+    category: summarization
+    name: "News Article Summary"
+    description: "Summarize a news article"
+    level: 1
+    tool_calls: 0
+    prompt: |
+      Summarize this article in 3 sentences:
+
+      Artificial intelligence is transforming industries worldwide. Companies are investing heavily in AI systems to automate processes and improve efficiency. Experts believe AI adoption will continue to grow rapidly.
+    tags: ["news"]
+
+  - id: research_summary
+    category: summarization
+    name: "Research Abstract Summary"
+    description: "Summarize academic abstract"
+    level: 2
+    tool_calls: 0
+    prompt: |
+      Summarize the following research abstract:
+
+      Recent studies indicate that training large language models requires significant computational resources. Energy consumption has become an important factor in evaluating AI sustainability.
+    tags: ["research"]
+
+
+# =====================================================
+# CLASSIFICATION
+# =====================================================
+
+  - id: sentiment_analysis
+    category: classification
+    name: "Sentiment Analysis"
+    description: "Classify sentiment"
+    level: 1
+    tool_calls: 0
+    prompt: "Classify the sentiment (positive, negative, neutral): 'The movie was absolutely fantastic and I loved every moment.'"
+    tags: ["sentiment"]
+
+  - id: topic_classification
+    category: classification
+    name: "Topic Classification"
+    description: "Classify text topic"
+    level: 1
+    tool_calls: 0
+    prompt: "Classify the topic (sports, politics, technology): 'The new smartphone processor offers significant improvements in performance.'"
+    tags: ["nlp"]
+
+
+# =====================================================
+# INFORMATION EXTRACTION
+# =====================================================
+
+  - id: entity_extraction
+    category: extraction
+    name: "Named Entity Extraction"
+    description: "Extract entities from text"
+    level: 1
+    tool_calls: 0
+    prompt: "Extract the person and organization names from this sentence: 'Elon Musk is the CEO of Tesla.'"
+    tags: ["ner"]
+
+  - id: keyword_extraction
+    category: extraction
+    name: "Keyword Extraction"
+    description: "Extract key terms"
+    level: 1
+    tool_calls: 0
+    prompt: "Extract the top 5 keywords from this sentence: 'Artificial intelligence and machine learning are transforming healthcare and finance.'"
+    tags: ["keywords"]

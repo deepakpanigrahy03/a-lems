@@ -1,0 +1,72 @@
+# config/dashboard.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# A-LEMS Dashboard Configuration
+# UI behaviour, refresh rates, feature flags — no hardcoding in code.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Application Identity ──────────────────────────────────────────────────────
+app:
+  name: "A-LEMS"
+  full_name: "Agentic LLM Energy Measurement System"
+  version: "1.0.0"
+  author: "Deepak Panigrahy"
+  institution: ""           # Fill in your university/lab name
+
+# ── Live Execution Settings ───────────────────────────────────────────────────
+live:
+  poll_interval_seconds: 2        # How often UI polls server for run status
+  telemetry_refresh_seconds: 1    # Live gauge refresh rate
+  auto_switch_to_analysis: true   # Switch to Session Analysis tab when run completes
+  max_log_lines: 200              # Max lines shown in live log window
+
+# ── Stuck Run Detection ───────────────────────────────────────────────────────
+stuck_run:
+  detection_enabled: true
+  threshold_minutes: 30           # Runs older than this with status=running are flagged
+  auto_reset: false               # Set true to auto-reset without user confirmation
+  kill_process: true              # Attempt to kill subprocess on force reset
+
+# ── Queue Persistence ─────────────────────────────────────────────────────────
+queue:
+  persist_file: "config/queue_state.yaml"   # Relative to project root
+  max_queue_size: 20
+  single_run_only: true           # Enforce one run at a time (RAPL constraint)
+
+# ── Session Analysis ──────────────────────────────────────────────────────────
+analysis:
+  default_sub_tab: "summary"
+  show_optimization_comparison: true    # Show optimized vs non-optimized when data exists
+  gantt_min_bar_width_ms: 100           # Minimum bar width for very fast runs
+  per_pair_expanded_by_default: false   # Collapse pair cards by default
+
+# ── Gap Detection ─────────────────────────────────────────────────────────────
+gap_detection:
+  enabled: true
+  run_on_page_load: true
+  min_runs_per_cell: 10           # Minimum runs for statistical confidence
+  show_max_suggestions: 7         # Cap suggestions shown at once
+
+# ── Navigation ────────────────────────────────────────────────────────────────
+navigation:
+  show_active_session_in_sidebar: true
+  session_display_format: "short"   # "short" = session_YYYYMMDD_HHMMSS, "full" = full string
+  highlight_running_page: true
+
+# ── Export ────────────────────────────────────────────────────────────────────
+export:
+  pdf_page_size: "A4"
+  pdf_orientation: "portrait"
+  pdf_font: "DejaVu"
+  excel_max_rows_per_sheet: 10000
+  include_raw_data_sheet: true
+  include_charts_in_pdf: true
+  watermark: ""                   # Optional watermark text on PDF pages
+
+# ── Experiment Designer ───────────────────────────────────────────────────────
+designer:
+  plans_directory: "config/experiment_plans"
+  auto_load_plans: true
+  save_to_db: true                # Also persist plans to experiment_plans table
+  max_containers_per_plan: 10
+  max_conditions_per_container: 5
+  drag_drop_enabled: false        # Phase 2 feature flag

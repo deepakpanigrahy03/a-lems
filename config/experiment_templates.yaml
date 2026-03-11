@@ -1,0 +1,188 @@
+# config/experiment_templates.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# A-LEMS Pre-built Experiment Templates
+# Researchers can load these from the Experiment Designer UI.
+# Add new templates here — they appear automatically in the UI.
+# ─────────────────────────────────────────────────────────────────────────────
+
+templates:
+
+  # ── 1. Quick Baseline ───────────────────────────────────────────────────────
+  - id: quick_baseline
+    name: "Quick Baseline"
+    emoji: "📏"
+    description: "Fast 2-rep baseline across core tasks and both providers. Good starting point."
+    category: "baseline"
+    estimated_duration_minutes: 5
+    containers:
+      - id: C1
+        label: "Baseline Run"
+        tasks: [gsm8k_basic, factual_qa]
+        providers: [cloud, local]
+        repetitions: 2
+        cool_down_seconds: 30
+        conditions: []
+
+  # ── 2. Full Baseline ────────────────────────────────────────────────────────
+  - id: full_baseline
+    name: "Full Baseline"
+    emoji: "📊"
+    description: "Comprehensive 5-rep baseline across all tasks and providers. Use before training."
+    category: "baseline"
+    estimated_duration_minutes: 45
+    containers:
+      - id: C1
+        label: "Full Baseline"
+        tasks: [all]
+        providers: [cloud, local]
+        repetitions: 5
+        cool_down_seconds: 30
+        conditions: []
+
+  # ── 3. Tax Investigation ────────────────────────────────────────────────────
+  - id: tax_investigation
+    name: "Tax Investigation"
+    emoji: "🔍"
+    description: "Branch on orchestration tax level to isolate high-overhead conditions."
+    category: "investigation"
+    estimated_duration_minutes: 20
+    containers:
+      - id: C1
+        label: "Initial Probe"
+        tasks: [gsm8k_basic, gsm8k_multi_step]
+        providers: [cloud, local]
+        repetitions: 2
+        cool_down_seconds: 30
+        conditions:
+          - id: cond_1
+            metric: tax_multiplier
+            operator: ">"
+            value: 10
+            connector: null
+            run: C2
+          - id: cond_2
+            metric: tax_multiplier
+            operator: "<"
+            value: 2
+            connector: null
+            run: C3
+          - id: cond_3
+            metric: tax_multiplier
+            operator: "between"
+            value: 2
+            value2: 10
+            connector: null
+            run: [C2, C3]
+      - id: C2
+        label: "High Tax Deep Dive"
+        tasks: [gsm8k_multi_step, logical_reasoning]
+        providers: [local]
+        repetitions: 5
+        cool_down_seconds: 45
+        conditions: []
+      - id: C3
+        label: "Efficiency Probe"
+        tasks: [gsm8k_basic, factual_qa]
+        providers: [cloud]
+        repetitions: 5
+        cool_down_seconds: 30
+        conditions: []
+
+  # ── 4. Thermal Stress Test ──────────────────────────────────────────────────
+  - id: thermal_stress
+    name: "Thermal Stress Test"
+    emoji: "🌡️"
+    description: "Run heavy tasks to push thermal limits. Trigger deeper analysis when temperature rises."
+    category: "stress"
+    estimated_duration_minutes: 30
+    containers:
+      - id: C1
+        label: "Thermal Trigger"
+        tasks: [gsm8k_multi_step, logical_reasoning, code_fibonacci]
+        providers: [local]
+        repetitions: 3
+        cool_down_seconds: 10       # Short cool-down to maintain heat
+        conditions:
+          - id: cond_1
+            metric: thermal_delta_c
+            operator: ">"
+            value: 20
+            connector: null
+            run: C2
+          - id: cond_2
+            metric: max_temp_c
+            operator: ">"
+            value: 85
+            connector: null
+            run: C2
+      - id: C2
+        label: "Thermal Deep Dive"
+        tasks: [gsm8k_multi_step]
+        providers: [local]
+        repetitions: 5
+        cool_down_seconds: 5
+        conditions: []
+
+  # ── 5. Provider Comparison ──────────────────────────────────────────────────
+  - id: provider_comparison
+    name: "Provider Comparison"
+    emoji: "☁️"
+    description: "Systematic comparison of cloud vs local across all task categories."
+    category: "comparison"
+    estimated_duration_minutes: 35
+    containers:
+      - id: C1
+        label: "Cloud vs Local"
+        tasks: [all]
+        providers: [cloud, local]
+        repetitions: 3
+        cool_down_seconds: 30
+        conditions: []
+
+  # ── 6. Complexity Sweep ─────────────────────────────────────────────────────
+  - id: complexity_sweep
+    name: "Complexity Sweep"
+    emoji: "📈"
+    description: "Run tasks across all complexity levels to map energy vs complexity curve."
+    category: "investigation"
+    estimated_duration_minutes: 25
+    containers:
+      - id: C1
+        label: "Level 1 Tasks"
+        tasks: [gsm8k_basic, factual_qa, science_qa, geography_qa,
+                commonsense_reasoning, sentiment_analysis, topic_classification,
+                entity_extraction, keyword_extraction, news_summary]
+        providers: [cloud, local]
+        repetitions: 2
+        cool_down_seconds: 30
+        conditions:
+          - id: cond_1
+            metric: tax_multiplier
+            operator: ">"
+            value: 5
+            connector: null
+            run: C2
+      - id: C2
+        label: "Level 2 Tasks"
+        tasks: [gsm8k_multi_step, logical_reasoning, code_fibonacci,
+                code_sorting, bug_fixing, research_summary]
+        providers: [cloud, local]
+        repetitions: 3
+        cool_down_seconds: 30
+        conditions: []
+
+  # ── 7. Statistical Confidence Builder ───────────────────────────────────────
+  - id: confidence_builder
+    name: "Confidence Builder"
+    emoji: "📉"
+    description: "Run high-variance task/provider pairs more times to reduce coefficient of variation."
+    category: "statistical"
+    estimated_duration_minutes: 40
+    containers:
+      - id: C1
+        label: "High Repetition Run"
+        tasks: [gsm8k_basic, gsm8k_multi_step]
+        providers: [cloud, local]
+        repetitions: 10
+        cool_down_seconds: 30
+        conditions: []

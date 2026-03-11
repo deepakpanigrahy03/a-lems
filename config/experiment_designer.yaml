@@ -1,0 +1,110 @@
+# config/experiment_designer.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Experiment Designer — available condition metrics and operators.
+# Add new metrics here as new columns are added to the runs table.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Condition Metrics ─────────────────────────────────────────────────────────
+# These are the variables a researcher can use in conditional branching.
+# column: exact column name in the runs or orchestration_tax_summary table
+condition_metrics:
+  - key: tax_multiplier
+    label: "Orchestration Tax"
+    unit: "x"
+    column: "tax_multiplier"          # from orchestration_tax_summary
+    table: "orchestration_tax_summary"
+    description: "Ratio of agentic to linear energy"
+    example: "tax > 10"
+
+  - key: total_energy_uj
+    label: "Total Energy"
+    unit: "µJ"
+    column: "total_energy_uj"
+    table: "runs"
+    description: "Total energy consumed by the run"
+    example: "total_energy_uj > 1000000"
+
+  - key: thermal_delta_c
+    label: "Thermal Rise"
+    unit: "°C"
+    column: "thermal_delta_c"
+    table: "runs"
+    description: "Temperature increase during the run"
+    example: "thermal_delta_c > 20"
+
+  - key: max_temp_c
+    label: "Peak Temperature"
+    unit: "°C"
+    column: "max_temp_c"
+    table: "runs"
+    description: "Maximum temperature during run"
+    example: "max_temp_c > 85"
+
+  - key: ipc
+    label: "IPC"
+    unit: ""
+    column: "ipc"
+    table: "runs"
+    description: "Instructions per cycle"
+    example: "ipc < 0.8"
+
+  - key: cache_miss_rate
+    label: "Cache Miss Rate"
+    unit: "%"
+    column: "cache_miss_rate"
+    table: "runs"
+    description: "Cache miss percentage"
+    example: "cache_miss_rate > 30"
+
+  - key: duration_ms
+    label: "Duration"
+    unit: "ms"
+    column: "duration_ns / 1e6"
+    table: "runs"
+    description: "Run duration in milliseconds"
+    example: "duration_ms > 5000"
+
+  - key: thread_migrations
+    label: "Thread Migrations"
+    unit: ""
+    column: "thread_migrations"
+    table: "runs"
+    description: "Number of thread migrations"
+    example: "thread_migrations > 1000"
+
+  - key: interrupt_rate
+    label: "Interrupt Rate"
+    unit: "/s"
+    column: "interrupt_rate"
+    table: "runs"
+    description: "Hardware interrupts per second"
+    example: "interrupt_rate > 8000"
+
+  - key: dynamic_energy_uj
+    label: "Dynamic Energy"
+    unit: "µJ"
+    column: "dynamic_energy_uj"
+    table: "runs"
+    description: "Energy above idle baseline"
+    example: "dynamic_energy_uj > 500000"
+
+# ── Condition Operators ───────────────────────────────────────────────────────
+operators:
+  - symbol: ">"
+    label: "greater than"
+  - symbol: ">="
+    label: "greater than or equal"
+  - symbol: "<"
+    label: "less than"
+  - symbol: "<="
+    label: "less than or equal"
+  - symbol: "=="
+    label: "equal to"
+  - symbol: "between"
+    label: "between (inclusive)"
+    needs_two_values: true
+
+# ── Logical Connectors ────────────────────────────────────────────────────────
+logical_connectors:
+  - "AND"
+  - "OR"

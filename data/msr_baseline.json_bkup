@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-23T16:44:56.867152",
+  "cpu_model": "11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz",
+  "kernel_version": "6.17.0-14-generic",
+  "measurements": {
+    "ring_bus_frequency_mhz": null,
+    "wakeup_latency_us": 7.090338069247082,
+    "sample_c7_counter": 0,
+    "cstate_counter_max": 18446744073709551615,
+    "base_clock_mhz": 100
+  }
+}
