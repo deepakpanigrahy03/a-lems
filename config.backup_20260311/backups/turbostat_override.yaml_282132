@@ -1,0 +1,24 @@
+# ========================================================================
+# Turbostat Metrics Override Configuration
+# Purpose: Define which turbostat metrics to extract as canonical columns
+# All other metrics will be stored in extra_metrics_json
+# ========================================================================
+
+# Research-focused canonical metrics (extracted to separate columns)
+canonical_metrics:
+  cpu_util_percent: "Busy%"
+  cpu_busy_mhz: "Bzy_MHz"
+  cpu_avg_mhz: "Avg_MHz"
+  c1_residency: "C1ACPI%"
+  c6_residency: "CPU%c6"
+  c7_residency: "CPU%c7"
+  package_temp: "PkgTmp"
+  ipc: "IPC"
+
+# If true, store all non-canonical metrics in extra_metrics_json
+store_extra_in_json: true
+
+# Optional: Define which metrics to always keep (even if not in canonical)
+always_keep:
+  - "timestamp_ns"
+  - "run_id"

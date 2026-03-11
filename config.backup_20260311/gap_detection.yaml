@@ -1,0 +1,149 @@
+# config/gap_detection.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# A-LEMS Gap Detection Rules
+# Each rule defines a query, threshold, and suggestion message.
+# The gap detector runs these against the live DB and surfaces suggestions.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Global Settings ───────────────────────────────────────────────────────────
+settings:
+  min_runs_recommended: 10        # Minimum runs per task/provider for confidence
+  high_variance_cv: 0.30          # Coefficient of variation threshold
+  category_balance_ratio: 3.0     # Flag if one category has 3x more runs than another
+  provider_balance_ratio: 2.0     # Flag if cloud has 2x more runs than local
+
+# ── Gap Rules ─────────────────────────────────────────────────────────────────
+rules:
+
+  - id: min_sample_size
+    name: "Insufficient Sample Size"
+    priority: high
+    emoji: "🔴"
+    description: "Task/provider cells with fewer than recommended minimum runs"
+    sql: |
+      SELECT e.task_name, e.provider, COUNT(r.run_id) as cnt
+      FROM experiments e
+      LEFT JOIN runs r ON e.exp_id = r.exp_id
+      WHERE r.workflow_type = 'linear'
+      GROUP BY e.task_name, e.provider
+      HAVING cnt < {min_runs_recommended}
+      ORDER BY cnt ASC
+    message: "{task_name} / {provider}: only {cnt} runs (minimum {min_runs_recommended} recommended)"
+    suggestion: "Add {needed} more runs for '{task_name}' with {provider}"
+    action: "add_to_queue"
+
+  - id: provider_balance
+    name: "Provider Imbalance"
+    priority: medium
+    emoji: "🟡"
+    description: "Tasks where one provider has significantly more runs than the other"
+    sql: |
+      SELECT task_name,
+             SUM(CASE WHEN provider='cloud' THEN 1 ELSE 0 END) as cloud_cnt,
+             SUM(CASE WHEN provider='local' THEN 1 ELSE 0 END) as local_cnt
+      FROM experiments e
+      JOIN runs r ON e.exp_id = r.exp_id
+      WHERE r.workflow_type = 'linear'
+      GROUP BY task_name
+      HAVING (cloud_cnt * 1.0 / MAX(local_cnt, 1)) > {provider_balance_ratio}
+          OR (local_cnt * 1.0 / MAX(cloud_cnt, 1)) > {provider_balance_ratio}
+    message: "{task_name}: {high_provider} has {high_cnt} runs vs {low_provider} {low_cnt} runs"
+    suggestion: "Add {diff} more {low_provider} runs for '{task_name}'"
+    action: "add_to_queue"
+
+  - id: task_category_balance
+    name: "Category Imbalance"
+    priority: medium
+    emoji: "🟡"
+    description: "Task categories with significantly fewer runs than others"
+    sql: |
+      SELECT tc.category, COUNT(r.run_id) as cnt
+      FROM task_categories tc
+      LEFT JOIN experiments e ON tc.task_id = e.task_name
+      LEFT JOIN runs r ON e.exp_id = r.exp_id
+      GROUP BY tc.category
+      ORDER BY cnt ASC
+    message: "Category '{category}' has only {cnt} runs — lowest across categories"
+    suggestion: "Add runs for '{category}' tasks to balance training data"
+    action: "suggest_template"
+    template: "full_baseline"
+
+  - id: cross_factor_coverage
+    name: "Missing Cross-factor Combinations"
+    priority: medium
+    emoji: "🟡"
+    description: "Provider/workflow combinations not yet tested"
+    sql: |
+      SELECT e.provider, r.workflow_type, COUNT(*) as cnt
+      FROM experiments e
+      JOIN runs r ON e.exp_id = r.exp_id
+      GROUP BY e.provider, r.workflow_type
+    message: "{provider} + {workflow_type}: only {cnt} runs — cross-factor coverage gap"
+    suggestion: "Test {workflow_type} execution on {provider} more thoroughly"
+    action: "add_to_queue"
+
+  - id: high_variance
+    name: "High Statistical Variance"
+    priority: medium
+    emoji: "🟡"
+    description: "Task/provider pairs with high coefficient of variation in energy"
+    sql: |
+      SELECT e.task_name, e.provider,
+             COUNT(*) as cnt,
+             AVG(r.total_energy_uj) as mean_energy,
+             (STDEV(r.total_energy_uj) / AVG(r.total_energy_uj)) as cv
+      FROM experiments e
+      JOIN runs r ON e.exp_id = r.exp_id
+      WHERE r.workflow_type = 'agentic'
+      GROUP BY e.task_name, e.provider
+      HAVING cnt >= 3 AND cv > {high_variance_cv}
+    message: "{task_name}/{provider}: high variance (CV={cv:.2f}) — results unreliable"
+    suggestion: "Add {n_more} more runs to reduce variance for '{task_name}'"
+    action: "add_to_queue"
+
+  - id: thermal_gap
+    name: "No High-Temperature Runs"
+    priority: low
+    emoji: "⚪"
+    description: "No runs recorded when CPU temperature was above caution threshold"
+    sql: |
+      SELECT COUNT(*) as cnt
+      FROM runs
+      WHERE max_temp_c > 85
+    message: "No runs captured when CPU temperature exceeded 85°C — thermal stress data missing"
+    suggestion: "Run the Thermal Stress Test template to capture high-temperature behaviour"
+    action: "suggest_template"
+    template: "thermal_stress"
+
+  - id: complexity_coverage
+    name: "High-Complexity Tasks Under-represented"
+    priority: low
+    emoji: "⚪"
+    description: "Complex tasks (level 2+) have fewer runs than simple tasks"
+    sql: |
+      SELECT t.level, COUNT(r.run_id) as cnt
+      FROM task_categories tc
+      JOIN runs r ON r.exp_id IN (
+          SELECT exp_id FROM experiments WHERE task_name = tc.task_id
+      )
+      JOIN tasks t ON t.id = tc.task_id
+      GROUP BY t.level
+    message: "Level {level} tasks: only {cnt} runs — complexity sweep incomplete"
+    suggestion: "Run Complexity Sweep template to balance task difficulty coverage"
+    action: "suggest_template"
+    template: "complexity_sweep"
+
+  - id: cold_start_ratio
+    name: "Low Cold-Start Coverage"
+    priority: low
+    emoji: "⚪"
+    description: "Cold-start runs should represent ~20% of total for training diversity"
+    sql: |
+      SELECT
+        SUM(CASE WHEN is_cold_start=1 THEN 1 ELSE 0 END) as cold,
+        COUNT(*) as total,
+        100.0 * SUM(CASE WHEN is_cold_start=1 THEN 1 ELSE 0 END) / COUNT(*) as pct
+      FROM runs
+    message: "Cold-start runs: {pct:.1f}% of total — recommended minimum 20%"
+    suggestion: "Ensure some experiments run immediately after system restart"
+    action: "info_only"

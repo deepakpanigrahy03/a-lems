@@ -1,0 +1,26 @@
+# A-LEMS Data Sources for Sync Script
+# Used by scripts/sync_configs.py
+
+grid_intensity:
+  - name: "Ember (Carbon Intensity)"
+    url: "https://api.ember-energy.org/latest/electricity-review"
+    format: "json"
+  - name: "IEA Methane Tracker"
+    url: "https://api.iea.org/methane-tracker/latest"
+    format: "json"
+  - name: "UN-Water"
+    url: "https://sdg6data.un.org/api/countries"
+    format: "json"
+
+country_metrics:
+  - name: "World Bank (Population)"
+    url: "http://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json"
+    format: "json"
+  - name: "World Bank (GDP)"
+    url: "http://api.worldbank.org/v2/country/all/indicator/NY.GDP.PCAP.KD?format=json"
+    format: "json"
+
+gwp_values:
+  - name: "IPCC AR6"
+    url: "https://www.ipcc.ch/report/ar6/wg1/downloads/report/IPCC_AR6_WGI_Chapter07_SM.xlsx"
+    format: "excel"

@@ -162,46 +162,47 @@ def _start_server(token: str) -> subprocess.Popen:
     return proc
 
 
-# ── localhost.run tunnel ──────────────────────────────────────────────────────
+# ── Cloudflare quick tunnel ───────────────────────────────────────────────────
 
 def _start_tunnel() -> tuple:
-    """Returns (process, url). URL is extracted from tunnel output."""
-    cmd = [
-        "ssh",
-        "-i", SSH_KEY,
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "ServerAliveInterval=30",
-        "-o", "ServerAliveCountMax=3",
-        "-o", "ExitOnForwardFailure=yes",
-        "-R", f"80:localhost:{PORT}",
-        "localhost.run",
-    ]
-    print(f"  Starting localhost.run tunnel...")
+    """Returns (process, url). Uses cloudflared quick tunnel — no login needed."""
+    # Check cloudflared is installed
+    import shutil
+    if not shutil.which("cloudflared"):
+        print("  ❌  cloudflared not found. Install it:")
+        print("      wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb")
+        print("      sudo dpkg -i cloudflared-linux-amd64.deb")
+        return None, None
+
+    cmd = ["cloudflared", "tunnel", "--url", f"http://localhost:{PORT}", "--no-autoupdate"]
+    print(f"  Starting Cloudflare tunnel...")
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True)
 
     url = None
-    deadline = time.time() + 25
     output_lines = []
 
-    for line in proc.stdout:
-        output_lines.append(line.rstrip())
-        if time.time() > deadline:
+    # cloudflared prints the URL to stderr/stdout within ~5s
+    import select as _sel
+    deadline = time.time() + 35
+    while time.time() < deadline:
+        ready = _sel.select([proc.stdout], [], [], 2.0)[0]
+        if not ready:
+            if proc.poll() is not None:
+                break
+            continue
+        line = proc.stdout.readline()
+        if not line:
             break
-        # Extract URL from output line like:
-        # "xxxx.lhr.life tunneled with tls termination, https://xxxx.lhr.life"
-        m = re.search(r'https://[\w\-]+\.lhr\.life', line)
+        line = line.rstrip()
+        output_lines.append(line)
+        # cloudflared prints: "https://xxxx-xxxx-xxxx.trycloudflare.com"
+        m = re.search(r'https://[a-z0-9\-]+\.trycloudflare\.com', line)
         if m:
             url = m.group(0)
             break
-        # Check for actual auth failure (not the FAQ mention in welcome banner)
-        if "permission denied" in line.lower() and "publickey" in line.lower():
-            print(f"  ❌  SSH key rejected.")
-            print(f"     Add key at: https://admin.localhost.run")
-            proc.terminate()
-            sys.exit(1)
 
-    # Drain remaining output
+    # Drain in background
     threading.Thread(
         target=lambda p: [_ for _ in p.stdout],
         args=(proc,), daemon=True
@@ -211,12 +212,13 @@ def _start_tunnel() -> tuple:
         print(f"  ❌  Tunnel exited immediately")
         for l in output_lines[-5:]:
             print(f"     {l}")
-        sys.exit(1)
+        return proc, None
 
     if url:
         print(f"  ✅  Tunnel online → {url}")
     else:
         print(f"  ⚠️   Tunnel started but could not extract URL")
+        print(f"      Last output: {output_lines[-3:] if output_lines else '(none)'}")
 
     return proc, url
 
@@ -250,12 +252,20 @@ def main():
     srv       = _start_server(token)
     tun, url  = _start_tunnel()
 
+    # Retry tunnel up to 5 times if connection reset
+    for _attempt in range(5):
+        if url or (tun.poll() is None):
+            break
+        print(f"  Retry {_attempt+1}/5 in 20s...")
+        time.sleep(20)
+        tun, url = _start_tunnel()
+
     if url:
         _write_state(url, token, True)
         _push_url_to_hf(url, token, hf_repo)
     else:
-        url = "unknown"
-        _write_state(url, token, True)
+        url = "connecting..."
+        _write_state(url, token, False)
 
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
@@ -306,8 +316,8 @@ def main():
 
         # Check tunnel
         if tun_ref[0].poll() is not None:
-            print(f"  [{ts}]  ⚠️  Tunnel died — restarting...")
-            time.sleep(2)
+            print(f"  [{ts}]  ⚠️  Tunnel died — restarting in 15s...")
+            time.sleep(15)
             new_tun, new_url = _start_tunnel()
             tun_ref[0] = new_tun
             if new_url and new_url != url_ref[0]:
@@ -315,8 +325,10 @@ def main():
                 print(f"  [{ts}]  📡  New URL: {new_url}")
                 _write_state(new_url, token, True)
                 _push_url_to_hf(new_url, token, hf_repo)
-            else:
+            elif new_url:
                 _write_state(url_ref[0], token, True)
+            else:
+                print(f"  [{ts}]  ⚠️  Tunnel still not connected — will retry in 15s")
 
         print(f"  [{ts}]  🟢  {url_ref[0]}")
 

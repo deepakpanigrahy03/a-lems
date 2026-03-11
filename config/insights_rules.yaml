@@ -1,0 +1,159 @@
+# config/insights_rules.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# A-LEMS Insight Rules & Sustainability Configuration
+# All thresholds, comparisons, and narrative templates live here.
+# Change values here — never in code.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Orchestration Tax Thresholds ─────────────────────────────────────────────
+tax_thresholds:
+  low:
+    max: 2.0
+    color: green
+    emoji: "🟢"
+    label: "LOW"
+    narrative: "Orchestration overhead is minimal — agentic and linear are nearly equivalent."
+  moderate:
+    max: 5.0
+    color: yellow
+    emoji: "🟡"
+    label: "MODERATE"
+    narrative: "Orchestration adds measurable overhead. Monitor for task complexity increases."
+  high:
+    max: 15.0
+    color: orange
+    emoji: "🟠"
+    label: "HIGH"
+    narrative: "Significant orchestration overhead. Consider linear execution for this task/provider pair."
+  extreme:
+    min: 15.0
+    color: red
+    emoji: "🔴"
+    label: "EXTREME"
+    narrative: "Orchestration dominates energy cost. Linear execution strongly recommended."
+
+# ── Thermal Thresholds (°C) ───────────────────────────────────────────────────
+thermal:
+  throttle_threshold_c: 95      # Hardware thermal throttle activates here
+  caution_threshold_c: 85       # Yellow warning zone
+  safe_threshold_c: 70          # Green zone
+  rate_of_change_caution: 5.0   # °C/second — caution if exceeded
+  rate_of_change_danger: 10.0   # °C/second — danger if exceeded
+
+# ── Statistical Confidence ────────────────────────────────────────────────────
+statistics:
+  min_runs_per_cell: 10         # Minimum runs for a task/provider cell
+  cv_threshold: 0.30            # Coefficient of variation — high variance flag
+  confidence_level: 0.95        # For CI calculations
+
+# ── Sustainability Conversion Factors ─────────────────────────────────────────
+# Source: IEA, EPA, and peer-reviewed energy literature
+# Each entry: factor = multiply by raw value to get comparison value
+sustainability:
+
+  energy_joules:
+    # Reference values (for 1 Joule)
+    references:
+      - label: "Wh"
+        factor: 0.000277778
+        description: "watt-hours"
+      - label: "phone charge %"
+        factor: 0.0000027778   # 1J / 36000J per full charge * 100
+        description: "percentage of a smartphone charge (10Wh battery)"
+      - label: "LED-bulb minutes"
+        factor: 0.1667         # 1J / 6W bulb = 0.167 seconds → expressed in minutes
+        description: "seconds powering a 1W LED bulb"
+      - label: "Google searches"
+        factor: 1.0            # ~1J per Google search
+        description: "equivalent Google searches"
+      - label: "WhatsApp messages"
+        factor: 333.3          # ~0.003J per message
+        description: "equivalent WhatsApp messages"
+    # Human-readable thresholds for display
+    display_comparisons:
+      - threshold_j: 1
+        template: "{value:.3f} J → {wh:.6f} Wh"
+      - threshold_j: 100
+        template: "{value:.1f} J → {wh:.4f} Wh · {phone_pct:.2f}% phone charge"
+      - threshold_j: 1000
+        template: "{value:.1f} J → {wh:.3f} Wh · {led_min:.1f} min LED bulb · {phone_pct:.1f}% phone charge"
+
+  carbon_grams:
+    # Source: UK National Grid average 233g CO₂/kWh → 0.0000647g per joule
+    grams_per_joule: 0.0000647
+    references:
+      - label: "car meters"
+        factor: 0.00714        # 1g CO₂ = 0.00714 km in petrol car (140g/km average)
+        unit: "meters driving a petrol car"
+      - label: "smartphone minutes"
+        factor: 1.2            # ~0.83g CO₂ per hour of smartphone use
+        unit: "minutes of smartphone use"
+      - label: "boiling water ml"
+        factor: 0.33           # ~3g CO₂ to boil 1L water
+        unit: "ml of water boiled"
+
+  water_ml:
+    # Source: Water consumption for data center cooling ~1.8L per kWh
+    ml_per_joule: 0.0005       # 1.8L/kWh = 0.0005ml/J
+    references:
+      - label: "teaspoons"
+        factor: 0.2            # 1ml = 0.2 teaspoons
+        unit: "teaspoons of water"
+      - label: "shower fraction"
+        factor: 0.0000167      # Average shower = 60L = 60000ml
+        unit: "fraction of a shower"
+      - label: "glasses"
+        factor: 0.004          # 250ml per glass
+        unit: "glasses of water"
+
+  methane_mg:
+    # Source: EPA methane GWP20 = 84x CO₂, average human emits ~500mg CH₄/day
+    mg_per_joule: 0.00000771   # Derived from carbon factor and GWP
+    references:
+      - label: "daily human pct"
+        factor: 0.0002         # 500mg per day average human
+        unit: "% of average daily human methane emission"
+      - label: "cow breath seconds"
+        factor: 0.0167         # Cow emits ~60mg/min = 1mg/sec
+        unit: "seconds of cow breath equivalent"
+
+# ── Narrative Templates ───────────────────────────────────────────────────────
+# Variables available: {tax:.2f}, {task}, {provider}, {delta:.1f}, {headroom:.1f}
+# {agentic_migrations:,}, {linear_migrations:,}, {ratio:.0f}, {llm_calls}, {tool_calls}
+narrative_templates:
+
+  high_tax:
+    template: "The agentic run consumed {tax:.0f}x more energy than linear for {task} with {provider} inference."
+    applies_when: "tax > 5"
+
+  extreme_tax:
+    template: "Orchestration overhead is extreme ({tax:.0f}x). For {task} on {provider}, linear execution would save {savings_pct:.0f}% of energy."
+    applies_when: "tax > 15"
+
+  thermal_caution:
+    template: "Temperature rose {delta:.0f}°C during the run, leaving {headroom:.0f}°C headroom before throttle threshold ({throttle_c}°C)."
+    applies_when: "max_temp > thermal.caution_threshold_c"
+
+  thermal_safe:
+    template: "Thermal performance was stable. Peak temperature {max_temp:.0f}°C — well within safe operating range."
+    applies_when: "max_temp < thermal.safe_threshold_c"
+
+  thread_migrations:
+    template: "{agentic_migrations:,} thread migrations in agentic vs {linear_migrations:,} in linear ({ratio:.0f}x increase), confirming significant async orchestration overhead beyond pure compute."
+    applies_when: "ratio > 5"
+
+  ipc_drop:
+    template: "IPC dropped {drop_pct:.0f}% in agentic mode ({linear_ipc:.2f} → {agentic_ipc:.2f}), indicating memory-bound orchestration activity."
+    applies_when: "drop_pct > 5"
+
+  llm_calls:
+    template: "{llm_calls} LLM calls and {tool_calls} tool calls drove the orchestration energy cost."
+    applies_when: "llm_calls > 1"
+
+  cold_start:
+    template: "This was a cold-start run — first execution after system idle. Results may show higher initialization overhead."
+    applies_when: "is_cold_start == 1"
+
+  optimization_enabled:
+    template: "Optimization rules were active during this run. Compare with non-optimized baseline to evaluate rule effectiveness."
+    applies_when: "optimization_enabled == 1"

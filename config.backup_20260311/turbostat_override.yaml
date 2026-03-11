@@ -1,0 +1,53 @@
+# ========================================================================
+# Turbostat Canonical Metrics
+# Selected based on actual data values and research relevance
+# ========================================================================
+
+canonical_metrics:
+  # ----------------------------------------------------------------------
+  # CPU Activity (Core metrics for all analysis)
+  # ----------------------------------------------------------------------
+  cpu_util_percent: "Busy%"        # Core utilization - always include
+  cpu_busy_mhz: "Bzy_MHz"           # Frequency when busy - critical
+  cpu_avg_mhz: "Avg_MHz"            # Average frequency - important
+  
+  # ----------------------------------------------------------------------
+  # Core C-States (All have non-zero values)
+  # ----------------------------------------------------------------------
+  c1_residency: "C1ACPI%"           # 850 mean → 8.5% - significant
+  c2_residency: "C2ACPI%"           # 20.59 mean → 0.2% - small but real
+  c3_residency: "C3ACPI%"           # 4169 mean → 41.7% - MAJOR
+  c6_residency: "CPU%c6"            # 2802 mean → 28.0% - MAJOR
+  c7_residency: "CPU%c7"            # 2.73 mean → 2.7% - significant
+  
+  # ----------------------------------------------------------------------
+  # Package C-States (Deep sleep - all have values)
+  # ----------------------------------------------------------------------
+  pkg_c8_residency: "Pkg%pc8"       # 627 mean → 6.3% - significant
+  pkg_c9_residency: "Pkg%pc9"       # 11.26 mean → 0.11% - small but real
+  pkg_c10_residency: "Pk%pc10"      # 9.00 mean → 0.09% - small but real
+  
+  # ----------------------------------------------------------------------
+  # Power Metrics (Non-zero values)
+  # ----------------------------------------------------------------------
+  package_power: "PkgWatt"          # 0.00? Actually zero in your data - check
+  dram_power: "RAMWatt"             # 18.95 mean - SIGNIFICANT - include!
+  
+  # ----------------------------------------------------------------------
+  # GPU Metrics (Has non-zero values)
+  # ----------------------------------------------------------------------
+  gpu_rc6: "GFX%rc6"                # 59.22 mean - MAJOR - include!
+  
+  # ----------------------------------------------------------------------
+  # Temperature & Efficiency
+  # ----------------------------------------------------------------------
+  package_temp: "PkgTmp"            # 46.21 mean - critical for thermal analysis
+  ipc: "IPC"                         # 16.81 mean → 1.68? Check scaling - important
+  
+  # ----------------------------------------------------------------------
+  # Optional (if you need them)
+  # ----------------------------------------------------------------------
+  # tsc_mhz: "TSC_MHz"              # 92.60 mean - only for clock verification
+  # interrupt_rate: "IRQ"            # 0.20 mean - only for noise analysis
+
+store_extra_in_json: true
