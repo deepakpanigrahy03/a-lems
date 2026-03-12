@@ -52,29 +52,12 @@ CREATE TABLE IF NOT EXISTS experiments (
     error_message TEXT,                      -- Error if failed (TD8)
     runs_completed INTEGER DEFAULT 0,        -- Number of successful runs (TD8)
     runs_total INTEGER,
-    optimization_enabled INTEGER DEFAULT 0                                            -- Total runs planned (TD8)
+    optimization_enabled INTEGER DEFAULT 0,                                            -- Total runs planned (TD8)
     -- ========== NEW COLUMNS END ==========
+    hw_id INTEGER REFERENCES hardware_config(hw_id),
+    env_id INTEGER REFERENCES environment_config(env_id)    
 );
 """
-
-# ========================================================================
-# Table 2: hardware_config
-# ========================================================================
-CREATE_HARDWARE_CONFIG = """
-CREATE TABLE IF NOT EXISTS hardware_config (
-    hw_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    hostname TEXT,
-    cpu_model TEXT,
-    cpu_cores INTEGER,
-    cpu_threads INTEGER,
-    ram_gb INTEGER,
-    kernel_version TEXT,
-    microcode_version TEXT,
-    rapl_domains TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
 # ========================================================================
 # Table 3: idle_baselines
 # ========================================================================
@@ -605,6 +588,65 @@ CREATE TABLE IF NOT EXISTS task_categories (
     category TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_task_categories_id ON task_categories(task_id);
+"""
+# Add new columns to hardware_config table
+CREATE_HARDWARE_CONFIG = """
+CREATE TABLE IF NOT EXISTS hardware_config (
+    hw_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hardware_hash TEXT UNIQUE,              
+    hostname TEXT,
+    cpu_model TEXT,
+    cpu_cores INTEGER,
+    cpu_threads INTEGER,
+    cpu_architecture TEXT,                  
+    cpu_vendor TEXT,                         
+    cpu_family INTEGER,                      
+    cpu_model_id INTEGER,                    
+    cpu_stepping INTEGER,                    
+    has_avx2 BOOLEAN,                        
+    has_avx512 BOOLEAN,                      
+    has_vmx BOOLEAN,                         
+    gpu_model TEXT,                          
+    gpu_driver TEXT,                          
+    gpu_count INTEGER,                        
+    gpu_power_available BOOLEAN,              
+    ram_gb REAL,
+    kernel_version TEXT,
+    microcode_version TEXT,
+    rapl_domains TEXT,
+    rapl_has_dram BOOLEAN,                   
+    rapl_has_uncore BOOLEAN,                  
+    system_manufacturer TEXT,                 
+    system_product TEXT,                      
+    system_type TEXT,                         
+    virtualization_type TEXT,                  
+    detected_at TIMESTAMP,                    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+# Add environment_config table (NEW)
+CREATE_ENVIRONMENT_CONFIG = """
+CREATE TABLE IF NOT EXISTS environment_config (
+    env_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    env_hash TEXT UNIQUE,
+    python_version TEXT,
+    python_implementation TEXT,
+    os_name TEXT,
+    os_version TEXT,
+    kernel_version TEXT,
+    llm_framework TEXT,
+    framework_version TEXT,
+    git_commit TEXT,
+    git_branch TEXT,
+    git_dirty BOOLEAN,
+    numpy_version TEXT,
+    torch_version TEXT,
+    transformers_version TEXT,
+    container_runtime TEXT,
+    container_image TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 

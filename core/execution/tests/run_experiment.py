@@ -28,6 +28,7 @@ from core.execution.harness import ExperimentHarness
 from core.execution.experiment_runner import ExperimentRunner
 from core.utils.task_loader import load_tasks, list_task_summary
 from core.execution.base import calc_stats
+from core.execution.display_formatter import display_pair_hardware
 
 
 def parse_arguments():
@@ -99,12 +100,15 @@ def run_provider_task(harness, runner, task, provider, repetitions, cool_down, a
     
     try:
         if args.save_db:
-            db, hw_id = runner.setup_database()
+            db, hw_id, env_id = runner.setup_database()
+
             config.sync_task_categories(db.db.conn)
             runner.ensure_baseline_in_db(db, harness)
             exp_id = runner.create_experiment(
                 db, task['id'], task['name'], provider,
-                linear_config, args.country, repetitions
+                linear_config, args.country, repetitions,
+                hw_id, env_id,
+                optimizer=args.optimizer
             )
         
         # Storage for results

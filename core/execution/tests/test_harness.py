@@ -255,12 +255,14 @@ def main():
     # ========================================================================
     if args.save_db:
         # Create database connection and experiment
-        db, hw_id = runner.setup_database()
+        db, hw_id, env_id = runner.setup_database()
+   
         runner.ensure_baseline_in_db(db, harness)
         config.sync_task_categories(db.db.conn)
         exp_id = runner.create_experiment(
             db, task_id, task_name, args.provider,
             linear_config, country_code, args.repetitions,
+            hw_id, env_id,
             optimizer=args.optimizer
         )
         

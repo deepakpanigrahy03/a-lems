@@ -48,7 +48,9 @@ from .schema import (
     THERMAL_SAMPLES_SCHEMA,
     CREATE_ML_VIEW,
     CREATE_ORCHESTRATION_ANALYSIS,
-    TASK_CATEGORIES_SCHEMA
+    TASK_CATEGORIES_SCHEMA,
+    CREATE_ENVIRONMENT_CONFIG,
+    
 )
 
 
@@ -253,6 +255,7 @@ class SQLiteAdapter(DatabaseInterface):
         self.conn.executescript(THERMAL_SAMPLES_SCHEMA)
         self.conn.execute(CREATE_ML_VIEW)
         self.conn.execute(CREATE_ORCHESTRATION_ANALYSIS)
+        self.conn.execute(CREATE_ENVIRONMENT_CONFIG)
 
 
         
@@ -272,8 +275,9 @@ class SQLiteAdapter(DatabaseInterface):
         cursor = self.conn.execute("""
             INSERT INTO experiments (
                 name, description, workflow_type, model_name, provider,
-                task_name, country_code, group_id, status, started_at, runs_total,optimization_enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                task_name, country_code, group_id, status, started_at, runs_total,optimization_enabled,
+                hw_id, env_id                 
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             experiment_data.get('name', 'unnamed'),
             experiment_data.get('description', ''),
@@ -286,46 +290,218 @@ class SQLiteAdapter(DatabaseInterface):
             experiment_data.get('status', 'pending'),
             experiment_data.get('started_at'),
             experiment_data.get('runs_total'),
-            experiment_data.get('optimization_enabled', 0) 
+            experiment_data.get('optimization_enabled', 0),
+            experiment_data.get('hw_id'),
+            experiment_data.get('env_id') 
+
         ))
         return cursor.lastrowid
     
     def insert_hardware(self, hardware_data: Dict[str, Any]) -> int:
         """
-        Insert or retrieve hardware configuration.
-        
-        Matches on hostname + kernel_version for uniqueness.
+        Insert hardware configuration or return existing ID.
+        Now supports hardware fingerprint fields and updates old records.
         """
-        if not self.conn:
-            self.connect()
-
-        result = self.execute(
-            """SELECT hw_id FROM hardware_config 
-               WHERE hostname = ? AND kernel_version = ?""",
-            (hardware_data.get('hostname'), hardware_data.get('kernel_version'))
-        )
         
-        if result:
-            return result[0]['hw_id']
+        # Get hardware hash (may be None for old data)
+        hw_hash = hardware_data.get('hardware_hash')
         
-        # Insert new
+        # ============================================================
+        # STEP 1: Try to find by hash (new method)
+        # ============================================================
+        if hw_hash:
+            results = self.execute(
+                "SELECT hw_id FROM hardware_config WHERE hardware_hash = ?",
+                (hw_hash,)
+            )
+            if results:
+                old_hw_id = results[0]['hw_id']
+        
+        # ============================================================
+        # STEP 2: Try to find by CPU model + cores (old record without hash)
+        # ============================================================
+        cpu_model = hardware_data.get('cpu_model')
+        cpu_cores = hardware_data.get('cpu_cores')
+        
+        if cpu_model and cpu_cores:
+            results = self.execute(
+                "SELECT hw_id FROM hardware_config WHERE cpu_model = ? AND cpu_cores = ?",
+                (cpu_model, cpu_cores)
+            )
+            if results:
+                old_hw_id = results[0]['hw_id']
+                
+                # UPDATE the old record with new columns
+                self.execute("""
+                    UPDATE hardware_config SET
+                        hardware_hash = ?,
+                        hostname = ?,
+                        cpu_model = ?,
+                        cpu_cores = ?,
+                        cpu_threads = ?,
+                        cpu_architecture = ?,
+                        cpu_vendor = ?,
+                        cpu_family = ?,
+                        cpu_model_id = ?,
+                        cpu_stepping = ?,
+                        has_avx2 = ?,
+                        has_avx512 = ?,
+                        has_vmx = ?,
+                        gpu_model = ?,
+                        gpu_driver = ?,
+                        gpu_count = ?,
+                        gpu_power_available = ?,
+                        ram_gb = ?,
+                        kernel_version = ?,
+                        microcode_version = ?,
+                        rapl_domains = ?,
+                        rapl_has_dram = ?,
+                        rapl_has_uncore = ?,
+                        system_manufacturer = ?,
+                        system_product = ?,
+                        system_type = ?,
+                        virtualization_type = ?,
+                        detected_at = ?
+                    WHERE hw_id = ?
+                """, (
+                    hardware_data.get('hardware_hash'),
+                    hardware_data.get('hostname'),
+                    hardware_data.get('cpu_model'),
+                    hardware_data.get('cpu_cores'),
+                    hardware_data.get('cpu_threads'),
+                    hardware_data.get('cpu_architecture'),
+                    hardware_data.get('cpu_vendor'),
+                    hardware_data.get('cpu_family'),
+                    hardware_data.get('cpu_model_id'),
+                    hardware_data.get('cpu_stepping'),
+                    hardware_data.get('has_avx2'),
+                    hardware_data.get('has_avx512'),
+                    hardware_data.get('has_vmx'),
+                    hardware_data.get('gpu_model'),
+                    hardware_data.get('gpu_driver'),
+                    hardware_data.get('gpu_count'),
+                    hardware_data.get('gpu_power_available'),
+                    hardware_data.get('ram_gb'),
+                    hardware_data.get('kernel_version'),
+                    hardware_data.get('microcode_version'),
+                    hardware_data.get('rapl_domains'),
+                    hardware_data.get('rapl_has_dram'),
+                    hardware_data.get('rapl_has_uncore'),
+                    hardware_data.get('system_manufacturer'),
+                    hardware_data.get('system_product'),
+                    hardware_data.get('system_type'),
+                    hardware_data.get('virtualization_type'),
+                    hardware_data.get('detected_at'),
+                    old_hw_id
+                ))
+                
+                return old_hw_id
+        
+        # ============================================================
+        # STEP 3: No match found - insert new record
+        # ============================================================
         cursor = self.conn.execute("""
-            INSERT INTO hardware_config
-            (hostname, cpu_model, cpu_cores, cpu_threads, ram_gb, kernel_version,
-             microcode_version, rapl_domains)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO hardware_config (
+                hardware_hash, hostname, cpu_model, cpu_cores, cpu_threads,
+                cpu_architecture, cpu_vendor, cpu_family, cpu_model_id, cpu_stepping,
+                has_avx2, has_avx512, has_vmx,
+                gpu_model, gpu_driver, gpu_count, gpu_power_available,
+                ram_gb, kernel_version, microcode_version,
+                rapl_domains, rapl_has_dram, rapl_has_uncore,
+                system_manufacturer, system_product, system_type, virtualization_type,
+                detected_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
+            hardware_data.get('hardware_hash'),
             hardware_data.get('hostname'),
             hardware_data.get('cpu_model'),
             hardware_data.get('cpu_cores'),
             hardware_data.get('cpu_threads'),
+            hardware_data.get('cpu_architecture'),
+            hardware_data.get('cpu_vendor'),
+            hardware_data.get('cpu_family'),
+            hardware_data.get('cpu_model_id'),
+            hardware_data.get('cpu_stepping'),
+            hardware_data.get('has_avx2'),
+            hardware_data.get('has_avx512'),
+            hardware_data.get('has_vmx'),
+            hardware_data.get('gpu_model'),
+            hardware_data.get('gpu_driver'),
+            hardware_data.get('gpu_count'),
+            hardware_data.get('gpu_power_available'),
             hardware_data.get('ram_gb'),
             hardware_data.get('kernel_version'),
             hardware_data.get('microcode_version'),
-            hardware_data.get('rapl_domains')
+            hardware_data.get('rapl_domains'),
+            hardware_data.get('rapl_has_dram'),
+            hardware_data.get('rapl_has_uncore'),
+            hardware_data.get('system_manufacturer'),
+            hardware_data.get('system_product'),
+            hardware_data.get('system_type'),
+            hardware_data.get('virtualization_type'),
+            hardware_data.get('detected_at')
         ))
+        
         return cursor.lastrowid
-    
+
+    # ============================================================
+    # NEW METHOD - ENVIRONMENT CONFIG (4 spaces indentation)
+    # ============================================================
+    def insert_environment_config(self, env_data: dict) -> int:
+        """
+        Insert environment configuration or return existing ID.
+        
+        Args:
+            env_data: Dictionary with environment fields:
+                - env_hash: Unique environment fingerprint
+                - python_version, python_implementation
+                - os_name, os_version, kernel_version
+                - git_commit, git_branch, git_dirty
+                - numpy_version, torch_version, transformers_version
+                - container_runtime, container_image
+        
+        Returns:
+            env_id: Primary key of existing or new record
+        """
+        env_hash = env_data.get('env_hash')
+        
+        # Check if exists
+        if env_hash:
+            results = self.execute(
+                "SELECT env_id FROM environment_config WHERE env_hash = ?",
+                (env_hash,)
+            )
+            if results:
+                return results[0]['env_id']
+        
+        # Insert new
+        cursor = self.conn.execute("""
+            INSERT INTO environment_config (
+                env_hash, python_version, python_implementation,
+                os_name, os_version, kernel_version,
+                git_commit, git_branch, git_dirty,
+                numpy_version, torch_version, transformers_version,
+                container_runtime, container_image
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            env_data.get('env_hash'),
+            env_data.get('python_version'),
+            env_data.get('python_implementation'),
+            env_data.get('os_name'),
+            env_data.get('os_version'),
+            env_data.get('kernel_version'),
+            env_data.get('git_commit'),
+            env_data.get('git_branch'),
+            env_data.get('git_dirty'),
+            env_data.get('numpy_version'),
+            env_data.get('torch_version'),
+            env_data.get('transformers_version'),
+            env_data.get('container_runtime'),
+            env_data.get('container_image')
+        ))
+        
+        return cursor.lastrowid
+
     def insert_baseline(self, baseline_data: Dict[str, Any]) -> str:
         """
         Insert an idle baseline measurement.

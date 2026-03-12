@@ -1,0 +1,608 @@
+
+======================================================================
+📊 A-LEMS REAL EXPERIMENT
+======================================================================
+📁 Config directory: /home/dpani/mydrive/a-lems/config
+📁 Loading /home/dpani/mydrive/a-lems/config/models.json
+✅ Successfully loaded models.json
+✅ Loaded models config: ['cloud', 'local']
+📁 Loading /home/dpani/mydrive/a-lems/config/hw_config.json
+✅ Successfully loaded hw_config.json
+✅ Loaded hardware config: ['metadata', 'rapl', 'thermal', 'msr', 'cpufreq', 'cpu', 'ring_bus', 'turbostat', 'cpu_flags', 'cpu_details', 'gpu', 'cpu_model', 'cpu_cores', 'ram_gb', 'gpu_model', 'hardware_hash', 'config_version']
+📁 Loading /home/dpani/mydrive/a-lems/config/grid_intensity_2026.json
+✅ Successfully loaded grid_intensity_2026.json
+✅ Loaded grid intensity data for 31 countries
+🔍 RAW grid data keys: ['metadata', 'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'CH', 'PL', 'CZ', 'RU', 'CN', 'IN', 'JP', 'KR', 'AU', 'NZ', 'ZA', 'BR', 'AR', 'MX', 'SA', 'AE', 'EG', 'NG', 'ID', 'TH', 'VN']
+✅ India data found in config loader!
+   Carbon: 0.708
+
+📋 Configuration:
+   Providers:    cloud
+   Tasks:        1
+   Repetitions:  1
+   Cool-down:    30s
+
+🔍 GRID MANAGER received data from config loader
+   Type: <class 'dict'>
+   Keys: ['metadata', 'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'CH', 'PL', 'CZ', 'RU', 'CN', 'IN', 'JP', 'KR', 'AU', 'NZ', 'ZA', 'BR', 'AR', 'MX', 'SA', 'AE', 'EG', 'NG', 'ID', 'TH', 'VN']
+   ✅ India data in grid_data!
+      Carbon: 0.708
+📁 Config directory: /home/dpani/mydrive/a-lems/config
+📁 Loading /home/dpani/mydrive/a-lems/config/models.json
+✅ Successfully loaded models.json
+✅ Loaded models config: ['cloud', 'local']
+📁 Loading /home/dpani/mydrive/a-lems/config/hw_config.json
+✅ Successfully loaded hw_config.json
+✅ Loaded hardware config: ['metadata', 'rapl', 'thermal', 'msr', 'cpufreq', 'cpu', 'ring_bus', 'turbostat', 'cpu_flags', 'cpu_details', 'gpu', 'cpu_model', 'cpu_cores', 'ram_gb', 'gpu_model', 'hardware_hash', 'config_version']
+📁 Loading /home/dpani/mydrive/a-lems/config/grid_intensity_2026.json
+✅ Successfully loaded grid_intensity_2026.json
+✅ Loaded grid intensity data for 31 countries
+🔍 RAW grid data keys: ['metadata', 'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'CH', 'PL', 'CZ', 'RU', 'CN', 'IN', 'JP', 'KR', 'AU', 'NZ', 'ZA', 'BR', 'AR', 'MX', 'SA', 'AE', 'EG', 'NG', 'ID', 'TH', 'VN']
+✅ India data found in config loader!
+   Carbon: 0.708
+
+📏 Using existing baseline: baseline_1773015955_240103
+
+======================================================================
+📋 TASK: GSM8K Arithmetic (Level 1)
+======================================================================
+
+   ============================================================
+   📋 cloud | GSM8K Arithmetic
+   ============================================================
+   Optimizer:    No
+🔍 DEBUG - hardware_data keys: dict_keys(['metadata', 'rapl', 'thermal', 'msr', 'cpufreq', 'cpu', 'ring_bus', 'turbostat', 'cpu_flags', 'cpu_details', 'gpu', 'cpu_model', 'cpu_cores', 'ram_gb', 'gpu_model', 'hardware_hash', 'config_version'])
+✅ Synced 16 task categories from YAML
+   Categories:
+      • reasoning: 4
+      • qa: 3
+      • coding: 3
+      • summarization: 2
+      • extraction: 2
+      • classification: 2
+      • custom: 1
+🔍 DEBUG - insert_baseline received: dict_keys(['baseline_id', 'timestamp', 'package_power_watts', 'core_power_watts', 'uncore_power_watts', 'dram_power_watts', 'duration_seconds', 'sample_count', 'package_std', 'core_std', 'uncore_std', 'dram_std', 'governor', 'turbo', 'background_cpu', 'process_count', 'method'])
+🔍 DEBUG - power_watts: None
+🔍 DEBUG sqladapter- metadata in insert_baseline: {}
+🔍 DEBUG sqladapter- governor from metadata: None
+🔍 DEBUG sqladapter- turbo from metadata: None
+❌ Failed to save baseline: UNIQUE constraint failed: idle_baselines.baseline_id
+
+      ──────────────────────────────────────────────────
+      Repetition 1/1
+      ──────────────────────────────────────────────────
+🔍 THERMAL DEBUG - Sample at 1773305219.7796142: {'cpu_package': 46.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+   Raw value: 2285240320 (hex: 0x88360000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - START:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 DEBUG: counter=0, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=0
+🔍 THERMAL DEBUG - Sample at 1773305219.7928379: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+🔍 DEBUG: counter=10, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=10
+🔍 DEBUG: counter=20, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=20
+🔍 DEBUG: counter=30, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=30
+🔍 DEBUG: counter=40, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=40
+🔍 DEBUG: counter=50, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=50
+🔍 DEBUG: counter=60, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=60
+🔍 DEBUG: counter=70, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=70
+🔍 DEBUG: counter=80, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=80
+🔍 DEBUG: counter=90, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=90
+🔍 DEBUG - Number of samples: 48
+🔍 DEBUG - First sample type: <class 'tuple'>
+🔍 DEBUG - First sample length: 2
+🔍 DEBUG - First sample content: (1773305219.7930918, {'core': 8183429428, 'package-0': 11551569976, 'uncore': 428670472})
+🔍 DEBUG - Second sample content: (1773305219.8031876, {'core': 8183454575, 'package-0': 11551607573, 'uncore': 428670472})
+🔍 THERMAL DEBUG - Sample at 1773305220.7796974: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+
+🔍 RAW TURBOSTAT LINES (10 total):
+   Line  0: 'Avg_MHz	Busy%	Bzy_MHz	TSC_MHz	IPC	IRQ	C1ACPI%	C2ACPI%	C3ACPI%	CPU%c6	CPU%c7	PkgTmp	GFX%rc6	GFXMHz	Pkg%pc8	Pkg%pc9	Pk%pc10	PkgWatt	CorWatt	GFXWatt	RAMWatt'
+   Line  1: '612	24.00	2551	2802	1.17	1073	34.11	9.01	33.04	0.00	24.38	55	98.41	450	0.00	0.00	0.00	8.65	6.93	0.00	0.00'
+   Line  2: '193	8.81	2191	2798	1.06	524	15.36	16.14	59.74	0.00	56.69	45	98.92	450	0.00	0.00	0.00	5.18	3.49	0.04	0.00'
+   Line  3: '641	20.12	3203	2786	1.17	1032	39.67	11.23	28.69	0.00	19.14	52	98.51	450	0.00	0.00	0.00	12.80	11.03	0.00	0.00'
+   Line  4: '495	13.34	3691	2819	1.13	550	14.37	8.53	64.40	0.00	55.62	46	97.92	450	0.00	0.00	0.00	9.68	7.99	0.08	0.00'
+   Line  5: '62	5.07	1223	2805	1.05	350	8.18	8.87	78.11	0.00	74.71	46	99.94	450	0.00	0.00	0.00	2.53	1.01	0.02	0.00'
+   Line  6: '15	1.40	1072	2801	0.45	99	1.09	2.24	95.28	0.00	94.25	46	99.75	450	0.00	0.00	0.00	1.82	0.51	0.05	0.00'
+   Line  7: '15	1.46	1027	2803	0.44	111	1.17	2.64	94.83	0.00	93.64	46	100.44	450	0.00	0.00	0.00	1.80	0.53	0.02	0.00'
+   Line  8: '26	2.42	1084	2803	0.67	146	1.39	3.70	92.61	0.00	91.19	45	98.84	450	0.00	0.00	0.00	1.96	0.63	0.02	0.00'
+   Line  9: '17	1.68	1023	2803	0.45	148	1.10	2.42	94.89	0.00	93.13	45	98.65	450	0.00	0.00	0.00	1.79	0.53	0.03	0.00'
+📋 Header detected: ['Avg_MHz', 'Busy%', 'Bzy_MHz', 'TSC_MHz', 'IPC', 'IRQ', 'C1ACPI%', 'C2ACPI%', 'C3ACPI%', 'CPU%c6', 'CPU%c7', 'PkgTmp', 'GFX%rc6', 'GFXMHz', 'Pkg%pc8', 'Pkg%pc9', 'Pk%pc10', 'PkgWatt', 'CorWatt', 'GFXWatt', 'RAMWatt']
+✅ Found 9 data rows
+✅ Parsed 9 rows with columns: ['Avg_MHz', 'Busy%', 'Bzy_MHz', 'TSC_MHz', 'IPC']...
+   Raw value: 2284847104 (hex: 0x88300000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - END:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 DEBUG scheduler_delta keys: ['voluntary_switches', 'involuntary_switches', 'user_time', 'system_time', 'load1', 'load5', 'load15', 'runnable', 'total_tasks', 'last_pid', 'swap']
+🔍 DEBUG run queue value: 0
+🔵 MSR_READER - _cstate_start exists: True
+🔵 MSR_READER - _cstate_start: {'timestamp': 1773305219.7917516, 'counters': {'c2': 1238587205606, 'c3': 0, 'c6': 1666882, 'c7': 0}, 'read_status': {'c2': True, 'c3': True, 'c6': True, 'c7': False}, 'cpu': 0, 'method': 'helper'}
+🔵 MSR_READER - current_cstates: {'timestamp': 1773305220.8536518, 'counters': {'c2': 1239453119488, 'c3': 0, 'c6': 1666882, 'c7': 0}, 'read_status': {'c2': True, 'c3': True, 'c6': True, 'c7': False}, 'cpu': 0, 'method': 'helper'}
+🔵 MSR_READER_ID: 131724806785984
+🔵 MSR_READER_VALUE: c2=0.309s
+🔵 MSR_READER_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds']
+   Raw value: 2285305856 (hex: 0x88370000)
+   Decoded: now=0, log=0
+   Raw value: 2285240320 (hex: 0x88360000)
+   Decoded: now=0, log=0
+🟢 ENGINE_ID: 131724806785984
+🟢 ENGINE_VALUE: c2=0.309s
+🟢 ENGINE_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds', 'cstate_deltas']
+
+🔥 THERMAL DERIVED:
+   during_experiment: 0
+   now_active: 0
+   since_boot: 0
+🟡 RAW_ID: 131724806785984
+🟡 RAW_VALUE: c2=0.309s
+🟡 RAW_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds', 'cstate_deltas']
+
+======================================================================
+📊 ENERGY ENGINE COMPLETE SUMMARY
+======================================================================
+
+⏱️  Duration: 1.083s
+   Start: 1773305219.778, End: 1773305220.861
+
+⚡ RAPL Energy (µJ):
+   package-0:      5056079 µJ (5.056079 J)
+   core:      3528311 µJ (3.528311 J)
+   uncore:        27283 µJ (0.027283 J)
+
+📈 Performance Counters:
+   Instructions: 38,162,471
+   Cycles:       80,607,231
+   IPC:          0.47
+   Cache Refs:   3,153,827
+   Cache Misses: 1,661,118
+   Miss Rate:    52.67%
+   Page Faults:  8 (major=0, minor=8)
+   Ctx Switches: vol=824, invol=0
+   Migrations:   52
+
+🌡️ Turbostat Summary (over 0.99s, 9 samples):
+   Package Temp (°C): mean=47.3
+
+   First 3 turbostat samples:
+      Sample 1: {'Avg_MHz': 612.0, 'Busy%': 24.0, 'Bzy_MHz': 2551.0, 'TSC_MHz': 2802.0, 'IPC': 1.17, 'IRQ': 1073.0, 'C1ACPI%': 34.11, 'C2ACPI%': 9.01, 'C3ACPI%': 33.04, 'CPU%c6': 0.0, 'CPU%c7': 24.38, 'PkgTmp': 55.0, 'GFX%rc6': 98.41, 'GFXMHz': 450.0, 'Pkg%pc8': 0.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'PkgWatt': 8.65, 'CorWatt': 6.93, 'GFXWatt': 0.0, 'RAMWatt': 0.0}
+      Sample 2: {'Avg_MHz': 193.0, 'Busy%': 8.81, 'Bzy_MHz': 2191.0, 'TSC_MHz': 2798.0, 'IPC': 1.06, 'IRQ': 524.0, 'C1ACPI%': 15.36, 'C2ACPI%': 16.14, 'C3ACPI%': 59.74, 'CPU%c6': 0.0, 'CPU%c7': 56.69, 'PkgTmp': 45.0, 'GFX%rc6': 98.92, 'GFXMHz': 450.0, 'Pkg%pc8': 0.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'PkgWatt': 5.18, 'CorWatt': 3.49, 'GFXWatt': 0.04, 'RAMWatt': 0.0}
+      Sample 3: {'Avg_MHz': 641.0, 'Busy%': 20.12, 'Bzy_MHz': 3203.0, 'TSC_MHz': 2786.0, 'IPC': 1.17, 'IRQ': 1032.0, 'C1ACPI%': 39.67, 'C2ACPI%': 11.23, 'C3ACPI%': 28.69, 'CPU%c6': 0.0, 'CPU%c7': 19.14, 'PkgTmp': 52.0, 'GFX%rc6': 98.51, 'GFXMHz': 450.0, 'Pkg%pc8': 0.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'PkgWatt': 12.8, 'CorWatt': 11.03, 'GFXWatt': 0.0, 'RAMWatt': 0.0}
+
+🔧 MSR Metrics:
+
+🔄 Scheduler Metrics:
+   Voluntary Ctx Sw:   62
+   Involuntary Ctx Sw: 3
+   Thread Migrations:  0
+   Run Queue Length:    0.00
+   Kernel Time:         16.00 ms
+   User Time:           43.00 ms
+
+📊 High‑Frequency Samples: 48 collected
+   First sample: (1773305219.7930918, {'core': 8183429428, 'package-0': 11551569976, 'uncore': 428670472})
+
+======================================================================
+🔍 First 3 CPU samples:
+   Sample 0: {'timestamp_ns': 1773305219778149376, 'cpu_util_percent': 24.0, 'cpu_busy_mhz': 2551.0, 'cpu_avg_mhz': 612.0, 'c1_residency': 0.3411, 'c2_residency': 0.0901, 'c3_residency': 0.33039999999999997, 'c6_residency': 0.0, 'c7_residency': 0.2438, 'pkg_c8_residency': 0.0, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 8.65, 'dram_power': 0.0, 'gpu_rc6': 0.9841, 'package_temp': 55.0, 'ipc': 1.17, 'extra_metrics_json': '{"TSC_MHz": 2802.0, "IRQ": 1073.0, "GFXMHz": 450.0, "CorWatt": 6.93, "GFXWatt": 0.0}'}
+   Sample 1: {'timestamp_ns': 1773305219878149376, 'cpu_util_percent': 8.81, 'cpu_busy_mhz': 2191.0, 'cpu_avg_mhz': 193.0, 'c1_residency': 0.1536, 'c2_residency': 0.16140000000000002, 'c3_residency': 0.5974, 'c6_residency': 0.0, 'c7_residency': 0.5669, 'pkg_c8_residency': 0.0, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 5.18, 'dram_power': 0.0, 'gpu_rc6': 0.9892, 'package_temp': 45.0, 'ipc': 1.06, 'extra_metrics_json': '{"TSC_MHz": 2798.0, "IRQ": 524.0, "GFXMHz": 450.0, "CorWatt": 3.49, "GFXWatt": 0.04}'}
+   Sample 2: {'timestamp_ns': 1773305219978149376, 'cpu_util_percent': 20.12, 'cpu_busy_mhz': 3203.0, 'cpu_avg_mhz': 641.0, 'c1_residency': 0.3967, 'c2_residency': 0.11230000000000001, 'c3_residency': 0.2869, 'c6_residency': 0.0, 'c7_residency': 0.19140000000000001, 'pkg_c8_residency': 0.0, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 12.8, 'dram_power': 0.0, 'gpu_rc6': 0.9851000000000001, 'package_temp': 52.0, 'ipc': 1.17, 'extra_metrics_json': '{"TSC_MHz": 2786.0, "IRQ": 1032.0, "GFXMHz": 450.0, "CorWatt": 11.03, "GFXWatt": 0.0}'}
+🔍 DEBUG - Using MIN baseline: idle_uj=2.242J, idle_core=0.714J, idle_uncore=1.529J
+🔍 DEBUG - Page faults extracted: major=0, minor=8, total=8
+🔴 ANALYZER_VALUE: c2=0.309s, c3=0.000s
+🔴 ANALYZER_KEYS: c2=0.30925495785714285, c3=0.0
+🔍 THERMAL DEBUG - Sample at 1773305220.9685206: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+   Raw value: 2285305856 (hex: 0x88370000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - START:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 THERMAL DEBUG - Sample at 1773305220.981723: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+🔍 DEBUG: counter=0, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=0
+🔍 DEBUG: counter=10, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=10
+🔍 DEBUG: counter=20, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=20
+🔍 DEBUG: counter=30, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=30
+🔍 DEBUG: counter=40, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=40
+🔍 DEBUG: counter=50, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=50
+🔍 DEBUG: counter=60, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=60
+🔍 DEBUG: counter=70, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=70
+🔍 DEBUG: counter=80, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=80
+🔍 DEBUG: counter=90, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=90
+🔍 DEBUG: counter=100, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=100
+🔍 DEBUG: counter=110, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=110
+🔍 DEBUG: counter=120, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=120
+🔔 EVENT CREATED: planning.llm_call
+🔔 EVENT CREATED: planning.planning
+🔍 DEBUG: counter=130, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=130
+🔍 DEBUG: counter=140, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=140
+🔍 DEBUG: counter=150, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=150
+🔍 DEBUG: counter=160, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=160
+🔍 DEBUG: counter=170, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=170
+🔍 DEBUG: counter=180, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=180
+🔍 DEBUG: counter=190, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=190
+🔍 THERMAL DEBUG - Sample at 1773305221.9687216: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+🔍 DEBUG: counter=200, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=200
+🔍 THERMAL DEBUG - Sample at 1773305221.9818196: {'cpu_package': 46.0, 'cpu_alt': -273.15, 'wifi': 37.0, 'system': 20.0}
+🔔 EVENT CREATED: execution.llm_call
+🔍 DEBUG - added prompt: 41, now tokens[prompt] = 41
+🔍 DEBUG - added completion: 26, now tokens[completion] = 26
+🔍 DEBUG - added total: 67, now tokens[total] = 67
+🔔 EVENT CREATED: execution.tool_call
+🔍 DEBUG: counter=210, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=210
+🔍 DEBUG: counter=220, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=220
+🔍 DEBUG: counter=230, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=230
+🔍 DEBUG: counter=240, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=240
+🔍 DEBUG: counter=250, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=250
+🔍 DEBUG: counter=260, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=260
+🔍 DEBUG: counter=270, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=270
+🔍 DEBUG: counter=280, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=280
+🔍 DEBUG: counter=290, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=290
+🔍 DEBUG: counter=300, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=300
+🔔 EVENT CREATED: execution.llm_call
+🔍 DEBUG - added prompt: 48, now tokens[prompt] = 89
+🔍 DEBUG - added completion: 46, now tokens[completion] = 72
+🔍 DEBUG - added total: 94, now tokens[total] = 161
+🔍 DEBUG - accumulated tokens: {'prompt': 89, 'completion': 72, 'total': 161}
+🔍 DEBUG - tokens keys: dict_keys(['prompt', 'completion', 'total'])
+🔍 DEBUG: counter=310, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=310
+🔍 DEBUG: counter=320, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=320
+🔍 DEBUG: counter=330, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=330
+🔍 DEBUG: counter=340, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=340
+🔍 DEBUG: counter=350, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=350
+🔍 DEBUG: counter=360, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=360
+🔍 DEBUG: counter=370, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=370
+🔍 DEBUG: counter=380, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=380
+🔍 DEBUG: counter=390, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=390
+🔍 THERMAL DEBUG - Sample at 1773305222.9688945: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 38.0, 'system': 20.0}
+🔍 DEBUG: counter=400, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=400
+🔍 THERMAL DEBUG - Sample at 1773305222.9819224: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 38.0, 'system': 20.0}
+🔍 DEBUG: counter=410, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=410
+🔍 DEBUG: counter=420, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=420
+🔍 DEBUG: counter=430, will check interrupt condition
+🔍 DEBUG: ACTUALLY triggering interrupt at counter=430
+🔔 EVENT CREATED: execution.llm_call
+🔔 EVENT CREATED: synthesis.synthesis
+🔍 DEBUG - Number of samples: 216
+🔍 DEBUG - First sample type: <class 'tuple'>
+🔍 DEBUG - First sample length: 2
+🔍 DEBUG - First sample content: (1773305220.9819095, {'core': 8187783848, 'package-0': 11557744154, 'uncore': 428720215})
+🔍 DEBUG - Second sample content: (1773305220.9920142, {'core': 8187807835, 'package-0': 11557785048, 'uncore': 428720215})
+🔍 THERMAL DEBUG - Sample at 1773305223.9689791: {'cpu_package': 46.0, 'cpu_alt': -273.15, 'wifi': 36.0, 'system': 20.0}
+🔍 THERMAL DEBUG - Sample at 1773305223.9820383: {'cpu_package': 46.0, 'cpu_alt': -273.15, 'wifi': 36.0, 'system': 20.0}
+🔍 THERMAL DEBUG - Sample at 1773305224.9692025: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 36.0, 'system': 20.0}
+🔍 THERMAL DEBUG - Sample at 1773305224.982132: {'cpu_package': 45.0, 'cpu_alt': -273.15, 'wifi': 36.0, 'system': 20.0}
+
+🔍 RAW TURBOSTAT LINES (43 total):
+   Line  0: 'Avg_MHz	Busy%	Bzy_MHz	TSC_MHz	IPC	IRQ	C1ACPI%	C2ACPI%	C3ACPI%	CPU%c6	CPU%c7	PkgTmp	GFX%rc6	GFXMHz	Pkg%pc8	Pkg%pc9	Pk%pc10	PkgWatt	CorWatt	GFXWatt	RAMWatt'
+   Line  1: '67	5.20	1289	2795	1.51	296	8.81	6.89	78.99	0.00	73.75	46	99.88	450	0.00	0.00	0.00	2.63	1.17	0.00	0.00'
+   Line  2: '78	6.57	1182	2806	0.96	457	13.78	13.30	66.66	0.00	61.88	45	96.94	450	0.00	0.00	0.00	2.76	1.19	0.04	0.00'
+   Line  3: '28	2.58	1075	2802	0.48	178	2.89	5.70	88.94	0.00	86.97	46	99.90	450	0.00	0.00	0.00	2.05	0.69	0.01	0.00'
+   Line  4: '29	2.55	1137	2802	0.71	128	1.34	2.49	93.72	0.00	90.43	45	99.89	450	0.00	0.00	0.00	1.96	0.66	0.01	0.00'
+   Line  5: '26	2.35	1088	2803	0.48	150	1.83	4.30	91.64	0.00	89.86	45	100.47	450	0.00	0.00	0.00	1.93	0.63	0.02	0.00'
+   Line  6: '28	2.55	1106	2806	0.49	138	1.79	3.16	92.72	0.00	90.19	46	99.97	450	0.00	0.00	0.00	1.95	0.65	0.01	0.00'
+   Line  7: '71	5.52	1278	2801	1.47	232	3.49	5.08	85.97	0.00	80.42	46	99.72	450	0.00	0.00	0.00	2.67	1.15	0.01	0.00'
+   Line  8: '57	4.35	1320	2804	0.97	275	5.64	6.63	83.58	0.00	78.68	46	96.05	450	0.00	0.00	0.00	2.64	1.10	0.08	0.00'
+   Line  9: '35	3.07	1140	2801	0.51	183	2.47	4.74	89.80	0.00	87.38	46	99.70	450	0.00	0.00	0.00	2.07	0.73	0.00	0.00'
+📋 Header detected: ['Avg_MHz', 'Busy%', 'Bzy_MHz', 'TSC_MHz', 'IPC', 'IRQ', 'C1ACPI%', 'C2ACPI%', 'C3ACPI%', 'CPU%c6', 'CPU%c7', 'PkgTmp', 'GFX%rc6', 'GFXMHz', 'Pkg%pc8', 'Pkg%pc9', 'Pk%pc10', 'PkgWatt', 'CorWatt', 'GFXWatt', 'RAMWatt']
+✅ Found 42 data rows
+✅ Parsed 42 rows with columns: ['Avg_MHz', 'Busy%', 'Bzy_MHz', 'TSC_MHz', 'IPC']...
+   Raw value: 2285240320 (hex: 0x88360000)
+   Decoded: now=0, log=0
+
+🔥 THERMAL SNAPSHOT - END:
+   Package: {'thermal_now': 0, 'thermal_log': 0}
+   Core: {'thermal_now': 0, 'thermal_log': 0}
+🔍 DEBUG scheduler_delta keys: ['voluntary_switches', 'involuntary_switches', 'user_time', 'system_time', 'load1', 'load5', 'load15', 'runnable', 'total_tasks', 'last_pid', 'swap']
+🔍 DEBUG run queue value: 2
+🔵 MSR_READER - _cstate_start exists: True
+🔵 MSR_READER - _cstate_start: {'timestamp': 1773305220.9806871, 'counters': {'c2': 1239549697247, 'c3': 0, 'c6': 1666882, 'c7': 0}, 'read_status': {'c2': True, 'c3': True, 'c6': True, 'c7': False}, 'cpu': 0, 'method': 'helper'}
+🔵 MSR_READER - current_cstates: {'timestamp': 1773305225.459844, 'counters': {'c2': 1244015151485, 'c3': 0, 'c6': 1666882, 'c7': 0}, 'read_status': {'c2': True, 'c3': True, 'c6': True, 'c7': False}, 'cpu': 0, 'method': 'helper'}
+🔵 MSR_READER_ID: 131724806868352
+🔵 MSR_READER_VALUE: c2=1.595s
+🔵 MSR_READER_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds']
+   Raw value: 2285240320 (hex: 0x88360000)
+   Decoded: now=0, log=0
+   Raw value: 2285240320 (hex: 0x88360000)
+   Decoded: now=0, log=0
+🟢 ENGINE_ID: 131724806868352
+🟢 ENGINE_VALUE: c2=1.595s
+🟢 ENGINE_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds', 'cstate_deltas']
+
+🔥 THERMAL DERIVED:
+   during_experiment: 0
+   now_active: 0
+   since_boot: 0
+🟡 RAW_ID: 131724806868352
+🟡 RAW_VALUE: c2=1.595s
+🟡 RAW_KEYS: ['baseline', 'dynamic', 'tsc_frequency_hz', 'c2_time_seconds', 'c3_time_seconds', 'c6_time_seconds', 'c7_time_seconds', 'cstate_deltas']
+
+======================================================================
+📊 ENERGY ENGINE COMPLETE SUMMARY
+======================================================================
+
+⏱️  Duration: 4.498s
+   Start: 1773305220.967, End: 1773305225.466
+
+⚡ RAPL Energy (µJ):
+   package-0:     11556733 µJ (11.556733 J)
+   core:      5056018 µJ (5.056018 J)
+   uncore:       294861 µJ (0.294861 J)
+
+📈 Performance Counters:
+   Instructions: 877,776,736
+   Cycles:       1,084,617,352
+   IPC:          0.81
+   Cache Refs:   30,967,270
+   Cache Misses: 11,468,919
+   Miss Rate:    37.04%
+   Page Faults:  8726 (major=0, minor=8726)
+   Ctx Switches: vol=9692, invol=0
+   Migrations:   512
+
+🌡️ Turbostat Summary (over 4.35s, 42 samples):
+   Package Temp (°C): mean=45.9
+
+   First 3 turbostat samples:
+      Sample 1: {'Avg_MHz': 67.0, 'Busy%': 5.2, 'Bzy_MHz': 1289.0, 'TSC_MHz': 2795.0, 'IPC': 1.51, 'IRQ': 296.0, 'C1ACPI%': 8.81, 'C2ACPI%': 6.89, 'C3ACPI%': 78.99, 'CPU%c6': 0.0, 'CPU%c7': 73.75, 'PkgTmp': 46.0, 'GFX%rc6': 99.88, 'GFXMHz': 450.0, 'Pkg%pc8': 0.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'PkgWatt': 2.63, 'CorWatt': 1.17, 'GFXWatt': 0.0, 'RAMWatt': 0.0}
+      Sample 2: {'Avg_MHz': 78.0, 'Busy%': 6.57, 'Bzy_MHz': 1182.0, 'TSC_MHz': 2806.0, 'IPC': 0.96, 'IRQ': 457.0, 'C1ACPI%': 13.78, 'C2ACPI%': 13.3, 'C3ACPI%': 66.66, 'CPU%c6': 0.0, 'CPU%c7': 61.88, 'PkgTmp': 45.0, 'GFX%rc6': 96.94, 'GFXMHz': 450.0, 'Pkg%pc8': 0.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'PkgWatt': 2.76, 'CorWatt': 1.19, 'GFXWatt': 0.04, 'RAMWatt': 0.0}
+      Sample 3: {'Avg_MHz': 28.0, 'Busy%': 2.58, 'Bzy_MHz': 1075.0, 'TSC_MHz': 2802.0, 'IPC': 0.48, 'IRQ': 178.0, 'C1ACPI%': 2.89, 'C2ACPI%': 5.7, 'C3ACPI%': 88.94, 'CPU%c6': 0.0, 'CPU%c7': 86.97, 'PkgTmp': 46.0, 'GFX%rc6': 99.9, 'GFXMHz': 450.0, 'Pkg%pc8': 0.0, 'Pkg%pc9': 0.0, 'Pk%pc10': 0.0, 'PkgWatt': 2.05, 'CorWatt': 0.69, 'GFXWatt': 0.01, 'RAMWatt': 0.0}
+
+🔧 MSR Metrics:
+
+🔄 Scheduler Metrics:
+   Voluntary Ctx Sw:   97
+   Involuntary Ctx Sw: 16
+   Thread Migrations:  0
+   Run Queue Length:    2.00
+   Kernel Time:         41.00 ms
+   User Time:           58.00 ms
+
+📊 High‑Frequency Samples: 216 collected
+   First sample: (1773305220.9819095, {'core': 8187783848, 'package-0': 11557744154, 'uncore': 428720215})
+
+======================================================================
+🔍 First 3 CPU samples:
+   Sample 0: {'timestamp_ns': 1773305220967419392, 'cpu_util_percent': 5.2, 'cpu_busy_mhz': 1289.0, 'cpu_avg_mhz': 67.0, 'c1_residency': 0.08810000000000001, 'c2_residency': 0.0689, 'c3_residency': 0.7898999999999999, 'c6_residency': 0.0, 'c7_residency': 0.7375, 'pkg_c8_residency': 0.0, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 2.63, 'dram_power': 0.0, 'gpu_rc6': 0.9987999999999999, 'package_temp': 46.0, 'ipc': 1.51, 'extra_metrics_json': '{"TSC_MHz": 2795.0, "IRQ": 296.0, "GFXMHz": 450.0, "CorWatt": 1.17, "GFXWatt": 0.0}'}
+   Sample 1: {'timestamp_ns': 1773305221067419392, 'cpu_util_percent': 6.57, 'cpu_busy_mhz': 1182.0, 'cpu_avg_mhz': 78.0, 'c1_residency': 0.1378, 'c2_residency': 0.133, 'c3_residency': 0.6666, 'c6_residency': 0.0, 'c7_residency': 0.6188, 'pkg_c8_residency': 0.0, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 2.76, 'dram_power': 0.0, 'gpu_rc6': 0.9693999999999999, 'package_temp': 45.0, 'ipc': 0.96, 'extra_metrics_json': '{"TSC_MHz": 2806.0, "IRQ": 457.0, "GFXMHz": 450.0, "CorWatt": 1.19, "GFXWatt": 0.04}'}
+   Sample 2: {'timestamp_ns': 1773305221167419392, 'cpu_util_percent': 2.58, 'cpu_busy_mhz': 1075.0, 'cpu_avg_mhz': 28.0, 'c1_residency': 0.028900000000000002, 'c2_residency': 0.057, 'c3_residency': 0.8894, 'c6_residency': 0.0, 'c7_residency': 0.8697, 'pkg_c8_residency': 0.0, 'pkg_c9_residency': 0.0, 'pkg_c10_residency': 0.0, 'package_power': 2.05, 'dram_power': 0.0, 'gpu_rc6': 0.9990000000000001, 'package_temp': 46.0, 'ipc': 0.48, 'extra_metrics_json': '{"TSC_MHz": 2802.0, "IRQ": 178.0, "GFXMHz": 450.0, "CorWatt": 0.69, "GFXWatt": 0.01}'}
+🔍 DEBUG - Using MIN baseline: idle_uj=9.316J, idle_core=2.965J, idle_uncore=6.351J
+🔍 DEBUG - Page faults extracted: major=0, minor=8726, total=8726
+🔴 ANALYZER_VALUE: c2=1.595s, c3=0.000s
+🔴 ANALYZER_KEYS: c2=1.594805085, c3=0.0
+🔍 DEBUG - Captured 7 orchestration events from executor
+🔍 DEBUG HARNESS - orchestration_events in result: True
+🔍 DEBUG HARNESS - Number of events: 7
+🔍 DEBUG HARNESS - First event keys: dict_keys(['phase', 'event_type', 'start_time_ns', 'end_time_ns', 'duration_ns', 'metadata'])
+✅ Harness complete: 2.2404J workload energy
+
+         Linear:  2.8139 J
+         Agentic: 2.2404 J
+         Tax: 0.80x
+🔍 RUNS DEBUG - pkg_raw_uj: 5056079, baseline_energy_uj: 2242179
+🔍 RUNS DEBUG - dynamic will be: 2813900
+🔍 DEBUG - Saving 3 thermal samples for run 709
+🔍 RUNS DEBUG - pkg_raw_uj: 11556733, baseline_energy_uj: 9316325
+🔍 RUNS DEBUG - dynamic will be: 2240408
+🔍 DEBUG - Saving 10 thermal samples for run 710
+🔍 DEBUG - linear_orchestration_uj from ml_features: 0
+🔍 DEBUG - agentic_orchestration_uj from ml_features: 149531
+🔍 DEBUG - linear energy_uj keys: dict_keys(['package', 'core', 'dram', 'uncore', 'idle', 'workload', 'reasoning', 'orchestration_tax'])
+🔍 DEBUG - agentic energy_uj keys: dict_keys(['package', 'core', 'dram', 'uncore', 'idle', 'workload', 'reasoning', 'orchestration_tax'])
+🔍 DEBUG - linear energy_uj content: {'package': 5056079, 'core': 3528311, 'dram': None, 'uncore': 1527768, 'idle': 2242179, 'workload': 2813900, 'reasoning': 2814685, 'orchestration_tax': 0}
+🔍 DEBUG - linear energy_uj content: {'package': 11556733, 'core': 5056018, 'dram': None, 'uncore': 6500715, 'idle': 9316325, 'workload': 2240408, 'reasoning': 2090878, 'orchestration_tax': 149531}
+   ✅ Pair 1 saved (linear: 709, agentic: 710)
+         ✅ Pair 1/1 saved
+   📊 Progress: 2/2 runs
+
+   ✅ Experiment 140 completed with 2 runs
+
+======================================================================
+🔧 cloud - GSM8K Arithmetic HARDWARE DETAILS
+======================================================================
+
+──────────────────────────────────────────────────
+📊 PAIR 1: Linear + Agentic
+──────────────────────────────────────────────────
+
+📊 LINEAR Run 1 Run 1:
+   ⚡ RAPL Energy (Req 1.1):
+      Package: 5.056 J
+      Core:    3.528 J
+      Uncore:  1.528 J (includes GPU if no separate GPU domain)
+   📈 Performance Counters:
+      Instructions:      38,162,471
+      Cycles:            80,607,231
+      IPC:               0.47
+      Cache References:  3,153,827
+      Cache Misses:      1,661,118
+      Cache Miss Rate:   52.67%
+      Page Faults:       8 (major: 0, minor: 8)
+🔍 DEBUG scheduler keys: ['context_switches_voluntary', 'context_switches_involuntary', 'total_context_switches', 'run_queue_length', 'kernel_time_ms', 'user_time_ms', 'thread_migrations']
+🔍 DEBUG power_states keys: ['c_state_residencies', 'frequency_mhz', 'gpu_frequency_mhz', 'gpu_rc6_percent']
+🔍 DEBUG frequency_mhz: 0
+   🌡️ Thermal (Req 1.9):
+      Package Temp: N/A
+      Core Temps:   [48.0°C, 39.0°C, 44.0°C]
+
+   📋 Experiment Timeline:
+      Start: 2026-03-12 03:46:59
+      End:   2026-03-12 03:47:00
+
+   ✅ Thermal Summary:
+      Since Boot: NO
+      During Experiment: NO
+      Active at End: NO
+
+   🔬 Experiment Valid: YES
+
+   ⚙️ System State:
+      CPU Governor: powersave
+      Turbo Boost: ENABLED
+      Interrupt Rate: 4600/sec 🔴 HIGH
+      Temperature: 55.0°C → 55.0°C (Δ+0.0°C)
+      Cold Start: YES (first run)
+      Background CPU: 1.2%
+      Running Processes: 350
+      Process Memory:
+         RSS: 166.5 MB
+         VMS: 985.2 MB
+   💤 Power States (Req 1.7, 1.41, 1.8, 1.4):
+      CPU Frequency:  0 MHz
+   🔄 Scheduler Metrics:
+      Voluntary Ctx Sw:  62
+      Involuntary Ctx Sw: 3
+      Thread Migrations: 52
+      Run Queue Length: 0.00
+      Kernel Time:      16.00 ms
+      User Time:        43.00 ms
+   🔍 DEBUG: msr content = {'ring_bus': {'min_mhz': 0.0, 'max_mhz': 0.0, 'current_mhz': 3500.0}, 'wakeup_latency_us': 4.725821945612552, 'thermal_throttle': 0, 'tsc_frequency_hz': 2800000000, 'c_states': {'c2': {'seconds': 0.30...
+
+   🔧 MSR Metrics:
+      Ring Bus Frequency: 3500.0 MHz
+      Wake-up Latency: 4.73 µs
+      Thermal Throttle Flag: 0 (NOT DETECTED)
+      C-State Times (since boot):
+         C2: 0.31 seconds
+      TSC Frequency: 2800 MHz
+
+📊 AGENTIC Run 1 Run 1:
+   ⚡ RAPL Energy (Req 1.1):
+      Package: 11.557 J
+      Core:    5.056 J
+      Uncore:  6.501 J (includes GPU if no separate GPU domain)
+   📈 Performance Counters:
+      Instructions:      877,776,736
+      Cycles:            1,084,617,352
+      IPC:               0.81
+      Cache References:  30,967,270
+      Cache Misses:      11,468,919
+      Cache Miss Rate:   37.04%
+      Page Faults:       8,726 (major: 0, minor: 8726)
+🔍 DEBUG scheduler keys: ['context_switches_voluntary', 'context_switches_involuntary', 'total_context_switches', 'run_queue_length', 'kernel_time_ms', 'user_time_ms', 'thread_migrations']
+🔍 DEBUG power_states keys: ['c_state_residencies', 'frequency_mhz', 'gpu_frequency_mhz', 'gpu_rc6_percent']
+🔍 DEBUG frequency_mhz: 0
+   🌡️ Thermal (Req 1.9):
+      Package Temp: N/A
+      Core Temps:   [47.0°C, 39.0°C, 44.0°C]
+
+   📋 Experiment Timeline:
+      Start: 2026-03-12 03:47:00
+      End:   2026-03-12 03:47:05
+
+   ✅ Thermal Summary:
+      Since Boot: NO
+      During Experiment: NO
+      Active at End: NO
+
+   🔬 Experiment Valid: YES
+
+   ⚙️ System State:
+      CPU Governor: powersave
+      Turbo Boost: ENABLED
+      Interrupt Rate: 3101/sec 🔴 HIGH
+      Temperature: 46.0°C → 59.0°C (Δ+13.0°C)
+      Cold Start: YES (first run)
+      Background CPU: 1.2%
+      Running Processes: 351
+      Process Memory:
+         RSS: 166.9 MB
+         VMS: 985.4 MB
+   💤 Power States (Req 1.7, 1.41, 1.8, 1.4):
+      CPU Frequency:  0 MHz
+   🔄 Scheduler Metrics:
+      Voluntary Ctx Sw:  97
+      Involuntary Ctx Sw: 16
+      Thread Migrations: 512
+      Run Queue Length: 2.00
+      Kernel Time:      41.00 ms
+      User Time:        58.00 ms
+   🔍 DEBUG: msr content = {'ring_bus': {'min_mhz': 0.0, 'max_mhz': 0.0, 'current_mhz': 1100.0}, 'wakeup_latency_us': 4.725821945612552, 'thermal_throttle': 0, 'tsc_frequency_hz': 2800000000, 'c_states': {'c2': {'seconds': 1.59...
+
+   🔧 MSR Metrics:
+      Ring Bus Frequency: 1100.0 MHz
+      Wake-up Latency: 4.73 µs
+      Thermal Throttle Flag: 0 (NOT DETECTED)
+      C-State Times (since boot):
+         C2: 1.59 seconds
+      TSC Frequency: 2800 MHz
+
+======================================================================
+📊 IPC EFFICIENCY ANALYSIS
+======================================================================
+   Linear IPC:  0.47
+   Agentic IPC: 0.81
+   Efficiency Ratio: 1.71x
+   → Agentic workflow keeps CPU 70.9% busier
+   → Higher instruction density during orchestration
+======================================================================
+
+   ✅ cloud | GSM8K Arithmetic complete:
+      Tax: 0.80x [nan, nan]
+
+=====================================================================================
+📊 MASTER SUMMARY
+=====================================================================================
+Provider     Task                   Linear (J)  Agentic (J)    Tax (x)           CI Range
+-------------------------------------------------------------------------------------
+cloud        GSM8K Arithmetic           2.8139       2.2404     0.80x*                N/A
+=====================================================================================
+
+💾 Results saved to: data/experiment_20260312_034705.json
+
+✅ All experiments complete!
