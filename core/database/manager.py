@@ -132,7 +132,9 @@ class DatabaseManager:
     def insert_hardware(self, hardware_data: Dict[str, Any]) -> int:
         """Insert or retrieve hardware configuration."""
         return self.db.insert_hardware(hardware_data)
-    
+    def insert_environment_config(self, env_data: dict) -> int:
+        """Insert environment config or return existing ID"""
+        return self.db.insert_environment_config(env_data)  
     def insert_baseline(self, baseline_data: Dict[str, Any]) -> str:
         """Insert an idle baseline measurement."""
         return self.db.insert_baseline(baseline_data)
@@ -220,3 +222,4 @@ class DatabaseManager:
             linear_orchestration_uj, agentic_orchestration_uj
         )
                                                     
+                                                  

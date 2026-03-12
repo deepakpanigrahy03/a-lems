@@ -25,6 +25,8 @@ import psutil
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
+import json
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -48,19 +50,115 @@ class ExperimentRunner:
     # ========================================================================
     # DUPLICATE CODE 1: Hardware info collection (identical in both scripts)
     # ========================================================================
+
     def get_hardware_info(self) -> Dict[str, Any]:
-        """Hardware info - identical in both scripts"""
-        return {
-            'hostname': socket.gethostname(),
-            'cpu_model': 'Unknown',
-            'cpu_cores': psutil.cpu_count(logical=False),
-            'cpu_threads': psutil.cpu_count(logical=True),
-            'ram_gb': psutil.virtual_memory().total // (1024**3),
-            'kernel_version': os.uname().release,
-            'microcode_version': 'Unknown',
-            'rapl_domains': 'package,core,uncore,dram'
+        """Get hardware info - loads from hw_config.json and flattens it"""
+        hw_config_path = Path("config/hw_config.json")
+        if hw_config_path.exists():
+            with open(hw_config_path) as f:
+                data = json.load(f)
+                
+                # Flatten nested structures using ONLY data from JSON
+                flat_data = {
+                    'hardware_hash': data.get('hardware_hash'),
+                    'hostname': data.get('metadata', {}).get('hostname'),
+                    'cpu_model': data.get('cpu_model'),
+                    'cpu_cores': data.get('cpu_cores'),
+                    'cpu_threads': data.get('cpu', {}).get('logical_cores'),
+                    'cpu_architecture': data.get('metadata', {}).get('machine'),
+                    'cpu_vendor': data.get('cpu_details', {}).get('vendor'),  # If exists
+                    'cpu_family': data.get('cpu_details', {}).get('family'),
+                    'cpu_model_id': data.get('cpu_details', {}).get('model'),
+                    'cpu_stepping': data.get('cpu_details', {}).get('stepping'),
+                    'has_avx2': data.get('cpu_flags', {}).get('has_avx2'),
+                    'has_avx512': data.get('cpu_flags', {}).get('has_avx512'),
+                    'has_vmx': data.get('cpu_flags', {}).get('has_vmx'),
+                    'gpu_model': data.get('gpu_model'),
+                    'gpu_driver': data.get('gpu', {}).get('driver'),
+                    'gpu_count': data.get('gpu', {}).get('count'),
+                    'gpu_power_available': data.get('gpu', {}).get('power_available'),
+                    'ram_gb': data.get('ram_gb'),
+                    'kernel_version': data.get('metadata', {}).get('release'),
+                    'microcode_version': data.get('cpu', {}).get('microcode'),  # If exists
+                    'rapl_domains': str(data.get('rapl', {}).get('available_domains')),
+                    'rapl_has_dram': data.get('rapl', {}).get('has_dram'),
+                    'rapl_has_uncore': 'uncore' in data.get('rapl', {}).get('available_domains', []),
+                    'system_manufacturer': data.get('system', {}).get('manufacturer'),
+                    'system_product': data.get('system', {}).get('product'),
+                    'system_type': data.get('system', {}).get('type'),
+                    'virtualization_type': data.get('system', {}).get('virtualization'),
+                    'detected_at': data.get('metadata', {}).get('detected_at')
+                }
+                return flat_data
+
+    def get_environment_info(self) -> Dict[str, Any]:
+        """Get environment information for reproducibility tracking"""
+        import platform
+        import subprocess
+        import hashlib
+        import json
+        
+        # Get git info
+        git_commit = None
+        git_branch = None
+        git_dirty = None
+        try:
+            git_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()[:16]
+            git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
+            git_dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], text=True).strip())
+        except:
+            pass
+        
+        # Get dependency versions
+        numpy_version = None
+        torch_version = None
+        transformers_version = None
+        try:
+            import numpy
+            numpy_version = numpy.__version__
+        except:
+            pass
+        try:
+            import torch
+            torch_version = torch.__version__
+        except:
+            torch_version = None 
+        try:
+            import transformers
+            transformers_version = transformers.__version__
+        except:
+            transformers_version = None
+        
+        # Build environment info
+        env_info = {
+            'python_version': platform.python_version(),
+            'python_implementation': platform.python_implementation(),
+            'os_name': platform.system(),
+            'os_version': platform.version(),
+            'kernel_version': platform.release(),
+            'git_commit': git_commit,
+            'git_branch': git_branch,
+            'git_dirty': git_dirty,
+            'numpy_version': numpy_version,
+            'torch_version': torch_version,
+            'transformers_version': transformers_version,
+            'llm_framework': None,  # From experiment config
+            'framework_version': None,  # Can be filled from model config
         }
-    
+        
+        # Generate env_hash
+        hash_input = json.dumps({
+            'python_version': env_info['python_version'],
+            'git_commit': env_info['git_commit'],
+            'numpy_version': env_info['numpy_version']
+        }, sort_keys=True)
+        env_info['env_hash'] = hashlib.sha256(hash_input.encode()).hexdigest()[:16]
+        
+        return env_info
+
+
+
+
     # ========================================================================
     # DUPLICATE CODE 2: Baseline measurement (from test_harness, add to run_experiment)
     # ========================================================================
@@ -210,12 +308,32 @@ class ExperimentRunner:
                         'dram_energy_uj': 0
                     })
         return samples
-    
+
+    def setup_database(self) -> Tuple[DatabaseManager, int, int]:  # ← Returns 3 values now
+        """Setup database connection and return db, hw_id, env_id"""
+        db = DatabaseManager(self.config.get_db_config())
+        
+        # Create tables if needed
+        db.create_tables()
+        
+        # Get or create hardware record
+        hw_id = db.insert_hardware(self.get_hardware_info())
+        
+        # Get or create environment record  ← ADD THIS
+        env_id = self.setup_environment(db)
+        
+        return db, hw_id, env_id  # ← Return both IDs
+
+    def setup_environment(self, db) -> int:
+        """Get or create environment record"""
+        env_info = self.get_environment_info()
+        return db.insert_environment_config(env_info)
+
     # ========================================================================
     # NEW FEATURE 1: Create experiment with group_id and status
     # ========================================================================
     def create_experiment(self, db, task_id, task_name, provider, 
-                          linear_config, country_code,  repetitions, optimizer=False) -> int:
+                          linear_config, country_code,  repetitions, hw_id, env_id, optimizer=False) -> int:
         """Create experiment with session tracking (NEW)"""
         experiment_meta = {
             'name': f"{task_id}_{provider}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -229,7 +347,10 @@ class ExperimentRunner:
             'status': 'running',            # NEW
             'started_at': datetime.now().isoformat(),  # NEW
             'runs_total': repetitions * 2,  # linear + agentic
-            'optimization_enabled': 1 if optimizer else 0
+            'optimization_enabled': 1 if optimizer else 0,
+            'hw_id': hw_id, 
+            'env_id': env_id
+            
         }
         return db.insert_experiment(experiment_meta)
     

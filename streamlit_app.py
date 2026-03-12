@@ -113,6 +113,8 @@ _PAGES = {
     "schema_docs":       "gui.pages.schema_docs",
     # Legacy — preserved but not in nav
     "sql_query":         "gui.pages.sql_query",
+    "designer":          "gui.pages.designer",
+    "sessions":          "gui.pages.sessions",
 }
 
 if page_id in _PAGES:

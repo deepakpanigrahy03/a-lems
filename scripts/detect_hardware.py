@@ -38,6 +38,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
+import psutil
 
 # ============================================================================
 # BACKUP FUNCTION WITH PERMISSION HANDLING
@@ -757,9 +758,26 @@ def detect_cpufreq_paths() -> Dict[str, str]:
 # ============================================================================
 
 def get_cpu_info() -> Dict[str, Any]:
-    """Get CPU core information and TSC frequency."""
+    """Get CPU core information, model, vendor, microcode, and TSC frequency."""
     logical = os.cpu_count() or 8
     physical = logical // 2 if logical > 1 else 1
+    
+    # Get CPU details from /proc/cpuinfo
+    cpu_model = "Unknown"
+    cpu_vendor = "Unknown"
+    microcode = "Unknown"
+    
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line.startswith('model name'):
+                    cpu_model = line.split(':')[1].strip()
+                elif line.startswith('vendor_id'):
+                    cpu_vendor = line.split(':')[1].strip()
+                elif line.startswith('microcode'):
+                    microcode = line.split(':')[1].strip()
+    except:
+        pass
     
     # Try to get actual physical core count
     try:
@@ -773,8 +791,11 @@ def get_cpu_info() -> Dict[str, Any]:
     except:
         pass
     
-    # Build CPU info dictionary with core counts
+    # Build CPU info dictionary with all fields
     cpu_info = {
+        "model": cpu_model,
+        "vendor": cpu_vendor,
+        "microcode": microcode,
         "physical_cores": physical,
         "logical_cores": logical,
         "cores_list": list(range(logical))
@@ -785,11 +806,9 @@ def get_cpu_info() -> Dict[str, Any]:
     # ========================================================================
     tsc_hz = detect_tsc_frequency()
     if tsc_hz:
-        # Add TSC frequency to CPU info (APPEND, never override existing fields)
         cpu_info["tsc_frequency_hz"] = tsc_hz
         cpu_info["tsc_detection_method"] = "auto_detected"
     else:
-        # If detection fails, add None values (MSRReader will use fallbacks)
         cpu_info["tsc_frequency_hz"] = None
         cpu_info["tsc_detection_method"] = "not_detected"
         print("   ⚠️  TSC frequency not detected - MSRReader will use fallback")
@@ -800,11 +819,70 @@ def get_cpu_info() -> Dict[str, Any]:
 # MAIN DETECTION FUNCTION
 # ============================================================================
 
+def get_system_info() -> Dict[str, Any]:
+    """Get system manufacturer, product, type, virtualization"""
+    info = {
+        "manufacturer": None,
+        "product": None,
+        "type": None,
+        "virtualization": None
+    }
+    
+    # Get manufacturer
+    try:
+        with open('/sys/class/dmi/id/sys_vendor', 'r') as f:
+            info['manufacturer'] = f.read().strip()
+    except:
+        pass
+    
+    # Get product name
+    try:
+        with open('/sys/class/dmi/id/product_name', 'r') as f:
+            info['product'] = f.read().strip()
+    except:
+        pass
+    
+    # Get chassis type (converts number to type)
+    try:
+        with open('/sys/class/dmi/id/chassis_type', 'r') as f:
+            chassis = f.read().strip()
+            # Map common chassis types
+            chassis_map = {
+                '3': 'desktop',
+                '4': 'desktop',
+                '8': 'laptop',
+                '9': 'laptop',
+                '10': 'laptop',
+                '17': 'server'
+            }
+            info['type'] = chassis_map.get(chassis, 'unknown')
+    except:
+        pass
+    
+    # Get virtualization type
+    try:
+        import subprocess
+        result = subprocess.run(['systemd-detect-virt'], capture_output=True, text=True)
+        virt = result.stdout.strip()
+        info['virtualization'] = virt if virt != 'none' else None
+    except:
+        pass
+    
+    return info
+
 def detect_all_hardware(verbose: bool = False) -> Dict[str, Any]:
     """Run all hardware detection and return complete config."""
     
     if verbose:
         print("\n🔍 Detecting hardware...")
+
+    # ============================================================
+    # NEW: Get CPU flags, details, GPU info, and generate hash
+    # ============================================================
+    cpu_flags = get_cpu_flags()
+    cpu_details = get_cpu_details()
+    gpu_info = get_gpu_info()
+    system_info = get_system_info()         
     
     rapl_paths, rapl_domains = detect_rapl_paths()
     if verbose:
@@ -832,10 +910,12 @@ def detect_all_hardware(verbose: bool = False) -> Dict[str, Any]:
     ring_bus_limits = detect_ring_bus_limits()
     if verbose and ring_bus_limits.get('min_mhz'):
         print(f"   ✅ Ring bus limits: min={ring_bus_limits['min_mhz']} MHz, max={ring_bus_limits['max_mhz']} MHz")        
+    
     # NEW: Detect ring bus sysfs paths
     ring_bus_paths = detect_ring_bus_sysfs_paths()
     if ring_bus_paths and verbose:
         print(f"   ✅ Ring bus sysfs paths: {len(ring_bus_paths)} found")    
+    
     turbostat_config = detect_turbostat_columns()
     if verbose:
         if turbostat_config["available"]:
@@ -843,8 +923,11 @@ def detect_all_hardware(verbose: bool = False) -> Dict[str, Any]:
             print(f"   ✅ Turbostat: {cols} columns detected")
         else:
             print(f"   ⚠️  Turbostat: Not available")
-    
-    return {
+
+    # ============================================================
+    # Create config variable FIRST
+    # ============================================================
+    config = {
         "metadata": {
             "detected_at": datetime.now().isoformat(),
             "hostname": platform.node(),
@@ -870,11 +953,112 @@ def detect_all_hardware(verbose: bool = False) -> Dict[str, Any]:
         },
         "cpu": cpu_info,
         "ring_bus": {
-            **ring_bus_limits,  # Existing min_mhz, max_mhz, etc.
-            "sysfs_paths": ring_bus_paths  # NEW: Add the detected paths
+            **ring_bus_limits,
+            "sysfs_paths": ring_bus_paths
         },
-        "turbostat": turbostat_config
+        "turbostat": turbostat_config,
+        "cpu_flags": cpu_flags,
+        "cpu_details": cpu_details,
+        "gpu": gpu_info,
+        "system": system_info,
+        # ============================================================
+        # ADD THESE FLAT FIELDS for hash generation
+        # ============================================================
+        "cpu_model": cpu_info.get('model'),
+        "cpu_cores": cpu_info.get('physical_cores'),
+        "ram_gb": psutil.virtual_memory().total // (1024**3),
+        "gpu_model": gpu_info.get('model'),
+        # ============================================================
+        # NEW FLAT FIELDS from system info
+        # ============================================================
+        "system_manufacturer": system_info.get('manufacturer'),
+        "system_product": system_info.get('product'),
+        "system_type": system_info.get('type'),
+        "virtualization_type": system_info.get('virtualization'),
+        "cpu_vendor": cpu_info.get('vendor'),
+        "microcode_version": cpu_info.get('microcode'),
+        
     }
+
+    # ============================================================
+    # Add hash AFTER config is created
+    # ============================================================
+    config["hardware_hash"] = generate_hardware_hash(config)
+    
+    # ============================================================
+    # Return the config
+    # ============================================================
+    return config
+
+# Add to detect_hardware.py
+
+def get_cpu_flags():
+    """Extract CPU flags for AVX2/AVX512/VMX detection"""
+    flags = {}
+    try:
+        with open('/proc/cpuinfo') as f:
+            for line in f:
+                if line.startswith('flags'):
+                    flag_str = line.split(':')[1].strip()
+                    flags = {
+                        'has_avx2': 'avx2' in flag_str,
+                        'has_avx512': 'avx512' in flag_str,
+                        'has_vmx': 'vmx' in flag_str
+                    }
+                    break
+    except:
+        pass
+    return flags
+
+def get_cpu_details():
+    """Get detailed CPU info (family, model, stepping)"""
+    details = {'family': None, 'model': None, 'stepping': None}
+    try:
+        with open('/proc/cpuinfo') as f:
+            for line in f:
+                if 'cpu family' in line:
+                    details['family'] = int(line.split(':')[1].strip())
+                elif 'model' in line and 'model name' not in line:
+                    details['model'] = int(line.split(':')[1].strip())
+                elif 'stepping' in line:
+                    details['stepping'] = int(line.split(':')[1].strip())
+    except:
+        pass
+    return details
+
+def get_gpu_info():
+    """Add GPU detection"""
+    gpu = {'model': None, 'driver': None, 'count': 0}
+    try:
+        import subprocess
+        output = subprocess.check_output(['lspci'], text=True)
+        for line in output.split('\n'):
+            if 'VGA' in line or '3D' in line:
+                gpu['count'] += 1
+                if 'Intel' in line:
+                    gpu['model'] = line.split('Intel')[1].strip()
+                    gpu['driver'] = 'i915'
+                elif 'NVIDIA' in line:
+                    gpu['model'] = line.split('NVIDIA')[1].strip()
+                    gpu['driver'] = 'nvidia'
+    except:
+        pass
+    return gpu
+
+def generate_hardware_hash(hw_info):
+    """Generate unique hardware fingerprint"""
+    import hashlib
+    import json
+    
+    hash_str = json.dumps({
+        'cpu_model': hw_info.get('cpu_model'),
+        'cpu_cores': hw_info.get('cpu_cores'),
+        'ram_gb': hw_info.get('ram_gb'),
+        'gpu_model': hw_info.get('gpu_model')
+    }, sort_keys=True)
+    
+    return hashlib.sha256(hash_str.encode()).hexdigest()[:16]
+
 
 # ============================================================================
 # MAIN
@@ -970,6 +1154,17 @@ NOTE:
                 # This will add cstate_counter_max, ring_bus_base_clock_mhz, wakeup_idle_ms
                 # if they don't already exist (preserves manually added values)
                 existing_msr = enhance_msr_config(existing_msr)
+                # ============================================================
+                # HARDWARE FINGERPRINT FIELDS HERE
+                # ============================================================
+                if args.verbose:
+                    print("🔍 Adding hardware fingerprint fields...")
+                
+                existing['cpu_flags'] = get_cpu_flags()
+                existing['cpu_details'] = get_cpu_details()
+                existing['gpu'] = get_gpu_info()
+                existing['hardware_hash'] = generate_hardware_hash(existing)
+
 
                 # ============================================================
                 # ENHANCE: Add thermal discovery with semantic mapping
@@ -1114,7 +1309,26 @@ NOTE:
             if args.verbose:
                 discovered_count = sum(len(v) for v in thermal_zones.values())
                 print(f"   ✅ Discovered {discovered_count} thermal sensors")
+            # ============================================================
+            # ADD HARDWARE FINGERPRINT FIELDS HERE (2 levels indentation)
+            # ============================================================
+            if args.verbose:
+                print("🔍 Adding hardware fingerprint fields...")
             
+            # Add CPU flags, details, GPU info, and hardware hash
+            final_config['cpu_flags'] = get_cpu_flags()
+            final_config['cpu_details'] = get_cpu_details()
+            final_config['gpu'] = get_gpu_info()
+            final_config['hardware_hash'] = generate_hardware_hash(final_config)
+            
+            if args.verbose:
+                print(f"   ✅ Hardware hash: {final_config['hardware_hash']}")
+                if final_config['gpu'].get('model'):
+                    print(f"   ✅ GPU: {final_config['gpu']['model']}")
+                print(f"   ✅ CPU flags: AVX2={final_config['cpu_flags']['has_avx2']}, AVX512={final_config['cpu_flags']['has_avx512']}")
+            
+
+
             if args.verbose:
                 print("📝 Creating new config file with auto-detected MSR values")
         
