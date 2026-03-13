@@ -206,6 +206,25 @@ class LinearExecutor:
                     'completion': len(content.split()),
                     'total': len(prompt.split()) + len(content.split())
                 }
+                # Store interaction data
+                interaction = {
+                    'step_index': 1,
+                    'workflow_type': 'linear',
+                    'prompt': prompt,
+                    'response': content,
+                    'model_name': self.config.get('model_id'),
+                    'provider': self.provider,
+                    'prompt_tokens': tokens.get('prompt', 0),
+                    'completion_tokens': tokens.get('completion', 0),
+                    'total_tokens': tokens.get('total', 0),
+                    'api_latency_ms': api_latency_ms,
+                    'compute_time_ms': execution_time_ms
+                }
+                if not hasattr(self, 'pending_interactions'):
+                    self.pending_interactions = []
+                self.pending_interactions.append(interaction)
+                dprint(f"🔍 DEBUG - Added interaction to pending list, now has {len(self.pending_interactions)} items")
+
             # ====================================================================
             # NEW: Local GGUF model using llama-cpp-python
             # ====================================================================
@@ -236,7 +255,43 @@ class LinearExecutor:
                         'completion': response['usage']['completion_tokens'],
                         'total': response['usage']['total_tokens']
                     }
-                    
+                    # Store interaction data
+                    interaction = {
+                        'step_index': 1,
+                        'workflow_type': 'linear',
+                        'prompt': prompt,
+                        'response': content,
+                        'model_name': self.config.get('model_id'),
+                        'provider': self.provider,
+                        'prompt_tokens': tokens.get('prompt', 0),
+                        'completion_tokens': tokens.get('completion', 0),
+                        'total_tokens': tokens.get('total', 0),
+                        'api_latency_ms': api_latency_ms,
+                        'compute_time_ms': execution_time_ms
+                    }
+                    if not hasattr(self, 'pending_interactions'):
+                        self.pending_interactions = []
+                    self.pending_interactions.append(interaction)
+                    dprint(f"🔍 DEBUG - Added interaction to pending list, now has {len(self.pending_interactions)} items")
+
+
+                    interaction = {
+                        'step_index': 1,
+                        'workflow_type': 'linear',
+                        'prompt': prompt,
+                        'response': content,
+                        'model_name': self.config.get('model_id'),
+                        'provider': self.provider,
+                        'prompt_tokens': tokens.get('prompt', 0),
+                        'completion_tokens': tokens.get('completion', 0),
+                        'total_tokens': tokens.get('total', 0),
+                        'api_latency_ms': api_latency_ms,
+                        'compute_time_ms': execution_time_ms
+                    }
+                    if not hasattr(self, 'pending_interactions'):
+                        self.pending_interactions = []
+                    self.pending_interactions.append(interaction)                    
+
                     # Calculate bytes for throughput (optional)
                     response_bytes = len(content.encode('utf-8'))
                     total_bytes = prompt_bytes + response_bytes
@@ -280,11 +335,14 @@ class LinearExecutor:
                         'completion': usage.get('completion_tokens', 0),
                         'total': usage.get('total_tokens', 0)
                     }
+
+                  
                     # Calculate bytes received and throughput
                     response_bytes = len(content.encode('utf-8'))
                     total_bytes = prompt_bytes + response_bytes
                     effective_kbps = (total_bytes * 8) / (api_latency_ms / 1000) / 1000 if api_latency_ms > 0 else 0
 
+                    
                 else:
                     content = str(data)
                     tokens = {}
@@ -314,6 +372,7 @@ class LinearExecutor:
                 "compute_time_ms": execution_time_ms,
                 "effective_kbps": effective_kbps,
                 "avg_effective_kbps": avg_effective_kbps,
+                "pending_interactions": getattr(self, 'pending_interactions', []),
                 # NEW: Network metrics
                 "bytes_sent": bytes_sent,
                 "bytes_recv": bytes_recv,
@@ -326,7 +385,8 @@ class LinearExecutor:
                 "model": self.config.get('model_id'),
                 "provider": self.provider
             }
-            
+
+            self.pending_interactions = []
             dprint(f"✅ Linear complete: {execution_time_ms:.0f}ms, {tokens.get('total', 0)} tokens")
             return result
             

@@ -96,7 +96,9 @@ class AgenticExecutor:
         self.temperature = self.config.get('temperature', 0.7)
         self.provider = self.config.get('provider', 'unknown')
         self.model_path = self.config.get('model_path')
-        
+        self.call_counter = 0
+        self.pending_interactions = []
+
         if self.provider not in ['ollama', 'local'] and not self.api_key:
             logger.warning(f"API key missing: {self.config.get('api_key_env')}")
         logger.info(f"AgenticExecutor initialized: {self.config.get('model_id')} ({self.provider})")
@@ -395,6 +397,7 @@ class AgenticExecutor:
             'steps': len(steps),
             'tools_used': tools_used,
             'tool_count': tool_count,
+            'pending_interactions': getattr(self, 'pending_interactions', []),
             'complexity_level': complexity_level,        # Req 3.2
             'complexity_score': self._calculate_complexity_score(
                 final_llm_calls,
@@ -472,7 +475,9 @@ class AgenticExecutor:
             'events': getattr(self, '_events', []),  # M3-10
             'tool_latencies': getattr(self, '_tool_latencies', []),  # M3-11
             'avg_tool_latency_ms': sum(self._tool_latencies) / len(self._tool_latencies) if hasattr(self, '_tool_latencies') and self._tool_latencies else 0,
-        })       
+        })     
+
+        self.pending_interactions = []  
         return result
 
     def execute_comparison(self, task: str) -> Dict[str, Any]:
@@ -714,6 +719,25 @@ You can use tools like calculator or web search if needed.
                     'completion': len(content.split()),
                     'total': len(prompt.split()) + len(content.split())
                 }
+
+                # ============================================================
+                # Store interaction data (16 spaces indentation)
+                # ============================================================
+                interaction = {
+                    'step_index': call_counter if call_counter else self.call_counter,
+                    'workflow_type': 'agentic',
+                    'prompt': prompt,
+                    'response': content,
+                    'model_name': self.config.get('model_id'),
+                    'provider': self.provider,
+                    'prompt_tokens': tokens.get('prompt', 0),
+                    'completion_tokens': tokens.get('completion', 0),
+                    'total_tokens': tokens.get('total', 0),
+                    'api_latency_ms': api_latency_ms,
+                    'compute_time_ms': api_latency_ms  # Use api_latency_ms as compute time
+                }
+                self.pending_interactions.append(interaction)
+
                 api_latency_ms = (time.time() - api_start) * 1000
                 response_bytes = len(content.encode('utf-8'))
                 total_bytes = prompt_bytes + response_bytes
@@ -748,6 +772,23 @@ You can use tools like calculator or web search if needed.
                         'completion': response['usage']['completion_tokens'],
                         'total': response['usage']['total_tokens']
                     }
+                    # ============================================================
+                    # ADD THIS - Store interaction data (16 spaces indentation)
+                    # ============================================================
+                    interaction = {
+                        'step_index': call_counter if call_counter else self.call_counter,
+                        'workflow_type': 'agentic',
+                        'prompt': prompt,
+                        'response': content,
+                        'model_name': self.config.get('model_id'),
+                        'provider': self.provider,
+                        'prompt_tokens': tokens.get('prompt', 0),
+                        'completion_tokens': tokens.get('completion', 0),
+                        'total_tokens': tokens.get('total', 0),
+                        'api_latency_ms': api_latency_ms,
+                        'compute_time_ms': api_latency_ms
+                    }
+                    self.pending_interactions.append(interaction)
                     
                     # Calculate bytes for throughput (optional)
                     response_bytes = len(content.encode('utf-8'))
@@ -788,6 +829,24 @@ You can use tools like calculator or web search if needed.
                         'completion': usage.get('completion_tokens', 0),
                         'total': usage.get('total_tokens', 0)
                     }
+
+                    # ============================================================
+                    # ADD THIS - Store interaction data (16 spaces indentation)
+                    # ============================================================
+                    interaction = {
+                        'step_index': call_counter if call_counter else self.call_counter,
+                        'workflow_type': 'agentic',
+                        'prompt': prompt,
+                        'response': content,
+                        'model_name': self.config.get('model_id'),
+                        'provider': self.provider,
+                        'prompt_tokens': tokens.get('prompt', 0),
+                        'completion_tokens': tokens.get('completion', 0),
+                        'total_tokens': tokens.get('total', 0),
+                        'api_latency_ms': api_latency_ms,
+                        'compute_time_ms': api_latency_ms
+                    }
+                    self.pending_interactions.append(interaction)                    
                 else:
                     content = str(data)
                     tokens = {}

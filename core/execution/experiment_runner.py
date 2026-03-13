@@ -251,6 +251,7 @@ class ExperimentRunner:
         db = DatabaseManager(db_config)
         db.create_tables()
         hw_id = db.insert_hardware(self.get_hardware_info())
+        env_id = self.setup_environment(db) 
         return db, hw_id
     
     # ========================================================================
@@ -320,10 +321,31 @@ class ExperimentRunner:
         hw_id = db.insert_hardware(self.get_hardware_info())
         
         # Get or create environment record  ← ADD THIS
-        env_id = self.setup_environment(db)
+        env_id = self._get_or_create_environment(db)
         
         return db, hw_id, env_id  # ← Return both IDs
 
+    def _get_or_create_environment(self, db) -> int:
+        """Auto-detect if environment changed - insert if new, return existing if same"""
+        env_info = self.get_environment_info()
+        current_hash = env_info['env_hash']
+        
+        # Check if this environment hash already exists
+        result = db.db.execute(
+            "SELECT env_id FROM environment_config WHERE env_hash = ?",
+            (current_hash,)
+        )
+        if result:
+            existing_id = result[0]['env_id']
+            print(f"   ✅ Using existing environment: {existing_id} (hash: {current_hash})")
+            return existing_id
+        
+        # New environment - insert it
+        print(f"   📦 New environment detected (hash: {current_hash}) - inserting...")
+        new_id = db.insert_environment_config(env_info)
+        print(f"   ✅ Created new environment: {new_id}")
+        return new_id
+    
     def setup_environment(self, db) -> int:
         """Get or create environment record"""
         env_info = self.get_environment_info()
@@ -581,7 +603,23 @@ class ExperimentRunner:
             # Agentic orchestration events
             if 'orchestration_events' in agentic_result:
                 db.insert_orchestration_events(agentic_id, agentic_result['orchestration_events'])
+
+            print(f"🔍 DEBUG - linear pending_interactions count: {len(linear_result.get('pending_interactions', []))}")
+            print(f"🔍 DEBUG - agentic pending_interactions count: {len(agentic_result.get('pending_interactions', []))}")
+
+            # Save LLM interactions for linear run
+            if 'pending_interactions' in linear_result and linear_result['pending_interactions']:
+                print(f"   💾 Saving {len(linear_result['pending_interactions'])} LLM interactions for linear run {linear_id}")
+                for interaction in linear_result['pending_interactions']:
+                    interaction['run_id'] = linear_id
+                    db.insert_llm_interaction(interaction)
             
+            # Save LLM interactions for agentic run
+            if 'pending_interactions' in agentic_result and agentic_result['pending_interactions']:
+                print(f"   💾 Saving {len(agentic_result['pending_interactions'])} LLM interactions for agentic run {agentic_id}")
+                for interaction in agentic_result['pending_interactions']:
+                    interaction['run_id'] = agentic_id
+                    db.insert_llm_interaction(interaction)            
             # Tax summary for this pair
             linear_uj = linear_result['layer3_derived']['energy_uj']['workload']
             agentic_uj = agentic_result['layer3_derived']['energy_uj']['workload']

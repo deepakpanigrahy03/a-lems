@@ -121,6 +121,9 @@ if page_id in _PAGES:
     import importlib
     _mod = importlib.import_module(_PAGES[page_id])
     _mod.render(CTX)
+elif page_id == "models":
+    from gui.pages.models import render as _r; _r(CTX)    
 else:
     st.error(f"Unknown page: `{page_id}`")
     st.info("Available: " + ", ".join(_PAGES.keys()))
+

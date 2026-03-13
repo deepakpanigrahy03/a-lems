@@ -517,6 +517,7 @@ SELECT
     END AS energy_per_token
 FROM runs r
 JOIN experiments e ON r.exp_id = e.exp_id
+LEFT JOIN idle_baselines ib ON r.baseline_id = ib.baseline_id
 LEFT JOIN orchestration_tax_summary ots ON r.run_id = ots.agentic_run_id;
 """
 # ========================================================================
@@ -647,6 +648,30 @@ CREATE TABLE IF NOT EXISTS environment_config (
     container_image TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+"""
+# ========================================================================
+# Table: llm_interactions - Store prompts, responses, and per-call metrics
+# ========================================================================
+CREATE_LLM_INTERACTIONS = """
+CREATE TABLE IF NOT EXISTS llm_interactions (
+    interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL,
+    step_index INTEGER,
+    workflow_type TEXT,
+    prompt TEXT,
+    response TEXT,
+    model_name TEXT,
+    provider TEXT,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    total_tokens INTEGER,
+    api_latency_ms REAL,
+    compute_time_ms REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+);
+CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_interactions(run_id);
+CREATE INDEX IF NOT EXISTS idx_llm_workflow ON llm_interactions(workflow_type);
 """
 
 

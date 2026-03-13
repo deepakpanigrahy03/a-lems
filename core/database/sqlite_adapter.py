@@ -50,6 +50,7 @@ from .schema import (
     CREATE_ORCHESTRATION_ANALYSIS,
     TASK_CATEGORIES_SCHEMA,
     CREATE_ENVIRONMENT_CONFIG,
+    CREATE_LLM_INTERACTIONS,
     
 )
 
@@ -256,6 +257,8 @@ class SQLiteAdapter(DatabaseInterface):
         self.conn.execute(CREATE_ML_VIEW)
         self.conn.execute(CREATE_ORCHESTRATION_ANALYSIS)
         self.conn.execute(CREATE_ENVIRONMENT_CONFIG)
+        self.conn.executescript(CREATE_LLM_INTERACTIONS)
+        
 
 
         
@@ -714,7 +717,34 @@ class SQLiteAdapter(DatabaseInterface):
                      orchestration_tax_uj, tax_percent)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (linear_id, agentic_id, linear_uj, agentic_uj, tax_uj, tax_percent))
-    
+
+
+    def insert_llm_interaction(self, interaction_data: dict) -> int:
+        """Insert an LLM interaction record"""
+        cursor = self.conn.execute("""
+            INSERT INTO llm_interactions (
+                run_id, step_index, workflow_type,
+                prompt, response,
+                model_name, provider,
+                prompt_tokens, completion_tokens, total_tokens,
+                api_latency_ms, compute_time_ms
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            interaction_data.get('run_id'),
+            interaction_data.get('step_index'),
+            interaction_data.get('workflow_type'),
+            interaction_data.get('prompt'),
+            interaction_data.get('response'),
+            interaction_data.get('model_name'),
+            interaction_data.get('provider'),
+            interaction_data.get('prompt_tokens'),
+            interaction_data.get('completion_tokens'),
+            interaction_data.get('total_tokens'),
+            interaction_data.get('api_latency_ms'),
+            interaction_data.get('compute_time_ms')
+        ))
+        return cursor.lastrowid
+
     # ========================================================================
     # 6. QUERY METHODS
     # ========================================================================

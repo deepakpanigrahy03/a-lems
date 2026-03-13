@@ -2,13 +2,8 @@
 gui/sidebar.py
 ─────────────────────────────────────────────────────────────────────────────
 A-LEMS sidebar: brand, active-session banner, Live Lab panel, grouped nav,
-DB footer.
-
-Key changes from v1:
-  - Active session always pinned at top (group_id + status + progress)
-  - Experiment Designer added to EXPERIMENT CONTROL group
-  - Sessions page added to EXPLORATION group
-  - SQL Query added to ADVANCED group
+MODEL BEHAVIOR panel (Apple-to-Apple moved from overview),
+theme toggle, DB footer.
 ─────────────────────────────────────────────────────────────────────────────
 """
 import streamlit as st
@@ -25,6 +20,8 @@ _SECTION_ACCENTS = {
     "SYSTEM BEHAVIOR":    "#a78bfa",
     "RESEARCH":           "#3b82f6",
     "ADVANCED":           "#3d5570",
+    "MODEL BEHAVIOR":     "#f472b6",   # pink — new section
+    "SETTINGS":           "#475569",
 }
 
 _CSS = """
@@ -68,7 +65,6 @@ def _active_session_banner():
     Color-coded: green=running, blue=completed, red=failed.
     """
     try:
-        # Get the most recent group_id
         row = q1("""
             SELECT group_id,
                    COUNT(*) as total_exps,
@@ -92,7 +88,6 @@ def _active_session_banner():
         runs_d   = int(row.get("runs_done", 0) or 0)
         runs_t   = int(row.get("runs_total", 1) or 1)
 
-        # Determine overall session status
         if running > 0:
             status, clr, icon = "RUNNING",   "#22c55e", "🟢"
         elif failed > 0:
@@ -102,7 +97,6 @@ def _active_session_banner():
         else:
             status, clr, icon = "PENDING",   "#f59e0b", "🟡"
 
-        # Short display: session_YYYYMMDD_HHMMSS → YYYYMMDD HH:MM
         short = gid.replace("session_", "").replace("_", " ", 1)[:15]
         pct   = int(runs_d / max(runs_t, 1) * 100)
 
@@ -117,7 +111,6 @@ def _active_session_banner():
             f"margin-bottom:2px;'>{short}</div>"
             f"<div style='font-size:8px;color:#3d5570;margin-bottom:4px;'>"
             f"{status} · {done}/{total} exps · {runs_d}/{runs_t} runs</div>"
-            # Progress bar
             f"<div style='background:#1e2d45;border-radius:2px;height:4px;'>"
             f"<div style='background:{clr};width:{pct}%;height:100%;"
             f"border-radius:2px;transition:width 0.4s;'></div></div>"
@@ -125,7 +118,7 @@ def _active_session_banner():
             unsafe_allow_html=True,
         )
     except Exception:
-        pass   # Never crash the sidebar
+        pass
 
 
 def _live_panel():
@@ -215,6 +208,41 @@ def _live_panel():
                 st.caption(f"Last error: {conn['error']}")
 
 
+def _model_behavior_panel():
+    """
+    MODEL BEHAVIOR sidebar section.
+    Renders Apple-to-Apple model comparison — moved from overview.py.
+    All original logic preserved exactly.
+    """
+    # Import the function from overview — all original code lives there
+    try:
+        from gui.pages.overview import render_model_behavior_sidebar
+        render_model_behavior_sidebar()
+    except Exception as _e:
+        st.markdown(
+            f"<div style='font-size:10px;color:#ef4444;padding:8px 4px'>"
+            f"Model Behavior panel error: {str(_e)[:80]}</div>",
+            unsafe_allow_html=True)
+
+
+def _settings_panel():
+    """
+    SETTINGS sidebar section.
+    Theme toggle + any future global settings.
+    """
+    dark = st.session_state.get("theme", "dark") == "dark"
+    _lbl = "☀  Switch to Light mode" if dark else "☾  Switch to Dark mode"
+    if st.button(_lbl, key="sidebar_theme_toggle", use_container_width=True):
+        st.session_state["theme"] = "light" if dark else "dark"
+        st.rerun()
+
+    _theme_name = "Dark" if dark else "Light"
+    st.markdown(
+        f"<div style='font-size:8px;color:#3d5570;padding:2px 4px 6px;"
+        f"font-family:monospace'>Theme: {_theme_name}</div>",
+        unsafe_allow_html=True)
+
+
 def render_sidebar() -> str:
     """Render the full sidebar and return the active page_id."""
     _page_map = {label: pid for label, pid in NAV_GROUPS if pid}
@@ -241,7 +269,7 @@ def render_sidebar() -> str:
             unsafe_allow_html=True,
         )
 
-        # ── Active session banner (always visible) ─────────────────────────
+        # ── Active session banner ──────────────────────────────────────────
         _active_session_banner()
 
         # ── Live Lab panel ─────────────────────────────────────────────────
@@ -255,7 +283,6 @@ def render_sidebar() -> str:
         # ── Navigation ─────────────────────────────────────────────────────
         for label, pid in NAV_GROUPS:
             if pid is None:
-                # Section header — plain text, accent underline
                 acc = _SECTION_ACCENTS.get(label, "#2d3f55")
                 st.markdown(
                     f"<div style='margin:14px 0 3px;border-bottom:1px solid {acc}28;"
@@ -274,6 +301,42 @@ def render_sidebar() -> str:
                     st.rerun()
                 if active:
                     st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── MODEL BEHAVIOR section ─────────────────────────────────────────
+        st.markdown(
+            "<div style='height:1px;background:#1a2535;margin:10px 0 4px;'></div>",
+            unsafe_allow_html=True)
+        acc_mb = _SECTION_ACCENTS.get("MODEL BEHAVIOR", "#f472b6")
+        st.markdown(
+            f"<div style='margin:10px 0 6px;border-bottom:1px solid {acc_mb}28;"
+            f"padding-bottom:3px;'>"
+            f"<span style='font-size:8px;font-weight:700;color:{acc_mb};"
+            f"text-transform:uppercase;letter-spacing:.15em;'>🍎 Models</span>"
+            f"</div>",
+            unsafe_allow_html=True)
+        _is_models = st.session_state.get("nav_selected","") == "_models_page"
+        if _is_models:
+            st.markdown("<div class='nav-active'>", unsafe_allow_html=True)
+        if st.button("Apple-to-Apple comparison", key="nav_models_page",
+                     use_container_width=True):
+            st.session_state["nav_selected"] = "_models_page"
+            st.rerun()
+        if _is_models:
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── SETTINGS section ───────────────────────────────────────────────
+        st.markdown(
+            "<div style='height:1px;background:#1a2535;margin:10px 0 4px;'></div>",
+            unsafe_allow_html=True)
+        acc_set = _SECTION_ACCENTS["SETTINGS"]
+        st.markdown(
+            f"<div style='margin:10px 0 6px;border-bottom:1px solid {acc_set}28;"
+            f"padding-bottom:3px;'>"
+            f"<span style='font-size:8px;font-weight:700;color:{acc_set};"
+            f"text-transform:uppercase;letter-spacing:.15em;'>⚙ Settings</span>"
+            f"</div>",
+            unsafe_allow_html=True)
+        _settings_panel()
 
         # ── Footer ─────────────────────────────────────────────────────────
         st.markdown(
@@ -306,4 +369,7 @@ def render_sidebar() -> str:
             st.cache_data.clear()
             st.rerun()
 
-    return _page_map.get(st.session_state.nav_selected, "overview")
+    _sel = st.session_state.nav_selected
+    if _sel == "_models_page":
+        return "models"
+    return _page_map.get(_sel, "overview")
