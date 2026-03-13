@@ -24,6 +24,7 @@ from core.utils.debug import dprint
 from core.readers.rapl_reader import RAPLReader
 from core.utils.core_pinner import CorePinner
 from core.models.baseline_measurement import BaselineMeasurement  # NEW: Use proper model
+from core.readers.scheduler_monitor import SchedulerMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,7 @@ def measure_idle_baseline(
            f"processes={current_state['processes']}, "
            f"background_cpu={current_state['background_cpu']:.1f}%")
 
+
     # Try to load from cache unless forced to remeasure
     if not force_remeasure and cache_file.exists():
         try:
@@ -167,9 +169,11 @@ def measure_idle_baseline(
     # ------------------------------------------------------------------------
     # Step 3: Collect multiple samples
     # ------------------------------------------------------------------------
+    sched_monitor = SchedulerMonitor({})
     all_samples = []
     all_powers = {}  # Store values per domain for statistics
-
+    start_interrupts = sched_monitor._read_total_interrupts() # You'll need to import this
+    start_time = time.time()
     for sample_idx in range(num_samples):
         dprint(f"📊 Sample {sample_idx + 1}/{num_samples}")
 
@@ -207,6 +211,18 @@ def measure_idle_baseline(
             std_power[domain] = 0.0
         dprint(f"   Domain {domain}: mean={avg_power[domain]:.4f} W, "
                f"std={std_power[domain]:.4f} W")
+
+
+    # Record end interrupts
+    end_interrupts = sched_monitor._read_total_interrupts()
+    end_time = time.time()
+    
+    # Calculate average interrupt rate during baseline
+    elapsed = end_time - start_time
+    avg_interrupt_rate = (end_interrupts - start_interrupts) / elapsed
+    
+    # Add to current_state before it becomes metadata
+    current_state['interrupt_rate'] = avg_interrupt_rate
 
     # ------------------------------------------------------------------------
     # Step 5: Create BaselineMeasurement object
@@ -308,6 +324,8 @@ if __name__ == "__main__":
         pre_wait_seconds=2
     )
     print(f"   Baseline: {baseline1.power_watts}")
+    print(f"   Interrupt Rate: {baseline1.metadata.get('interrupt_rate', 'N/A'):.1f}/sec")
+    
 
     # Second call – should load from cache
     print("\n📝 Second call (should load from cache)...")
@@ -316,6 +334,7 @@ if __name__ == "__main__":
         core_pinner=pinner
     )
     print(f"   Baseline: {baseline2.power_watts}")
+    print(f"   Interrupt Rate: {baseline2.metadata.get('interrupt_rate', 'N/A'):.1f}/sec") 
 
     # Force remeasure
     print("\n📝 Force remeasure...")
@@ -327,6 +346,7 @@ if __name__ == "__main__":
         num_samples=2
     )
     print(f"   Baseline: {baseline3.power_watts}")
+    print(f"   Interrupt Rate: {baseline3.metadata.get('interrupt_rate', 'N/A'):.1f}/sec")
 
     print("\n" + "="*70)
     print("✅ Test complete!")

@@ -147,15 +147,19 @@ def display_hardware(runs, label):
             
             # M3-2: Interrupt Rate
             intr_rate = ml.get('interrupt_rate', 0)
-            if intr_rate > 0:
-                # Color code based on interrupt rate
-                if intr_rate > 2000:
-                    intr_indicator = "🔴 HIGH"
-                elif intr_rate > 1000:
-                    intr_indicator = "🟡 MODERATE"
-                else:
-                    intr_indicator = "🟢 LOW"
-                print(f"      Interrupt Rate: {intr_rate:.0f}/sec {intr_indicator}")
+            baseline_intr = ml.get('baseline_interrupt_rate', 2000)
+            if baseline_intr > 0:
+                ratio = intr_rate / baseline_intr
+            else:    
+                ratio = 1.0
+
+            if ratio > 2.0:
+                intr_indicator = "🔴 HIGH"
+            elif ratio > 1.2:
+                intr_indicator = "🟡 MODERATE"
+            else:
+                intr_indicator = "🟢 LOW"
+            print(f"      Interrupt Rate: {intr_rate:.0f}/sec {intr_indicator}")
             
             # M3-3: Temperature Tracking
             start_temp = ml.get('start_temp_c', 0)

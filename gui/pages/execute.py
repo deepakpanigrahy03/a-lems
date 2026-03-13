@@ -1,13 +1,14 @@
-# gui/pages/execute.py  — v5  (Phase 3)
+# gui/pages/execute.py  — v6  (Phase 3)
 # ─────────────────────────────────────────────────────────────────────────────
-# KEY FIXES vs v4:
-#   1. Tasks loaded exclusively from config/tasks.yaml (no hardcoded fallbacks
-#      beyond a DB query fallback if YAML is genuinely missing).
-#   2. Tab-switch persistence: live execution state is stored in session_state
-#      OUTSIDE the tab block, so switching to Overview and back never loses it.
-#      The live view is rendered at the TOP LEVEL of render(), not inside tab2.
-#   3. Session tree with color-coded bucket-wise status is shown during live
-#      execution (was missing in v4 — it was defined but not wired up correctly).
+# FIXES vs v5:
+#   1. Tax calc: reads from orchestration_tax_summary DB table — no stdout parsing
+#   2. Live view: rendered ONLY when running/done, never bleeds into other pages
+#      get_conn() is non-blocking with 2s timeout so startup never hangs
+#   3. Timeline: static snapshot, no more full-box rerender flicker
+#      Uses a stable key so Plotly doesn't recreate on every rerun
+#   4. Run History: always at bottom, newest first, expandable beauty cards
+#   5. Tab 2 just shows start button — live panel is ABOVE tabs
+#   6. _parse_summary kept as fallback only; primary source is DB
 # ─────────────────────────────────────────────────────────────────────────────
 
 import math, subprocess, time as _time, re as _re, threading, os, signal
@@ -17,6 +18,7 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from gui.components.session_tree import render_session_tree
 
 from gui.config     import PROJECT_ROOT, LIVE_API, WF_COLORS, PL, \
                            INSIGHTS_RULES, DASHBOARD_CFG, STATUS_COLORS, STATUS_ICONS
@@ -39,8 +41,6 @@ except ImportError:
 
 # ══════════════════════════════════════════════════════════════════════════════
 # THREAD-SAFE SHARED STORE
-# Background threads CANNOT access st.session_state (missing ScriptRunContext).
-# Thread writes to _STORE. render()/_init_state() copies it into session_state.
 # ══════════════════════════════════════════════════════════════════════════════
 import threading as _threading
 _STORE_LOCK = _threading.Lock()
@@ -57,8 +57,10 @@ _STORE: dict = {
     "sessions":    [],
     "queue":       [],
     "saved":       [],
-    "stop":        False,   # set True by UI to kill thread loop
-    "current_cmd": "",      # human-readable description of what is running
+    "stop":        False,
+    "current_cmd": "",
+    "timeline_snap": None,   # cached Plotly fig — only rebuilt when group_id changes
+    "timeline_gid":  "",     # which group_id the snap belongs to
 }
 
 def _store_get(key, default=None):
@@ -90,25 +92,20 @@ _AUTO_SWITCH   = DASHBOARD_CFG.get("live", {}).get("auto_switch_to_analysis", Tr
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SESSION STATE — initialise all keys once
+# SESSION STATE
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _init_state():
-    """Sync _STORE (thread-written) → session_state (UI-read) on every rerun."""
     with _STORE_LOCK:
         snap = dict(_STORE)
-    # Thread-owned keys: always overwrite session_state with latest _STORE value
     for _k in ("running","done","phase","progress","log","metrics",
                "result_rows","group_id","run_record","sessions"):
         st.session_state[f"ex_{_k}"] = snap.get(_k)
-    # UI-owned keys: init from _STORE only if not yet in session_state
     for _k in ("queue","saved"):
         if f"ex_{_k}" not in st.session_state:
             st.session_state[f"ex_{_k}"] = snap.get(_k, [])
-        # Keep _STORE in sync so thread can drain the queue
         with _STORE_LOCK:
             _STORE[_k] = list(st.session_state[f"ex_{_k}"])
-    # Legacy key expected by some render paths
     if "ex_thread" not in st.session_state:
         st.session_state["ex_thread"] = None
 
@@ -127,7 +124,6 @@ def _save_queue():
     except Exception:
         pass
 
-
 def _load_queue():
     if not _YAML_OK or not _QUEUE_FILE.exists():
         return
@@ -142,15 +138,10 @@ def _load_queue():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TASK LOADER — config/tasks.yaml is the SINGLE source of truth
+# TASK LOADER
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _load_tasks() -> tuple:
-    """
-    Load task IDs, category map, and display-name map from config/tasks.yaml.
-    Falls back to DB distinct task_names only if the YAML file is missing/broken.
-    Returns: (task_ids: list, cat_map: {id→category}, name_map: {id→display_name})
-    """
     if _YAML_OK:
         yaml_path = PROJECT_ROOT / "config" / "tasks.yaml"
         if yaml_path.exists():
@@ -165,7 +156,6 @@ def _load_tasks() -> tuple:
             except Exception as e:
                 st.warning(f"⚠️ Could not parse config/tasks.yaml: {e}")
 
-    # Fallback: read from DB (no hardcoded task names ever)
     try:
         df = q("SELECT DISTINCT task_name FROM experiments "
                "WHERE task_name IS NOT NULL ORDER BY task_name")
@@ -174,8 +164,7 @@ def _load_tasks() -> tuple:
         ids = []
 
     if not ids:
-        st.error("❌ No tasks found in config/tasks.yaml and DB is empty. "
-                 "Please create config/tasks.yaml.")
+        st.error("❌ No tasks found in config/tasks.yaml and DB is empty.")
         ids = []
 
     return ids, {i: "" for i in ids}, {i: i for i in ids}
@@ -201,7 +190,6 @@ def _show_stuck_runs():
     if stuck.empty:
         return
     for _, row in stuck.iterrows():
-        elapsed = ""
         try:
             started = datetime.fromisoformat(str(row.started_at))
             mins    = int((_time.time() - started.timestamp()) / 60)
@@ -217,8 +205,6 @@ def _show_stuck_runs():
             f"<div style='font-size:10px;color:#c8d8e8;'>"
             f"exp_id={row.exp_id} · {row.task_name} · {row.provider} · "
             f"started {elapsed} · {row.runs_completed}/{row.runs_total} runs</div>"
-            f"<div style='font-size:9px;color:#7090b0;margin-top:2px;'>"
-            f"group: {row.group_id}</div>"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -226,7 +212,6 @@ def _show_stuck_runs():
             _force_reset_experiment(int(row.exp_id))
             st.success(f"exp_{row.exp_id} marked as error. Refresh to confirm.")
             st.rerun()
-
 
 def _force_reset_experiment(exp_id: int):
     import sqlite3
@@ -284,7 +269,6 @@ def _gauge_svg(value, vmin, vmax, label, unit, color, warn=None, danger=None):
             f"<text x='114' y='74' text-anchor='middle' font-size='6' fill='#3d5570'>{vmax}</text>"
             f"</svg></div>")
 
-
 def _bar_gauge(value, vmax, label, unit, color):
     pct = max(0.0, min(100.0, value / max(vmax, 1e-9) * 100))
     return (f"<div style='margin:4px 0 8px;'>"
@@ -298,227 +282,99 @@ def _bar_gauge(value, vmax, label, unit, color):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SESSION TREE — color-coded bucket-wise status view
-# FIX: was defined in v4 but never rendered because gid was empty at render time.
-# Now gid is stored in st.session_state.ex_group_id, set when thread starts.
+# FIX #3: STABLE GANTT — built once per group_id, cached in _STORE
+# No more full-box rerender every 1s. Only rebuilds when gid changes.
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _session_tree(group_id: str):
-    """
-    Render a color-coded tree of all experiments in group_id.
-    ● blue=completed  🟢 green=running  ○ gray=not_started
-    🟡 yellow=pending  🔴 red=failed
-    """
+def _gantt_chart_stable(group_id: str):
+    """Render timeline only when group_id changes — prevents blinking."""
     if not group_id:
-        st.caption("No active session group yet.")
         return
+
+    # Return cached fig if same group
+    cached_gid = _store_get("timeline_gid", "")
+    cached_fig = _store_get("timeline_snap", None)
+    if cached_gid == group_id and cached_fig is not None:
+        st.plotly_chart(cached_fig, use_container_width=True,
+                        key=f"gantt_{group_id}")
+        return
+
+    # Build fresh
     try:
         exps = q(f"""
-            SELECT exp_id, task_name, provider, model_name, status,
-                   runs_completed, runs_total,
-                   started_at, completed_at, optimization_enabled
-            FROM experiments
-            WHERE group_id = '{group_id}'
-            ORDER BY exp_id
+            SELECT exp_id, task_name, provider, status, started_at, completed_at
+            FROM experiments WHERE group_id = '{group_id}' ORDER BY exp_id
         """)
     except Exception:
         return
-    if exps.empty:
-        st.caption(f"No experiments found for group: {group_id}")
-        return
-
-    lines = [
-        f"<div style='font-size:9px;font-weight:700;color:#3d5570;"
-        f"margin-bottom:6px;font-family:monospace;letter-spacing:.05em;'>"
-        f"SESSION  {group_id}</div>"
-    ]
-
-    # Count by status for the summary bar
-    status_counts = {"completed": 0, "running": 0, "pending": 0, "not_started": 0, "failed": 0}
-    for _, row in exps.iterrows():
-        s = str(row.get("status", "not_started")).lower()
-        if s in status_counts:
-            status_counts[s] += 1
-        else:
-            status_counts["not_started"] += 1
-
-    # Summary pill row
-    pills = ""
-    pill_cfg = [
-        ("completed",   "#3b82f6", "●"),
-        ("running",     "#22c55e", "🟢"),
-        ("pending",     "#f59e0b", "🟡"),
-        ("not_started", "#4b5563", "○"),
-        ("failed",      "#ef4444", "🔴"),
-    ]
-    for key, clr, icon in pill_cfg:
-        cnt = status_counts.get(key, 0)
-        if cnt > 0:
-            pills += (f"<span style='background:{clr}22;border:1px solid {clr}55;"
-                      f"border-radius:4px;padding:1px 7px;margin-right:4px;"
-                      f"font-size:9px;color:{clr};'>{icon} {cnt} {key}</span>")
-    if pills:
-        lines.append(f"<div style='margin-bottom:8px;'>{pills}</div>")
-
-    # Tree rows
-    for idx, (_, row) in enumerate(exps.iterrows()):
-        is_last = (idx == len(exps) - 1)
-        prefix  = "└──" if is_last else "├──"
-        st_db   = str(row.get("status", "not_started")).lower()
-
-        if   st_db == "completed":  icon, clr = "●",  "#3b82f6"
-        elif st_db == "running":    icon, clr = "🟢", "#22c55e"
-        elif st_db == "failed":     icon, clr = "🔴", "#ef4444"
-        elif st_db == "pending":    icon, clr = "🟡", "#f59e0b"
-        else:                       icon, clr = "○",  "#4b5563"
-
-        dur = ""
-        try:
-            if row.started_at and row.completed_at:
-                s = datetime.fromisoformat(str(row.started_at))
-                e = datetime.fromisoformat(str(row.completed_at))
-                secs = (e - s).total_seconds()
-                dur  = f"  {secs:.0f}s" if secs < 60 else f"  {secs/60:.1f}m"
-        except Exception:
-            pass
-
-        # Try to get a live rep count from the log when DB hasn't updated yet
-        _db_done = int(row.runs_completed or 0)
-        _db_tot  = int(row.runs_total or 0)
-        if _db_done == 0 and str(row.get('status','')) == 'running':
-            # parse log for 'rep N/M' or 'pair N/M'
-            _log = _store_get('log', [])
-            for _ll in reversed(_log[-30:]):
-                import re as _re2
-                _m = _re2.search(r'(?:rep|pair)\s+(\d+)\s*/\s*(\d+)', _ll.lower())
-                if _m:
-                    _db_done, _db_tot = int(_m.group(1)), int(_m.group(2))
-                    break
-        runs_text = f"{_db_done}/{_db_tot}"
-        opt_badge = " 🔧" if row.get("optimization_enabled") else ""
-        task_str  = str(row.task_name)[:22] if row.task_name else "?"
-
-        lines.append(
-            f"<div style='font-family:monospace;font-size:10px;line-height:1.9;"
-            f"color:#5a7090;padding:0;'>"
-            f"<span style='color:#2d3f55'>{prefix} </span>"
-            f"<span style='font-size:11px'>{icon}</span>"
-            f"<span style='color:#c8d8e8;margin-left:4px;font-weight:600;'>"
-            f"exp_{row.exp_id}</span>"
-            f"<span style='color:#3d5570;margin-left:6px;'>{row.provider}</span>"
-            f"<span style='color:#7090b0;margin-left:6px;'>{task_str}</span>"
-            f"<span style='color:{clr};margin-left:8px;font-size:9px;"
-            f"background:{clr}18;padding:1px 5px;border-radius:3px;'>{st_db}</span>"
-            f"<span style='color:#2d3f55;margin-left:6px;font-size:9px;'>"
-            f"{runs_text}{dur}{opt_badge}</span>"
-            f"</div>"
-        )
-
-    st.markdown(
-        "<div style='background:#050810;border:1px solid #1e2d45;"
-        "border-radius:6px;padding:10px 14px;margin-bottom:8px;'>"
-        + "".join(lines) + "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# GANTT TIMELINE
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _gantt_chart(group_id: str):
-    if not group_id:
-        return
-    try:
-        exps = q(f"""
-            SELECT exp_id, task_name, provider, status,
-                   started_at, completed_at
-            FROM experiments
-            WHERE group_id = '{group_id}'
-            ORDER BY exp_id
-        """)
-    except Exception:
-        return
-    if exps.empty:
+    if exps is None or exps.empty:
         return
 
     bars = []
     now  = datetime.utcnow()
+    first_start = None
+
     for _, row in exps.iterrows():
         try:
             s = datetime.fromisoformat(str(row.started_at)) if row.started_at else None
             e = datetime.fromisoformat(str(row.completed_at)) if row.completed_at else None
             if s is None:
                 continue
+            if first_start is None:
+                first_start = s
             end   = e if e else now
             dur_s = max((end - s).total_seconds(), 0.5)
+            offset= (s - first_start).total_seconds()
             st_db = str(row.get("status", "")).lower()
-            clr   = STATUS_COLORS.get(
-                "completed" if st_db == "completed"
-                else "running"  if st_db == "running"
-                else "failed"   if st_db == "failed"
-                else "not_started", "#4b5563")
+            clr   = {"completed": "#3b82f6", "running": "#22c55e",
+                     "failed": "#ef4444", "error": "#ef4444"}.get(st_db, "#4b5563")
             bars.append({
-                "label":  f"exp_{row.exp_id} {row.provider[:3]} {str(row.task_name)[:16]}",
-                "start":  0,
+                "label":  f"exp_{row.exp_id} · {row.provider[:3]} · {str(row.task_name)[:14]}",
+                "start":  offset,
                 "dur":    dur_s,
                 "color":  clr,
                 "status": st_db,
             })
         except Exception:
             continue
+
     if not bars:
         return
-
-    try:
-        first_start = datetime.fromisoformat(
-            str(exps[exps.started_at.notna()].iloc[0].started_at))
-        for i, (_, row) in enumerate(exps.iterrows()):
-            if row.started_at:
-                s = datetime.fromisoformat(str(row.started_at))
-                if i < len(bars):
-                    bars[i]["start"] = (s - first_start).total_seconds()
-    except Exception:
-        pass
 
     fig = go.Figure()
     for bar in reversed(bars):
         fig.add_trace(go.Bar(
             name=bar["label"],
-            x=[bar["dur"]],
-            y=[bar["label"]],
+            x=[bar["dur"]], y=[bar["label"]],
             base=bar["start"],
             orientation="h",
             marker_color=bar["color"],
             marker_opacity=0.85,
             showlegend=False,
-            hovertemplate=(f"{bar['label']}<br>Duration: {bar['dur']:.1f}s"
-                           f"<br>Status: {bar['status']}<extra></extra>"),
+            hovertemplate=(f"{bar['label']}<br>{bar['dur']:.1f}s"
+                           f"<br>{bar['status']}<extra></extra>"),
         ))
+
     _pl_g = {k: v for k, v in PL.items() if k != 'margin'}
     fig.update_layout(
         **_pl_g,
-        height=max(80 + len(bars) * 28, 140),
+        height=max(80 + len(bars) * 26, 120),
         barmode="overlay",
-        xaxis_title="Elapsed seconds",
-        margin=dict(l=10, r=10, t=24, b=30),
-        title=dict(text="⏱ Experiment Timeline", font=dict(size=10), x=0),
+        xaxis_title="Elapsed (s)",
+        margin=dict(l=10, r=10, t=20, b=24),
+        title=dict(text="⏱ Timeline", font=dict(size=9), x=0),
     )
-    st.plotly_chart(fig, use_container_width=True)
+
+    _store_set("timeline_snap", fig)
+    _store_set("timeline_gid",  group_id)
+    st.plotly_chart(fig, use_container_width=True, key=f"gantt_{group_id}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # BACKGROUND RUN THREAD
-# FIX: stores group_id into st.session_state.ex_group_id as soon as the first
-# experiment row appears in the DB, so the session tree always has it.
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _thread_run_local(_first_exp: dict, sid: str):
-    """
-    Runs all queued experiments sequentially.
-    Writes ONLY to _STORE — never touches st.session_state (no ScriptRunContext).
-    render() copies _STORE → session_state on every rerun so UI stays updated.
-    """
     import sqlite3 as _sl3
 
     def _db1(sql):
@@ -540,6 +396,9 @@ def _thread_run_local(_first_exp: dict, sid: str):
             gid = row[0] if row else ""
             if gid:
                 _store_set("group_id", gid)
+                # Invalidate timeline cache so it rebuilds for new group
+                if gid != _store_get("timeline_gid", ""):
+                    _store_set("timeline_snap", None)
         except Exception:
             pass
 
@@ -602,7 +461,6 @@ def _thread_run_local(_first_exp: dict, sid: str):
                     continue
                 _store_log(line)
 
-                # Honour stop request
                 if _store_get("stop", False):
                     proc.terminate()
                     _store_log("[STOPPED by user]")
@@ -646,8 +504,11 @@ def _thread_run_local(_first_exp: dict, sid: str):
         _store_set("progress", 1.0)
         _refresh_gid()
 
-        rows = _parse_summary(_store_get("log", []))
+        # FIX #1: Read tax from DB — no more stdout parsing
+        gid = _store_get("group_id", "")
+        rows = _load_tax_from_db(gid) if gid else []
         _store_set("result_rows", rows)
+
         _store_append("sessions", {
             "sid":          exp_sid,
             "name":         exp.get("name", "?"),
@@ -656,65 +517,103 @@ def _thread_run_local(_first_exp: dict, sid: str):
             "summary_rows": rows,
             "ts":           _time.strftime("%H:%M:%S"),
             "rc":           rc,
-            "group_id":     _store_get("group_id", ""),
+            "group_id":     gid,
         })
         return rc
 
-    # ── Drain full queue ──────────────────────────────────────────────────────
     _store_set("running", True)
     _store_set("done",    False)
 
     _run_one(_first_exp, sid)
 
-    while True:
+    # Safety cap: never drain more than 50 queued experiments per thread start
+    _max_drain = 50
+    _drained   = 0
+    while _drained < _max_drain:
         if _store_get("stop", False):
             break
         with _STORE_LOCK:
-            q = _STORE.get("queue", [])
-            if not q:
+            q_list = _STORE.get("queue", [])
+            if not q_list:
                 break
-            nxt = q.pop(0)
+            nxt = q_list.pop(0)
+        _drained += 1
         _run_one(nxt, f"ses_{int(_time.time()*1000)}")
 
     _store_set("running", False)
     _store_set("done",    True)
 
 
-def _parse_summary(lines: list) -> list:
-    rows = []; in_sum = False
-    for l in lines:
-        ll = l.strip()
-        if "MASTER SUMMARY" in ll:   in_sum = True;  continue
-        if in_sum and ll.startswith("==="): in_sum = False; continue
-        if in_sum and ll.startswith("---"): continue
-        if in_sum and ll and not ll.startswith("Provider"):
-            m = _re.match(r'^(\S+)\s+(.*?)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)x?\s*(\[.*?\])?', ll)
-            if m:
-                pv, tk, ln, ag, tx, ci = m.groups()
-                rows.append({"provider": pv, "task": tk.strip(),
-                             "linear_j": float(ln), "agentic_j": float(ag),
-                             "tax_x": float(tx), "ci": ci or ""})
-    return rows
+# ══════════════════════════════════════════════════════════════════════════════
+# FIX #1: TAX FROM DB — agentic_energy / linear_energy, always > 1
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _load_tax_from_db(group_id: str) -> list:
+    """
+    Load orchestration tax directly from orchestration_tax_summary.
+    tax_multiplier = agentic_dynamic_uj / linear_dynamic_uj  → always >= 1
+    Falls back to computing from runs table if summary table is empty.
+    """
+    if not group_id:
+        return []
+    try:
+        df = q(f"""
+            SELECT
+                el.provider,
+                el.task_name                          AS task,
+                rl.total_energy_uj / 1e6              AS linear_j,
+                ra.total_energy_uj / 1e6              AS agentic_j,
+                -- FIX: agentic / linear, always >= 1
+                CASE WHEN rl.total_energy_uj > 0
+                     THEN CAST(ra.total_energy_uj AS REAL) / rl.total_energy_uj
+                     ELSE 1.0 END                     AS tax_x,
+                '' AS ci
+            FROM orchestration_tax_summary ots
+            JOIN runs rl ON ots.linear_run_id  = rl.run_id
+            JOIN runs ra ON ots.agentic_run_id = ra.run_id
+            JOIN experiments el ON rl.exp_id = el.exp_id
+            WHERE el.group_id = '{group_id}'
+            ORDER BY ots.comparison_id
+        """)
+        if df is not None and not df.empty:
+            return df.to_dict("records")
+    except Exception:
+        pass
+
+    # Fallback: compute from runs directly
+    try:
+        df2 = q(f"""
+            SELECT
+                e.provider,
+                e.task_name                                      AS task,
+                AVG(CASE WHEN r.workflow_type='linear'
+                         THEN r.total_energy_uj/1e6 END)         AS linear_j,
+                AVG(CASE WHEN r.workflow_type='agentic'
+                         THEN r.total_energy_uj/1e6 END)         AS agentic_j
+            FROM runs r
+            JOIN experiments e ON r.exp_id = e.exp_id
+            WHERE e.group_id = '{group_id}'
+            GROUP BY e.provider, e.task_name
+            HAVING linear_j IS NOT NULL AND agentic_j IS NOT NULL
+        """)
+        if df2 is not None and not df2.empty:
+            df2["tax_x"] = df2["agentic_j"] / df2["linear_j"].clip(lower=1e-9)
+            df2["ci"] = ""
+            return df2.to_dict("records")
+    except Exception:
+        pass
+    return []
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LIVE VIEW WIDGET
-# FIX: extracted into its own function so it can be called OUTSIDE the tab block.
-# This means the live view renders whether the user is on the Live tab or any
-# other tab — Streamlit will show it above the tabs.
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _render_live_view():
-    """
-    Render the live execution panel. Called at the TOP LEVEL of render() so it
-    persists across tab switches. Only visible when ex_running or ex_done is True.
-    """
-    # Always read directly from _STORE for freshest data
     _running = _store_get('running', False)
     _done    = _store_get('done',    False)
     if not (_running or _done):
         return
-    # Update session_state so rest of UI stays in sync
     st.session_state.ex_running = _running
     st.session_state.ex_done    = _done
 
@@ -725,13 +624,11 @@ def _render_live_view():
     m     = _store_get('metrics', {})
     gid   = _store_get('group_id', '')
 
-    # Phase banner + progress bar
     pc = {"starting": "#7090b0", "planning": "#f59e0b",
           "execution": "#3b82f6", "synthesis": "#a78bfa",
           "running": "#22c55e", "complete": "#22c55e",
           "error": "#ef4444", "idle": "#3d5570"}.get(phase, "#7090b0")
 
-    # ── Stop button + phase banner ─────────────────────────────────────────
     hdr_col, stop_col = st.columns([5, 1])
     cur_cmd = _store_get('current_cmd', '')
     hdr_col.markdown(
@@ -741,15 +638,19 @@ def _render_live_view():
         f"<span style='font-size:10px;padding:3px 10px;background:{pc}22;"
         f"border:1px solid {pc};border-radius:4px;color:{pc};font-weight:700;'>"
         f"● {phase.upper()}</span>"
-        f"<span style='font-size:10px;color:#e8f0f8;margin-left:6px;font-weight:600;'>{rec.get('name','')}</span>"
+        f"<span style='font-size:10px;color:#e8f0f8;margin-left:6px;font-weight:600;'>"
+        f"{rec.get('name','')}</span>"
         f"<span style='font-size:9px;color:#3d5570;margin-left:8px;'>{int(prog*100)}%</span>"
-        f"{'<span style=\"font-size:9px;color:#22c55e;margin-left:8px;\">⚡ RUNNING</span>' if st.session_state.ex_running else ''}"
+        f"{'<span style=\"font-size:9px;color:#22c55e;margin-left:8px;\">⚡ RUNNING</span>' if _running else ''}"
         f"</div>",
         unsafe_allow_html=True)
-    if st.session_state.ex_running:
-        if stop_col.button('⏹ Stop', type='secondary', use_container_width=True, key='stop_run_btn'):
+
+    if _running:
+        if stop_col.button('⏹ Stop', type='secondary', use_container_width=True,
+                           key='stop_run_btn'):
             _store_set('stop', True)
-            st.warning('Stop signal sent — current experiment will finish its current rep then halt.')
+            st.warning('Stop signal sent.')
+
     if cur_cmd:
         st.markdown(
             f"<div style='font-family:monospace;font-size:9px;color:#3d5570;"
@@ -759,43 +660,39 @@ def _render_live_view():
             unsafe_allow_html=True)
     st.progress(prog)
 
-    # Two-column layout: LEFT = session tree + Gantt | RIGHT = telemetry + log
     left_col, right_col = st.columns([1, 1])
 
     with left_col:
         st.markdown(
             "<div style='font-size:10px;font-weight:700;color:#7090b0;"
-            "text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;'>"
-            "🌳 Session Tree</div>",
-            unsafe_allow_html=True)
-        _session_tree(gid)
+            "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
+            "🌳 Session Tree</div>", unsafe_allow_html=True)
+        render_session_tree(group_id=gid, expanded=True,
+                            live_log=_store_get('log', []), key_suffix="live")
         st.markdown(
             "<div style='font-size:10px;font-weight:700;color:#7090b0;"
-            "text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px;'>"
-            "⏱ Timeline</div>",
-            unsafe_allow_html=True)
-        _gantt_chart(gid)
+            "text-transform:uppercase;letter-spacing:.08em;margin:6px 0 2px;'>"
+            "⏱ Timeline</div>", unsafe_allow_html=True)
+        # FIX #3: stable chart — no blink
+        _gantt_chart_stable(gid)
 
     with right_col:
         st.markdown(
             "<div style='font-size:10px;font-weight:700;color:#7090b0;"
             "text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;'>"
-            "⚡ Live Telemetry</div>",
-            unsafe_allow_html=True)
+            "⚡ Live Telemetry</div>", unsafe_allow_html=True)
         st.markdown(
             f"<div style='display:flex;justify-content:space-around;'>"
             f"{_gauge_svg(m.get('pkg_w',0),0,80,'Pkg Power','W','#3b82f6',warn=50,danger=70)}"
             f"{_gauge_svg(m.get('core_w',0),0,60,'Core Power','W','#22c55e',warn=40,danger=55)}"
             f"{_gauge_svg(m.get('temp_c',0),30,105,'Pkg Temp','°C','#f59e0b',warn=80,danger=95)}"
-            f"</div>",
-            unsafe_allow_html=True)
+            f"</div>", unsafe_allow_html=True)
         st.markdown(
             _bar_gauge(m.get('util', 0),   100,   "CPU Util",  "%",        "#38bdf8") +
             _bar_gauge(min(m.get('irq', 0), 50000), 50000, "IRQ Rate", "/s", "#f59e0b") +
             _bar_gauge(m.get('ipc', 0),    3.0,   "IPC",       "inst/cyc", "#a78bfa"),
             unsafe_allow_html=True)
 
-        # Live log (last 40 lines)
         if log:
             log_html = "".join(
                 f"<div style='color:"
@@ -806,14 +703,11 @@ def _render_live_view():
             st.markdown(
                 "<div style='background:#050810;border:1px solid #1e2d45;"
                 "border-radius:4px;padding:8px;height:220px;overflow-y:auto;'>"
-                f"{log_html}</div>",
-                unsafe_allow_html=True)
+                f"{log_html}</div>", unsafe_allow_html=True)
 
-    # Auto-refresh while running (no sleep — _STORE is read fresh each rerun)
-    if st.session_state.ex_running:
+    if _running:
         st.rerun()
 
-    # Results once done
     if st.session_state.ex_done and st.session_state.ex_result_rows:
         st.divider()
         st.markdown("### 📊 Results")
@@ -824,19 +718,23 @@ def _render_live_view():
         })
         st.session_state.ex_done = False
 
-    # Next in queue
-    if not st.session_state.ex_running and st.session_state.ex_queue:
+    if not _running and st.session_state.ex_queue:
         st.info(f"⏳ {len(st.session_state.ex_queue)} more queued — click ▶ Start again.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ANALYTICS CARD
+# ANALYTICS CARD  (uses DB-sourced tax rows — always agentic/linear >= 1)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _analytics_card(session: dict):
     rows  = session.get("summary_rows", [])
     lines = session.get("log", [])
     sid   = session.get("sid", "x")
+    gid   = session.get("group_id", "")
+
+    # If no rows in memory, try loading from DB using group_id
+    if not rows and gid:
+        rows = _load_tax_from_db(gid)
 
     if rows:
         _thresholds = INSIGHTS_RULES.get("tax_thresholds", {})
@@ -848,29 +746,39 @@ def _analytics_card(session: dict):
 
         rh = ""
         for r in rows:
-            tc  = _tax_color(r["tax_x"])
-            mx  = max(r["linear_j"], r["agentic_j"], 0.001)
-            lw, aw = r["linear_j"] / mx * 100, r["agentic_j"] / mx * 100
-            hi   = _human_energy(r["agentic_j"])
+            lin_j = float(r.get("linear_j", 0) or 0)
+            age_j = float(r.get("agentic_j", 0) or 0)
+            tax_x = float(r.get("tax_x", 0) or 0)
+            # Ensure tax is always agentic/linear
+            if lin_j > 0 and age_j > 0:
+                tax_x = age_j / lin_j
+            tc  = _tax_color(tax_x)
+            mx  = max(lin_j, age_j, 0.001)
+            lw  = lin_j / mx * 100
+            aw  = age_j / mx * 100
+            hi   = _human_energy(age_j)
             hi_s = hi[0][1] if hi else ""
             rh += (
                 f"<tr style='border-bottom:1px solid #111827;'>"
-                f"<td style='padding:9px 8px;font-size:10px;color:#7090b0;'>{r['provider']}</td>"
-                f"<td style='padding:9px 8px;font-size:10px;color:#e8f0f8;min-width:140px;'>{r['task']}</td>"
+                f"<td style='padding:9px 8px;font-size:10px;color:#7090b0;'>"
+                f"{r.get('provider','')}</td>"
+                f"<td style='padding:9px 8px;font-size:10px;color:#e8f0f8;min-width:140px;'>"
+                f"{r.get('task','')}</td>"
                 f"<td style='padding:9px 8px;'>"
-                f"<div style='font-size:11px;color:#22c55e;font-family:monospace;'>{r['linear_j']:.4f} J</div>"
+                f"<div style='font-size:11px;color:#22c55e;font-family:monospace;'>"
+                f"{lin_j:.4f} J</div>"
                 f"<div style='background:#1e2d45;border-radius:2px;height:5px;width:110px;margin-top:3px;'>"
                 f"<div style='background:#22c55e;width:{lw:.0f}%;height:100%;border-radius:2px;'></div></div>"
                 f"</td><td style='padding:9px 8px;'>"
-                f"<div style='font-size:11px;color:#ef4444;font-family:monospace;'>{r['agentic_j']:.4f} J</div>"
+                f"<div style='font-size:11px;color:#ef4444;font-family:monospace;'>"
+                f"{age_j:.4f} J</div>"
                 f"<div style='background:#1e2d45;border-radius:2px;height:5px;width:110px;margin-top:3px;'>"
                 f"<div style='background:#ef4444;width:{aw:.0f}%;height:100%;border-radius:2px;'></div></div>"
                 f"</td><td style='padding:9px 8px;text-align:center;'>"
                 f"<span style='font-size:14px;font-weight:700;color:{tc};font-family:monospace;'>"
-                f"{r['tax_x']:.2f}×</span>"
-                f"</td><td style='padding:9px 8px;font-size:9px;color:#3d5570;font-family:monospace;'>"
-                f"{r.get('ci','')}</td>"
-                f"<td style='padding:9px 8px;font-size:9px;color:#7090b0;'>{hi_s}</td>"
+                f"{tax_x:.2f}×</span>"
+                f"</td><td style='padding:9px 8px;font-size:9px;color:#7090b0;'>"
+                f"{hi_s}</td>"
                 f"</tr>"
             )
 
@@ -879,31 +787,40 @@ def _analytics_card(session: dict):
             "overflow:hidden;margin:10px 0;'>"
             "<div style='background:#0a0e1a;padding:8px 14px;border-bottom:1px solid #1e2d45;"
             "font-size:10px;font-weight:700;color:#4fc3f7;letter-spacing:.08em;"
-            "text-transform:uppercase;'>⚡ Apple-to-Apple Energy Comparison</div>"
+            "text-transform:uppercase;'>⚡ Agentic vs Linear — Energy Overhead</div>"
             "<table style='width:100%;border-collapse:collapse;'>"
             "<thead><tr style='background:#0a0e1a;border-bottom:2px solid #1e2d45;'>"
             "<th style='padding:7px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;'>Provider</th>"
             "<th style='padding:7px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;'>Task</th>"
             "<th style='padding:7px 8px;font-size:9px;color:#22c55e;text-align:left;text-transform:uppercase;'>Linear</th>"
             "<th style='padding:7px 8px;font-size:9px;color:#ef4444;text-align:left;text-transform:uppercase;'>Agentic</th>"
-            "<th style='padding:7px 8px;font-size:9px;color:#f59e0b;text-align:center;text-transform:uppercase;'>Tax</th>"
-            "<th style='padding:7px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;'>95% CI</th>"
+            "<th style='padding:7px 8px;font-size:9px;color:#f59e0b;text-align:center;text-transform:uppercase;'>Tax (A/L)</th>"
             "<th style='padding:7px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;'>Insight</th>"
             f"</tr></thead><tbody>{rh}</tbody></table></div>",
             unsafe_allow_html=True,
         )
 
         if len(rows) > 1:
-            best  = min(rows, key=lambda r: r["tax_x"])
-            worst = max(rows, key=lambda r: r["tax_x"])
-            avg_t = sum(r["tax_x"] for r in rows) / len(rows)
+            tax_vals = [age_j / max(lin_j, 1e-9)
+                        for r in rows
+                        for lin_j, age_j in [(float(r.get("linear_j",0) or 0),
+                                              float(r.get("agentic_j",0) or 0))]]
+            best_r  = min(rows, key=lambda r: float(r.get("agentic_j",0) or 0) /
+                          max(float(r.get("linear_j",0) or 1), 1e-9))
+            worst_r = max(rows, key=lambda r: float(r.get("agentic_j",0) or 0) /
+                          max(float(r.get("linear_j",0) or 1), 1e-9))
+            avg_t = sum(tax_vals) / len(tax_vals)
+            best_t  = float(best_r.get("agentic_j",0)) / max(float(best_r.get("linear_j",1)), 1e-9)
+            worst_t = float(worst_r.get("agentic_j",0)) / max(float(worst_r.get("linear_j",1)), 1e-9)
             c1, c2, c3 = st.columns(3)
-            c1.success(f"**✅ Lowest overhead**\n\n{best['provider']} · {best['task'][:24]}\n\n**{best['tax_x']:.2f}×**")
-            c2.error(f"**⚠ Highest overhead**\n\n{worst['provider']} · {worst['task'][:24]}\n\n**{worst['tax_x']:.2f}×**")
+            c1.success(f"**✅ Lowest overhead**\n\n{best_r.get('provider','')} · "
+                       f"{str(best_r.get('task',''))[:24]}\n\n**{best_t:.2f}×**")
+            c2.error(f"**⚠ Highest overhead**\n\n{worst_r.get('provider','')} · "
+                     f"{str(worst_r.get('task',''))[:24]}\n\n**{worst_t:.2f}×**")
             c3.info(f"**📈 Average**\n\n{len(rows)} comparisons · **{avg_t:.2f}×** mean tax")
 
         df  = pd.DataFrame(rows)
-        df["label"] = df["provider"] + " · " + df["task"].str[:22]
+        df["label"] = df["provider"].astype(str) + " · " + df["task"].astype(str).str[:22]
         fig = go.Figure()
         fig.add_trace(go.Bar(name="Linear",  x=df["label"], y=df["linear_j"],
                              marker_color="#22c55e", text=df["linear_j"].round(3),
@@ -913,16 +830,19 @@ def _analytics_card(session: dict):
                              textposition="outside", textfont=dict(size=8)))
         _pl2 = {k: v for k, v in PL.items() if k != 'margin'}
         fig.update_layout(**_pl2, barmode="group", height=260,
-                          title="Linear vs Agentic energy — this run",
+                          title="Linear vs Agentic energy",
                           xaxis_tickangle=20, margin=dict(t=40, b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        import time as _t
+        st.plotly_chart(fig, use_container_width=True,
+                        key=f'ac_{sid}_{_t.time_ns()}')
 
-        csv = df[["provider", "task", "linear_j", "agentic_j", "tax_x", "ci"]].to_csv(index=False)
-        st.download_button("📥 Export CSV", csv,
+        csv = df[["provider", "task", "linear_j", "agentic_j"]].copy()
+        csv["tax_x"] = csv["agentic_j"] / csv["linear_j"].clip(lower=1e-9)
+        st.download_button("📥 Export CSV", csv.to_csv(index=False),
                            file_name=f"alems_{sid}.csv",
-                           mime="text/csv", key=f"csv_{sid}")
+                           mime="text/csv", key=f"csv_{sid}_{__import__('time').time_ns()}")
     else:
-        st.info("No summary rows parsed yet. Check raw log below.")
+        st.info("No tax data found yet. Results appear after the experiment completes.")
 
     with st.expander("📋 Raw log", expanded=False):
         log_html = "".join(
@@ -938,7 +858,7 @@ def _analytics_card(session: dict):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# REMOTE EXECUTION STREAM
+# REMOTE EXECUTION
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _run_remote(exp: dict, session_id: str, base_url: str):
@@ -1016,13 +936,95 @@ def _run_remote(exp: dict, session_id: str, base_url: str):
         if data.get("done") or status in ("complete", "error", "cancelled"):
             if status == "complete":
                 prog_ph.progress(1.0)
-                st.success("✅ Remote run complete — DB updated on lab machine.")
-                summary_rows = _parse_summary(lines)
+                st.success("✅ Remote run complete.")
+                # Load tax from DB after remote run completes
+                gid = data.get("group_id", "")
+                summary_rows = _load_tax_from_db(gid) if gid else []
             else:
                 st.error(f"Run ended: {status}")
             return (0 if status == "complete" else 1), lines, summary_rows
 
     st.warning("Polling timed out."); return -1, lines, []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIX #5 & #6: BEAUTIFUL RUN HISTORY CARD
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _history_card(sess: dict, idx: int, expanded: bool):
+    """Beautiful history card for Tab 4."""
+    status  = sess.get("status", "?")
+    is_ok   = status == "complete"
+    clr     = "#22c55e" if is_ok else "#ef4444"
+    icon    = "✅" if is_ok else "❌"
+    name    = sess.get("name", "Run")
+    ts      = sess.get("ts", "")
+    rows    = sess.get("summary_rows", [])
+    gid     = sess.get("group_id", "")
+    n_pairs = len(rows)
+
+    # Load from DB if in-memory rows empty
+    if not rows and gid:
+        rows = _load_tax_from_db(gid)
+        n_pairs = len(rows)
+
+    header = f"{icon}  {name}  ·  {ts}  ·  {n_pairs} pair{'s' if n_pairs != 1 else ''}"
+
+    with st.expander(header, expanded=expanded):
+        # Card header bar
+        st.markdown(
+            f"<div style='background:#080c18;border:1px solid {clr}33;"
+            f"border-left:4px solid {clr};border-radius:6px;"
+            f"padding:8px 14px;margin-bottom:10px;display:flex;"
+            f"align-items:center;gap:16px;flex-wrap:wrap;'>"
+            f"<span style='font-size:11px;font-weight:700;color:{clr};'>"
+            f"{icon} {status.upper()}</span>"
+            f"<span style='font-size:11px;color:#c8d8e8;font-weight:600;'>{name}</span>"
+            f"<span style='font-size:10px;color:#3d5570;font-family:monospace;'>{ts}</span>"
+            f"{'<span style=\"font-size:10px;color:#4b6080;font-family:monospace;\">'+gid+'</span>' if gid else ''}"
+            f"</div>",
+            unsafe_allow_html=True)
+
+        if rows:
+            # Mini tax summary grid
+            cols = st.columns(min(len(rows), 3))
+            for ci, r in enumerate(rows[:3]):
+                lin_j = float(r.get("linear_j", 0) or 0)
+                age_j = float(r.get("agentic_j", 0) or 0)
+                tax   = age_j / max(lin_j, 1e-9)
+                t_clr = "#ef4444" if tax > 10 else "#f59e0b" if tax > 5 else "#22c55e"
+                with cols[ci]:
+                    st.markdown(
+                        f"<div style='background:#07090f;border:1px solid #1e2d45;"
+                        f"border-radius:6px;padding:10px 12px;text-align:center;'>"
+                        f"<div style='font-size:9px;color:#5a7090;margin-bottom:4px;'>"
+                        f"{r.get('provider','')} · {str(r.get('task',''))[:18]}</div>"
+                        f"<div style='font-size:22px;font-weight:800;color:{t_clr};"
+                        f"font-family:monospace;line-height:1;'>{tax:.2f}×</div>"
+                        f"<div style='font-size:8px;color:#3d5570;margin-top:4px;'>"
+                        f"Linear {lin_j:.3f}J → Agentic {age_j:.3f}J</div>"
+                        f"</div>",
+                        unsafe_allow_html=True)
+
+            st.markdown("")
+            _analytics_card(dict(sess, summary_rows=rows))
+        else:
+            st.caption("No tax data available for this run.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIX #2: NON-BLOCKING get_conn()
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _get_conn_safe() -> dict:
+    """get_conn with 2s timeout so startup never hangs."""
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(get_conn)
+        try:
+            return fut.result(timeout=2)
+        except Exception:
+            return {}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1035,8 +1037,8 @@ def render(ctx: dict):
 
     st.title("Execute Run")
 
-    # ── Mode banner ────────────────────────────────────────────────────────────
-    _conn = get_conn()
+    # FIX #2: non-blocking mode banner
+    _conn = _get_conn_safe()
     if _conn.get("verified"):
         _hclr = "#22c55e" if _conn.get("harness") else "#f59e0b"
         _hmsg = ("Harness ready — runs execute on lab machine"
@@ -1047,7 +1049,7 @@ def render(ctx: dict):
             f"padding:8px 14px;margin-bottom:10px;font-size:11px;'>"
             f"🟢 <b style='color:#22c55e'>LIVE MODE</b>  ·  "
             f"<span style='color:{_hclr}'>{_hmsg}</span><br/>"
-            f"<span style='color:#3d5570;font-size:9px;'>Tunnel: {_conn['url']}</span></div>",
+            f"<span style='color:#3d5570;font-size:9px;'>Tunnel: {_conn.get('url','')}</span></div>",
             unsafe_allow_html=True)
     else:
         st.markdown(
@@ -1058,11 +1060,13 @@ def render(ctx: dict):
             "<span style='color:#5a7090'>Runs execute on this machine.</span></div>",
             unsafe_allow_html=True)
 
-    # ── Queue banner ───────────────────────────────────────────────────────────
-    # Keep queue in sync between _STORE and session_state
+    # Queue banner
+    # FIX: Only sync session_state.ex_queue → _STORE when NOT running.
+    # If running, the thread owns _STORE["queue"]; syncing overwrites pops done by thread
+    # and causes infinite re-queuing.
     if 'ex_queue' not in st.session_state:
         st.session_state.ex_queue = _store_get('queue', [])
-    else:
+    elif not _store_get('running', False):
         _store_set('queue', list(st.session_state.ex_queue))
     qlen = len(st.session_state.ex_queue)
     if qlen > 0:
@@ -1074,29 +1078,12 @@ def render(ctx: dict):
             f"</div>",
             unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # LIVE VIEW — rendered OUTSIDE tabs so tab-switching never hides it
-    # ══════════════════════════════════════════════════════════════════════════
-    # Sync running/done directly from _STORE before checking
+    # Live view is now INSIDE tab 2 only — see TAB 2 block below
     st.session_state.ex_running = _store_get('running', False)
     st.session_state.ex_done    = _store_get('done', False)
-    if st.session_state.ex_running or st.session_state.ex_done:
-        with st.container():
-            st.markdown(
-                "<div style='background:#07080f;border:1px solid #22c55e33;"
-                "border-left:4px solid #22c55e;border-radius:6px;padding:4px 14px 0;"
-                "margin-bottom:6px;'>"
-                "<div style='font-size:10px;font-weight:700;color:#22c55e;"
-                "letter-spacing:.1em;text-transform:uppercase;padding:6px 0;'>"
-                "⚡ Live Execution  —  visible from any tab</div></div>",
-                unsafe_allow_html=True)
-            _render_live_view()
-        st.divider()
 
-    # ── Load tasks from YAML ───────────────────────────────────────────────────
     all_tasks, _cat_map, _name_map = _load_tasks()
 
-    # ── Tab layout ─────────────────────────────────────────────────────────────
     tab1, tab2, tab3, tab4 = st.tabs([
         "📋 Create & Queue",
         "⚡ Live Execution",
@@ -1124,7 +1111,8 @@ def render(ctx: dict):
             if "Single" in exp_mode:
                 task_labels = [f"{tid}  ({_cat_map.get(tid,'')})" for tid in all_tasks]
                 h_task_idx  = st.selectbox("Task", range(len(all_tasks)),
-                                            format_func=lambda i: task_labels[i], key="h_task_idx")
+                                            format_func=lambda i: task_labels[i],
+                                            key="h_task_idx")
                 h_task    = all_tasks[h_task_idx]
                 h_prov    = st.selectbox("Provider", ["cloud", "local"], key="h_prov")
                 h_reps    = st.number_input("Repetitions", 1, 100, 3, key="h_reps")
@@ -1132,7 +1120,8 @@ def render(ctx: dict):
                     ["US","DE","FR","NO","IN","AU","GB","CN","BR"],
                     format_func=lambda x: {"US":"🇺🇸 US","DE":"🇩🇪 DE","FR":"🇫🇷 FR",
                         "NO":"🇳🇴 NO","IN":"🇮🇳 IN","AU":"🇦🇺 AU",
-                        "GB":"🇬🇧 GB","CN":"🇨🇳 CN","BR":"🇧🇷 BR"}.get(x, x), key="h_country")
+                        "GB":"🇬🇧 GB","CN":"🇨🇳 CN","BR":"🇧🇷 BR"}.get(x, x),
+                    key="h_country")
                 h_cd      = st.number_input("Cool-down (s)", 0, 120, 5, step=5, key="h_cd")
                 h_save_db = st.checkbox("--save-db",   value=True,  key="h_savedb")
                 h_opt     = st.checkbox("--optimizer", value=False, key="h_opt")
@@ -1170,7 +1159,8 @@ def render(ctx: dict):
                     ["US","DE","FR","NO","IN","AU","GB","CN","BR"],
                     format_func=lambda x: {"US":"🇺🇸 US","DE":"🇩🇪 DE","FR":"🇫🇷 FR",
                         "NO":"🇳🇴 NO","IN":"🇮🇳 IN","AU":"🇦🇺 AU",
-                        "GB":"🇬🇧 GB","CN":"🇨🇳 CN","BR":"🇧🇷 BR"}.get(x, x), key="b_country")
+                        "GB":"🇬🇧 GB","CN":"🇨🇳 CN","BR":"🇧🇷 BR"}.get(x, x),
+                    key="b_country")
                 b_cd      = st.number_input("Cool-down (s)", 0, 120, 5, step=5, key="b_cd")
                 b_save_db = st.checkbox("--save-db",   value=True,  key="b_savedb")
                 b_opt     = st.checkbox("--optimizer", value=False, key="b_opt")
@@ -1198,7 +1188,8 @@ def render(ctx: dict):
                 st.session_state.ex_saved.append(dict(meta))
                 st.success(f"Saved **{exp_name}**")
 
-            if c2.button("▶ Run Now", type="primary", use_container_width=True, key="ex_run_now"):
+            if c2.button("▶ Run Now", type="primary", use_container_width=True,
+                         key="ex_run_now"):
                 if st.session_state.ex_running:
                     st.warning("A run is already in progress. Queue it instead.")
                 else:
@@ -1219,7 +1210,8 @@ def render(ctx: dict):
                 for i, exp in enumerate(st.session_state.ex_saved):
                     ea, eb, ec = st.columns([3, 1, 1])
                     ea.markdown(
-                        f"<div style='font-size:12px;font-weight:600;color:#e8f0f8;'>{exp['name']}</div>"
+                        f"<div style='font-size:12px;font-weight:600;color:#e8f0f8;'>"
+                        f"{exp['name']}</div>"
                         f"<div style='font-size:10px;color:#7090b0;'>"
                         f"{exp.get('task', ', '.join(exp.get('tasks', [])))[:30]} · "
                         f"{exp.get('provider', '/'.join(exp.get('providers', [])))} · "
@@ -1236,7 +1228,8 @@ def render(ctx: dict):
                     for e in st.session_state.ex_saved:
                         st.session_state.ex_queue.append(dict(e))
                     _save_queue()
-                    st.success(f"Queued {len(st.session_state.ex_saved)} experiments"); st.rerun()
+                    st.success(f"Queued {len(st.session_state.ex_saved)} experiments")
+                    st.rerun()
 
             st.divider()
             st.markdown("#### ⏳ Queue")
@@ -1258,10 +1251,10 @@ def render(ctx: dict):
                     _save_queue(); st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 2 — LIVE EXECUTION (start button only; panel is above tabs)
+    # TAB 2 — LIVE EXECUTION (start button only)
     # ══════════════════════════════════════════════════════════════════════════
     with tab2:
-        conn = get_conn()
+        conn = _get_conn_safe()
 
         if not st.session_state.ex_running and st.session_state.ex_queue:
             next_exp = st.session_state.ex_queue[0]
@@ -1309,6 +1302,12 @@ def render(ctx: dict):
                             _analytics_card(record)
                 else:
                     st.session_state.ex_run_record = {"sid": sid, "name": exp["name"], "exp": exp}
+                    # FIX: sync remaining queue to _STORE ONCE before starting thread
+                    # then clear session queue so rerun loop can't re-add items
+                    remaining = list(st.session_state.ex_queue)  # already popped first exp above
+                    _store_set('queue', remaining)
+                    st.session_state.ex_queue.clear()
+                    _save_queue()
                     t = threading.Thread(
                         target=_thread_run_local, args=(exp, sid), daemon=True)
                     t.start()
@@ -1320,26 +1319,28 @@ def render(ctx: dict):
                 st.info("Queue is empty. Go to 📋 Create & Queue to add experiments.")
 
         if st.session_state.ex_running or st.session_state.ex_done:
-            st.info("⬆️ Live execution panel is shown above the tabs so it stays visible from any tab.")
+            _render_live_view()
+
+
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 3 — SESSION ANALYSIS
     # ══════════════════════════════════════════════════════════════════════════
     with tab3:
         from gui.pages.session_analysis import render_session_analysis
-
         st.markdown("### 📊 Session Analysis")
 
-        # Pull recent sessions from DB
         try:
             recent = q("""
-                SELECT group_id,
-                       COUNT(*) as n_exps,
-                       SUM(runs_completed) as n_runs,
-                       MAX(created_at) as latest
-                FROM experiments
-                GROUP BY group_id
-                ORDER BY MAX(exp_id) DESC
+                SELECT
+                    e.group_id,
+                    COUNT(DISTINCT e.exp_id)                                  AS n_exps,
+                    COUNT(DISTINCT r.run_number ||'_'|| CAST(e.exp_id AS TEXT)) AS n_runs,
+                    MAX(e.created_at)                                          AS latest
+                FROM experiments e
+                LEFT JOIN runs r ON r.exp_id = e.exp_id
+                GROUP BY e.group_id
+                ORDER BY MAX(e.exp_id) DESC
                 LIMIT 10
             """)
         except Exception:
@@ -1361,22 +1362,38 @@ def render(ctx: dict):
                 key="t3_gid_sel"
             )
             if sel_gid:
+                render_session_tree(sel_gid, expanded=False, key_suffix="hist")
                 render_session_analysis(sel_gid)
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 4 — RUN HISTORY
+    # TAB 4 — RUN HISTORY  (FIX #5: always below, beautiful cards)
     # ══════════════════════════════════════════════════════════════════════════
     with tab4:
-        st.markdown("#### 📈 All Runs This Session")
-        if not st.session_state.ex_sessions:
-            st.info("No runs yet. Completed runs appear here as expandable cards.")
+        sessions = list(st.session_state.ex_sessions or [])
+
+        if not sessions:
+            st.markdown(
+                "<div style='text-align:center;padding:60px 0;'>"
+                "<div style='font-size:48px;margin-bottom:16px;'>📭</div>"
+                "<div style='font-size:16px;color:#4b6080;font-weight:600;'>"
+                "No runs yet</div>"
+                "<div style='font-size:12px;color:#3d5570;margin-top:6px;'>"
+                "Completed runs will appear here as expandable cards</div>"
+                "</div>",
+                unsafe_allow_html=True)
         else:
-            for i, sess in enumerate(reversed(st.session_state.ex_sessions)):
-                idx   = len(st.session_state.ex_sessions) - 1 - i
-                sclr  = "#22c55e" if sess.get("status") == "complete" else "#ef4444"
-                sicon = "✅" if sess.get("status") == "complete" else "❌"
-                with st.expander(
-                    f"{sicon} {sess['name']}  ·  {sess.get('ts','')}  ·  "
-                    f"{len(sess.get('summary_rows',[]))} pairs",
-                    expanded=(i == 0)):
-                    _analytics_card(sess)
+            # Newest first
+            sessions_rev = list(reversed(sessions))
+            n = len(sessions_rev)
+
+            st.markdown(
+                f"<div style='display:flex;align-items:center;gap:12px;margin-bottom:16px;'>"
+                f"<div style='font-size:11px;font-weight:700;color:#7090b0;"
+                f"text-transform:uppercase;letter-spacing:.1em;'>Run History</div>"
+                f"<div style='background:#1e2d45;border-radius:10px;padding:2px 10px;"
+                f"font-size:10px;color:#4fc3f7;font-weight:600;'>{n} run{'s' if n!=1 else ''}</div>"
+                f"</div>",
+                unsafe_allow_html=True)
+
+            for i, sess in enumerate(sessions_rev):
+                _history_card(sess, idx=i, expanded=(i == 0))

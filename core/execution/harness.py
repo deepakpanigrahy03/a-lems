@@ -562,7 +562,7 @@ class ExperimentHarness:
         # Add high-frequency samples to result
         # ====================================================================
         if hasattr(self.energy_engine, 'last_samples'):
-            result['energy_samples'] = self.energy_engine.last_samples
+            result['energy_samples'] = list(self.energy_engine.last_samples)
             dprint(f"📊 Added {len(self.energy_engine.last_samples)} energy samples to result")
         else:
             dprint("⚠️ No last_samples attribute found in energy_engine")
@@ -953,7 +953,7 @@ class ExperimentHarness:
         # Add high-frequency samples to result
         # ====================================================================
         if hasattr(self.energy_engine, 'last_samples'):
-            result['energy_samples'] = self.energy_engine.last_samples
+            result['energy_samples'] = list(self.energy_engine.last_samples)
             dprint(f"📊 Added {len(self.energy_engine.last_samples)} energy samples to result")
         else:
             dprint("⚠️ No last_samples attribute found in energy_engine")

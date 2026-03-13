@@ -1,0 +1,32 @@
+containers:
+- conditions:
+  - connector: null
+    metric: tax_multiplier
+    operator: '>'
+    run: C1
+    value: 10.0
+    value2: null
+  - connector: null
+    metric: tax_multiplier
+    operator: '>'
+    run: STOP
+    value: 10.0
+    value2: null
+  cool_down: 5
+  id: C1
+  label: Container 1
+  providers:
+  - cloud
+  repetitions: 2
+  tasks: []
+- conditions: []
+  cool_down: 9
+  id: C2
+  label: Container 2
+  providers:
+  - local
+  repetitions: 1
+  tasks: []
+created: 2026-03-12 16:09
+description: ''
+name: My Plan
