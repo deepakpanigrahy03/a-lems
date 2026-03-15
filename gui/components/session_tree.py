@@ -367,7 +367,7 @@ def _render_experiment(exp: dict, is_last: bool, expanded: bool, live_log=None):
     except Exception:
         rc = int(exp.get("runs_completed") or 0)
 
-    rt = int(exp.get("runs_total") or 0)
+    rt = int((exp.get("runs_total") or 0))  // 2
 
     # If still 0 and running, try parsing from live log
     if rc == 0 and status == "running" and live_log:
@@ -403,7 +403,7 @@ def _render_experiment(exp: dict, is_last: bool, expanded: bool, live_log=None):
         f"border-radius:3px;'></div></div>"
     )
 
-    header_txt = f"{prefix} {icon} exp_{exp_id}  {provider}  {task}  {status}  {rc}/{rt}"
+    header_txt = f"{prefix} {icon} exp_{exp_id}  {provider}  {task}  {status}  {rc}/{rt} pairs"
 
     with st.expander(header_txt, expanded=expanded):
         st.markdown(
@@ -417,7 +417,7 @@ def _render_experiment(exp: dict, is_last: bool, expanded: bool, live_log=None):
             f"{'<span style=\"color:#4b6080;font-size:9px;\">'+model+'</span>' if model else ''}"
             f"<span style='background:{clr}18;border:1px solid {clr}44;"
             f"border-radius:3px;padding:1px 6px;font-size:9px;color:{clr};'>{status}</span>"
-            f"<span style='color:#2d3f55;font-size:9px;'>{rc}/{rt}</span>"
+            f"<span style='color:#2d3f55;font-size:9px;'>{rc}/{rt} pairs</span>"
             f"{prog_bar}"
             f"<span style='color:#2d3f55;font-size:9px;'>{dur_str}</span>"
             f"</div>",

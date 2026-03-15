@@ -97,7 +97,17 @@ def load_runs() -> pd.DataFrame:
             r.carbon_g, r.water_ml,
             r.energy_per_token, r.energy_per_instruction,
             e.provider, e.country_code, e.model_name, e.task_name,
-            r.governor, r.turbo_enabled
+            r.governor, r.turbo_enabled,
+            r.rss_memory_mb, r.vms_memory_mb,
+            r.prompt_tokens, r.completion_tokens,
+            r.dns_latency_ms, r.compute_time_ms,
+            r.swap_total_mb, r.swap_start_used_mb,
+            r.swap_end_used_mb, r.swap_end_percent,
+            r.wakeup_latency_us, r.interrupts_per_second,
+            r.instructions, r.cycles,
+            r.start_time_ns, r.avg_power_watts,
+            r.experiment_valid, r.background_cpu_percent
+             
         FROM runs r
         JOIN experiments e ON r.exp_id = e.exp_id
         ORDER BY r.run_id DESC

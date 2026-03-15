@@ -304,7 +304,7 @@ class RunsRepository:
                 complexity_level, complexity_score,
                 carbon_g, water_ml, methane_mg,
                 energy_per_instruction, energy_per_cycle, energy_per_token,
-                instructions_per_token, interrupts_per_second,
+                instructions_per_token, interrupts_per_second,bytes_sent, bytes_recv, tcp_retransmits,
                 run_state_hash
             ) VALUES (
                 ?, ?, ?, ?, ?,
@@ -328,11 +328,12 @@ class RunsRepository:
                 ?, ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?,
-                ?, ?, ?,
                 ?, ?, ?, ?,
-                ?, ?
+                ?, ?, 
+                ?, ?, ?, 
+                ?, ?, ?, 
+                ?, ?, ?, ?, ?,
+                ? , ?
             )
         """
         
@@ -373,6 +374,9 @@ class RunsRepository:
             fields['energy_per_instruction'], fields['energy_per_cycle'],
             fields['energy_per_token'], fields['instructions_per_token'],
             fields['interrupts_per_second'],
+            ml.get('bytes_sent', 0),
+            ml.get('bytes_recv', 0),
+            ml.get('tcp_retransmits',0),
             run_state_hash
         )
         

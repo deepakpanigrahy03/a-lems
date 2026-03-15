@@ -71,3 +71,6 @@ tmp/
 *_v4.py
 data/*.backup*
 data/*.bkup
+experiments.db
+*.db
+*.db-journal

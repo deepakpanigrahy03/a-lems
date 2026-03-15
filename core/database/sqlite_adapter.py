@@ -727,8 +727,8 @@ class SQLiteAdapter(DatabaseInterface):
                 prompt, response,
                 model_name, provider,
                 prompt_tokens, completion_tokens, total_tokens,
-                api_latency_ms, compute_time_ms
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                api_latency_ms, throughput_kbps, compute_time_ms
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             interaction_data.get('run_id'),
             interaction_data.get('step_index'),
@@ -741,7 +741,9 @@ class SQLiteAdapter(DatabaseInterface):
             interaction_data.get('completion_tokens'),
             interaction_data.get('total_tokens'),
             interaction_data.get('api_latency_ms'),
+            interaction_data.get('throughput_kbps', 0.0),
             interaction_data.get('compute_time_ms')
+            
         ))
         return cursor.lastrowid
 

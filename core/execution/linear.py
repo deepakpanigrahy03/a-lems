@@ -218,12 +218,25 @@ class LinearExecutor:
                     'completion_tokens': tokens.get('completion', 0),
                     'total_tokens': tokens.get('total', 0),
                     'api_latency_ms': api_latency_ms,
-                    'compute_time_ms': execution_time_ms
+                    'compute_time_ms': execution_time_ms,
+                    'bytes_sent': bytes_sent,
+                    'bytes_recv': bytes_recv,
+                    'tcp_retransmits': tcp_retransmits,
+                    'throughput_kbps': effective_kbps
+
                 }
+
+                print(f"🔍 DEBUG - Created interaction with {len(interaction)} fields")
+                print(f"🔍 DEBUG - Network metrics: sent={bytes_sent}, recv={bytes_recv}, retrans={tcp_retransmits}")
+                
+                # Store in pending list
                 if not hasattr(self, 'pending_interactions'):
                     self.pending_interactions = []
+                    print(f"🔍 DEBUG - Initialized pending_interactions")
+                
                 self.pending_interactions.append(interaction)
-                dprint(f"🔍 DEBUG - Added interaction to pending list, now has {len(self.pending_interactions)} items")
+                print(f"🔍 DEBUG - Added interaction, now has {len(self.pending_interactions)} items")
+                
 
             # ====================================================================
             # NEW: Local GGUF model using llama-cpp-python
@@ -267,30 +280,18 @@ class LinearExecutor:
                         'completion_tokens': tokens.get('completion', 0),
                         'total_tokens': tokens.get('total', 0),
                         'api_latency_ms': api_latency_ms,
-                        'compute_time_ms': execution_time_ms
+                        'compute_time_ms': execution_time_ms,
+                        'bytes_sent': bytes_sent,
+                        'bytes_recv': bytes_recv,
+                        'tcp_retransmits': tcp_retransmits,
+                        'throughput_kbps': effective_kbps
                     }
+
+                    
                     if not hasattr(self, 'pending_interactions'):
                         self.pending_interactions = []
                     self.pending_interactions.append(interaction)
-                    dprint(f"🔍 DEBUG - Added interaction to pending list, now has {len(self.pending_interactions)} items")
-
-
-                    interaction = {
-                        'step_index': 1,
-                        'workflow_type': 'linear',
-                        'prompt': prompt,
-                        'response': content,
-                        'model_name': self.config.get('model_id'),
-                        'provider': self.provider,
-                        'prompt_tokens': tokens.get('prompt', 0),
-                        'completion_tokens': tokens.get('completion', 0),
-                        'total_tokens': tokens.get('total', 0),
-                        'api_latency_ms': api_latency_ms,
-                        'compute_time_ms': execution_time_ms
-                    }
-                    if not hasattr(self, 'pending_interactions'):
-                        self.pending_interactions = []
-                    self.pending_interactions.append(interaction)                    
+                    dprint(f"🔍 DEBUG - Added interaction to pending list, now has {len(self.pending_interactions)} items")            
 
                     # Calculate bytes for throughput (optional)
                     response_bytes = len(content.encode('utf-8'))
@@ -336,6 +337,27 @@ class LinearExecutor:
                         'total': usage.get('total_tokens', 0)
                     }
 
+
+                    # ============================================================
+                    # ADD THIS - Store interaction data for cloud provider
+                    # ============================================================
+                    interaction = {
+                        'step_index': 1,
+                        'workflow_type': 'linear',
+                        'prompt': prompt,
+                        'response': content,
+                        'model_name': self.config.get('model_id'),
+                        'provider': self.provider,
+                        'prompt_tokens': tokens.get('prompt', 0),
+                        'completion_tokens': tokens.get('completion', 0),
+                        'total_tokens': tokens.get('total', 0),
+                        'api_latency_ms': api_latency_ms,
+                        'compute_time_ms': execution_time_ms,
+                        'bytes_sent': bytes_sent,
+                        'bytes_recv': bytes_recv,
+                        'tcp_retransmits': tcp_retransmits,
+                        'throughput_kbps': effective_kbps
+                    }
                   
                     # Calculate bytes received and throughput
                     response_bytes = len(content.encode('utf-8'))
@@ -360,7 +382,10 @@ class LinearExecutor:
             # Calculate network deltas
             bytes_sent = net_after['bytes_sent'] - net_before['bytes_sent']
             bytes_recv = net_after['bytes_recv'] - net_before['bytes_recv']
-            tcp_retransmits = net_after['tcp_retransmits'] - net_before['tcp_retransmits']            
+            tcp_retransmits = net_after['tcp_retransmits'] - net_before['tcp_retransmits'] 
+
+            dprint(f"🔍 LLM DEBUG - Network: sent={bytes_sent}, recv={bytes_recv}, retrans={tcp_retransmits}")
+
             result = {
                 "experiment_id": experiment_id,
                 "start_time": start_time,
@@ -385,6 +410,8 @@ class LinearExecutor:
                 "model": self.config.get('model_id'),
                 "provider": self.provider
             }
+
+            print(f"🔍 LLM DEBUG - Result dict has {len(result.get('pending_interactions', []))} pending interactions")
 
             self.pending_interactions = []
             dprint(f"✅ Linear complete: {execution_time_ms:.0f}ms, {tokens.get('total', 0)} tokens")

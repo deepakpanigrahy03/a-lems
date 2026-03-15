@@ -1897,3 +1897,98 @@ def render_session_analysis(group_id: str):
     with s4: _tab_cpu(group_id, runs)
     with s5: _tab_per_pair(group_id, tax)
     with s6: _tab_export(group_id, exps, runs, tax)
+    if not group_id:
+        st.info("No session selected. Run an experiment first, or select a session from the sidebar.")
+        return
+
+    # Load all data for this session
+    exps = _load_session_experiments(group_id)
+
+
+
+
+
+def render(ctx: dict) -> None:
+    import streamlit as st
+    from gui.db import q
+    from gui.components.session_tree import render_session_tree
+
+    sessions = q(
+        "SELECT e.group_id, COUNT(DISTINCT e.exp_id) AS experiments, "
+        "SUM(e.runs_completed) AS runs_done, SUM(e.runs_total) AS runs_total, "
+        "MIN(e.created_at) AS started_at FROM experiments e "
+        "WHERE e.group_id IS NOT NULL GROUP BY e.group_id "
+        "ORDER BY started_at DESC LIMIT 100"
+    )
+    if sessions.empty:
+        st.info("No sessions recorded yet.")
+        return
+
+    def _fmt(row):
+        done  = int(row.get("runs_done")  or 0)
+        total = int(row.get("runs_total") or 0)
+        exps  = int(row.get("experiments") or 0)
+        ts    = str(row.get("started_at") or "")[:16]
+        short = str(row["group_id"]).replace("session_","").replace("_"," ",1)[:22]
+        return f"{short} - {exps} exps - {done}/{total} runs - {ts}"
+
+    group_ids = sessions["group_id"].tolist()
+    labels = [_fmt(sessions.iloc[i]) for i in range(len(sessions))]
+    label_to_id = dict(zip(labels, group_ids))
+    selected_label = st.selectbox("Select session", labels, key="sa_group_sel")
+    sel_group = label_to_id[selected_label]
+    st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
+    accent = "#3b82f6"
+    short_id = sel_group.replace("session_","").replace("_"," ",1)
+    st.markdown(
+        f"<div style='font-size:11px;font-weight:700;color:{accent};"
+        f"padding:10px 14px;background:linear-gradient(135deg,{accent}14,{accent}06);"
+        f"border:1px solid {accent}33;border-radius:8px;margin-bottom:8px;'>"
+        f"Session Tree - {short_id}</div>",
+        unsafe_allow_html=True)
+    render_session_tree(group_id=sel_group, expanded=True, live_log=None, key_suffix="_history")
+    st.markdown("<div style='height:0.5px;background:#1f2937;margin:20px 0;'></div>", unsafe_allow_html=True)
+    render_session_analysis(sel_group)
+
+
+def render(ctx: dict) -> None:
+    import streamlit as st
+    from gui.db import q
+    from gui.components.session_tree import render_session_tree
+
+    sessions = q(
+        "SELECT e.group_id, COUNT(DISTINCT e.exp_id) AS experiments, "
+        "SUM(e.runs_completed) AS runs_done, SUM(e.runs_total) AS runs_total, "
+        "MIN(e.created_at) AS started_at FROM experiments e "
+        "WHERE e.group_id IS NOT NULL GROUP BY e.group_id "
+        "ORDER BY started_at DESC LIMIT 100"
+    )
+    if sessions.empty:
+        st.info("No sessions recorded yet.")
+        return
+
+    def _fmt(row):
+        done  = int(row.get("runs_done")  or 0)
+        total = int(row.get("runs_total") or 0)
+        exps  = int(row.get("experiments") or 0)
+        ts    = str(row.get("started_at") or "")[:16]
+        short = str(row["group_id"]).replace("session_","").replace("_"," ",1)[:22]
+        return f"{short} - {exps} exps - {done}/{total} runs - {ts}"
+
+    group_ids = sessions["group_id"].tolist()
+    labels = [_fmt(sessions.iloc[i]) for i in range(len(sessions))]
+    label_to_id = dict(zip(labels, group_ids))
+    selected_label = st.selectbox("Select session", labels, key="sa_group_sel")
+    sel_group = label_to_id[selected_label]
+    st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
+    accent = "#3b82f6"
+    short_id = sel_group.replace("session_","").replace("_"," ",1)
+    st.markdown(
+        f"<div style='font-size:11px;font-weight:700;color:{accent};"
+        f"padding:10px 14px;background:linear-gradient(135deg,{accent}14,{accent}06);"
+        f"border:1px solid {accent}33;border-radius:8px;margin-bottom:8px;'>"
+        f"Session Tree - {short_id}</div>",
+        unsafe_allow_html=True)
+    render_session_tree(group_id=sel_group, expanded=True, live_log=None, key_suffix="_history")
+    st.markdown("<div style='height:0.5px;background:#1f2937;margin:20px 0;'></div>", unsafe_allow_html=True)
+    render_session_analysis(sel_group)

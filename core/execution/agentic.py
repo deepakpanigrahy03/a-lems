@@ -478,6 +478,7 @@ class AgenticExecutor:
         })     
 
         self.pending_interactions = []  
+        dprint(f"✅ Agentic complete: {execution_time_ms:.0f}ms, {tokens.get('total', 0)} tokens")        
         return result
 
     def execute_comparison(self, task: str) -> Dict[str, Any]:
@@ -720,23 +721,6 @@ You can use tools like calculator or web search if needed.
                     'total': len(prompt.split()) + len(content.split())
                 }
 
-                # ============================================================
-                # Store interaction data (16 spaces indentation)
-                # ============================================================
-                interaction = {
-                    'step_index': call_counter if call_counter else self.call_counter,
-                    'workflow_type': 'agentic',
-                    'prompt': prompt,
-                    'response': content,
-                    'model_name': self.config.get('model_id'),
-                    'provider': self.provider,
-                    'prompt_tokens': tokens.get('prompt', 0),
-                    'completion_tokens': tokens.get('completion', 0),
-                    'total_tokens': tokens.get('total', 0),
-                    'api_latency_ms': api_latency_ms,
-                    'compute_time_ms': api_latency_ms  # Use api_latency_ms as compute time
-                }
-                self.pending_interactions.append(interaction)
 
                 api_latency_ms = (time.time() - api_start) * 1000
                 response_bytes = len(content.encode('utf-8'))
@@ -775,20 +759,6 @@ You can use tools like calculator or web search if needed.
                     # ============================================================
                     # ADD THIS - Store interaction data (16 spaces indentation)
                     # ============================================================
-                    interaction = {
-                        'step_index': call_counter if call_counter else self.call_counter,
-                        'workflow_type': 'agentic',
-                        'prompt': prompt,
-                        'response': content,
-                        'model_name': self.config.get('model_id'),
-                        'provider': self.provider,
-                        'prompt_tokens': tokens.get('prompt', 0),
-                        'completion_tokens': tokens.get('completion', 0),
-                        'total_tokens': tokens.get('total', 0),
-                        'api_latency_ms': api_latency_ms,
-                        'compute_time_ms': api_latency_ms
-                    }
-                    self.pending_interactions.append(interaction)
                     
                     # Calculate bytes for throughput (optional)
                     response_bytes = len(content.encode('utf-8'))
@@ -829,24 +799,7 @@ You can use tools like calculator or web search if needed.
                         'completion': usage.get('completion_tokens', 0),
                         'total': usage.get('total_tokens', 0)
                     }
-
-                    # ============================================================
-                    # ADD THIS - Store interaction data (16 spaces indentation)
-                    # ============================================================
-                    interaction = {
-                        'step_index': call_counter if call_counter else self.call_counter,
-                        'workflow_type': 'agentic',
-                        'prompt': prompt,
-                        'response': content,
-                        'model_name': self.config.get('model_id'),
-                        'provider': self.provider,
-                        'prompt_tokens': tokens.get('prompt', 0),
-                        'completion_tokens': tokens.get('completion', 0),
-                        'total_tokens': tokens.get('total', 0),
-                        'api_latency_ms': api_latency_ms,
-                        'compute_time_ms': api_latency_ms
-                    }
-                    self.pending_interactions.append(interaction)                    
+                  
                 else:
                     content = str(data)
                     tokens = {}
@@ -885,13 +838,53 @@ You can use tools like calculator or web search if needed.
             tcp_retransmits = net_after['tcp_retransmits'] - net_before['tcp_retransmits']    
             
             dprint(f"📬 Response: {content[:100]}... (API: {api_latency_ms:.1f}ms, Throughput: {effective_kbps:.1f} kbps)")
+
+            # Capture network after
+            net_after = self._get_network_metrics()
+            
+            # Calculate network deltas
+            bytes_sent = net_after['bytes_sent'] - net_before['bytes_sent']
+            bytes_recv = net_after['bytes_recv'] - net_before['bytes_recv']
+            tcp_retransmits = net_after['tcp_retransmits'] - net_before['tcp_retransmits']
+            
+            # ============================================================
+            # CREATE INTERACTION HERE (after all metrics are available)
+            # ============================================================
+            interaction = {
+                'step_index': call_counter if call_counter else self.call_counter,
+                'workflow_type': 'agentic',
+                'prompt': prompt,
+                'response': content,
+                'model_name': self.config.get('model_id'),
+                'provider': self.provider,
+                'prompt_tokens': tokens.get('prompt', 0),
+                'completion_tokens': tokens.get('completion', 0),
+                'total_tokens': tokens.get('total', 0),
+                'api_latency_ms': api_latency_ms,
+                'throughput_kbps': effective_kbps,
+                'bytes_sent': bytes_sent,
+                'bytes_recv': bytes_recv,
+                'tcp_retransmits': tcp_retransmits,
+                'compute_time_ms': api_latency_ms
+            }
+            
+            # Store in pending list
+            if not hasattr(self, 'pending_interactions'):
+                self.pending_interactions = []
+                print(f"🔍 DEBUG - Initialized pending_interactions")
+            
+            self.pending_interactions.append(interaction)
+            print(f"🔍 DEBUG - Added interaction, now has {len(self.pending_interactions)} items")
+
             return {'content': content, 
                     'tokens': tokens,
                     'api_latency_ms': api_latency_ms,  # Already there
                     'effective_kbps': effective_kbps,   
                     'bytes_sent': bytes_sent,
                     'bytes_recv': bytes_recv,
-                    'tcp_retransmits': tcp_retransmits                
+                    'tcp_retransmits': tcp_retransmits,
+                    'pending_interactions': self.pending_interactions.copy()   
+
                     }
             
         except Exception as e:

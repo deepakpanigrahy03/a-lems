@@ -72,6 +72,13 @@ def _tok():
 def _inject_theme():
     t = _tok()
     st.markdown(f"""<style>
+/* Equal height cards in rows 2 and 3 */
+[data-testid="stHorizontalBlock"] > [data-testid="stColumn"] > div > div > div > div > div {{
+    height: 100%;
+}}
+[data-testid="stHorizontalBlock"] {{
+    align-items: stretch !important;
+}}
     .stApp,[data-testid="stAppViewContainer"]{{background:{t["bg0"]}!important}}
     [data-testid="stHeader"]{{background:{t["bg0"]}!important;border-bottom:0.5px solid {t["brd"]}}}
     [data-testid="stSidebar"],[data-testid="stSidebarContent"]{{background:{t["bg1"]}!important;border-right:0.5px solid {t["brd"]}}}
@@ -92,12 +99,13 @@ def _inject_theme():
 
 
 def _card(content_html: str, border_top_color: str = None, extra_style: str = "") -> str:
-    """Wrap HTML in a themed card div."""
+    """Wrap HTML in a themed card div — fixed min-height for row consistency."""
     t = _tok()
     top = f"border-top:3px solid {border_top_color};" if border_top_color else ""
     return (
         f"<div style='background:{t['bg1']};border:0.5px solid {t['brd']};"
-        f"border-radius:10px;padding:14px 16px;{top}{extra_style}'>"
+        f"border-radius:10px;padding:14px 16px;height:300px;overflow:hidden;"
+        f"box-sizing:border-box;{top}{extra_style}'>"
         f"{content_html}</div>"
     )
 
@@ -400,17 +408,61 @@ def render(ctx: dict):
         unsafe_allow_html=True)
 
     # ── KPI ROW ───────────────────────────────────────────────────────────────
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Total Runs",   ov.get("total_runs","—"))
-    c2.metric("Tax Multiple", f"{tax_mult:.1f}×",
-              delta=f"{(tax_mult-1)*100:.0f}% overhead", delta_color="inverse")
-    c3.metric("Avg Planning", f"{plan_ms:.0f}ms",
-              delta=f"{plan_pct:.0f}% of agentic time", delta_color="inverse")
-    c4.metric("Peak IPC",     f"{ov.get('max_ipc', 0) or 0:.3f}")
-    c5.metric("Avg Carbon",   f"{ov.get('avg_carbon_mg', 0) or 0:.3f}mg")
-    c6.metric("Total Energy", f"{ov.get('total_energy_j', 0) or 0:.1f}J")
+    # ── Uniform KPI cards — 6 equal-height boxes ──────────────────────────────
+    _clsmap = {"#22c55e":"green","#f59e0b":"amber","#ef4444":"red",
+                "#3b82f6":"blue","#a78bfa":"purple","#34d399":"teal"}
+    def _kpi_card(val, label, sub, accent="#3b82f6"):
+        cls = _clsmap.get(accent, "blue")
+        return (
+            f"<div class='kpi-card kpi-{cls}'>"
+            f"<div class='kpi-val' style='color:{accent}'>{val}</div>"
+            f"<div><div class='kpi-lbl'>{label}</div>"
+            f"<div class='kpi-sub'>{sub}</div></div></div>"
+        )
+    st.markdown("""<style>
+.kpi-card { border-radius:10px; padding:14px 16px; height:88px;
+            box-sizing:border-box; display:flex; flex-direction:column;
+            justify-content:space-between; border:0.5px solid #1f2937; }
+.kpi-green  { border-top:3px solid #22c55e !important; background:#111827; }
+.kpi-amber  { border-top:3px solid #f59e0b !important; background:#111827; }
+.kpi-red    { border-top:3px solid #ef4444 !important; background:#111827; }
+.kpi-blue   { border-top:3px solid #3b82f6 !important; background:#111827; }
+.kpi-purple { border-top:3px solid #a78bfa !important; background:#111827; }
+.kpi-teal   { border-top:3px solid #34d399 !important; background:#111827; }
+.kpi-val  { font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; line-height:1; }
+.kpi-lbl  { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#f1f5f9; }
+.kpi-sub  { font-size:8px; color:#475569; margin-top:1px; }
+</style>""", unsafe_allow_html=True)
+    _kc1,_kc2,_kc3,_kc4,_kc5,_kc6 = st.columns(6)
+    with _kc1: st.markdown(_kpi_card(ov.get("total_runs","—"), "Total Runs", "experiments run", "#22c55e"), unsafe_allow_html=True)
+    with _kc2: st.markdown(_kpi_card(f"{ov.get('total_energy_j',0) or 0:.1f}J", "Total Energy", "all runs measured", "#f59e0b"), unsafe_allow_html=True)
+    with _kc3: st.markdown(_kpi_card(f"{tax_mult:.1f}×", "Tax Multiple", f"{(tax_mult-1)*100:.0f}% overhead", "#ef4444"), unsafe_allow_html=True)
+    with _kc4: st.markdown(_kpi_card(f"{plan_ms:.0f}ms", "Avg Planning", f"{plan_pct:.0f}% agentic time", "#3b82f6"), unsafe_allow_html=True)
+    with _kc5: st.markdown(_kpi_card(f"{ov.get('max_ipc',0) or 0:.3f}", "Peak IPC", "instructions/cycle", "#a78bfa"), unsafe_allow_html=True)
+    with _kc6: st.markdown(_kpi_card(f"{ov.get('avg_carbon_mg',0) or 0:.3f}mg", "Avg Carbon", "avg per run", "#34d399"), unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
+    # ── Data Health strip ─────────────────────────────────────────────────────
+    try:
+        from gui.db import q1 as _q1
+        _inv  = int(_q1("SELECT COUNT(*) AS n FROM runs WHERE COALESCE(experiment_valid,1)=0").get("n",0) or 0)
+        _thr  = int(_q1("SELECT COUNT(*) AS n FROM runs WHERE COALESCE(thermal_throttle_flag,0)=1").get("n",0) or 0)
+        _nob  = int(_q1("SELECT COUNT(*) AS n FROM runs WHERE baseline_id IS NULL").get("n",0) or 0)
+        _nsy  = int(_q1("SELECT COUNT(*) AS n FROM runs WHERE COALESCE(background_cpu_percent,0)>20").get("n",0) or 0)
+        _suf  = _q1("""SELECT COUNT(*) AS total_cells, SUM(CASE WHEN run_count>=30 THEN 1 ELSE 0 END) AS sufficient_cells FROM (SELECT COUNT(*) AS run_count FROM runs r JOIN experiments e ON r.exp_id=e.exp_id WHERE e.model_name IS NOT NULL AND e.task_name IS NOT NULL AND e.workflow_type IS NOT NULL GROUP BY r.hw_id,e.model_name,e.task_name,e.workflow_type)""") or {}
+        _sp   = round(int(_suf.get("sufficient_cells",0) or 0) / max(int(_suf.get("total_cells",1) or 1),1) * 100)
+        def _chip(v,l,clr,bg): return f"<span style='display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;background:{bg};border:1px solid {clr}44;margin-right:6px;'><span style='font-size:13px;font-weight:700;color:{clr};font-family:IBM Plex Mono,monospace;'>{v}</span><span style='font-size:9px;color:{clr};opacity:.8;text-transform:uppercase;letter-spacing:.06em;'>{l}</span></span>"
+        _chips = (
+            _chip(_inv,  "invalid",    "#ef4444" if _inv>0  else "#22c55e", "#2a0c0c" if _inv>0  else "#052e1a") +
+            _chip(_thr,  "throttled",  "#f97316" if _thr>0  else "#22c55e", "#2a1000" if _thr>0  else "#052e1a") +
+            _chip(_nob,  "no baseline","#f59e0b" if _nob>0  else "#22c55e", "#2a1a00" if _nob>0  else "#052e1a") +
+            _chip(_nsy,  "noisy env",  "#a78bfa" if _nsy>0  else "#22c55e", "#1a0e40" if _nsy>0  else "#052e1a") +
+            _chip(f"{_sp}%","sufficient","#22c55e" if _sp>=80 else "#f59e0b" if _sp>=40 else "#ef4444", "#052e1a" if _sp>=80 else "#2a1a00" if _sp>=40 else "#2a0c0c")
+        )
+        st.markdown(f"<div style='display:flex;align-items:center;padding:8px 14px;background:{t['bg2']};border:0.5px solid {t['brd']};border-radius:8px;margin-bottom:12px;'><span style='font-size:9px;font-weight:700;color:{t['t3']};text-transform:uppercase;letter-spacing:.1em;margin-right:12px;flex-shrink:0;'>Data Health</span>{_chips}</div>", unsafe_allow_html=True)
+    except Exception:
+        pass
+
 
     # ── ROW 1: Energy compare  |  Tax by task  |  Recent sessions ─────────────
     # All three cards use identical height (340px) + flex-column so footers align
@@ -465,9 +517,11 @@ def render(ctx: dict):
         + f"</div></div>"
         # ratio bar
         + f"<div style='font-size:9px;color:{t3};margin-bottom:4px'>Cost ratio</div>"
-        + f"<div style='background:{bg3};border-radius:4px;height:20px;overflow:hidden;position:relative'>"
-        + f"<div style='width:{bar_pct};background:#16a34a;height:20px;border-radius:4px 0 0 4px;"
-        + f"display:flex;align-items:center;padding-left:8px;font-size:9px;color:#fff;'>linear</div>"
+        + f"<div style='background:{bg3};border-radius:4px;height:20px;overflow:hidden;position:relative;display:flex'>"
+        + f"<div style='width:{bar_pct};background:#16a34a;height:20px;"
+        + f"display:flex;align-items:center;padding-left:6px;font-size:8px;color:#fff;flex-shrink:0;'>L</div>"
+        + f"<div style='flex:1;background:#ef4444;height:20px;"
+        + f"display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:8px;color:#fff;'>A</div>"
         + f"</div>"
     )
     _c1_foot = (
@@ -967,8 +1021,9 @@ def render(ctx: dict):
 
     st.markdown("<div style='margin-bottom:10px'></div>", unsafe_allow_html=True)
 
-    # ── ROW 4: Duration vs Energy + IPC vs Cache Miss (original, themed) ───────
-    if not runs.empty and "energy_j" in runs.columns:
+    # ── ROW 4: Removed — Duration vs Energy lives in Energy Lab
+    #           IPC vs Cache Miss lives in Efficiency Explorer
+    if False and not runs.empty and "energy_j" in runs.columns:
         col_sc1, col_sc2 = st.columns(2)
         _pl_layout = dict(
             paper_bgcolor=t["bg1"], plot_bgcolor=t["bg2"],
