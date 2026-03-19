@@ -1,0 +1,574 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.config_loader &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.config_loader</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.config_loader</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Simple ConfigLoader for testing</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ConfigDict">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigDict">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A dictionary that also allows attribute access.</span>
+
+<span class="sd">    This class enables both:</span>
+<span class="sd">        dict-style: config[&#39;database&#39;][&#39;path&#39;]</span>
+<span class="sd">        object-style: config.database.path</span>
+
+<span class="sd">    All nested dictionaries are automatically converted to ConfigDict.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span> <span class="o">=</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Allow attribute access to dictionary keys.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;ConfigDict&#39; object has no attribute &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ConfigLoader">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigLoader</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple config loader for testing LLM setup.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize with config directory.&quot;&quot;&quot;</span>
+        <span class="c1"># Set configuration directory</span>
+        <span class="k">if</span> <span class="n">config_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># __file__ is /home/dpani/mydrive/a-lems/core/config_loader.py</span>
+            <span class="c1"># parent → /home/dpani/mydrive/a-lems/core/</span>
+            <span class="c1"># parent.parent → /home/dpani/mydrive/a-lems/</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config_dir</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📁 Config directory: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Load models config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json</span><span class="p">(</span><span class="s2">&quot;models.json&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;✅ Loaded models config: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models_config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">_models_config</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Load hardware config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hardware_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json</span><span class="p">(</span><span class="s2">&quot;hw_config.json&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;✅ Loaded hardware config: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hardware_config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">_hardware_config</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># NEW: Load grid intensity config for sustainability calculator</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_json</span><span class="p">(</span><span class="s2">&quot;grid_intensity_2026.json&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">:</span>
+            <span class="n">country_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Loaded grid intensity data for </span><span class="si">{</span><span class="n">country_count</span><span class="si">}</span><span class="s2"> countries&quot;</span><span class="p">)</span>
+            <span class="c1"># ===== ADD THIS =====</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 RAW grid data keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;IN&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ India data found in config loader!&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   Carbon: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">[</span><span class="s1">&#39;IN&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;carbon_intensity&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ India NOT found in config loader!&quot;</span><span class="p">)</span>
+            <span class="c1"># ====================</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No grid intensity data loaded&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load JSON file from config directory.&quot;&quot;&quot;</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span> <span class="o">/</span> <span class="n">filename</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📁 Loading </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">filepath</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Config file not found: </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Successfully loaded </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">data</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error loading </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="ConfigLoader.get_hardware_config">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_hardware_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_hardware_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the hardware configuration.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary containing hardware configuration with keys:</span>
+<span class="sd">            - rapl: RAPL paths and domains</span>
+<span class="sd">            - thermal: Thermal zone paths</span>
+<span class="sd">            - msr: MSR device information</span>
+<span class="sd">            - cpufreq: CPU frequency paths</span>
+<span class="sd">            - cpu: CPU core information</span>
+<span class="sd">            - turbostat: Turbostat column mappings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hardware_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Hardware config not loaded, returning empty dict&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="c1"># Return a copy of the dictionary</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hardware_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ConfigLoader.get_model_config">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_model_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_model_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get model configuration for a specific mode and workflow.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mode: &quot;local&quot; or &quot;cloud&quot;</span>
+<span class="sd">            workflow: &quot;linear&quot; or &quot;agentic&quot;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with model config or None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ _models_config is None&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">mode_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mode_config</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Mode &#39;</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39; not found in config&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">workflow_config</span> <span class="o">=</span> <span class="n">mode_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow_config</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Workflow &#39;</span><span class="si">{</span><span class="n">workflow</span><span class="si">}</span><span class="s2">&#39; not found in mode &#39;</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">workflow_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW METHOD: Get grid intensity data for sustainability calculator</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ConfigLoader.get_grid_intensity_data">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_grid_intensity_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_grid_intensity_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load grid intensity data from JSON file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with country codes as keys and grid factors as values,</span>
+<span class="sd">            or empty dict if not available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Grid intensity data not loaded, returning empty dict&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="c1"># Return a copy of the dictionary</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW METHOD: Get grid factors for a specific country</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ConfigLoader.get_country_grid_factors">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_country_grid_factors">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_country_grid_factors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">country_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get grid factors for a specific country.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            country_code: ISO country code (e.g., &quot;US&quot;, &quot;IN&quot;, &quot;FR&quot;)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with grid factors for the country, or None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Handle case-insensitive lookup</span>
+        <span class="n">country_code</span> <span class="o">=</span> <span class="n">country_code</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+        <span class="c1"># Direct lookup</span>
+        <span class="k">if</span> <span class="n">country_code</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">[</span><span class="n">country_code</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Try to find in keys (some files might have lowercase)</span>
+        <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">code</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="n">country_code</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Country </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2"> not found in grid intensity data&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW METHOD: Get country metrics for ESI calculation</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ConfigLoader.get_country_metrics">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_country_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_country_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">country_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get country metrics (population, GDP, household energy) for a specific country.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            country_code: ISO country code (e.g., &quot;US&quot;, &quot;IN&quot;, &quot;FR&quot;)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with country metrics or None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Try to load country_metrics.yaml</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+            <span class="n">metrics_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span> <span class="o">/</span> <span class="s2">&quot;country_metrics.yaml&quot;</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">metrics_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Country metrics file not found: </span><span class="si">{</span><span class="n">metrics_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">metrics_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">metrics_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+            <span class="n">countries</span> <span class="o">=</span> <span class="n">metrics_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;countries&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+            <span class="c1"># Handle case-insensitive lookup</span>
+            <span class="n">country_code</span> <span class="o">=</span> <span class="n">country_code</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+            <span class="c1"># Direct lookup</span>
+            <span class="k">if</span> <span class="n">country_code</span> <span class="ow">in</span> <span class="n">countries</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">countries</span><span class="p">[</span><span class="n">country_code</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="c1"># Try to find in keys</span>
+            <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">countries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">code</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="n">country_code</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Country </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2"> not found in country metrics&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;PyYAML not installed. Run: pip install pyyaml&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load country metrics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW METHOD: List all available countries in grid data</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ConfigLoader.list_available_countries">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.list_available_countries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_available_countries</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get list of all country codes available in grid intensity data.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid_intensity</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;metadata&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="ConfigLoader.get_settings">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_settings">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ConfigDict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load settings from app_settings.yaml.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ConfigDict that works with both:</span>
+<span class="sd">            - Dict-style: settings[&#39;database&#39;][&#39;path&#39;]</span>
+<span class="sd">            - Object-style: settings.database.path</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">settings_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span> <span class="o">/</span> <span class="s2">&quot;app_settings.yaml&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">settings_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Settings file not found: </span><span class="si">{</span><span class="n">settings_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ConfigDict</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+            <span class="c1"># Recursively convert nested dicts to ConfigDict</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_config_dict</span><span class="p">(</span><span class="n">data</span> <span class="k">if</span> <span class="n">data</span> <span class="k">else</span> <span class="p">{})</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ PyYAML not installed. Run: pip install pyyaml&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ConfigDict</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Failed to load settings: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ConfigDict</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_to_config_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recursively convert dict to ConfigDict.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">ConfigDict</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_config_dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_to_config_dict</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">data</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+<div class="viewcode-block" id="ConfigLoader.get_db_config">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.get_db_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_db_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get database configuration from app_settings.yaml.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with database configuration including:</span>
+<span class="sd">            - engine: &#39;sqlite&#39; or &#39;postgresql&#39;</span>
+<span class="sd">            - engine-specific config under &#39;sqlite&#39; or &#39;postgresql&#39; keys</span>
+<span class="sd">            - Common settings (backup_enabled, etc.)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+
+        <span class="c1"># Handle both object and dict access patterns</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;database&quot;</span><span class="p">):</span>
+            <span class="c1"># Object-style access (SimpleNamespace)</span>
+            <span class="n">db_config_obj</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">database</span>
+
+            <span class="c1"># Convert SimpleNamespace to dict</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">db_config_obj</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+                <span class="n">db_config</span> <span class="o">=</span> <span class="n">db_config_obj</span><span class="o">.</span><span class="vm">__dict__</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">db_config</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">db_config_obj</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">db_config_obj</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                            <span class="c1"># If value is also SimpleNamespace, convert it</span>
+                            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+                                <span class="n">db_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="vm">__dict__</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">db_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Dict-style access</span>
+            <span class="n">db_config</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Ensure engine is set</span>
+        <span class="k">if</span> <span class="s2">&quot;engine&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">db_config</span><span class="p">:</span>
+            <span class="n">db_config</span><span class="p">[</span><span class="s2">&quot;engine&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sqlite&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No database engine specified, defaulting to &#39;sqlite&#39;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Set defaults for missing values</span>
+        <span class="k">if</span> <span class="n">db_config</span><span class="p">[</span><span class="s2">&quot;engine&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;sqlite&quot;</span><span class="p">:</span>
+            <span class="c1"># Handle both dict and SimpleNamespace for sqlite config</span>
+            <span class="n">sqlite_config</span> <span class="o">=</span> <span class="n">db_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sqlite_config</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+                <span class="c1"># Convert SimpleNamespace to dict</span>
+                <span class="n">sqlite_config</span> <span class="o">=</span> <span class="n">sqlite_config</span><span class="o">.</span><span class="vm">__dict__</span>
+
+            <span class="c1"># Now ensure it&#39;s a dict and set defaults</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sqlite_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">sqlite_config</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="n">sqlite_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="s2">&quot;data/experiments.db&quot;</span><span class="p">)</span>
+            <span class="n">sqlite_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;journal_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;WAL&quot;</span><span class="p">)</span>
+            <span class="n">sqlite_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;timeout&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+            <span class="n">db_config</span><span class="p">[</span><span class="s2">&quot;sqlite&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sqlite_config</span>
+
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># postgresql</span>
+            <span class="c1"># Handle both dict and SimpleNamespace for postgresql config</span>
+            <span class="n">pg_config</span> <span class="o">=</span> <span class="n">db_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pg_config</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+                <span class="n">pg_config</span> <span class="o">=</span> <span class="n">pg_config</span><span class="o">.</span><span class="vm">__dict__</span>
+
+            <span class="c1"># Now ensure it&#39;s a dict and set defaults</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pg_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">pg_config</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;host&quot;</span><span class="p">,</span> <span class="s2">&quot;localhost&quot;</span><span class="p">)</span>
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;port&quot;</span><span class="p">,</span> <span class="mi">5432</span><span class="p">)</span>
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="s2">&quot;alems&quot;</span><span class="p">)</span>
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;alems_user&quot;</span><span class="p">)</span>
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;password&quot;</span><span class="p">,</span> <span class="s2">&quot;$</span><span class="si">{DB_PASSWORD}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;pool_size&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">pg_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;pool_timeout&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+            <span class="n">db_config</span><span class="p">[</span><span class="s2">&quot;postgresql&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pg_config</span>
+
+        <span class="c1"># Common settings (ensure dict)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">db_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">db_config</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">db_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;backup_enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">db_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;backup_interval_hours&quot;</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">db_config</span></div>
+
+
+<div class="viewcode-block" id="ConfigLoader.sync_task_categories">
+<a class="viewcode-back" href="../../core.config_loader.html#core.config_loader.ConfigLoader.sync_task_categories">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sync_task_categories</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db_connection</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sync task categories from YAML to database using TaskLoader&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Import here to avoid circular imports</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.task_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_tasks</span>
+
+            <span class="c1"># Load tasks using existing task loader</span>
+            <span class="n">tasks</span> <span class="o">=</span> <span class="n">load_tasks</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">tasks</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No tasks loaded from YAML&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">db_connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+
+            <span class="c1"># Clear existing</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DELETE FROM task_categories&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Insert all tasks with categories</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;id&quot;</span> <span class="ow">in</span> <span class="n">task</span> <span class="ow">and</span> <span class="s2">&quot;category&quot;</span> <span class="ow">in</span> <span class="n">task</span><span class="p">:</span>
+                    <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                        <span class="s2">&quot;INSERT INTO task_categories (task_id, category) VALUES (?, ?)&quot;</span><span class="p">,</span>
+                        <span class="p">(</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;category&quot;</span><span class="p">]),</span>
+                    <span class="p">)</span>
+                    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Add fallback for custom queries</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;INSERT OR IGNORE INTO task_categories (task_id, category) VALUES (?, ?)&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="s2">&quot;custom_query&quot;</span><span class="p">,</span> <span class="s2">&quot;custom&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="n">db_connection</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Synced </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> task categories from YAML&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Optional: Show summary</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                SELECT category, COUNT(*) FROM task_categories </span>
+<span class="s2">                GROUP BY category ORDER BY COUNT(*) DESC</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="n">summary</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">summary</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Categories:&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">cat</span><span class="p">,</span> <span class="n">cnt</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      • </span><span class="si">{</span><span class="n">cat</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">cnt</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error syncing task categories: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

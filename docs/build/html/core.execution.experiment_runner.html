@@ -1,0 +1,258 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.experiment_runner module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.execution.hardware_collector module" href="core.execution.hardware_collector.html" />
+    <link rel="prev" title="core.execution.display_formatter module" href="core.execution.display_formatter.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.execution.html">core.execution package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.execution.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#module-core.execution">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.execution.html">core.execution package</a></li>
+      <li class="breadcrumb-item active">core.execution.experiment_runner module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.execution.experiment_runner.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.execution.experiment_runner">
+<span id="core-execution-experiment-runner-module"></span><h1>core.execution.experiment_runner module<a class="headerlink" href="#module-core.execution.experiment_runner" title="Link to this heading"></a></h1>
+<section id="experiment-runner-shared-logic-for-all-experiment-scripts">
+<h2>EXPERIMENT RUNNER – Shared logic for all experiment scripts<a class="headerlink" href="#experiment-runner-shared-logic-for-all-experiment-scripts" title="Link to this heading"></a></h2>
+<p>This module contains ONLY the code that is duplicated between test_harness.py
+and run_experiment.py. All original features remain in each script.</p>
+<p>NEW FEATURES ADDED:
+- Session grouping (group_id)
+- Status tracking (running/completed/partial/failed)
+- Multi-provider support
+- Progress tracking (runs_completed/runs_total)</p>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.execution.experiment_runner.</span></span><span class="sig-name descname"><span class="pre">ExperimentRunner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_loader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Shared experiment logic - ONLY duplicate code + new features</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.aggregate_run_stats">
+<span class="sig-name descname"><span class="pre">aggregate_run_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cpu_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interrupt_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.aggregate_run_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.aggregate_run_stats" title="Link to this definition"></a></dt>
+<dd><p>Compute aggregated statistics for a run from samples.
+This will populate runs table with correct averages.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.convert_energy_samples">
+<span class="sig-name descname"><span class="pre">convert_energy_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.convert_energy_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.convert_energy_samples" title="Link to this definition"></a></dt>
+<dd><p>Convert energy samples - identical in both scripts</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.create_experiment">
+<span class="sig-name descname"><span class="pre">create_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repetitions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hw_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.create_experiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.create_experiment" title="Link to this definition"></a></dt>
+<dd><p>Create experiment with session tracking (NEW)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.ensure_baseline">
+<span class="sig-name descname"><span class="pre">ensure_baseline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">harness</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement" title="core.models.baseline_measurement.BaselineMeasurement"><span class="pre">BaselineMeasurement</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.ensure_baseline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.ensure_baseline" title="Link to this definition"></a></dt>
+<dd><p>Baseline measurement - add to run_experiment which currently lacks it</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.ensure_baseline_in_db">
+<span class="sig-name descname"><span class="pre">ensure_baseline_in_db</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">harness</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.ensure_baseline_in_db"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.ensure_baseline_in_db" title="Link to this definition"></a></dt>
+<dd><p>Save baseline to database once per experiment session.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.get_cpu_samples">
+<span class="sig-name descname"><span class="pre">get_cpu_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.get_cpu_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.get_cpu_samples" title="Link to this definition"></a></dt>
+<dd><p>Get CPU samples - identical in test_harness and run_experiment</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.get_environment_info">
+<span class="sig-name descname"><span class="pre">get_environment_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.get_environment_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.get_environment_info" title="Link to this definition"></a></dt>
+<dd><p>Get environment information for reproducibility tracking</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.get_hardware_info">
+<span class="sig-name descname"><span class="pre">get_hardware_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.get_hardware_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.get_hardware_info" title="Link to this definition"></a></dt>
+<dd><p>Get hardware info - loads from hw_config.json and flattens it</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.get_interrupt_samples">
+<span class="sig-name descname"><span class="pre">get_interrupt_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.get_interrupt_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.get_interrupt_samples" title="Link to this definition"></a></dt>
+<dd><p>Get interrupt samples - identical in test_harness and run_experiment</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.get_providers">
+<span class="sig-name descname"><span class="pre">get_providers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.get_providers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.get_providers" title="Link to this definition"></a></dt>
+<dd><p>Get list of providers from args (NEW)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.prepare_run_data">
+<span class="sig-name descname"><span class="pre">prepare_run_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.prepare_run_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.prepare_run_data" title="Link to this definition"></a></dt>
+<dd><p>Extract run data from ml_dataset - identical in both scripts</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.save_pair">
+<span class="sig-name descname"><span class="pre">save_pair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hw_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agentic_result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rep_num</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.save_pair"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.save_pair" title="Link to this definition"></a></dt>
+<dd><p>Save one pair of runs with all samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.setup_database">
+<span class="sig-name descname"><span class="pre">setup_database</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager" title="core.database.manager.DatabaseManager"><span class="pre">DatabaseManager</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.setup_database"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.setup_database" title="Link to this definition"></a></dt>
+<dd><p>Setup database connection and return db, hw_id, env_id</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.setup_environment">
+<span class="sig-name descname"><span class="pre">setup_environment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.setup_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.setup_environment" title="Link to this definition"></a></dt>
+<dd><p>Get or create environment record</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.update_progress">
+<span class="sig-name descname"><span class="pre">update_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runs_completed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.update_progress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.update_progress" title="Link to this definition"></a></dt>
+<dd><p>Update progress of an experiment without changing status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>db</strong> – Database connection</p></li>
+<li><p><strong>exp_id</strong> – Experiment ID</p></li>
+<li><p><strong>runs_completed</strong> – Number of runs completed so far</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.experiment_runner.ExperimentRunner.update_status">
+<span class="sig-name descname"><span class="pre">update_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runs_completed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/experiment_runner.html#ExperimentRunner.update_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.experiment_runner.ExperimentRunner.update_status" title="Link to this definition"></a></dt>
+<dd><p>Update experiment status (NEW)</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.execution.display_formatter.html" class="btn btn-neutral float-left" title="core.execution.display_formatter module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.execution.hardware_collector.html" class="btn btn-neutral float-right" title="core.execution.hardware_collector module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

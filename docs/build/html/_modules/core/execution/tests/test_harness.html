@@ -1,0 +1,571 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.tests.test_harness &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.tests.test_harness</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.tests.test_harness</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">TEST HARNESS – Quick verification that harness works</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>  <span class="c1"># Add this for IP geolocation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="n">load_dotenv</span><span class="p">()</span>  <span class="c1"># Looks for .env in the current directory or parent directories</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.experiment_runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentRunner</span>
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Add project root to Python path</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.database.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.agentic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgenticExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentHarness</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.optimizer_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizedExecutorWrapper</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_debug</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.task_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_task_by_id</span><span class="p">,</span> <span class="n">load_tasks</span>
+
+
+<div class="viewcode-block" id="get_country_from_ip">
+<a class="viewcode-back" href="../../../../core.execution.tests.test_harness.html#core.execution.tests.test_harness.get_country_from_ip">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_country_from_ip</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Attempt to derive the country code from the current public IP address.</span>
+<span class="sd">    Uses ipapi.co (free, no API key required for basic lookups).</span>
+<span class="sd">    Returns a two‑letter country code, or None if it fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://ipapi.co/json/&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="n">country_code</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;country_code&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">country_code</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">country_code</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">country_code</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ IP geolocation returned status </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ IP geolocation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="parse_arguments">
+<a class="viewcode-back" href="../../../../core.execution.tests.test_harness.html#core.execution.tests.test_harness.parse_arguments">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_arguments</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse command line arguments.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Test experiment harness&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--repetitions&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;-n&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of repetitions (default: 3)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--cool-down&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Seconds between runs&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--task&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;-t&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Custom task prompt (overrides --task-id if provided)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--task-id&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;simple&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Task ID from config/tasks.yaml (default: simple, ignored if --task is used)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--list-tasks&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;List all available tasks and exit&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--no-warmup&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Skip warmup runs&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--provider&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Model provider (default: cloud)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--country&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Country code for sustainability (e.g., US, IN, FR). &quot;</span>
+        <span class="s2">&quot;If not provided, derives from IP and falls back to US.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--ip-detect&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Force IP‑based country detection (overrides --country if both given)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--debug&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable debug&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--save-db&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to database&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--optimizer&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Use optimizer wrapper&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Show detailed hardware output per pair&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../../core.execution.tests.test_harness.html#core.execution.tests.test_harness.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run harness test.&quot;&quot;&quot;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parse_arguments</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">set_debug</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🔬 TESTING EXPERIMENT HARNESS&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Handle task listing if requested</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">list_tasks</span><span class="p">:</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="n">load_tasks</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Available tasks:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&lt;15</span><span class="si">}</span><span class="s2"> | Level </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;tool_calls&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> tools | </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Determine country code for sustainability</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="n">country_code</span> <span class="o">=</span> <span class="s2">&quot;US&quot;</span>  <span class="c1"># Ultimate fallback</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ip_detect</span> <span class="ow">or</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">country</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">ip_detect</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🌍 Attempting to detect country from public IP...&quot;</span><span class="p">)</span>
+        <span class="n">detected</span> <span class="o">=</span> <span class="n">get_country_from_ip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">detected</span><span class="p">:</span>
+            <span class="n">country_code</span> <span class="o">=</span> <span class="n">detected</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ✅ Detected country: </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚠️ Detection failed, using default: </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">country</span><span class="p">:</span>
+        <span class="n">country_code</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">country</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🌍 Using provided country: </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🌍 No country specified, using default: </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Load configuration</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📁 Loading configuration...&quot;</span><span class="p">)</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">ConfigLoader</span><span class="p">()</span>
+
+    <span class="c1"># Get settings and hardware config</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+    <span class="n">hw_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_hardware_config</span><span class="p">()</span>
+
+    <span class="c1"># Convert settings to dict if needed</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+        <span class="n">settings_dict</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="vm">__dict__</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">settings_dict</span> <span class="o">=</span> <span class="n">settings</span>
+
+    <span class="c1"># Merge into single config dict for EnergyEngine</span>
+    <span class="n">engine_config</span> <span class="o">=</span> <span class="n">hw_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">engine_config</span><span class="p">[</span><span class="s2">&quot;settings&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settings_dict</span>
+
+    <span class="c1"># Get experiment defaults</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;experiment&quot;</span><span class="p">):</span>
+        <span class="n">default_repetitions</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">experiment</span><span class="p">,</span> <span class="s2">&quot;default_iterations&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">default_cool_down</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">experiment</span><span class="p">,</span> <span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">exp_settings</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;experiment&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">default_repetitions</span> <span class="o">=</span> <span class="n">exp_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;default_iterations&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">default_cool_down</span> <span class="o">=</span> <span class="n">exp_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">default_repetitions</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">default_cool_down</span> <span class="o">=</span> <span class="mi">30</span>
+
+    <span class="n">repetitions</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">repetitions</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">repetitions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_repetitions</span>
+    <span class="p">)</span>
+    <span class="n">cool_down</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cool_down</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">cool_down</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_cool_down</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Determine task prompt (custom or from config)</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">task</span><span class="p">:</span>
+        <span class="c1"># User provided custom task string</span>
+        <span class="n">task_prompt</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">task</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="s2">&quot;custom&quot;</span>
+        <span class="n">task_name</span> <span class="o">=</span> <span class="s2">&quot;Custom Task&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Using custom task: </span><span class="si">{</span><span class="n">task_prompt</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Load from config</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">get_task_by_id</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">task</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ Task ID &#39;</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&#39; not found. Use --list-tasks to see available tasks.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="mi">1</span>
+        <span class="n">task_prompt</span> <span class="o">=</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;prompt&quot;</span><span class="p">]</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+        <span class="n">task_name</span> <span class="o">=</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Using predefined task: </span><span class="si">{</span><span class="n">task_name</span><span class="si">}</span><span class="s2"> (level </span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Prompt: </span><span class="si">{</span><span class="n">task_prompt</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Configuration:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Provider:     </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Country:      </span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Task:         </span><span class="si">{</span><span class="n">task_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Repetitions:  </span><span class="si">{</span><span class="n">repetitions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cool-down:    </span><span class="si">{</span><span class="n">cool_down</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Warmup:       </span><span class="si">{</span><span class="s1">&#39;Yes&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="n">args</span><span class="o">.</span><span class="n">no_warmup</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;No&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Get model configs</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🤖 Getting </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2"> model configs...&quot;</span><span class="p">)</span>
+
+    <span class="n">linear_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_model_config</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+    <span class="n">agentic_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_model_config</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">linear_config</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">agentic_config</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to load </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2"> model configurations&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Linear model:  </span><span class="si">{</span><span class="n">linear_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Agentic model: </span><span class="si">{</span><span class="n">agentic_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Create executors and harness</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⚙️ Creating executors...&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">optimizer</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.optimizer_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizedExecutorWrapper</span>
+
+        <span class="n">agentic</span> <span class="o">=</span> <span class="n">OptimizedExecutorWrapper</span><span class="p">(</span><span class="n">agentic_config</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+        <span class="n">linear</span> <span class="o">=</span> <span class="n">OptimizedExecutorWrapper</span><span class="p">(</span><span class="n">linear_config</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">agentic</span> <span class="o">=</span> <span class="n">AgenticExecutor</span><span class="p">(</span><span class="n">agentic_config</span><span class="p">)</span>
+        <span class="n">linear</span> <span class="o">=</span> <span class="n">LinearExecutor</span><span class="p">(</span><span class="n">linear_config</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Optimizer:    </span><span class="si">{</span><span class="s1">&#39;Yes&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">args</span><span class="o">.</span><span class="n">optimizer</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;No&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Create proper config with BOTH hardware paths and settings</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🔧 Creating harness...&quot;</span><span class="p">)</span>
+
+    <span class="c1"># engine_config already has hardware + settings from earlier</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 engine_config keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">engine_config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 &#39;rapl&#39; in engine_config: </span><span class="si">{</span><span class="s1">&#39;rapl&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">engine_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;rapl&quot;</span> <span class="ow">in</span> <span class="n">engine_config</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 rapl paths: </span><span class="si">{</span><span class="n">engine_config</span><span class="p">[</span><span class="s1">&#39;rapl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;paths&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{})</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">harness</span> <span class="o">=</span> <span class="n">ExperimentHarness</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Create runner and ensure baseline</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">ExperimentRunner</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">ensure_baseline</span><span class="p">(</span><span class="n">harness</span><span class="p">)</span>
+    <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span> <span class="o">=</span> <span class="n">baseline</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Run test</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🚀 Running test with </span><span class="si">{</span><span class="n">repetitions</span><span class="si">}</span><span class="s2"> repetitions...&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Setup database if saving</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_db</span><span class="p">:</span>
+        <span class="c1"># Create database connection and experiment</span>
+        <span class="n">db</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">env_id</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">setup_database</span><span class="p">()</span>
+
+        <span class="n">runner</span><span class="o">.</span><span class="n">ensure_baseline_in_db</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">harness</span><span class="p">)</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">sync_task_categories</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="p">)</span>
+        <span class="n">exp_id</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">create_experiment</span><span class="p">(</span>
+            <span class="n">db</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="p">,</span>
+            <span class="n">task_name</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+            <span class="n">linear_config</span><span class="p">,</span>
+            <span class="n">country_code</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">repetitions</span><span class="p">,</span>
+            <span class="n">hw_id</span><span class="p">,</span>
+            <span class="n">env_id</span><span class="p">,</span>
+            <span class="n">optimizer</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># OUR OWN LOOP - ONE LOOP DOES EVERYTHING</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="n">all_linear</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_agentic</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_taxes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">runs_completed</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Add this line</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">repetitions</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;─&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 Repetition </span><span class="si">{</span><span class="n">rep</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">repetitions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;─&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Run linear</span>
+            <span class="n">linear_result</span> <span class="o">=</span> <span class="n">harness</span><span class="o">.</span><span class="n">run_linear</span><span class="p">(</span>
+                <span class="n">executor</span><span class="o">=</span><span class="n">linear</span><span class="p">,</span>
+                <span class="n">prompt</span><span class="o">=</span><span class="n">task_prompt</span><span class="p">,</span>
+                <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
+                <span class="n">is_cloud</span><span class="o">=</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;cloud&quot;</span><span class="p">),</span>
+                <span class="n">country_code</span><span class="o">=</span><span class="n">country_code</span><span class="p">,</span>
+                <span class="n">run_number</span><span class="o">=</span><span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Run agentic</span>
+            <span class="n">agentic_result</span> <span class="o">=</span> <span class="n">harness</span><span class="o">.</span><span class="n">run_agentic</span><span class="p">(</span>
+                <span class="n">executor</span><span class="o">=</span><span class="n">agentic</span><span class="p">,</span>
+                <span class="n">task</span><span class="o">=</span><span class="n">task_prompt</span><span class="p">,</span>
+                <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
+                <span class="n">is_cloud</span><span class="o">=</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;cloud&quot;</span><span class="p">),</span>
+                <span class="n">country_code</span><span class="o">=</span><span class="n">country_code</span><span class="p">,</span>
+                <span class="n">run_number</span><span class="o">=</span><span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Store for stats</span>
+            <span class="n">all_linear</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">linear_result</span><span class="p">)</span>
+            <span class="n">all_agentic</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agentic_result</span><span class="p">)</span>
+
+            <span class="c1"># Calculate tax</span>
+            <span class="n">linear_energy</span> <span class="o">=</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span>
+            <span class="n">agentic_energy</span> <span class="o">=</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span>
+            <span class="n">tax</span> <span class="o">=</span> <span class="n">agentic_energy</span> <span class="o">/</span> <span class="n">linear_energy</span> <span class="k">if</span> <span class="n">linear_energy</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">all_taxes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tax</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   📊 Pair </span><span class="si">{</span><span class="n">rep</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Linear:  </span><span class="si">{</span><span class="n">linear_energy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Agentic: </span><span class="si">{</span><span class="n">agentic_energy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Tax: </span><span class="si">{</span><span class="n">tax</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Insert to database</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_db</span><span class="p">:</span>
+                <span class="n">runner</span><span class="o">.</span><span class="n">save_pair</span><span class="p">(</span>
+                    <span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">,</span> <span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="p">)</span>
+                <span class="n">runs_completed</span> <span class="o">+=</span> <span class="mi">2</span>  <span class="c1"># Update after successful pair</span>
+
+            <span class="c1"># Cool down</span>
+            <span class="k">if</span> <span class="n">rep</span> <span class="o">&lt;</span> <span class="n">repetitions</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⏳ Cooling down for </span><span class="si">{</span><span class="n">cool_down</span><span class="si">}</span><span class="s2">s...&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">cool_down</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="ne">KeyboardInterrupt</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ Experiment failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_db</span><span class="p">:</span>
+            <span class="c1"># Handle both regular exceptions and Ctrl+C</span>
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;KeyboardInterrupt (user cancelled)&quot;</span>
+            <span class="n">runner</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">,</span> <span class="n">error_msg</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># UPDATE EXPERIMENT STATUS - COMPLETE SOLUTION</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_db</span><span class="p">:</span>
+        <span class="c1"># Calculate total runs completed</span>
+        <span class="n">runs_completed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_linear</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_agentic</span><span class="p">)</span>  <span class="c1"># Should be repetitions * 2</span>
+
+        <span class="c1"># Update final status to completed</span>
+        <span class="n">runner</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Experiment </span><span class="si">{</span><span class="n">exp_id</span><span class="si">}</span><span class="s2"> completed with </span><span class="si">{</span><span class="n">runs_completed</span><span class="si">}</span><span class="s2"> runs&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Close database connection</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># DISPLAY HARDWARE PARAMETERS (verbose mode only)</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.display_formatter</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_pair_hardware</span>
+
+        <span class="n">display_pair_hardware</span><span class="p">(</span>
+            <span class="n">all_linear</span><span class="p">,</span> <span class="n">all_agentic</span><span class="p">,</span> <span class="s2">&quot;HARDWARE PARAMETERS DEEP DIVE - PER PAIR&quot;</span>
+        <span class="p">)</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># CALCULATE FINAL STATISTICS</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_stats</span>
+
+    <span class="n">linear_energies</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">all_linear</span><span class="p">]</span>
+    <span class="n">agentic_energies</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">all_agentic</span><span class="p">]</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;linear_energy_j&quot;</span><span class="p">:</span> <span class="n">calc_stats</span><span class="p">(</span><span class="n">linear_energies</span><span class="p">),</span>
+        <span class="s2">&quot;agentic_energy_j&quot;</span><span class="p">:</span> <span class="n">calc_stats</span><span class="p">(</span><span class="n">agentic_energies</span><span class="p">),</span>
+        <span class="s2">&quot;orchestration_tax&quot;</span><span class="p">:</span> <span class="n">calc_stats</span><span class="p">(</span><span class="n">all_taxes</span><span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 FINAL STATISTICS&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="n">linear_mean</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;linear_energy_j&quot;</span><span class="p">][</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+    <span class="n">linear_std</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;linear_energy_j&quot;</span><span class="p">][</span><span class="s2">&quot;std&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">linear_std</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Linear energy:     </span><span class="si">{</span><span class="n">linear_mean</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><span class="n">linear_std</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Linear energy:     </span><span class="si">{</span><span class="n">linear_mean</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+
+    <span class="n">agentic_mean</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;agentic_energy_j&quot;</span><span class="p">][</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+    <span class="n">agentic_std</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;agentic_energy_j&quot;</span><span class="p">][</span><span class="s2">&quot;std&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">agentic_std</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Agentic energy:    </span><span class="si">{</span><span class="n">agentic_mean</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><span class="n">agentic_std</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Agentic energy:    </span><span class="si">{</span><span class="n">agentic_mean</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+
+    <span class="n">tax_mean</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">][</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+    <span class="n">ci_lower</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">][</span><span class="s2">&quot;ci_lower&quot;</span><span class="p">]</span>
+    <span class="n">ci_upper</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">][</span><span class="s2">&quot;ci_upper&quot;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ci_lower</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Orchestration tax: </span><span class="si">{</span><span class="n">tax_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x [95% CI: </span><span class="si">{</span><span class="n">ci_lower</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">ci_upper</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Orchestration tax: </span><span class="si">{</span><span class="n">tax_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Test complete!&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">0</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,238 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.readers.turbostat_reader module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.sustainability package" href="core.sustainability.html" />
+    <link rel="prev" title="core.readers.test module" href="core.readers.test.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.readers.html">core.readers package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.readers.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.readers.html#module-core.readers">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.readers.html">core.readers package</a></li>
+      <li class="breadcrumb-item active">core.readers.turbostat_reader module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.readers.turbostat_reader.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.readers.turbostat_reader">
+<span id="core-readers-turbostat-reader-module"></span><h1>core.readers.turbostat_reader module<a class="headerlink" href="#module-core.readers.turbostat_reader" title="Link to this heading"></a></h1>
+<section id="turbostat-reader-clean-implementation-using-pandas">
+<h2>TURBOSTAT READER - Clean Implementation Using pandas<a class="headerlink" href="#turbostat-reader-clean-implementation-using-pandas" title="Link to this heading"></a></h2>
+<p>Author: Deepak Panigrahy</p>
+<p>This module provides a clean, robust reader for Intel turbostat output.
+turbostat reads CPU MSRs to provide detailed performance data including:
+- C-state residency percentages (time spent in idle states)
+- CPU frequency during execution
+- iGPU RC6 residency and frequency
+- Package temperature
+- Power estimates for package, cores, GPU, RAM</p>
+<p>Requirements Covered:
+Req 1.4 – DVFS Attribution (frequencies)
+Req 1.7 – C-State Residency (via turbostat)
+Req 1.8 – iGPU RC6 &amp; GT Freq
+Req 1.9 – Package Thermal Jitter (temperature)
+Req 1.41 – Deepest Core C-State (via residency columns)
+================================================================================</p>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.readers.turbostat_reader.</span></span><span class="sig-name descname"><span class="pre">TurbostatReader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Reads Intel turbostat metrics using pandas for clean parsing.</p>
+<p>This class handles:
+- Starting continuous monitoring of turbostat
+- Draining output in background thread to prevent pipe buffer full
+- Stopping monitoring and collecting all samples
+- Parsing tab-separated output into pandas DataFrame
+- Computing summary statistics (mean, std, min, max, median)
+- Mapping columns to our internal PowerState object
+- Capturing CPU topology for hybrid processors (P-cores/E-cores)
+- Recording turbostat version for reproducibility</p>
+<p>The reader uses column mappings from hw_config.json, which are
+detected automatically by Module 0’s hardware detection.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader.compute_summary">
+<span class="sig-name descname"><span class="pre">compute_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader.compute_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader.compute_summary" title="Link to this definition"></a></dt>
+<dd><p>Compute summary statistics using reverse_map for canonical names.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader.get_column_mapping">
+<span class="sig-name descname"><span class="pre">get_column_mapping</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader.get_column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader.get_column_mapping" title="Link to this definition"></a></dt>
+<dd><p>Get mapping from turbostat column names to internal metric names.</p>
+<p>This uses the ‘columns’ section from hw_config.json which maps
+our internal names (like ‘cpu_util_percent’) to turbostat column names.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>turbostat_column_name -&gt; internal_metric_name</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader.read_metrics">
+<span class="sig-name descname"><span class="pre">read_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState" title="core.models.energy_measurement.PowerState"><span class="pre">PowerState</span></a></span></span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader.read_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader.read_metrics" title="Link to this definition"></a></dt>
+<dd><p>Run turbostat for a specified duration and return parsed metrics.</p>
+<p>This is the original snapshot method kept for backward compatibility.
+For new code, use continuous monitoring instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>duration_ms</strong> – Measurement duration in milliseconds</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PowerState object with values from the first data row</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader.save_raw_data">
+<span class="sig-name descname"><span class="pre">save_raw_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader.save_raw_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader.save_raw_data" title="Link to this definition"></a></dt>
+<dd><p>Save raw turbostat data to CSV for reviewer requests.</p>
+<p>In top-tier publications, reviewers may ask to see raw data.
+This method allows saving the full dataframe for later analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – DataFrame to save</p></li>
+<li><p><strong>experiment_id</strong> – Unique identifier for this experiment</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to saved file or None if save failed</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader.start_monitoring">
+<span class="sig-name descname"><span class="pre">start_monitoring</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interval_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader.start_monitoring"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader.start_monitoring" title="Link to this definition"></a></dt>
+<dd><p>Start turbostat in continuous mode, collecting data every <cite>interval_ms</cite>.
+The output is captured by the background drainer thread.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.turbostat_reader.TurbostatReader.stop_monitoring">
+<span class="sig-name descname"><span class="pre">stop_monitoring</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/turbostat_reader.html#TurbostatReader.stop_monitoring"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.turbostat_reader.TurbostatReader.stop_monitoring" title="Link to this definition"></a></dt>
+<dd><p>Stop turbostat, collect all buffered output, parse into a DataFrame,
+compute summary statistics, and return everything.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.readers.test.html" class="btn btn-neutral float-left" title="core.readers.test module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.sustainability.html" class="btn btn-neutral float-right" title="core.sustainability package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -23,14 +23,13 @@ Author: Deepak Panigrahy
 ================================================================================
 """
 
+import logging
 import os
 import re
-import logging
-from typing import Dict, Optional, Any, Tuple
-from pathlib import Path
 import sys
 import time
-
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 # ============================================================================
 # Fix Python path – ensure core modules are importable
@@ -39,7 +38,7 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from core.utils.debug import dprint, trace, init_debug_from_env
+from core.utils.debug import dprint, init_debug_from_env, trace
 
 init_debug_from_env()
 logger = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ class SchedulerMonitor:
             config: Configuration dictionary (may contain paths, but typically not needed).
         """
         self.config = config
-        self._page_size = os.sysconf('SC_PAGESIZE')  # for RSS, not used here
+        self._page_size = os.sysconf("SC_PAGESIZE")  # for RSS, not used here
         dprint("SchedulerMonitor initialized")
         # NEW: Interrupt sampling state
         self._interrupt_sampling_active = False
@@ -87,16 +86,16 @@ class SchedulerMonitor:
 
         Req 1.12: Kernel Context Switches.
         """
-        path = '/proc/self/status'
+        path = "/proc/self/status"
         vol = 0
         invol = 0
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 for line in f:
-                    if line.startswith('voluntary_ctxt_switches:'):
-                        vol = int(line.split(':')[1].strip())
-                    elif line.startswith('nonvoluntary_ctxt_switches:'):
-                        invol = int(line.split(':')[1].strip())
+                    if line.startswith("voluntary_ctxt_switches:"):
+                        vol = int(line.split(":")[1].strip())
+                    elif line.startswith("nonvoluntary_ctxt_switches:"):
+                        invol = int(line.split(":")[1].strip())
         except Exception as e:
             logger.warning(f"Could not read {path}: {e}")
         dprint(f"Context switches: voluntary={vol}, involuntary={invol}")
@@ -118,9 +117,9 @@ class SchedulerMonitor:
         user = 0.0
         system = 0.0
         try:
-            with open('/proc/stat', 'r') as f:
+            with open("/proc/stat", "r") as f:
                 first_line = f.readline()
-                if first_line.startswith('cpu '):
+                if first_line.startswith("cpu "):
                     parts = first_line.split()
                     # user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice
                     # indices: 1:user, 2:nice, 3:system
@@ -146,21 +145,27 @@ class SchedulerMonitor:
 
         Req 1.36: Run Queue Length (approximated by the 1‑minute load average).
         """
-        result = {'load1': 0.0, 'load5': 0.0, 'load15': 0.0,
-                  'runnable': 0, 'total_tasks': 0, 'last_pid': 0}
+        result = {
+            "load1": 0.0,
+            "load5": 0.0,
+            "load15": 0.0,
+            "runnable": 0,
+            "total_tasks": 0,
+            "last_pid": 0,
+        }
         try:
-            with open('/proc/loadavg', 'r') as f:
+            with open("/proc/loadavg", "r") as f:
                 line = f.read().strip()
                 parts = line.split()
                 if len(parts) >= 5:
-                    result['load1'] = float(parts[0])
-                    result['load5'] = float(parts[1])
-                    result['load15'] = float(parts[2])
-                    runnable_total = parts[3].split('/')
+                    result["load1"] = float(parts[0])
+                    result["load5"] = float(parts[1])
+                    result["load15"] = float(parts[2])
+                    runnable_total = parts[3].split("/")
                     if len(runnable_total) == 2:
-                        result['runnable'] = int(runnable_total[0])
-                        result['total_tasks'] = int(runnable_total[1])
-                    result['last_pid'] = int(parts[4])
+                        result["runnable"] = int(runnable_total[0])
+                        result["total_tasks"] = int(runnable_total[1])
+                    result["last_pid"] = int(parts[4])
         except Exception as e:
             logger.warning(f"Could not read /proc/loadavg: {e}")
         dprint("Load averages:", **result)
@@ -181,14 +186,14 @@ class SchedulerMonitor:
         vol, invol = self.read_context_switches()
         user_time, system_time = self.read_cpu_times()
         load = self.read_loadavg()
-        swap = self.get_swap_metrics() 
+        swap = self.get_swap_metrics()
         result = {
-            'voluntary_switches': vol,
-            'involuntary_switches': invol,
-            'user_time': user_time,
-            'system_time': system_time,
+            "voluntary_switches": vol,
+            "involuntary_switches": invol,
+            "user_time": user_time,
+            "system_time": system_time,
             **load,
-            'swap': swap 
+            "swap": swap,
         }
         dprint("Scheduler snapshot:", **result)
         return result
@@ -199,7 +204,7 @@ class SchedulerMonitor:
     def get_swap_metrics(self) -> Dict[str, float]:
         """
         Get swap usage metrics from /proc/meminfo.
-        
+
         Returns:
             Dictionary with swap metrics:
             - swap_total_mb: Total swap in MB
@@ -209,39 +214,45 @@ class SchedulerMonitor:
             - swap_cached_mb: Swap cached in memory (if available)
         """
         swap_metrics = {
-            'swap_total_mb': 0.0,
-            'swap_free_mb': 0.0,
-            'swap_used_mb': 0.0,
-            'swap_percent': 0.0,
-            'swap_cached_mb': 0.0
+            "swap_total_mb": 0.0,
+            "swap_free_mb": 0.0,
+            "swap_used_mb": 0.0,
+            "swap_percent": 0.0,
+            "swap_cached_mb": 0.0,
         }
-        
+
         try:
-            with open('/proc/meminfo', 'r') as f:
+            with open("/proc/meminfo", "r") as f:
                 for line in f:
                     line = line.strip()
-                    if 'SwapTotal:' in line:
+                    if "SwapTotal:" in line:
                         kb = int(line.split()[1])
-                        swap_metrics['swap_total_mb'] = kb / 1024.0
-                    elif 'SwapFree:' in line:
+                        swap_metrics["swap_total_mb"] = kb / 1024.0
+                    elif "SwapFree:" in line:
                         kb = int(line.split()[1])
-                        swap_metrics['swap_free_mb'] = kb / 1024.0
-                    elif 'SwapCached:' in line:
+                        swap_metrics["swap_free_mb"] = kb / 1024.0
+                    elif "SwapCached:" in line:
                         kb = int(line.split()[1])
-                        swap_metrics['swap_cached_mb'] = kb / 1024.0
-            
+                        swap_metrics["swap_cached_mb"] = kb / 1024.0
+
             # Calculate used swap and percentage
-            if swap_metrics['swap_total_mb'] > 0:
-                swap_metrics['swap_used_mb'] = swap_metrics['swap_total_mb'] - swap_metrics['swap_free_mb']
-                swap_metrics['swap_percent'] = (swap_metrics['swap_used_mb'] / swap_metrics['swap_total_mb']) * 100.0
-            
-            logger.debug(f"Swap metrics: total={swap_metrics['swap_total_mb']:.1f}MB, "
-                        f"used={swap_metrics['swap_used_mb']:.1f}MB, "
-                        f"cached={swap_metrics['swap_cached_mb']:.1f}MB")
-            
+            if swap_metrics["swap_total_mb"] > 0:
+                swap_metrics["swap_used_mb"] = (
+                    swap_metrics["swap_total_mb"] - swap_metrics["swap_free_mb"]
+                )
+                swap_metrics["swap_percent"] = (
+                    swap_metrics["swap_used_mb"] / swap_metrics["swap_total_mb"]
+                ) * 100.0
+
+            logger.debug(
+                f"Swap metrics: total={swap_metrics['swap_total_mb']:.1f}MB, "
+                f"used={swap_metrics['swap_used_mb']:.1f}MB, "
+                f"cached={swap_metrics['swap_cached_mb']:.1f}MB"
+            )
+
         except Exception as e:
             logger.debug(f"Could not read swap metrics: {e}")
-        
+
         return swap_metrics
 
     def start_interrupt_sampling(self):
@@ -249,26 +260,25 @@ class SchedulerMonitor:
         self._interrupt_sampling_active = True
         self._interrupt_samples = []
         self._last_interrupt_counts = self._read_total_interrupts()
-        
+
         # Capture clock alignment ONCE at the beginning
         start_mono = time.monotonic_ns()
         start_epoch = time.time_ns()
-        
+
         self._start_monotonic_ns = start_mono
         self._start_epoch_ns = start_epoch
         self._last_sample_time_ns = start_mono
-        
-        logger.debug(f"Interrupt sampling started - epoch: {start_epoch}, mono: {start_mono}")
 
-
-
+        logger.debug(
+            f"Interrupt sampling started - epoch: {start_epoch}, mono: {start_mono}"
+        )
 
     def _read_total_interrupts(self) -> int:
         """Read total interrupt count from /proc/stat."""
         try:
-            with open('/proc/stat', 'r') as f:
+            with open("/proc/stat", "r") as f:
                 for line in f:
-                    if line.startswith('intr '):
+                    if line.startswith("intr "):
                         return int(line.split()[1])
         except Exception:
             pass
@@ -278,45 +288,52 @@ class SchedulerMonitor:
         """Clear interrupt samples buffer for new run."""
         self._interrupt_samples = []
         self._last_interrupt_counts = self._read_total_interrupts()
-        
+
         # DO NOT reset the start times here!
         # Only update the last sample time for delta calculation
         self._last_sample_time_ns = time.monotonic_ns()
-        
+
         logger.debug("Interrupt samples reset for new run (start times preserved)")
-
-
 
     def sample_interrupts(self):
         """Take one interrupt sample (called from energy_engine sampling loop)."""
         if not self._interrupt_sampling_active:
             return
-        
+
         monotonic_now = time.monotonic_ns()
         current_counts = self._read_total_interrupts()
-        
+
         # Convert monotonic to epoch time
         if self._start_epoch_ns is not None and self._start_monotonic_ns is not None:
-            epoch_ns = int(self._start_epoch_ns + (monotonic_now - self._start_monotonic_ns))
+            epoch_ns = int(
+                self._start_epoch_ns + (monotonic_now - self._start_monotonic_ns)
+            )
         else:
             # Fallback if start times not set (should not happen)
             epoch_ns = monotonic_now
             logger.warning("Start times not set for interrupt sampling")
-        
-        logger.debug(f"🔍 INTERRUPT DEBUG: counts={current_counts}, last={self._last_interrupt_counts}")
-        
-        if self._last_interrupt_counts is not None and self._last_sample_time_ns is not None:
+
+        logger.debug(
+            f"🔍 INTERRUPT DEBUG: counts={current_counts}, last={self._last_interrupt_counts}"
+        )
+
+        if (
+            self._last_interrupt_counts is not None
+            and self._last_sample_time_ns is not None
+        ):
             time_delta_s = (monotonic_now - self._last_sample_time_ns) / 1e9
             if time_delta_s > 0:
                 count_delta = current_counts - self._last_interrupt_counts
                 rate = count_delta / time_delta_s
                 logger.debug(f"🔍 INTERRUPT RATE: {rate:.2f} IRQ/s")
-                
-                self._interrupt_samples.append({
-                    'timestamp_ns': epoch_ns,  # Now in epoch time!
-                    'interrupts_per_sec': rate
-                })
-        
+
+                self._interrupt_samples.append(
+                    {
+                        "timestamp_ns": epoch_ns,  # Now in epoch time!
+                        "interrupts_per_sec": rate,
+                    }
+                )
+
         self._last_interrupt_counts = current_counts
         self._last_sample_time_ns = monotonic_now
 
@@ -328,91 +345,103 @@ class SchedulerMonitor:
         logger.debug(f"🔍 INTERRUPT STOP: collected {len(samples)} samples")
         return samples
 
+
 # ============================================================================
 # Example usage (standalone test)
 # ============================================================================
 if __name__ == "__main__":
     import time
+
     logging.basicConfig(level=logging.INFO)
     monitor = SchedulerMonitor({})
-    print("="*70)
+    print("=" * 70)
     print("SCHEDULER MONITOR TEST")
-    print("="*70)
-    
+    print("=" * 70)
+
     # First reading
     print("\n📊 Initial snapshot:")
     start = monitor.read_all()
-    print(f"   Context switches: vol={start['voluntary_switches']}, invol={start['involuntary_switches']}")
-    print(f"   CPU times: user={start['user_time']:.2f}, system={start['system_time']:.2f}")
-    print(f"   Load avg: {start['load1']} (1min), {start['load5']} (5min), {start['load15']} (15min)")
+    print(
+        f"   Context switches: vol={start['voluntary_switches']}, invol={start['involuntary_switches']}"
+    )
+    print(
+        f"   CPU times: user={start['user_time']:.2f}, system={start['system_time']:.2f}"
+    )
+    print(
+        f"   Load avg: {start['load1']} (1min), {start['load5']} (5min), {start['load15']} (15min)"
+    )
     print(f"   Runnable tasks: {start['runnable']}/{start['total_tasks']}")
-    
+
     # NEW: Print swap metrics
-    if 'swap' in start:
-        swap = start['swap']
+    if "swap" in start:
+        swap = start["swap"]
         print(f"\n💾 Swap metrics:")
         print(f"   Total: {swap['swap_total_mb']:.1f} MB")
         print(f"   Used:  {swap['swap_used_mb']:.1f} MB ({swap['swap_percent']:.1f}%)")
         print(f"   Free:  {swap['swap_free_mb']:.1f} MB")
         print(f"   Cached: {swap['swap_cached_mb']:.1f} MB")
-    
+
     # Wait
     print("\n⏳ Waiting 2 seconds...")
     time.sleep(2)
-    
+
     # Second reading
     print("\n📊 Final snapshot:")
     end = monitor.read_all()
-    print(f"   Context switches: vol={end['voluntary_switches']}, invol={end['involuntary_switches']}")
+    print(
+        f"   Context switches: vol={end['voluntary_switches']}, invol={end['involuntary_switches']}"
+    )
     print(f"   CPU times: user={end['user_time']:.2f}, system={end['system_time']:.2f}")
-    
+
     # Deltas
     print("\n📈 Deltas:")
-    vol_delta = end['voluntary_switches'] - start['voluntary_switches']
-    invol_delta = end['involuntary_switches'] - start['involuntary_switches']
-    user_delta = end['user_time'] - start['user_time']
-    system_delta = end['system_time'] - start['system_time']
-    
+    vol_delta = end["voluntary_switches"] - start["voluntary_switches"]
+    invol_delta = end["involuntary_switches"] - start["involuntary_switches"]
+    user_delta = end["user_time"] - start["user_time"]
+    system_delta = end["system_time"] - start["system_time"]
+
     print(f"   Context switches: vol=+{vol_delta}, invol=+{invol_delta}")
     print(f"   CPU time: user=+{user_delta:.2f}, system=+{system_delta:.2f}")
     print(f"   Load avg: {end['load1']}")
-    
+
     # NEW: Swap delta (should be near zero in normal operation)
-    if 'swap' in end and 'swap' in start:
+    if "swap" in end and "swap" in start:
         print(f"\n💾 Swap changes:")
-        swap_start = start['swap']
-        swap_end = end['swap']
-        used_delta = swap_end['swap_used_mb'] - swap_start['swap_used_mb']
+        swap_start = start["swap"]
+        swap_end = end["swap"]
+        used_delta = swap_end["swap_used_mb"] - swap_start["swap_used_mb"]
         print(f"   Used memory change: {used_delta:+.2f} MB")
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
     print("✅ Test complete!")
-    print("="*70)
+    print("=" * 70)
 
     # ===== NEW: Test interrupt sampling =====
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("INTERRUPT SAMPLING TEST")
-    print("="*70)
-    
+    print("=" * 70)
+
     monitor.start_interrupt_sampling()
     print("Sampling interrupts for 2 seconds at 10 Hz...")
-    
+
     # Simulate 10 Hz sampling for 2 seconds
     for _ in range(20):  # 20 samples at 0.1s intervals = 2 seconds
         time.sleep(0.1)
         monitor.sample_interrupts()
         print(".", end="", flush=True)
     print()  # newline
-    
+
     samples = monitor.stop_interrupt_sampling()
-    
+
     print(f"Collected {len(samples)} interrupt samples")
     if samples:
         print("First 3 samples:")
         for i, s in enumerate(samples[:3]):
             # Convert timestamp_ns to readable time if needed
-            rate = s['interrupts_per_sec']
+            rate = s["interrupts_per_sec"]
             print(f"  {i+1}: rate={rate:.2f} IRQ/s")
     else:
-        print("❌ No samples collected – check that _read_total_interrupts() is working")
-    print("="*70)   
+        print(
+            "❌ No samples collected – check that _read_total_interrupts() is working"
+        )
+    print("=" * 70)

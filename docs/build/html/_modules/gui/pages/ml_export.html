@@ -1,0 +1,405 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.ml_export &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.ml_export</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.ml_export</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/ml_export.py  —  ⬡  ML Export</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Export quality-scored, filtered datasets for model training pipelines.</span>
+<span class="sd">Shows the ml_features view (70+ columns), quality filters, and export.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#94a3b8&quot;</span>
+<span class="n">MIN_RUNS</span> <span class="o">=</span> <span class="mi">30</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.ml_export.html#gui.pages.ml_export.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># ── Check ml_features view ────────────────────────────────────────────────</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM ml_features&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">total</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No data in ml_features view yet. Run some experiments first.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Header ────────────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;ML Export Pipeline&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:12px;color:#94a3b8;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows in ml_features view · 70+ columns · &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Filter → Quality-score → Export&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Export filters ────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Export filters&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">col1</span><span class="p">,</span> <span class="n">col2</span><span class="p">,</span> <span class="n">col3</span><span class="p">,</span> <span class="n">col4</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+        <span class="n">wf_opts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="n">q</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT DISTINCT workflow_type FROM ml_features &quot;</span>
+                <span class="s2">&quot;WHERE workflow_type IS NOT NULL ORDER BY workflow_type&quot;</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">())</span>
+            <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">sel_wf</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Workflow&quot;</span><span class="p">,</span> <span class="n">wf_opts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_wf&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+        <span class="n">model_opts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="n">q</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT DISTINCT model_name FROM ml_features &quot;</span>
+                <span class="s2">&quot;WHERE model_name IS NOT NULL ORDER BY model_name&quot;</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">())</span>
+            <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">sel_model</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Model&quot;</span><span class="p">,</span> <span class="n">model_opts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_model&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col3</span><span class="p">:</span>
+        <span class="n">task_opts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="n">q</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT DISTINCT task_name FROM ml_features &quot;</span>
+                <span class="s2">&quot;WHERE task_name IS NOT NULL ORDER BY task_name&quot;</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_name&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">())</span>
+            <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">sel_task</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span> <span class="n">task_opts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_task&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col4</span><span class="p">:</span>
+        <span class="n">quality_filter</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+            <span class="s2">&quot;Quality&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;All runs&quot;</span><span class="p">,</span> <span class="s2">&quot;Valid only&quot;</span><span class="p">,</span> <span class="s2">&quot;With baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;Full quality&quot;</span><span class="p">],</span>
+            <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_quality&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Build WHERE</span>
+    <span class="n">where_parts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">sel_wf</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+        <span class="n">where_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;workflow_type = &#39;</span><span class="si">{</span><span class="n">sel_wf</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sel_model</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+        <span class="n">where_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;model_name = &#39;</span><span class="si">{</span><span class="n">sel_model</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sel_task</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+        <span class="n">where_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;task_name = &#39;</span><span class="si">{</span><span class="n">sel_task</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">quality_filter</span> <span class="o">==</span> <span class="s2">&quot;Valid only&quot;</span><span class="p">:</span>
+        <span class="n">where_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;run_id IN (SELECT run_id FROM runs WHERE COALESCE(experiment_valid,1)=1)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">quality_filter</span> <span class="o">==</span> <span class="s2">&quot;With baseline&quot;</span><span class="p">:</span>
+        <span class="n">where_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;run_id IN (SELECT run_id FROM runs WHERE baseline_id IS NOT NULL)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">quality_filter</span> <span class="o">==</span> <span class="s2">&quot;Full quality&quot;</span><span class="p">:</span>
+        <span class="n">where_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;run_id IN (</span>
+<span class="s2">            SELECT run_id FROM runs</span>
+<span class="s2">            WHERE COALESCE(experiment_valid,1)=1</span>
+<span class="s2">              AND baseline_id IS NOT NULL</span>
+<span class="s2">              AND COALESCE(thermal_throttle_flag,0)=0</span>
+<span class="s2">        )&quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="n">where</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;WHERE &quot;</span> <span class="o">+</span> <span class="s2">&quot; AND &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">where_parts</span><span class="p">))</span> <span class="k">if</span> <span class="n">where_parts</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="c1"># ── Feature preview ───────────────────────────────────────────────────────</span>
+    <span class="n">preview</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT * FROM ml_features </span><span class="si">{</span><span class="n">where</span><span class="si">}</span>
+<span class="s2">        ORDER BY run_id DESC LIMIT 500</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="n">filtered_count</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">q1</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM ml_features </span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+    <span class="p">)</span>
+
+    <span class="n">col_a</span><span class="p">,</span> <span class="n">col_b</span><span class="p">,</span> <span class="n">col_c</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col_a</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Filtered rows&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filtered_count</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col_b</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Columns&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">preview</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="n">preview</span><span class="o">.</span><span class="n">empty</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col_c</span><span class="p">:</span>
+        <span class="n">pct</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">filtered_count</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">total</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">% o</span><span class="s2">f total&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pct</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">preview</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No data matches the current filters.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Feature correlation heatmap — top energy correlates ──────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Top energy correlates — feature importance preview&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">numeric_cols</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;ipc&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;total_tokens&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;interrupt_rate&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;avg_power_watts&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;duration_ms&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;planning_time_ms&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;llm_calls&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tool_calls&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;complexity_score&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">avail</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">numeric_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">preview</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="s2">&quot;energy_j&quot;</span> <span class="ow">in</span> <span class="n">preview</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">avail</span><span class="p">:</span>
+        <span class="n">corrs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">avail</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">preview</span><span class="p">[[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">,</span> <span class="n">col</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                    <span class="n">r</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">corr</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+                    <span class="n">corrs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">col</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="mi">3</span><span class="p">)))</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">if</span> <span class="n">corrs</span><span class="p">:</span>
+            <span class="n">corrs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">cols_n</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">corrs</span><span class="p">]</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">corrs</span><span class="p">]</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;#22c55e&quot;</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;#ef4444&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">]</span>
+
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">vals</span><span class="p">,</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">cols_n</span><span class="p">,</span>
+                    <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;h&quot;</span><span class="p">,</span>
+                    <span class="n">marker_color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+                    <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">text</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">+.3f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">],</span>
+                    <span class="n">textposition</span><span class="o">=</span><span class="s2">&quot;outside&quot;</span><span class="p">,</span>
+                    <span class="n">textfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">9</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_vline</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">line_color</span><span class="o">=</span><span class="s2">&quot;#475569&quot;</span><span class="p">,</span> <span class="n">line_width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="o">**</span><span class="p">{</span><span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="s2">&quot;margin&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">l</span><span class="o">=</span><span class="mi">140</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">30</span><span class="p">)},</span>
+                <span class="n">height</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">corrs</span><span class="p">)</span> <span class="o">*</span> <span class="mi">28</span><span class="p">),</span>
+                <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Pearson correlation with energy_j&quot;</span><span class="p">,</span>
+                <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_corr_bar&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Data preview ──────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Data preview — first 500 rows&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Select key columns for preview</span>
+    <span class="n">key_cols</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">c</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;run_id&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;model_name&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_name&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;country_code&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;energy_j&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dynamic_energy_j&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_power_watts&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;duration_ms&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ipc&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;total_tokens&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;interrupt_rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;carbon_g&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;energy_per_token&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">preview</span><span class="o">.</span><span class="n">columns</span>
+    <span class="p">]</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">preview</span><span class="p">[</span><span class="n">key_cols</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+    <span class="c1"># ── Export ────────────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Export&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">col_e1</span><span class="p">,</span> <span class="n">col_e2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col_e1</span><span class="p">:</span>
+        <span class="c1"># CSV export via Streamlit download</span>
+        <span class="k">if</span> <span class="n">filtered_count</span> <span class="o">&lt;=</span> <span class="mi">50000</span><span class="p">:</span>
+            <span class="n">export_df</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SELECT * FROM ml_features </span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2"> ORDER BY run_id DESC&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">export_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+                <span class="n">csv</span> <span class="o">=</span> <span class="n">export_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">download_button</span><span class="p">(</span>
+                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;⬇  Download CSV — </span><span class="si">{</span><span class="n">filtered_count</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows&quot;</span><span class="p">,</span>
+                    <span class="n">data</span><span class="o">=</span><span class="n">csv</span><span class="p">,</span>
+                    <span class="n">file_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;alems_ml_features_</span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">,</span>
+                    <span class="n">mime</span><span class="o">=</span><span class="s2">&quot;text/csv&quot;</span><span class="p">,</span>
+                    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_csv_download&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Dataset too large for browser download (</span><span class="si">{</span><span class="n">filtered_count</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows). &quot;</span>
+                <span class="s2">&quot;Use SQL Query page to export directly.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col_e2</span><span class="p">:</span>
+        <span class="c1"># Export metadata card</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;exported_at&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;filters&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;workflow&quot;</span><span class="p">:</span> <span class="n">sel_wf</span><span class="p">,</span>
+                <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">sel_model</span><span class="p">,</span>
+                <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">sel_task</span><span class="p">,</span>
+                <span class="s2">&quot;quality&quot;</span><span class="p">:</span> <span class="n">quality_filter</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;row_count&quot;</span><span class="p">:</span> <span class="n">filtered_count</span><span class="p">,</span>
+            <span class="s2">&quot;column_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">preview</span><span class="o">.</span><span class="n">columns</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">download_button</span><span class="p">(</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;⬇  Download export metadata (JSON)&quot;</span><span class="p">,</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+            <span class="n">file_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;alems_export_meta_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">,</span>
+            <span class="n">mime</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="n">key</span><span class="o">=</span><span class="s2">&quot;ml_meta_download&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-top:10px;padding:10px 14px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:#0c1f3a;border-left:3px solid #3b82f6;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-radius:0 8px 8px 0;font-size:11px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;color:#93c5fd;font-family:IBM Plex Mono,monospace;line-height:1.7;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;b&gt;Training pipeline note:&lt;/b&gt; Use &lt;b&gt;Full quality&lt;/b&gt; filter for training data &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;(removes invalid runs, runs without baselines, and throttled runs). &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;The &lt;code&gt;energy_j&lt;/code&gt; column is the primary regression target. &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;code&gt;orchestration_tax_j&lt;/code&gt; is the agentic overhead target.&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

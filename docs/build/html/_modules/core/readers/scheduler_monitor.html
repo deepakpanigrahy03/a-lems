@@ -1,0 +1,580 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.readers.scheduler_monitor &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.readers.scheduler_monitor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.readers.scheduler_monitor</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">SCHEDULER MONITOR – Reads Linux scheduler statistics from /proc</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This module reads various scheduler and system metrics from the /proc filesystem:</span>
+<span class="sd">- Context switches (voluntary/involuntary) from /proc/self/status</span>
+<span class="sd">- Kernel and user CPU times from /proc/stat</span>
+<span class="sd">- Run queue length from /proc/loadavg</span>
+<span class="sd">- Thread migrations from /proc/self/status (if available)</span>
+
+<span class="sd">These metrics help quantify OS‑level overhead that contributes to the</span>
+<span class="sd">orchestration tax in agentic AI workflows.</span>
+
+<span class="sd">Requirements implemented:</span>
+<span class="sd">- Req 1.12: Kernel Context Switches</span>
+<span class="sd">- Req 1.23: Kernel/User Ratio</span>
+<span class="sd">- Req 1.24: Voluntary Switch Delay (proxy)</span>
+<span class="sd">- Req 1.36: Run Queue Length</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Fix Python path – ensure core modules are importable</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span><span class="p">,</span> <span class="n">init_debug_from_env</span><span class="p">,</span> <span class="n">trace</span>
+
+<span class="n">init_debug_from_env</span><span class="p">()</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SchedulerMonitor">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SchedulerMonitor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads Linux scheduler metrics from /proc filesystem.</span>
+
+<span class="sd">    This class provides methods to read:</span>
+<span class="sd">    - Voluntary and involuntary context switches (Req 1.12)</span>
+<span class="sd">    - Kernel and user CPU times (Req 1.23)</span>
+<span class="sd">    - Run queue length (Req 1.36)</span>
+<span class="sd">    - Thread migrations (optional, can be derived from perf_reader)</span>
+
+<span class="sd">    All values are read at a single point in time. For rates or deltas,</span>
+<span class="sd">    the caller should take two readings and compute differences.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the scheduler monitor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Configuration dictionary (may contain paths, but typically not needed).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_page_size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">sysconf</span><span class="p">(</span><span class="s2">&quot;SC_PAGESIZE&quot;</span><span class="p">)</span>  <span class="c1"># for RSS, not used here</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;SchedulerMonitor initialized&quot;</span><span class="p">)</span>
+        <span class="c1"># NEW: Interrupt sampling state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_sampling_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sample_time_ns</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch_ns</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_monotonic_ns</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="SchedulerMonitor.read_context_switches">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_context_switches">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_context_switches</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read voluntary and involuntary context switches from /proc/self/status.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple (voluntary, involuntary) as integers.</span>
+<span class="sd">            If file cannot be read, returns (0, 0).</span>
+
+<span class="sd">        Req 1.12: Kernel Context Switches.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/proc/self/status&quot;</span>
+        <span class="n">vol</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">invol</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;voluntary_ctxt_switches:&quot;</span><span class="p">):</span>
+                        <span class="n">vol</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;nonvoluntary_ctxt_switches:&quot;</span><span class="p">):</span>
+                        <span class="n">invol</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Context switches: voluntary=</span><span class="si">{</span><span class="n">vol</span><span class="si">}</span><span class="s2">, involuntary=</span><span class="si">{</span><span class="n">invol</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">vol</span><span class="p">,</span> <span class="n">invol</span></div>
+
+
+<div class="viewcode-block" id="SchedulerMonitor.read_cpu_times">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_cpu_times">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_cpu_times</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read kernel and user CPU times from /proc/stat.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple (user_time_seconds, system_time_seconds) since boot.</span>
+<span class="sd">            These are aggregate times across all CPUs.</span>
+
+<span class="sd">        Note: To get time spent during a measurement interval, the caller must</span>
+<span class="sd">        take two readings and compute the difference.</span>
+
+<span class="sd">        Req 1.23: Kernel/User Ratio.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">system</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/stat&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">first_line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">first_line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;cpu &quot;</span><span class="p">):</span>
+                    <span class="n">parts</span> <span class="o">=</span> <span class="n">first_line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                    <span class="c1"># user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice</span>
+                    <span class="c1"># indices: 1:user, 2:nice, 3:system</span>
+                    <span class="n">user</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>  <span class="c1"># user + nice</span>
+                    <span class="n">system</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read /proc/stat: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CPU times: user=</span><span class="si">{</span><span class="n">user</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, system=</span><span class="si">{</span><span class="n">system</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">user</span><span class="p">,</span> <span class="n">system</span></div>
+
+
+<div class="viewcode-block" id="SchedulerMonitor.read_loadavg">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_loadavg">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_loadavg</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read load averages from /proc/loadavg.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with keys:</span>
+<span class="sd">                - &#39;load1&#39;: 1‑minute average</span>
+<span class="sd">                - &#39;load5&#39;: 5‑minute average</span>
+<span class="sd">                - &#39;load15&#39;: 15‑minute average</span>
+<span class="sd">                - &#39;runnable&#39;: number of currently runnable tasks</span>
+<span class="sd">                - &#39;total_tasks&#39;: total number of tasks</span>
+<span class="sd">                - &#39;last_pid&#39;: last used PID</span>
+
+<span class="sd">        Req 1.36: Run Queue Length (approximated by the 1‑minute load average).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;load1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;load5&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;load15&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;runnable&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;total_tasks&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;last_pid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/loadavg&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;load1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;load5&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;load15&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                    <span class="n">runnable_total</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">runnable_total</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;runnable&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">runnable_total</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;total_tasks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">runnable_total</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;last_pid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read /proc/loadavg: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;Load averages:&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="SchedulerMonitor.read_all">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_all">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience method to read all scheduler metrics at once.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary containing all metrics:</span>
+<span class="sd">                - voluntary_switches</span>
+<span class="sd">                - involuntary_switches</span>
+<span class="sd">                - user_time</span>
+<span class="sd">                - system_time</span>
+<span class="sd">                - load1, load5, load15, runnable, total_tasks</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vol</span><span class="p">,</span> <span class="n">invol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_context_switches</span><span class="p">()</span>
+        <span class="n">user_time</span><span class="p">,</span> <span class="n">system_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_cpu_times</span><span class="p">()</span>
+        <span class="n">load</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_loadavg</span><span class="p">()</span>
+        <span class="n">swap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_swap_metrics</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;voluntary_switches&quot;</span><span class="p">:</span> <span class="n">vol</span><span class="p">,</span>
+            <span class="s2">&quot;involuntary_switches&quot;</span><span class="p">:</span> <span class="n">invol</span><span class="p">,</span>
+            <span class="s2">&quot;user_time&quot;</span><span class="p">:</span> <span class="n">user_time</span><span class="p">,</span>
+            <span class="s2">&quot;system_time&quot;</span><span class="p">:</span> <span class="n">system_time</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">load</span><span class="p">,</span>
+            <span class="s2">&quot;swap&quot;</span><span class="p">:</span> <span class="n">swap</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;Scheduler snapshot:&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;SchedulerMonitor(procfs)&quot;</span>
+
+<div class="viewcode-block" id="SchedulerMonitor.get_swap_metrics">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.get_swap_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_swap_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get swap usage metrics from /proc/meminfo.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with swap metrics:</span>
+<span class="sd">            - swap_total_mb: Total swap in MB</span>
+<span class="sd">            - swap_free_mb: Free swap in MB</span>
+<span class="sd">            - swap_used_mb: Used swap in MB</span>
+<span class="sd">            - swap_percent: Percentage of swap used</span>
+<span class="sd">            - swap_cached_mb: Swap cached in memory (if available)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">swap_metrics</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;swap_total_mb&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;swap_free_mb&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;swap_used_mb&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;swap_percent&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;swap_cached_mb&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/meminfo&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="s2">&quot;SwapTotal:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="n">kb</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_total_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kb</span> <span class="o">/</span> <span class="mf">1024.0</span>
+                    <span class="k">elif</span> <span class="s2">&quot;SwapFree:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="n">kb</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_free_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kb</span> <span class="o">/</span> <span class="mf">1024.0</span>
+                    <span class="k">elif</span> <span class="s2">&quot;SwapCached:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="n">kb</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_cached_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kb</span> <span class="o">/</span> <span class="mf">1024.0</span>
+
+            <span class="c1"># Calculate used swap and percentage</span>
+            <span class="k">if</span> <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_total_mb&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_used_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_total_mb&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_free_mb&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_percent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_used_mb&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">swap_metrics</span><span class="p">[</span><span class="s2">&quot;swap_total_mb&quot;</span><span class="p">]</span>
+                <span class="p">)</span> <span class="o">*</span> <span class="mf">100.0</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Swap metrics: total=</span><span class="si">{</span><span class="n">swap_metrics</span><span class="p">[</span><span class="s1">&#39;swap_total_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;used=</span><span class="si">{</span><span class="n">swap_metrics</span><span class="p">[</span><span class="s1">&#39;swap_used_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;cached=</span><span class="si">{</span><span class="n">swap_metrics</span><span class="p">[</span><span class="s1">&#39;swap_cached_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read swap metrics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">swap_metrics</span></div>
+
+
+<div class="viewcode-block" id="SchedulerMonitor.start_interrupt_sampling">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.start_interrupt_sampling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_interrupt_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start collecting interrupt samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_sampling_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_total_interrupts</span><span class="p">()</span>
+
+        <span class="c1"># Capture clock alignment ONCE at the beginning</span>
+        <span class="n">start_mono</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic_ns</span><span class="p">()</span>
+        <span class="n">start_epoch</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time_ns</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_monotonic_ns</span> <span class="o">=</span> <span class="n">start_mono</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch_ns</span> <span class="o">=</span> <span class="n">start_epoch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sample_time_ns</span> <span class="o">=</span> <span class="n">start_mono</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Interrupt sampling started - epoch: </span><span class="si">{</span><span class="n">start_epoch</span><span class="si">}</span><span class="s2">, mono: </span><span class="si">{</span><span class="n">start_mono</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_total_interrupts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read total interrupt count from /proc/stat.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/stat&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;intr &quot;</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="SchedulerMonitor.reset_interrupt_samples">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.reset_interrupt_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_interrupt_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear interrupt samples buffer for new run.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_total_interrupts</span><span class="p">()</span>
+
+        <span class="c1"># DO NOT reset the start times here!</span>
+        <span class="c1"># Only update the last sample time for delta calculation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sample_time_ns</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic_ns</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Interrupt samples reset for new run (start times preserved)&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SchedulerMonitor.sample_interrupts">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.sample_interrupts">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample_interrupts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Take one interrupt sample (called from energy_engine sampling loop).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_sampling_active</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">monotonic_now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic_ns</span><span class="p">()</span>
+        <span class="n">current_counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_total_interrupts</span><span class="p">()</span>
+
+        <span class="c1"># Convert monotonic to epoch time</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch_ns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_monotonic_ns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">epoch_ns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch_ns</span> <span class="o">+</span> <span class="p">(</span><span class="n">monotonic_now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_monotonic_ns</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Fallback if start times not set (should not happen)</span>
+            <span class="n">epoch_ns</span> <span class="o">=</span> <span class="n">monotonic_now</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Start times not set for interrupt sampling&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT DEBUG: counts=</span><span class="si">{</span><span class="n">current_counts</span><span class="si">}</span><span class="s2">, last=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_sample_time_ns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="n">time_delta_s</span> <span class="o">=</span> <span class="p">(</span><span class="n">monotonic_now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_sample_time_ns</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1e9</span>
+            <span class="k">if</span> <span class="n">time_delta_s</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">count_delta</span> <span class="o">=</span> <span class="n">current_counts</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span>
+                <span class="n">rate</span> <span class="o">=</span> <span class="n">count_delta</span> <span class="o">/</span> <span class="n">time_delta_s</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT RATE: </span><span class="si">{</span><span class="n">rate</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> IRQ/s&quot;</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="n">epoch_ns</span><span class="p">,</span>  <span class="c1"># Now in epoch time!</span>
+                        <span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">:</span> <span class="n">rate</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_interrupt_counts</span> <span class="o">=</span> <span class="n">current_counts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sample_time_ns</span> <span class="o">=</span> <span class="n">monotonic_now</span></div>
+
+
+<div class="viewcode-block" id="SchedulerMonitor.stop_interrupt_sampling">
+<a class="viewcode-back" href="../../../core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.stop_interrupt_sampling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_interrupt_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop and return interrupt samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_sampling_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_samples</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT STOP: collected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Example usage (standalone test)</span>
+<span class="c1"># ============================================================================</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+    <span class="n">monitor</span> <span class="o">=</span> <span class="n">SchedulerMonitor</span><span class="p">({})</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;SCHEDULER MONITOR TEST&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># First reading</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Initial snapshot:&quot;</span><span class="p">)</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   Context switches: vol=</span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;voluntary_switches&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, invol=</span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;involuntary_switches&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   CPU times: user=</span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;user_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, system=</span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;system_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   Load avg: </span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;load1&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (1min), </span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;load5&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (5min), </span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;load15&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (15min)&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Runnable tasks: </span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;runnable&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;total_tasks&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># NEW: Print swap metrics</span>
+    <span class="k">if</span> <span class="s2">&quot;swap&quot;</span> <span class="ow">in</span> <span class="n">start</span><span class="p">:</span>
+        <span class="n">swap</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="s2">&quot;swap&quot;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💾 Swap metrics:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Total: </span><span class="si">{</span><span class="n">swap</span><span class="p">[</span><span class="s1">&#39;swap_total_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Used:  </span><span class="si">{</span><span class="n">swap</span><span class="p">[</span><span class="s1">&#39;swap_used_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB (</span><span class="si">{</span><span class="n">swap</span><span class="p">[</span><span class="s1">&#39;swap_percent&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Free:  </span><span class="si">{</span><span class="n">swap</span><span class="p">[</span><span class="s1">&#39;swap_free_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cached: </span><span class="si">{</span><span class="n">swap</span><span class="p">[</span><span class="s1">&#39;swap_cached_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Wait</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⏳ Waiting 2 seconds...&quot;</span><span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Second reading</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Final snapshot:&quot;</span><span class="p">)</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   Context switches: vol=</span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;voluntary_switches&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, invol=</span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;involuntary_switches&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   CPU times: user=</span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;user_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, system=</span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;system_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Deltas</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📈 Deltas:&quot;</span><span class="p">)</span>
+    <span class="n">vol_delta</span> <span class="o">=</span> <span class="n">end</span><span class="p">[</span><span class="s2">&quot;voluntary_switches&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">start</span><span class="p">[</span><span class="s2">&quot;voluntary_switches&quot;</span><span class="p">]</span>
+    <span class="n">invol_delta</span> <span class="o">=</span> <span class="n">end</span><span class="p">[</span><span class="s2">&quot;involuntary_switches&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">start</span><span class="p">[</span><span class="s2">&quot;involuntary_switches&quot;</span><span class="p">]</span>
+    <span class="n">user_delta</span> <span class="o">=</span> <span class="n">end</span><span class="p">[</span><span class="s2">&quot;user_time&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">start</span><span class="p">[</span><span class="s2">&quot;user_time&quot;</span><span class="p">]</span>
+    <span class="n">system_delta</span> <span class="o">=</span> <span class="n">end</span><span class="p">[</span><span class="s2">&quot;system_time&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">start</span><span class="p">[</span><span class="s2">&quot;system_time&quot;</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Context switches: vol=+</span><span class="si">{</span><span class="n">vol_delta</span><span class="si">}</span><span class="s2">, invol=+</span><span class="si">{</span><span class="n">invol_delta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   CPU time: user=+</span><span class="si">{</span><span class="n">user_delta</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, system=+</span><span class="si">{</span><span class="n">system_delta</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Load avg: </span><span class="si">{</span><span class="n">end</span><span class="p">[</span><span class="s1">&#39;load1&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># NEW: Swap delta (should be near zero in normal operation)</span>
+    <span class="k">if</span> <span class="s2">&quot;swap&quot;</span> <span class="ow">in</span> <span class="n">end</span> <span class="ow">and</span> <span class="s2">&quot;swap&quot;</span> <span class="ow">in</span> <span class="n">start</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💾 Swap changes:&quot;</span><span class="p">)</span>
+        <span class="n">swap_start</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="s2">&quot;swap&quot;</span><span class="p">]</span>
+        <span class="n">swap_end</span> <span class="o">=</span> <span class="n">end</span><span class="p">[</span><span class="s2">&quot;swap&quot;</span><span class="p">]</span>
+        <span class="n">used_delta</span> <span class="o">=</span> <span class="n">swap_end</span><span class="p">[</span><span class="s2">&quot;swap_used_mb&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">swap_start</span><span class="p">[</span><span class="s2">&quot;swap_used_mb&quot;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Used memory change: </span><span class="si">{</span><span class="n">used_delta</span><span class="si">:</span><span class="s2">+.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Test complete!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># ===== NEW: Test interrupt sampling =====</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;INTERRUPT SAMPLING TEST&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="n">monitor</span><span class="o">.</span><span class="n">start_interrupt_sampling</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Sampling interrupts for 2 seconds at 10 Hz...&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Simulate 10 Hz sampling for 2 seconds</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>  <span class="c1"># 20 samples at 0.1s intervals = 2 seconds</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">monitor</span><span class="o">.</span><span class="n">sample_interrupts</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">()</span>  <span class="c1"># newline</span>
+
+    <span class="n">samples</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">stop_interrupt_sampling</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Collected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> interrupt samples&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">samples</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First 3 samples:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">samples</span><span class="p">[:</span><span class="mi">3</span><span class="p">]):</span>
+            <span class="c1"># Convert timestamp_ns to readable time if needed</span>
+            <span class="n">rate</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: rate=</span><span class="si">{</span><span class="n">rate</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> IRQ/s&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;❌ No samples collected – check that _read_total_interrupts() is working&quot;</span>
+        <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

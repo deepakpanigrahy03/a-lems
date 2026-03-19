@@ -1,0 +1,603 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.models &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.models</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.models</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/models.py  —  🍎 Models</span>
+<span class="sd">Reads config/models.json live on every render — no hardcoding.</span>
+<span class="sd">Schema:  { &quot;cloud&quot;: { &quot;linear&quot;: {...}, &quot;agentic&quot;: {...} },</span>
+<span class="sd">           &quot;local&quot;:  { &quot;linear&quot;: {...}, &quot;agentic&quot;: {...} } }</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.express</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">px</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PROJECT_ROOT</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q_safe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">fl</span>
+
+
+<span class="c1"># ── Theme helpers ─────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_dark</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;theme&quot;</span><span class="p">,</span> <span class="s2">&quot;dark&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;dark&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_tok</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">_is_dark</span><span class="p">():</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">bg0</span><span class="o">=</span><span class="s2">&quot;#0d1117&quot;</span><span class="p">,</span>
+            <span class="n">bg1</span><span class="o">=</span><span class="s2">&quot;#111827&quot;</span><span class="p">,</span>
+            <span class="n">bg2</span><span class="o">=</span><span class="s2">&quot;#1f2937&quot;</span><span class="p">,</span>
+            <span class="n">bg3</span><span class="o">=</span><span class="s2">&quot;#374151&quot;</span><span class="p">,</span>
+            <span class="n">t1</span><span class="o">=</span><span class="s2">&quot;#f1f5f9&quot;</span><span class="p">,</span>
+            <span class="n">t2</span><span class="o">=</span><span class="s2">&quot;#94a3b8&quot;</span><span class="p">,</span>
+            <span class="n">t3</span><span class="o">=</span><span class="s2">&quot;#475569&quot;</span><span class="p">,</span>
+            <span class="n">brd</span><span class="o">=</span><span class="s2">&quot;#1f2937&quot;</span><span class="p">,</span>
+            <span class="n">brd2</span><span class="o">=</span><span class="s2">&quot;#374151&quot;</span><span class="p">,</span>
+            <span class="n">accent</span><span class="o">=</span><span class="s2">&quot;#3b82f6&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">bg0</span><span class="o">=</span><span class="s2">&quot;#f3f4f6&quot;</span><span class="p">,</span>
+        <span class="n">bg1</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span>
+        <span class="n">bg2</span><span class="o">=</span><span class="s2">&quot;#f9fafb&quot;</span><span class="p">,</span>
+        <span class="n">bg3</span><span class="o">=</span><span class="s2">&quot;#d1d5db&quot;</span><span class="p">,</span>
+        <span class="n">t1</span><span class="o">=</span><span class="s2">&quot;#1f2937&quot;</span><span class="p">,</span>
+        <span class="n">t2</span><span class="o">=</span><span class="s2">&quot;#4b5563&quot;</span><span class="p">,</span>
+        <span class="n">t3</span><span class="o">=</span><span class="s2">&quot;#6b7280&quot;</span><span class="p">,</span>
+        <span class="n">brd</span><span class="o">=</span><span class="s2">&quot;#d1d5db&quot;</span><span class="p">,</span>
+        <span class="n">brd2</span><span class="o">=</span><span class="s2">&quot;#9ca3af&quot;</span><span class="p">,</span>
+        <span class="n">accent</span><span class="o">=</span><span class="s2">&quot;#3b82f6&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># ── Load models.json — no caching so changes show immediately ─────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_models</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="n">PROJECT_ROOT</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span> <span class="o">/</span> <span class="s2">&quot;models.json&quot;</span><span class="p">,</span>
+        <span class="n">PROJECT_ROOT</span> <span class="o">/</span> <span class="s2">&quot;models.json&quot;</span><span class="p">,</span>
+    <span class="p">]:</span>
+        <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">candidate</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;_error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="s2">&quot;_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">candidate</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;_missing&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+
+
+<span class="c1"># ── DB stats keyed by (model_name, workflow_type) ─────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_stats</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">q_safe</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT e.model_name, r.workflow_type,</span>
+<span class="s2">                   COUNT(*)                                  AS runs,</span>
+<span class="s2">                   ROUND(AVG(r.total_energy_uj)/1e6, 4)     AS avg_j,</span>
+<span class="s2">                   ROUND(AVG(r.dynamic_energy_uj)/1e6, 4)   AS avg_dyn_j,</span>
+<span class="s2">                   ROUND(AVG(r.duration_ns)/1e9, 3)         AS avg_dur_s,</span>
+<span class="s2">                   ROUND(AVG(r.total_tokens), 1)            AS avg_tokens,</span>
+<span class="s2">                   ROUND(AVG(CASE WHEN r.total_tokens &gt; 0</span>
+<span class="s2">                       THEN r.total_energy_uj / r.total_tokens</span>
+<span class="s2">                       END) / 1e3, 4)                       AS avg_mj_tok,</span>
+<span class="s2">                   ROUND(AVG(r.ipc), 3)                     AS avg_ipc,</span>
+<span class="s2">                   ROUND(AVG(r.carbon_g)*1000, 4)           AS avg_carbon_mg</span>
+<span class="s2">            FROM runs r</span>
+<span class="s2">            JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">            WHERE e.model_name IS NOT NULL</span>
+<span class="s2">            GROUP BY e.model_name, r.workflow_type</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                <span class="n">stats</span><span class="p">[(</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;model_name&quot;</span><span class="p">]),</span> <span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]))]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+                <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">stats</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_stat</span><span class="p">(</span><span class="n">stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">wf</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Match a spec to a stats row. Tries model_id then name.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;model_id&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">v</span><span class="p">:</span>
+            <span class="n">hit</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">wf</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">hit</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">hit</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="c1"># ── Spec block (linear or agentic half of a card) ─────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_spec_block</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">wf</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">wf_stats</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">bg2</span><span class="p">,</span> <span class="n">bg3</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg3&quot;</span><span class="p">]</span>
+    <span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">t3</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t2&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t3&quot;</span><span class="p">]</span>
+    <span class="n">brd</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd&quot;</span><span class="p">]</span>
+    <span class="n">wf_clr</span> <span class="o">=</span> <span class="s2">&quot;#16a34a&quot;</span> <span class="k">if</span> <span class="n">wf</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span> <span class="k">else</span> <span class="s2">&quot;#ef4444&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+    <span class="n">mid</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_id&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">ep</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_endpoint&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">mpath</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">mtok</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+    <span class="n">tools_s</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools_supported&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">tools</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_row</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">vc</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">vc</span> <span class="o">=</span> <span class="n">vc</span> <span class="ow">or</span> <span class="n">t2</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;justify-content:space-between;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;padding:4px 0;border-bottom:0.5px solid </span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">;font-size:10px&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">&#39;&gt;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;color:</span><span class="si">{</span><span class="n">vc</span><span class="si">}</span><span class="s2">;font-family:monospace;max-width:150px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-align:right&#39;&gt;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="p">(</span><span class="kc">None</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;—&#39;</span><span class="si">}</span><span class="s2">&lt;/span&gt;&lt;/div&gt;&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">bg2</span><span class="si">}</span><span class="s2">;border-radius:7px;padding:10px 12px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-left:3px solid </span><span class="si">{</span><span class="n">wf_clr</span><span class="si">}</span><span class="s2">;margin-bottom:8px&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;font-weight:700;color:</span><span class="si">{</span><span class="n">wf_clr</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px&#39;&gt;</span><span class="si">{</span><span class="n">wf</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:500;color:</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">;margin-bottom:7px&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">mid</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span><span class="s2">&quot;Model ID&quot;</span><span class="p">,</span> <span class="n">mid</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ep</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span><span class="s2">&quot;Endpoint&quot;</span><span class="p">,</span> <span class="n">ep</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">38</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">mpath</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span><span class="s2">&quot;Model file&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">mpath</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span><span class="s2">&quot;Max tokens&quot;</span><span class="p">,</span> <span class="n">mtok</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span><span class="s2">&quot;Temperature&quot;</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tools_s</span> <span class="ow">and</span> <span class="n">tools</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span><span class="s2">&quot;Tools&quot;</span><span class="p">,</span> <span class="s2">&quot;✓ &quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tools</span><span class="p">),</span> <span class="s2">&quot;#16a34a&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="n">_row</span><span class="p">(</span>
+            <span class="s2">&quot;Tools&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;✓ enabled&quot;</span> <span class="k">if</span> <span class="n">tools_s</span> <span class="k">else</span> <span class="s2">&quot;✗ disabled&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;#16a34a&quot;</span> <span class="k">if</span> <span class="n">tools_s</span> <span class="k">else</span> <span class="n">t3</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Measured energy section</span>
+    <span class="k">if</span> <span class="n">wf_stats</span><span class="p">:</span>
+        <span class="n">avg_j</span> <span class="o">=</span> <span class="n">wf_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_j&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">avg_mj</span> <span class="o">=</span> <span class="n">wf_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_mj_tok&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">avg_dur</span> <span class="o">=</span> <span class="n">wf_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_dur_s&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">avg_tok</span> <span class="o">=</span> <span class="n">wf_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">runs</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">wf_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runs&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-top:8px;padding-top:7px;border-top:0.5px solid </span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;margin-bottom:6px&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Measured · </span><span class="si">{</span><span class="n">runs</span><span class="si">}</span><span class="s2"> runs · </span><span class="si">{</span><span class="n">avg_tok</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> avg tokens&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px&#39;&gt;&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">lbl</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">&quot;Energy&quot;</span><span class="p">,</span> <span class="n">avg_j</span><span class="p">,</span> <span class="s2">&quot;J&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;mJ/token&quot;</span><span class="p">,</span> <span class="n">avg_mj</span><span class="p">,</span> <span class="s2">&quot;mJ&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;Duration&quot;</span><span class="p">,</span> <span class="n">avg_dur</span><span class="p">,</span> <span class="s2">&quot;s&quot;</span><span class="p">),</span>
+        <span class="p">]:</span>
+            <span class="n">html</span> <span class="o">+=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">bg3</span><span class="si">}</span><span class="s2">;border-radius:5px;padding:5px 4px;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;text-align:center&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">&#39;&gt;</span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:500;color:</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:monospace&#39;&gt;</span><span class="si">{</span><span class="n">val</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">&#39;&gt;</span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="p">)</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">html</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-top:8px;font-size:9px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-style:italic;padding-top:5px;border-top:0.5px solid </span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Not yet measured&lt;/div&gt;&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">+=</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span>
+    <span class="k">return</span> <span class="n">html</span>
+
+
+<span class="c1"># ── Full group card (cloud / local) ───────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_group_card</span><span class="p">(</span><span class="n">gkey</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">gcfg</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">bg1</span><span class="p">,</span> <span class="n">bg2</span><span class="p">,</span> <span class="n">bg3</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg1&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg3&quot;</span><span class="p">]</span>
+    <span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">t3</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t2&quot;</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t3&quot;</span><span class="p">]</span>
+    <span class="n">brd</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd&quot;</span><span class="p">]</span>
+    <span class="n">clr</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;cloud&quot;</span><span class="p">:</span> <span class="s2">&quot;#38bdf8&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gkey</span><span class="p">,</span> <span class="s2">&quot;#7c3aed&quot;</span><span class="p">)</span>
+    <span class="n">icon</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;cloud&quot;</span><span class="p">:</span> <span class="s2">&quot;☁&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span> <span class="s2">&quot;💻&quot;</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">gkey</span><span class="p">,</span> <span class="s2">&quot;⚙&quot;</span><span class="p">)</span>
+
+    <span class="n">lin_spec</span> <span class="o">=</span> <span class="n">gcfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">age_spec</span> <span class="o">=</span> <span class="n">gcfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agentic&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">lin_stats</span> <span class="o">=</span> <span class="n">_find_stat</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="n">lin_spec</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+    <span class="n">age_stats</span> <span class="o">=</span> <span class="n">_find_stat</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="n">age_spec</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">bg1</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-top:3px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;border-radius:10px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;padding:14px 15px;box-sizing:border-box&#39;&gt;&quot;</span>
+        <span class="c1"># header</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:8px;margin-bottom:12px&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:18px&#39;&gt;</span><span class="si">{</span><span class="n">icon</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:13px;font-weight:600;color:</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">gkey</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2"> provider&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:9px;padding:2px 8px;border-radius:100px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">18;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">40;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;margin-left:auto&#39;&gt;</span><span class="si">{</span><span class="n">gkey</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+    <span class="p">)</span>
+    <span class="n">html</span> <span class="o">+=</span> <span class="n">_spec_block</span><span class="p">(</span><span class="n">lin_spec</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">lin_stats</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">+=</span> <span class="n">_spec_block</span><span class="p">(</span><span class="n">age_spec</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">,</span> <span class="n">age_stats</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+    <span class="c1"># Tax multiple if both measured</span>
+    <span class="k">if</span> <span class="n">lin_stats</span> <span class="ow">and</span> <span class="n">age_stats</span><span class="p">:</span>
+        <span class="n">lj</span> <span class="o">=</span> <span class="n">lin_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_j&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">aj</span> <span class="o">=</span> <span class="n">age_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_j&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">lj</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">mult</span> <span class="o">=</span> <span class="n">aj</span> <span class="o">/</span> <span class="n">lj</span>
+            <span class="n">mc</span> <span class="o">=</span> <span class="s2">&quot;#ef4444&quot;</span> <span class="k">if</span> <span class="n">mult</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;#d97706&quot;</span> <span class="k">if</span> <span class="n">mult</span> <span class="o">&gt;=</span> <span class="mf">1.2</span> <span class="k">else</span> <span class="s2">&quot;#16a34a&quot;</span>
+            <span class="n">html</span> <span class="o">+=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">bg2</span><span class="si">}</span><span class="s2">;border-radius:7px;padding:10px 12px;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;display:flex;justify-content:space-between;align-items:center;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;margin-top:4px&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;margin-bottom:2px&#39;&gt;Orchestration tax&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">&#39;&gt;agentic ÷ linear&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:20px;font-weight:600;color:</span><span class="si">{</span><span class="n">mc</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:monospace&#39;&gt;</span><span class="si">{</span><span class="n">mult</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">×&lt;/span&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">html</span> <span class="o">+=</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span>
+    <span class="k">return</span> <span class="n">html</span>
+
+
+<span class="c1"># ── Main render ───────────────────────────────────────────────────────────────</span>
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.models.html#gui.pages.models.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">_tok</span><span class="p">()</span>
+    <span class="n">bg1</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg1&quot;</span><span class="p">]</span>
+    <span class="n">bg2</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">]</span>
+    <span class="n">bg3</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg3&quot;</span><span class="p">]</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">]</span>
+    <span class="n">t2</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t2&quot;</span><span class="p">]</span>
+    <span class="n">t3</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t3&quot;</span><span class="p">]</span>
+    <span class="n">brd</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd&quot;</span><span class="p">]</span>
+    <span class="n">brd2</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd2&quot;</span><span class="p">]</span>
+    <span class="n">accent</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span>
+
+    <span class="c1"># ── Page header ───────────────────────────────────────────────────────────</span>
+    <span class="n">h_col</span><span class="p">,</span> <span class="n">btn_col</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="k">with</span> <span class="n">h_col</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:baseline;gap:10px;margin-bottom:2px&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:20px;font-weight:600;color:</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">&#39;&gt;🍎 Models&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:12px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">&#39;&gt;Apple-to-Apple energy comparison&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">with</span> <span class="n">btn_col</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;↺ Reload&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;models_reload&quot;</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>  <span class="c1"># No cache — file is always re-read</span>
+
+    <span class="c1"># ── Load config live ──────────────────────────────────────────────────────</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">_load_models</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_missing&quot;</span><span class="p">):</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">bg1</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-left:3px solid #ef4444;border-radius:8px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;padding:14px 16px;margin:12px 0;font-size:11px;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;b style=&#39;color:#ef4444&#39;&gt;config/models.json not found.&lt;/b&gt;&lt;br/&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">&#39;&gt;Expected at: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;code style=&#39;background:</span><span class="si">{</span><span class="n">bg2</span><span class="si">}</span><span class="s2">;padding:1px 5px;border-radius:3px&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">PROJECT_ROOT</span><span class="si">}</span><span class="s2">/config/models.json&lt;/code&gt;&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_error&quot;</span><span class="p">):</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error reading models.json: </span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;_error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># Show config path + mod time</span>
+    <span class="n">cfg_path</span> <span class="o">=</span> <span class="n">PROJECT_ROOT</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span> <span class="o">/</span> <span class="s2">&quot;models.json&quot;</span>
+    <span class="n">_mtime</span> <span class="o">=</span> <span class="s2">&quot;—&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_dt</span>
+
+        <span class="n">_mtime</span> <span class="o">=</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">cfg_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span>
+            <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cfg</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="nb">dict</span><span class="p">)]</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;margin-bottom:14px&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Live from &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;code style=&#39;background:</span><span class="si">{</span><span class="n">bg2</span><span class="si">}</span><span class="s2">;padding:1px 5px;border-radius:3px;font-size:9px&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;config/models.json&lt;/code&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot; · modified </span><span class="si">{</span><span class="n">_mtime</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot; · </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span><span class="si">}</span><span class="s2"> provider group</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">: &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;b style=&#39;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">&#39;&gt;</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;/b&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Model config cards — one per provider group ───────────────────────────</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">_load_stats</span><span class="p">()</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">),</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">gkey</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">groups</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">cols</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="n">_group_card</span><span class="p">(</span><span class="n">gkey</span><span class="p">,</span> <span class="n">cfg</span><span class="p">[</span><span class="n">gkey</span><span class="p">],</span> <span class="n">stats</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;height:0.5px;background:</span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">;margin:18px 0 14px&#39;&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Apple-to-Apple charts ─────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:500;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Measured comparison — all runs&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">_full_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_full_df</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">q_safe</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT e.model_name, e.provider, r.workflow_type, e.task_name,</span>
+<span class="s2">                   COUNT(*)                                        AS runs,</span>
+<span class="s2">                   ROUND(AVG(r.total_energy_uj)/1e6, 4)           AS avg_energy_j,</span>
+<span class="s2">                   ROUND(AVG(r.dynamic_energy_uj)/1e6, 4)         AS avg_dynamic_j,</span>
+<span class="s2">                   ROUND(AVG(r.duration_ns)/1e9, 3)               AS avg_duration_s,</span>
+<span class="s2">                   ROUND(AVG(r.total_tokens), 1)                  AS avg_tokens,</span>
+<span class="s2">                   ROUND(AVG(CASE WHEN r.total_tokens &gt; 0</span>
+<span class="s2">                       THEN r.total_energy_uj / r.total_tokens</span>
+<span class="s2">                       END) / 1e3, 4)                             AS avg_mj_per_token,</span>
+<span class="s2">                   ROUND(AVG(r.ipc), 3)                           AS avg_ipc,</span>
+<span class="s2">                   ROUND(AVG(r.carbon_g)*1000, 4)                 AS avg_carbon_mg,</span>
+<span class="s2">                   ROUND(AVG(r.water_ml), 4)                      AS avg_water_ml</span>
+<span class="s2">            FROM runs r</span>
+<span class="s2">            JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">            WHERE e.model_name IS NOT NULL</span>
+<span class="s2">            GROUP BY e.model_name, e.provider, r.workflow_type, e.task_name</span>
+<span class="s2">            ORDER BY e.provider, e.model_name, r.workflow_type</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="n">_full_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">bg1</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-radius:8px;padding:20px;text-align:center;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;font-size:12px&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;No run data yet — run experiments to see charts here.&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># Task filter</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">fc</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="k">with</span> <span class="n">fc</span><span class="p">:</span>
+        <span class="n">_tasks</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">_full_df</span><span class="o">.</span><span class="n">task_name</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="n">_sel</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">_tasks</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;models_task&quot;</span><span class="p">)</span>
+    <span class="n">_filt</span> <span class="o">=</span> <span class="p">(</span><span class="n">_full_df</span> <span class="k">if</span> <span class="n">_sel</span> <span class="o">==</span> <span class="s2">&quot;all&quot;</span> <span class="k">else</span> <span class="n">_full_df</span><span class="p">[</span><span class="n">_full_df</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="n">_sel</span><span class="p">])</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">_filt</span><span class="p">[</span><span class="s2">&quot;model_wf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_filt</span><span class="p">[</span><span class="s2">&quot;model_name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; · &quot;</span> <span class="o">+</span> <span class="n">_filt</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">_pl</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">paper_bgcolor</span><span class="o">=</span><span class="n">bg1</span><span class="p">,</span>
+        <span class="n">plot_bgcolor</span><span class="o">=</span><span class="n">bg2</span><span class="p">,</span>
+        <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">t1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+        <span class="n">margin</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+        <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">bgcolor</span><span class="o">=</span><span class="n">bg1</span><span class="p">,</span> <span class="n">bordercolor</span><span class="o">=</span><span class="n">brd</span><span class="p">,</span> <span class="n">borderwidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">t2</span><span class="p">)),</span>
+        <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">ch_l</span><span class="p">,</span> <span class="n">ch_r</span><span class="p">),</span> <span class="p">(</span><span class="n">col_l</span><span class="p">,</span> <span class="n">col_r</span><span class="p">),</span> <span class="p">(</span><span class="n">lbl_l</span><span class="p">,</span> <span class="n">lbl_r</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">),</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;Energy (J) — model × workflow&quot;</span><span class="p">,</span> <span class="s2">&quot;mJ / token — model × workflow&quot;</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;avg_duration_s&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_carbon_mg&quot;</span><span class="p">),</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;Avg duration (s)&quot;</span><span class="p">,</span> <span class="s2">&quot;Carbon footprint (mg CO₂)&quot;</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">]:</span>
+        <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">ch_l</span><span class="p">,</span> <span class="n">col_l</span><span class="p">,</span> <span class="n">lbl_l</span><span class="p">),</span> <span class="p">(</span><span class="n">ch_r</span><span class="p">,</span> <span class="n">col_r</span><span class="p">,</span> <span class="n">lbl_r</span><span class="p">)]:</span>
+            <span class="k">pass</span>  <span class="c1"># loop structure — see below</span>
+
+    <span class="c1"># Draw charts explicitly (avoid loop variable confusion)</span>
+    <span class="n">ch1</span><span class="p">,</span> <span class="n">ch2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col_ctx</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">ch1</span><span class="p">,</span> <span class="s2">&quot;avg_energy_j&quot;</span><span class="p">,</span> <span class="s2">&quot;Energy (J) — model × workflow&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">ch2</span><span class="p">,</span> <span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">,</span> <span class="s2">&quot;mJ / token — model × workflow&quot;</span><span class="p">),</span>
+    <span class="p">]:</span>
+        <span class="k">with</span> <span class="n">col_ctx</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:500;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;margin-bottom:4px&#39;&gt;</span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                <span class="n">_filt</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;model_wf&quot;</span><span class="p">,</span> <span class="s2">&quot;workflow_type&quot;</span><span class="p">])[</span><span class="n">metric</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;model_wf&quot;</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+                <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+                <span class="n">color_discrete_map</span><span class="o">=</span><span class="n">WF_COLORS</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="n">metric</span><span class="p">:</span> <span class="n">lbl</span><span class="p">,</span> <span class="s2">&quot;model_wf&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="n">tickangle</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="o">**</span><span class="n">_pl</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">ch3</span><span class="p">,</span> <span class="n">ch4</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col_ctx</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">ch3</span><span class="p">,</span> <span class="s2">&quot;avg_duration_s&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg duration (s)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">ch4</span><span class="p">,</span> <span class="s2">&quot;avg_carbon_mg&quot;</span><span class="p">,</span> <span class="s2">&quot;Carbon footprint (mg CO₂)&quot;</span><span class="p">),</span>
+    <span class="p">]:</span>
+        <span class="k">with</span> <span class="n">col_ctx</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:500;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;margin-bottom:4px&#39;&gt;</span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                <span class="n">_filt</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;model_wf&quot;</span><span class="p">,</span> <span class="s2">&quot;workflow_type&quot;</span><span class="p">])[</span><span class="n">metric</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;model_wf&quot;</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+                <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+                <span class="n">color_discrete_map</span><span class="o">=</span><span class="n">WF_COLORS</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="n">metric</span><span class="p">:</span> <span class="n">lbl</span><span class="p">,</span> <span class="s2">&quot;model_wf&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="n">tickangle</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="o">**</span><span class="n">_pl</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># ── Full matrix ───────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;height:0.5px;background:</span><span class="si">{</span><span class="n">brd</span><span class="si">}</span><span class="s2">;margin:8px 0 12px&#39;&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:500;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;margin-bottom:8px&#39;&gt;Full comparison matrix&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">_show</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">c</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;model_name&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;provider&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_name&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;runs&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_energy_j&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_dynamic_j&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_duration_s&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_tokens&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_ipc&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_carbon_mg&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_water_ml&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">_filt</span><span class="o">.</span><span class="n">columns</span>
+    <span class="p">]</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">_filt</span><span class="p">[</span><span class="n">_show</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hide_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

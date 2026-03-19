@@ -6,12 +6,14 @@ Uses a UI-specific table (research_hypotheses) if it exists,
 otherwise provides the CREATE TABLE SQL and a manual entry form.
 ─────────────────────────────────────────────────────────────────────────────
 """
-import streamlit as st
-import pandas as pd
+
 from datetime import datetime
 
-from gui.db     import q, q1
+import pandas as pd
+import streamlit as st
+
 from gui.config import PL
+from gui.db import q, q1
 
 ACCENT = "#38bdf8"
 
@@ -76,7 +78,8 @@ def render(ctx: dict) -> None:
         f"State research hypotheses · track evidence · "
         f"link to supporting runs · build publishable findings</div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     # ── Create table if needed ────────────────────────────────────────────────
     if not table_exists:
@@ -88,8 +91,10 @@ def render(ctx: dict) -> None:
             f"margin-bottom:16px;'>"
             f"<b>First-time setup:</b> The research_hypotheses table doesn't exist yet. "
             f"Run this SQL in the SQL Query page to create it:</div>",
-            unsafe_allow_html=True)
-        st.code("""
+            unsafe_allow_html=True,
+        )
+        st.code(
+            """
 CREATE TABLE IF NOT EXISTS research_hypotheses (
     hypothesis_id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -104,27 +109,37 @@ CREATE TABLE IF NOT EXISTS research_hypotheses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-        """, language="sql")
+        """,
+            language="sql",
+        )
 
     # ── Template hypotheses ───────────────────────────────────────────────────
     st.markdown(
         f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
         f"text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;'>"
         f"Research hypotheses — based on your data</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     for i, hyp in enumerate(HYPOTHESIS_TEMPLATES):
         # Try to compute quick evidence from the DB
         evidence = _compute_evidence(hyp, i)
 
-        conf_clr = "#22c55e" if evidence["supported"] else \
-                   "#f59e0b" if evidence["partial"] else "#94a3b8"
-        status   = "SUPPORTED" if evidence["supported"] else \
-                   "PARTIAL" if evidence["partial"] else "OPEN"
+        conf_clr = (
+            "#22c55e"
+            if evidence["supported"]
+            else "#f59e0b" if evidence["partial"] else "#94a3b8"
+        )
+        status = (
+            "SUPPORTED"
+            if evidence["supported"]
+            else "PARTIAL" if evidence["partial"] else "OPEN"
+        )
 
         with st.expander(
             f"{hyp['category']} · {hyp['title']} — {status}",
-            expanded=evidence["supported"]):
+            expanded=evidence["supported"],
+        ):
 
             col1, col2 = st.columns([3, 1])
             with col1:
@@ -133,7 +148,8 @@ CREATE TABLE IF NOT EXISTS research_hypotheses (
                     f"font-family:IBM Plex Mono,monospace;line-height:1.7;'>"
                     f"<b style='color:#f1f5f9;'>Prediction:</b> {hyp['prediction']}"
                     f"</div>",
-                    unsafe_allow_html=True)
+                    unsafe_allow_html=True,
+                )
                 if evidence.get("finding"):
                     st.markdown(
                         f"<div style='margin-top:8px;padding:8px 12px;"
@@ -141,7 +157,8 @@ CREATE TABLE IF NOT EXISTS research_hypotheses (
                         f"border-radius:0 6px 6px 0;font-size:11px;"
                         f"color:#86efac;font-family:IBM Plex Mono,monospace;'>"
                         f"📊 {evidence['finding']}</div>",
-                        unsafe_allow_html=True)
+                        unsafe_allow_html=True,
+                    )
             with col2:
                 st.markdown(
                     f"<div style='text-align:center;padding:12px;"
@@ -151,7 +168,8 @@ CREATE TABLE IF NOT EXISTS research_hypotheses (
                     f"{evidence['confidence']}%</div>"
                     f"<div style='font-size:9px;color:#475569;margin-top:2px;'>confidence</div>"
                     f"</div>",
-                    unsafe_allow_html=True)
+                    unsafe_allow_html=True,
+                )
 
             st.code(hyp["test_query"], language="sql")
 
@@ -163,11 +181,22 @@ CREATE TABLE IF NOT EXISTS research_hypotheses (
                 f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
                 f"text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;'>"
                 f"Saved hypotheses — {len(stored)}</div>",
-                unsafe_allow_html=True)
-            st.dataframe(stored[[
-                "hypothesis_id","title","category","status",
-                "confidence_pct","created_at"
-            ]], use_container_width=True, height=250)
+                unsafe_allow_html=True,
+            )
+            st.dataframe(
+                stored[
+                    [
+                        "hypothesis_id",
+                        "title",
+                        "category",
+                        "status",
+                        "confidence_pct",
+                        "created_at",
+                    ]
+                ],
+                use_container_width=True,
+                height=250,
+            )
 
 
 def _compute_evidence(hyp: dict, idx: int) -> dict:
@@ -180,25 +209,33 @@ def _compute_evidence(hyp: dict, idx: int) -> dict:
                 GROUP BY workflow_type
             """)
             if not result.empty and len(result) >= 2:
-                lin = result[result["workflow_type"]=="linear"]["avg_ept"].values
-                age = result[result["workflow_type"]=="agentic"]["avg_ept"].values
+                lin = result[result["workflow_type"] == "linear"]["avg_ept"].values
+                age = result[result["workflow_type"] == "agentic"]["avg_ept"].values
                 if len(lin) > 0 and len(age) > 0:
                     ratio = age[0] / lin[0] if lin[0] > 0 else 1
                     supported = ratio > 1
-                    return {"supported": supported, "partial": ratio > 0.9,
-                            "confidence": min(int(abs(ratio-1)*200), 95) if supported else 30,
-                            "finding": f"Agentic: {age[0]:.5f}J/tok vs Linear: {lin[0]:.5f}J/tok (ratio: {ratio:.2f}x)"}
+                    return {
+                        "supported": supported,
+                        "partial": ratio > 0.9,
+                        "confidence": (
+                            min(int(abs(ratio - 1) * 200), 95) if supported else 30
+                        ),
+                        "finding": f"Agentic: {age[0]:.5f}J/tok vs Linear: {lin[0]:.5f}J/tok (ratio: {ratio:.2f}x)",
+                    }
         elif idx == 1:  # Cache miss correlation
             result = q("""
                 SELECT cache_miss_rate, energy_j FROM ml_features
                 WHERE cache_miss_rate > 0 AND energy_j > 0 LIMIT 500
             """)
             if not result.empty and len(result) > 10:
-                r = result.corr().iloc[0,1]
+                r = result.corr().iloc[0, 1]
                 supported = r > 0.3
-                return {"supported": supported, "partial": r > 0.1,
-                        "confidence": min(int(abs(r)*100), 90),
-                        "finding": f"Pearson r = {r:.3f} (cache_miss_rate vs energy_j)"}
+                return {
+                    "supported": supported,
+                    "partial": r > 0.1,
+                    "confidence": min(int(abs(r) * 100), 90),
+                    "finding": f"Pearson r = {r:.3f} (cache_miss_rate vs energy_j)",
+                }
         elif idx == 3:  # Model efficiency
             result = q("""
                 SELECT model_name, AVG(energy_per_token) AS avg_ept
@@ -207,9 +244,12 @@ def _compute_evidence(hyp: dict, idx: int) -> dict:
             """)
             if not result.empty:
                 best = result.iloc[0]
-                return {"supported": True, "partial": True,
-                        "confidence": 75,
-                        "finding": f"Most efficient: {best['model_name']} at {best['avg_ept']:.5f} J/tok"}
+                return {
+                    "supported": True,
+                    "partial": True,
+                    "confidence": 75,
+                    "finding": f"Most efficient: {best['model_name']} at {best['avg_ept']:.5f} J/tok",
+                }
     except Exception:
         pass
     return {"supported": False, "partial": False, "confidence": 0, "finding": None}

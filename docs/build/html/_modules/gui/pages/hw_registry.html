@@ -1,0 +1,405 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.hw_registry &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.hw_registry</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.hw_registry</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/hw_registry.py  —  ▣  Hardware Registry</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Full hardware profile for every registered machine.</span>
+<span class="sd">Shows CPU spec, RAPL capabilities, AVX/VMX flags, GPU, run statistics.</span>
+<span class="sd">Foundation for multi-host silicon comparison.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span><span class="p">,</span> <span class="n">STATUS_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#fb923c&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_flag_badge</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">true_label</span><span class="o">=</span><span class="s2">&quot;✓&quot;</span><span class="p">,</span> <span class="n">false_label</span><span class="o">=</span><span class="s2">&quot;✗&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;True&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;background:#052e1a;color:#4ade80;font-size:9px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;padding:1px 6px;border-radius:3px;font-weight:700;&#39;&gt;</span><span class="si">{</span><span class="n">true_label</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;background:#2a0c0c;color:#f87171;font-size:9px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;padding:1px 6px;border-radius:3px;font-weight:700;&#39;&gt;</span><span class="si">{</span><span class="n">false_label</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cap_badge</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">has</span> <span class="o">=</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;True&quot;</span><span class="p">)</span>
+    <span class="n">bg</span> <span class="o">=</span> <span class="s2">&quot;#052e1a&quot;</span> <span class="k">if</span> <span class="n">has</span> <span class="k">else</span> <span class="s2">&quot;#1a1a2e&quot;</span>
+    <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;#4ade80&quot;</span> <span class="k">if</span> <span class="n">has</span> <span class="k">else</span> <span class="s2">&quot;#475569&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;background:</span><span class="si">{</span><span class="n">bg</span><span class="si">}</span><span class="s2">;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;font-size:9px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;padding:1px 6px;border-radius:3px;font-weight:700;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;margin-right:4px;&#39;&gt;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.hw_registry.html#gui.pages.hw_registry.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">hw_df</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            h.hw_id, h.hostname, h.cpu_model, h.cpu_cores, h.cpu_threads,</span>
+<span class="s2">            h.ram_gb, h.cpu_architecture, h.cpu_vendor,</span>
+<span class="s2">            h.cpu_family, h.cpu_model_id, h.cpu_stepping,</span>
+<span class="s2">            h.has_avx2, h.has_avx512, h.has_vmx,</span>
+<span class="s2">            h.rapl_domains, h.rapl_has_dram, h.rapl_has_uncore,</span>
+<span class="s2">            h.gpu_model, h.gpu_driver, h.gpu_count, h.gpu_power_available,</span>
+<span class="s2">            h.system_manufacturer, h.system_product, h.system_type,</span>
+<span class="s2">            h.virtualization_type, h.kernel_version, h.microcode_version,</span>
+<span class="s2">            h.detected_at,</span>
+<span class="s2">            COUNT(r.run_id)         AS total_runs,</span>
+<span class="s2">            COUNT(DISTINCT e.exp_id) AS total_exps,</span>
+<span class="s2">            MAX(r.start_time_ns)    AS last_run_ns,</span>
+<span class="s2">            AVG(r.total_energy_uj/1e6) AS avg_energy_j,</span>
+<span class="s2">            AVG(r.ipc)              AS avg_ipc,</span>
+<span class="s2">            AVG(r.package_temp_celsius) AS avg_temp</span>
+<span class="s2">        FROM hardware_config h</span>
+<span class="s2">        LEFT JOIN runs r ON h.hw_id = r.hw_id</span>
+<span class="s2">        LEFT JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">        GROUP BY h.hw_id</span>
+<span class="s2">        ORDER BY h.hw_id</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">hw_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:40px;text-align:center;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">08;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:28px;margin-bottom:8px;&#39;&gt;▣&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:14px;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;No hardware registered yet&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#475569;margin-top:4px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Hardware is registered automatically on first experiment run.&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Header ────────────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;display:flex;align-items:center;gap:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:36px;&#39;&gt;▣&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:18px;font-weight:700;color:#f1f5f9;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">hw_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> Machine</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">hw_df</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2"> Registered&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#94a3b8;margin-top:2px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Hardware registry — silicon profiles for multi-host experiments&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Per-machine cards ─────────────────────────────────────────────────────</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">hw</span> <span class="ow">in</span> <span class="n">hw_df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">hw_id</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hw_id&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+        <span class="n">hostname</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hostname&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;hw_</span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">cpu</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Unknown CPU&quot;</span>
+        <span class="n">arch</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_architecture&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">cores</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_cores&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">threads</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_threads&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">ram</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ram_gb&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">sys_type</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_type&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="n">mfr</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_manufacturer&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_product&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kernel_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">virt</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;virtualization_type&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;none&quot;</span>
+        <span class="n">runs_n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_runs&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">exps_n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_exps&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">avg_e</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">avg_ipc</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_ipc&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+        <span class="n">avg_tmp</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_temp&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+
+        <span class="c1"># RAPL domains</span>
+        <span class="n">rapl_raw</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_domains&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;[]&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">rapl_domains</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">rapl_raw</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rapl_raw</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">rapl_raw</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">rapl_domains</span> <span class="o">=</span> <span class="p">[</span><span class="n">rapl_raw</span><span class="p">]</span>
+
+        <span class="c1"># GPU</span>
+        <span class="n">gpu_model</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;None&quot;</span>
+        <span class="n">gpu_count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_count&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-top:3px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-radius:10px;padding:18px 20px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:#111827;margin-bottom:16px;&#39;&gt;&quot;</span>
+            <span class="c1"># Title row</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:12px;margin-bottom:14px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:22px;font-weight:800;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;hw_</span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:16px;font-weight:600;color:#f1f5f9;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;</span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-left:auto;font-size:10px;color:#475569;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;</span><span class="si">{</span><span class="n">mfr</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">product</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">sys_type</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="c1"># CPU row</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:12px;color:#94a3b8;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:10px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;color:#f1f5f9;font-weight:500;&#39;&gt;</span><span class="si">{</span><span class="n">cpu</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  ·  </span><span class="si">{</span><span class="n">arch</span><span class="si">}</span><span class="s2">  ·  </span><span class="si">{</span><span class="n">cores</span><span class="si">}</span><span class="s2">C/</span><span class="si">{</span><span class="n">threads</span><span class="si">}</span><span class="s2">T  ·  </span><span class="si">{</span><span class="n">ram</span><span class="si">}</span><span class="s2">GB RAM&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  ·  kernel </span><span class="si">{</span><span class="n">kernel</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="c1"># Capability badges</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-bottom:10px;&#39;&gt;&quot;</span>
+            <span class="o">+</span> <span class="n">_cap_badge</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx2&quot;</span><span class="p">),</span> <span class="s2">&quot;AVX2&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">_cap_badge</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx512&quot;</span><span class="p">),</span> <span class="s2">&quot;AVX512&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">_cap_badge</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_vmx&quot;</span><span class="p">),</span> <span class="s2">&quot;VMX/VT-x&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">_cap_badge</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_has_dram&quot;</span><span class="p">),</span> <span class="s2">&quot;RAPL DRAM&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">_cap_badge</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_has_uncore&quot;</span><span class="p">),</span> <span class="s2">&quot;RAPL Uncore&quot;</span><span class="p">)</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:9px;color:#475569;margin-left:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;RAPL: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rapl_domains</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">rapl_domains</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="c1"># GPU row</span>
+            <span class="o">+</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#94a3b8;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:10px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;GPU: &lt;span style=&#39;color:#f1f5f9;&#39;&gt;</span><span class="si">{</span><span class="n">gpu_model</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  (</span><span class="si">{</span><span class="n">gpu_count</span><span class="si">}</span><span class="s2"> device</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">gpu_count</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  ·  Virt: </span><span class="si">{</span><span class="n">virt</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="k">if</span> <span class="n">gpu_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">gpu_model</span> <span class="o">!=</span> <span class="s2">&quot;None&quot;</span>
+                <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Stats row below the card</span>
+        <span class="n">stat_cols</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">clr</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">stat_cols</span><span class="p">,</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">runs_n</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Total runs&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">),</span>
+                <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exps_n</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Experiments&quot;</span><span class="p">,</span> <span class="s2">&quot;#60a5fa&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_e</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">J&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg energy&quot;</span><span class="p">,</span> <span class="s2">&quot;#f59e0b&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_ipc</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg IPC&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_tmp</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg pkg temp&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">),</span>
+            <span class="p">],</span>
+        <span class="p">):</span>
+            <span class="k">with</span> <span class="n">col</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:8px 12px;background:#1f2937;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;border:1px solid #374151;border-radius:7px;margin-bottom:12px;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:16px;font-weight:700;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:#475569;text-transform:uppercase;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-top:3px;&#39;&gt;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+                    <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Energy distribution chart for this hw</span>
+        <span class="k">if</span> <span class="n">runs_n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">expander</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Energy distribution — hw_</span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">runs_n</span><span class="si">}</span><span class="s2"> runs)&quot;</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">):</span>
+                <span class="n">hw_runs</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                    SELECT</span>
+<span class="s2">                        r.total_energy_uj/1e6 AS energy_j,</span>
+<span class="s2">                        e.workflow_type,</span>
+<span class="s2">                        e.model_name,</span>
+<span class="s2">                        e.task_name</span>
+<span class="s2">                    FROM runs r</span>
+<span class="s2">                    JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">                    WHERE r.hw_id = </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">hw_id</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">                      AND r.total_energy_uj IS NOT NULL</span>
+<span class="s2">                    ORDER BY r.run_id DESC</span>
+<span class="s2">                    LIMIT 500</span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">hw_runs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+                    <span class="n">wf_colors</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear&quot;</span><span class="p">:</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">:</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">}</span>
+                    <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">wf_colors</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">sub</span> <span class="o">=</span> <span class="n">hw_runs</span><span class="p">[</span><span class="n">hw_runs</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">][</span>
+                            <span class="s2">&quot;energy_j&quot;</span>
+                        <span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                            <span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span>
+                                <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span> <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">nbinsx</span><span class="o">=</span><span class="mi">40</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+                    <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                        <span class="o">**</span><span class="p">{</span><span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="s2">&quot;margin&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">l</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">30</span><span class="p">)},</span>
+                        <span class="n">height</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                        <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;overlay&quot;</span><span class="p">,</span>
+                        <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Energy (J)&quot;</span><span class="p">,</span>
+                        <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Run count&quot;</span><span class="p">,</span>
+                        <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span>
+                        <span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;hw_energy_dist_</span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+    <span class="c1"># ── Baseline profiles ─────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Idle Baselines&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">baselines</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT baseline_id, timestamp, package_power_watts,</span>
+<span class="s2">               core_power_watts, uncore_power_watts, dram_power_watts,</span>
+<span class="s2">               governor, turbo, background_cpu, method</span>
+<span class="s2">        FROM idle_baselines</span>
+<span class="s2">        ORDER BY timestamp DESC</span>
+<span class="s2">        LIMIT 20</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">baselines</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No idle baselines recorded yet.&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">baselines</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">250</span><span class="p">)</span>
+
+        <span class="c1"># Baseline power bar chart</span>
+        <span class="n">fig2</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">col_n</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">&quot;package_power_watts&quot;</span><span class="p">,</span> <span class="s2">&quot;Package&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;core_power_watts&quot;</span><span class="p">,</span> <span class="s2">&quot;Core&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;uncore_power_watts&quot;</span><span class="p">,</span> <span class="s2">&quot;Uncore&quot;</span><span class="p">,</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;dram_power_watts&quot;</span><span class="p">,</span> <span class="s2">&quot;DRAM&quot;</span><span class="p">,</span> <span class="s2">&quot;#a78bfa&quot;</span><span class="p">),</span>
+        <span class="p">]:</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="n">baselines</span><span class="p">[</span><span class="n">col_n</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">vals</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig2</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">baselines</span><span class="p">))),</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">vals</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                    <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig2</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span>
+            <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Baseline index&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Idle power (W)&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig2</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;hw_baseline_bar&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

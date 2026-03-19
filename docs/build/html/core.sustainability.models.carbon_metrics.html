@@ -1,0 +1,586 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.sustainability.models.carbon_metrics module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.sustainability.models.methane_metrics module" href="core.sustainability.models.methane_metrics.html" />
+    <link rel="prev" title="core.sustainability.models package" href="core.sustainability.models.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.sustainability.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.html#module-core.sustainability">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.sustainability.html">core.sustainability package</a></li>
+          <li class="breadcrumb-item"><a href="core.sustainability.models.html">core.sustainability.models package</a></li>
+      <li class="breadcrumb-item active">core.sustainability.models.carbon_metrics module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.sustainability.models.carbon_metrics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.sustainability.models.carbon_metrics">
+<span id="core-sustainability-models-carbon-metrics-module"></span><h1>core.sustainability.models.carbon_metrics module<a class="headerlink" href="#module-core.sustainability.models.carbon_metrics" title="Link to this heading"></a></h1>
+<section id="carbon-metrics-data-classes-for-carbon-footprint">
+<h2>CARBON METRICS – Data classes for carbon footprint<a class="headerlink" href="#carbon-metrics-data-classes-for-carbon-footprint" title="Link to this heading"></a></h2>
+<p>This module defines data structures for carbon emissions with:
+- Uncertainty quantification [Req 2.4]
+- Confidence intervals
+- Source attribution [Req 2.1]
+- Time-aware factors (future)</p>
+<dl class="simple">
+<dt>Requirements Covered:</dt><dd><p>Req 2.1: Country-Specific Carbon Intensity
+Req 2.4: Total Operational Carbon (CCI)
+Req 2.9: Carbon Receipt Per Task
+Req 2.16: Global Metadata Integrity</p>
+</dd>
+</dl>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.sustainability.models.carbon_metrics.</span></span><span class="sig-name descname"><span class="pre">CarbonIntensityFactors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kg_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_quality</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty_percent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~typing.Any]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonIntensityFactors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Grid carbon intensity factors for a country.</p>
+<dl class="simple">
+<dt>Scientific Notes:</dt><dd><ul class="simple">
+<li><p>Values vary by country based on energy mix</p></li>
+<li><p>Data quality indicates confidence in reporting</p></li>
+<li><p>High quality: Official government statistics</p></li>
+<li><p>Medium quality: Industry reports</p></li>
+<li><p>Low quality: Estimates or interpolations</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.country_code">
+<span class="sig-name descname"><span class="pre">country_code</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.country_code" title="Link to this definition"></a></dt>
+<dd><p>ISO 3166-1 alpha-2 code [Req 2.1]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.kg_per_kwh">
+<span class="sig-name descname"><span class="pre">kg_per_kwh</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.kg_per_kwh" title="Link to this definition"></a></dt>
+<dd><p>Carbon intensity in kg CO₂e/kWh [Req 2.1]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.source">
+<span class="sig-name descname"><span class="pre">source</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.source" title="Link to this definition"></a></dt>
+<dd><p>Data source name [Req 2.16]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.source_url">
+<span class="sig-name descname"><span class="pre">source_url</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.source_url" title="Link to this definition"></a></dt>
+<dd><p>Verifiable URL [Req 2.16]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.year">
+<span class="sig-name descname"><span class="pre">year</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.year" title="Link to this definition"></a></dt>
+<dd><p>Data year</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.data_quality">
+<span class="sig-name descname"><span class="pre">data_quality</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.data_quality" title="Link to this definition"></a></dt>
+<dd><p>“high”, “medium”, “low” [Req 2.16]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.uncertainty_percent">
+<span class="sig-name descname"><span class="pre">uncertainty_percent</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.uncertainty_percent" title="Link to this definition"></a></dt>
+<dd><p>Reported uncertainty</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.metadata" title="Link to this definition"></a></dt>
+<dd><p>Additional context</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">country_code</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">data_quality</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'medium'</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">kg_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.quality_score">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">quality_score</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.quality_score" title="Link to this definition"></a></dt>
+<dd><p>Convert quality to numeric score (0-1).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">source</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">source_url</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonIntensityFactors.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonIntensityFactors.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonIntensityFactors.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonIntensityFactors.to_json" title="Link to this definition"></a></dt>
+<dd><p>Serialize to JSON.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">uncertainty_percent</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10.0</span></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">year</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.sustainability.models.carbon_metrics.</span></span><span class="sig-name descname"><span class="pre">CarbonMetrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty_percent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">per_query_mg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_count_validated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Ember</span> <span class="pre">2026'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'https://ember-energy.org/data/global-electricity-review-2026/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2026</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calculation_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'energy_kwh</span> <span class="pre">×</span> <span class="pre">grid_carbon_intensity'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~typing.Any]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Carbon footprint metrics for a single measurement with uncertainty.</p>
+<dl class="simple">
+<dt>Scientific Notes:</dt><dd><ul class="simple">
+<li><p>Carbon intensity varies by grid region and time of day</p></li>
+<li><p>Uncertainty reflects grid reporting accuracy (±5-15%)</p></li>
+<li><p>95% confidence intervals are standard for GHG reporting</p></li>
+<li><p>Per-query metrics require query_count validation</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.kg">
+<span class="sig-name descname"><span class="pre">kg</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.kg" title="Link to this definition"></a></dt>
+<dd><p>Carbon dioxide equivalent in kilograms [Req 2.4]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.uncertainty_percent">
+<span class="sig-name descname"><span class="pre">uncertainty_percent</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.uncertainty_percent" title="Link to this definition"></a></dt>
+<dd><p>Estimated uncertainty (±%) [Req 2.16]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.confidence_level">
+<span class="sig-name descname"><span class="pre">confidence_level</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.confidence_level" title="Link to this definition"></a></dt>
+<dd><p>Statistical confidence level (default 0.95)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.per_query_mg">
+<span class="sig-name descname"><span class="pre">per_query_mg</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.per_query_mg" title="Link to this definition"></a></dt>
+<dd><p>Carbon per query in milligrams [Req 2.9]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.source">
+<span class="sig-name descname"><span class="pre">source</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.source" title="Link to this definition"></a></dt>
+<dd><p>Source of grid carbon intensity data [Req 2.1]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.source_url">
+<span class="sig-name descname"><span class="pre">source_url</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.source_url" title="Link to this definition"></a></dt>
+<dd><p>Verifiable URL for data source [Req 2.16]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.year">
+<span class="sig-name descname"><span class="pre">year</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.year" title="Link to this definition"></a></dt>
+<dd><p>Data year</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.calculation_method">
+<span class="sig-name descname"><span class="pre">calculation_method</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.calculation_method" title="Link to this definition"></a></dt>
+<dd><p>How this was derived</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.timestamp" title="Link to this definition"></a></dt>
+<dd><p>When calculation was performed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.metadata" title="Link to this definition"></a></dt>
+<dd><p>Additional context (grid region, time of day)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">calculation_method</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'energy_kwh</span> <span class="pre">×</span> <span class="pre">grid_carbon_intensity'</span></span><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">confidence_level</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.95</span></span><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.grams">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">grams</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.grams" title="Link to this definition"></a></dt>
+<dd><p>Carbon in grams (for human readability).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.grams_lower">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">grams_lower</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.grams_lower" title="Link to this definition"></a></dt>
+<dd><p>Lower bound in grams.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.grams_upper">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">grams_upper</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.grams_upper" title="Link to this definition"></a></dt>
+<dd><p>Upper bound in grams.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.interval_width_percent">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">interval_width_percent</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.interval_width_percent" title="Link to this definition"></a></dt>
+<dd><p>Width of confidence interval as percentage.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">kg</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.kg_lower">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">kg_lower</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.kg_lower" title="Link to this definition"></a></dt>
+<dd><p>Lower bound of confidence interval.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.kg_upper">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">kg_upper</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.kg_upper" title="Link to this definition"></a></dt>
+<dd><p>Upper bound of confidence interval.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id11" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.milligrams">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">milligrams</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.milligrams" title="Link to this definition"></a></dt>
+<dd><p>Carbon in milligrams (for per-query metrics).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.milligrams_lower">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">milligrams_lower</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.milligrams_lower" title="Link to this definition"></a></dt>
+<dd><p>Lower bound in milligrams.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.milligrams_upper">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">milligrams_upper</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.milligrams_upper" title="Link to this definition"></a></dt>
+<dd><p>Upper bound in milligrams.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">per_query_mg</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id12" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.query_count_validated">
+<span class="sig-name descname"><span class="pre">query_count_validated</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.query_count_validated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">source</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Ember</span> <span class="pre">2026'</span></span><a class="headerlink" href="#id13" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id14">
+<span class="sig-name descname"><span class="pre">source_url</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'https://ember-energy.org/data/global-electricity-review-2026/'</span></span><a class="headerlink" href="#id14" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonMetrics.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.summary" title="Link to this definition"></a></dt>
+<dd><p>Human-readable summary with confidence intervals.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id15">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id15" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonMetrics.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization [Req 2.16].</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonMetrics.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.to_json" title="Link to this definition"></a></dt>
+<dd><p>Serialize to JSON with pretty formatting.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id16">
+<span class="sig-name descname"><span class="pre">uncertainty_percent</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10.0</span></span><a class="headerlink" href="#id16" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.models.carbon_metrics.CarbonMetrics.validate_query_count">
+<span class="sig-name descname"><span class="pre">validate_query_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/sustainability/models/carbon_metrics.html#CarbonMetrics.validate_query_count"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.models.carbon_metrics.CarbonMetrics.validate_query_count" title="Link to this definition"></a></dt>
+<dd><p>Validate that per-query metrics are meaningful.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_count</strong> – Number of queries in measurement</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If query_count &lt;= 0</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Scientific Note:</dt><dd><p>Per-query metrics assume energy measured corresponds exactly
+to the number of queries specified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id17">
+<span class="sig-name descname"><span class="pre">year</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2026</span></span><a class="headerlink" href="#id17" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.sustainability.models.html" class="btn btn-neutral float-left" title="core.sustainability.models package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.sustainability.models.methane_metrics.html" class="btn btn-neutral float-right" title="core.sustainability.models.methane_metrics module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,196 @@
+# docs/llm-context/error_history.yaml
+# Previous failures and their fixes
+
+error_1:
+  title: "Indentation errors in web_controller.py"
+  symptoms:
+    - "JavaScript 'missing ) after argument list'"
+    - "HTML buttons not working"
+    - "Console errors on button click"
+  
+  root_cause: "Mixed tabs and spaces, incorrect quote escaping in onclick handlers"
+  
+  fix: |
+    # Bad:
+    <button onclick="runTool('llm_context', '--change \\\"' + value + '\\\"')">
+    
+    # Good:
+    <button onclick="runTool('llm_context', '--change \'' + value + '\'')">
+    
+    # Better: Use Black auto-formatter
+    black scripts/tools/
+  
+  prevention: "Always run Black before committing"
+
+error_2:
+  title: "MkDocs links broken when served from /docs/"
+  symptoms:
+    - "CSS and JS load correctly"
+    - "Navigation links give 404"
+    - "URLs like /docs/01_OVERVIEW/ not found"
+  
+  root_cause: "Missing site_url in mkdocs.yml"
+  
+  fix: |
+    # Add to mkdocs.yml
+    site_url: /docs/
+  
+  prevention: "Always set site_url when serving from subpath"
+
+error_3:
+  title: "Type errors from mypy"
+  symptoms:
+    - "mypy reports 200+ errors"
+    - "Mostly 'Item None has no attribute'"
+    - "Also 'Need type annotation'"
+  
+  root_cause: "Missing None checks and type hints"
+  
+  fix_example_1: |
+    # Bad:
+    frame.f_back.f_globals
+    
+    # Good:
+    if frame and frame.f_back:
+        return frame.f_back.f_globals
+    return {}
+  
+  fix_example_2: |
+    # Bad:
+    pairs = {}
+    
+    # Good:
+    pairs: dict[str, float] = {}
+  
+  prevention: "Always add type hints, always check for None"
+
+error_4:
+  title: "Bandit JSON parsing failed"
+  symptoms:
+    - "quality_check.py crashes with JSONDecodeError"
+    - "Bandit returns empty output"
+  
+  root_cause: "Bandit returns empty string when no issues found, not valid JSON"
+  
+  fix: |
+    # Bad:
+    security = json.loads(result.stdout)
+    
+    # Good:
+    if result.stdout and result.stdout.strip():
+        try:
+            security = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            security = {'results': []}
+    else:
+        security = {'results': []}
+  
+  prevention: "Always handle empty/non-JSON output from external tools"
+
+error_5:
+  title: "Database path hardcoded"
+  symptoms:
+    - "Script works on dev machine but fails elsewhere"
+    - "FileNotFoundError for experiments.db"
+  
+  root_cause: "Hardcoded path instead of reading from config"
+  
+  fix: |
+    # Bad:
+    db_path = "data/experiments.db"
+    
+    # Good:
+    import yaml
+    with open('config/app_settings.yaml') as f:
+        config = yaml.safe_load(f)
+    db_path = config['database']['sqlite']['path']
+  
+  prevention: "Always read paths from config, never hardcode"
+
+error_6:
+  title: "Git history with exposed API keys"
+  symptoms:
+    - ".env file committed to git"
+    - "API keys visible in public repo"
+  
+  root_cause: "Missing .env in .gitignore"
+  
+  fix: |
+    # Add to .gitignore
+    echo ".env" >> .gitignore
+    echo "config/.env" >> .gitignore
+    
+    # Remove from history (if not shared)
+    git rm --cached config/.env
+    git commit -m "Remove .env from git"
+  
+  prevention: "Always add secrets to .gitignore before first commit"
+
+error_7:
+  title: "Pydeps argument order"
+  symptoms:
+    - "generate_diagrams.py fails with 'unrecognized arguments'"
+    - "Dependency graph not created"
+  
+  root_cause: "pydeps expects -o before filename, not --output"
+  
+  fix: |
+    # Bad:
+    ["pydeps", "core", "--output", "graph.svg"]
+    
+    # Good:
+    ["pydeps", "core", "-o", "graph.svg"]
+  
+  prevention: "Always check tool documentation for correct argument order"
+
+error_8:
+  title: "Flask route ROOT not defined"
+  symptoms:
+    - "/docs/index.html returns 500 error"
+    - "NameError: name 'ROOT' is not defined"
+  
+  root_cause: "ROOT defined in class but used in route function"
+  
+  fix: |
+    # Define ROOT at module level
+    ROOT = Path(__file__).resolve().parent.parent.parent
+    
+    @app.route('/docs/<path:filename>')
+    def serve_docs(filename):
+        site_dir = ROOT / 'site'
+        return send_from_directory(str(site_dir), filename)
+  
+  prevention: "Define shared paths at module level, not inside classes"
+
+error_9:
+  title: "Black fails with syntax error"
+  symptoms:
+    - "error: cannot format file.py: Cannot parse"
+    - "Unterminated string or unexpected character"
+  
+  root_cause: "Actual Python syntax error in file"
+  
+  fix_example: |
+    # Bad line 495:
+    sys.exit(main())r
+    
+    # Good:
+    sys.exit(main())
+  
+  prevention: "Fix syntax errors before running Black"
+
+error_10:
+  title: "Import sorting flaky"
+  symptoms:
+    - "isort reports 'needs sorting'"
+    - "After running isort, still reports 'needs sorting'"
+  
+  root_cause: "isort and black fighting over line length/formatting"
+  
+  fix: |
+    # Run in order:
+    isort core/
+    black core/
+    isort core/  # One more time
+  
+  prevention: "Always run isort before black, then verify"

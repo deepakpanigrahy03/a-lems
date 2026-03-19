@@ -1,0 +1,539 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.optimizer_wrapper &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.optimizer_wrapper</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.optimizer_wrapper</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">OPTIMIZER WRAPPER - Runs agentic code with real-time system optimization</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This wrapper:</span>
+<span class="sd">1. Launches the real agentic.py as a subprocess</span>
+<span class="sd">2. Detects phases via environment variables or signals</span>
+<span class="sd">3. Applies system optimizations based on YOUR A-LEMS data</span>
+<span class="sd">4. Passes through all results unchanged</span>
+
+<span class="sd">NO CHANGES to agentic.py required!</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="c1"># Add project root to path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.agentic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgenticExecutor</span>
+
+
+<div class="viewcode-block" id="SystemOptimizer">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.SystemOptimizer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SystemOptimizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Real-time system optimizer based on phase detection&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pid</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pid</span> <span class="o">=</span> <span class="n">pid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">changes_made</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Track all changes</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_setting</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply system setting using sudo (will prompt for password once)&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Try direct write first (if running as root)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ✅ Set </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">PermissionError</span><span class="p">:</span>
+            <span class="c1"># Fall back to sudo</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Ensure value is string</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
+                <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                    <span class="p">[</span><span class="s2">&quot;sudo&quot;</span><span class="p">,</span> <span class="s2">&quot;tee&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">],</span> <span class="nb">input</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ✅ Set </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> (via sudo)&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚠️ Failed to set </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚠️ Sudo failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚠️ Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_governor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read current CPU governor&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_governor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">governor</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set CPU governor and track change&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - _set_governor called with: </span><span class="si">{</span><span class="n">governor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_governor</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Current governor: </span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">old</span> <span class="o">!=</span> <span class="n">governor</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Governor needs to change from </span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">governor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor&quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_setting</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">governor</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">changes_made</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                        <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="p">,</span>
+                        <span class="s2">&quot;setting&quot;</span><span class="p">:</span> <span class="s2">&quot;governor&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;from&quot;</span><span class="p">:</span> <span class="n">old</span><span class="p">,</span>
+                        <span class="s2">&quot;to&quot;</span><span class="p">:</span> <span class="n">governor</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚡ Governor: </span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">governor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Failed to set governor to </span><span class="si">{</span><span class="n">governor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Governor already </span><span class="si">{</span><span class="n">governor</span><span class="si">}</span><span class="s2">, no change needed&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_cstate_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find state number for a given C-state name&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">state_dir</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpuidle/state*&quot;</span><span class="p">):</span>
+                <span class="n">name_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state_dir</span><span class="si">}</span><span class="s2">/name&quot;</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">name_path</span><span class="p">):</span>
+                    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">name_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                        <span class="n">name</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">target_name</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">state_dir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_cstate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_num</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if C-state is enabled by number&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpuidle/state</span><span class="si">{</span><span class="n">state_num</span><span class="si">}</span><span class="s2">/disable&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;disabled&quot;</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span> <span class="k">else</span> <span class="s2">&quot;enabled&quot;</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_cstate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_num</span><span class="p">,</span> <span class="n">enable</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enable/disable C-state by number and track change&quot;&quot;&quot;</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_cstate</span><span class="p">(</span><span class="n">state_num</span><span class="p">)</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="s2">&quot;enabled&quot;</span> <span class="k">if</span> <span class="n">enable</span> <span class="k">else</span> <span class="s2">&quot;disabled&quot;</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="o">!=</span> <span class="n">new</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpuidle/state</span><span class="si">{</span><span class="n">state_num</span><span class="si">}</span><span class="s2">/disable&quot;</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span> <span class="k">if</span> <span class="n">enable</span> <span class="k">else</span> <span class="s2">&quot;1&quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_setting</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">changes_made</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                        <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="p">,</span>
+                        <span class="s2">&quot;setting&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;state</span><span class="si">{</span><span class="n">state_num</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;from&quot;</span><span class="p">:</span> <span class="n">old</span><span class="p">,</span>
+                        <span class="s2">&quot;to&quot;</span><span class="p">:</span> <span class="n">new</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚡ State</span><span class="si">{</span><span class="n">state_num</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">new</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_enable_cstates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enable/disable deep C-states (C2_ACPI and C3_ACPI)&quot;&quot;&quot;</span>
+        <span class="c1"># Find which state numbers correspond to deep idle</span>
+        <span class="n">c2_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cstate_number</span><span class="p">(</span><span class="s2">&quot;C2_ACPI&quot;</span><span class="p">)</span>
+        <span class="n">c3_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cstate_number</span><span class="p">(</span><span class="s2">&quot;C3_ACPI&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">deep</span><span class="p">:</span>
+            <span class="c1"># Enable deeper states (allow them)</span>
+            <span class="k">if</span> <span class="n">c2_num</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_cstate</span><span class="p">(</span><span class="n">c2_num</span><span class="p">,</span> <span class="n">enable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c3_num</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_cstate</span><span class="p">(</span><span class="n">c3_num</span><span class="p">,</span> <span class="n">enable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Disable deeper states during active phases</span>
+            <span class="k">if</span> <span class="n">c2_num</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_cstate</span><span class="p">(</span><span class="n">c2_num</span><span class="p">,</span> <span class="n">enable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c3_num</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_cstate</span><span class="p">(</span><span class="n">c3_num</span><span class="p">,</span> <span class="n">enable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_coalescing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read interrupt coalescing setting&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">eth</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s2">&quot;/sys/class/net/&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">eth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;eth&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">eth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;enp&quot;</span><span class="p">):</span>
+                    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/sys/class/net/</span><span class="si">{</span><span class="n">eth</span><span class="si">}</span><span class="s2">/device/interrupt_coalescing&quot;</span>
+                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_coalescing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enable</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set interrupt coalescing and track change&quot;&quot;&quot;</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_coalescing</span><span class="p">()</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="s2">&quot;100&quot;</span> <span class="k">if</span> <span class="n">enable</span> <span class="k">else</span> <span class="s2">&quot;0&quot;</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="o">!=</span> <span class="n">new</span> <span class="ow">and</span> <span class="n">old</span> <span class="o">!=</span> <span class="s2">&quot;unknown&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">eth</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s2">&quot;/sys/class/net/&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">eth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;eth&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">eth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;enp&quot;</span><span class="p">):</span>
+                    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/sys/class/net/</span><span class="si">{</span><span class="n">eth</span><span class="si">}</span><span class="s2">/device/interrupt_coalescing&quot;</span>
+                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_setting</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">new</span><span class="p">):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">changes_made</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="p">{</span>
+                                    <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                                    <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="p">,</span>
+                                    <span class="s2">&quot;setting&quot;</span><span class="p">:</span> <span class="s2">&quot;coalescing&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;from&quot;</span><span class="p">:</span> <span class="n">old</span><span class="p">,</span>
+                                    <span class="s2">&quot;to&quot;</span><span class="p">:</span> <span class="n">new</span><span class="p">,</span>
+                                <span class="p">}</span>
+                            <span class="p">)</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ⚡ Coalescing: </span><span class="si">{</span><span class="n">old</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">new</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                            <span class="k">break</span>
+
+<div class="viewcode-block" id="SystemOptimizer.set_phase">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.SystemOptimizer.set_phase">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_phase</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Called when phase changes - applies optimizations&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⚡ OPTIMIZER: Phase </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">phase</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_phase</span> <span class="o">=</span> <span class="n">phase</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># RULES BASED ON YOUR A-LEMS DATA</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;planning&quot;</span><span class="p">:</span>
+            <span class="c1"># Your data: planning takes 12-22s, mostly LLM wait</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   📝 Planning: Setting powersave governor, enabling deep C-states&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;powersave&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_cstates</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_coalescing</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;llm_wait&quot;</span><span class="p">:</span>
+            <span class="c1"># Your data: 10-20s network waits</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   ⏳ LLM Wait: Setting powersave governor, enabling deep C-states&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;powersave&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_cstates</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_coalescing</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;tool_exec&quot;</span><span class="p">:</span>
+            <span class="c1"># Your data: CPU bursts need performance</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - ENTERING tool_exec phase&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;performance&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_cstates</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_coalescing</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;between_steps&quot;</span><span class="p">:</span>
+            <span class="c1"># Your data: short idle periods</span>
+            <span class="c1"># Use powersave if ondemand not available</span>
+            <span class="n">available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_governors</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s2">&quot;ondemand&quot;</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;ondemand&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;powersave&quot;</span><span class="p">)</span>  <span class="c1"># fallback</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_cstates</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_coalescing</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;synthesis&quot;</span><span class="p">:</span>
+            <span class="c1"># Similar to planning - LLM wait</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;powersave&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enable_cstates</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_coalescing</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SystemOptimizer.run">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.SystemOptimizer.run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stop_event</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Monitor process and detect phases until stop_event is set&quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">stop_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>  <span class="c1"># Check stop event instead of process</span>
+            <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">start_time</span>
+
+            <span class="c1"># Simple phase detection (replace with real detection later)</span>
+            <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_phase</span><span class="p">(</span><span class="s2">&quot;planning&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="mi">2</span> <span class="o">&lt;=</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_phase</span><span class="p">(</span><span class="s2">&quot;llm_wait&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="mi">5</span> <span class="o">&lt;=</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="mi">7</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Should trigger tool_exec at </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_phase</span><span class="p">(</span><span class="s2">&quot;tool_exec&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="mi">7</span> <span class="o">&lt;=</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_phase</span><span class="p">(</span><span class="s2">&quot;between_steps&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="mi">8</span> <span class="o">&lt;=</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_phase</span><span class="p">(</span><span class="s2">&quot;tool_exec&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="mi">10</span> <span class="o">&lt;=</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="mi">12</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_phase</span><span class="p">(</span><span class="s2">&quot;synthesis&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">elapsed</span> <span class="o">&gt;=</span> <span class="mi">12</span><span class="p">:</span>
+                <span class="c1"># After all phases, just stay in last phase</span>
+                <span class="k">pass</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="c1"># Print summary at end</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SystemOptimizer.print_summary">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.SystemOptimizer.print_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print optimizer summary&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 OPTIMIZER SUMMARY&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total changes made: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changes_made</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">change</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changes_made</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]):</span>  <span class="c1"># Last 10 changes</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s | Phase </span><span class="si">{</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;phase&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;setting&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;from&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;to&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_available_governors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get list of available CPU governors&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;powersave&quot;</span><span class="p">,</span> <span class="s2">&quot;performance&quot;</span><span class="p">]</span>  <span class="c1"># fallback</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_best_governor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preferred</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the best available governor&quot;&quot;&quot;</span>
+        <span class="n">available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_governors</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">preferred</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="n">preferred</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;powersave&quot;</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;powersave&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;conservative&quot;</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="s2">&quot;conservative&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_governor</span><span class="p">(</span><span class="n">available</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># first available</span></div>
+
+
+
+<div class="viewcode-block" id="OptimizedExecutorWrapper">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.OptimizedExecutorWrapper">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OptimizedExecutorWrapper</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wraps ANY executor with real-time system optimization.</span>
+<span class="sd">    Compatible with both LinearExecutor and AgenticExecutor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">executor_or_config</span><span class="p">,</span> <span class="n">workflow_type</span><span class="o">=</span><span class="s2">&quot;agentic&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            executor_or_config: Either an executor instance OR config dict</span>
+<span class="sd">            workflow_type: &#39;linear&#39; or &#39;agentic&#39; - determines phase detection</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_type</span> <span class="o">=</span> <span class="n">workflow_type</span>
+
+        <span class="c1"># Handle both cases: config dict or existing executor</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">executor_or_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="c1"># Create appropriate executor from config</span>
+            <span class="k">if</span> <span class="n">workflow_type</span> <span class="o">==</span> <span class="s2">&quot;agentic&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">original</span> <span class="o">=</span> <span class="n">AgenticExecutor</span><span class="p">(</span><span class="n">executor_or_config</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearExecutor</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">original</span> <span class="o">=</span> <span class="n">LinearExecutor</span><span class="p">(</span><span class="n">executor_or_config</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">executor_or_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># For standalone testing - create default executor</span>
+            <span class="k">if</span> <span class="n">workflow_type</span> <span class="o">==</span> <span class="s2">&quot;agentic&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">original</span> <span class="o">=</span> <span class="n">AgenticExecutor</span><span class="p">({})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearExecutor</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">original</span> <span class="o">=</span> <span class="n">LinearExecutor</span><span class="p">({})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Use existing executor</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">original</span> <span class="o">=</span> <span class="n">executor_or_config</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="OptimizedExecutorWrapper.execute_comparison">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.OptimizedExecutorWrapper.execute_comparison">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_comparison</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For agentic workflow - matches original interface&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_with_optimizer</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;execute_comparison&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OptimizedExecutorWrapper.execute">
+<a class="viewcode-back" href="../../../core.execution.optimizer_wrapper.html#core.execution.optimizer_wrapper.OptimizedExecutorWrapper.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For linear workflow&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_with_optimizer</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;execute&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_with_optimizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">method_name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Common optimization logic&quot;&quot;&quot;</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+
+        <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer_stop</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">SystemOptimizer</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">run_optimizer</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer_stop</span><span class="p">)</span>
+
+        <span class="n">optimizer_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">run_optimizer</span><span class="p">)</span>
+        <span class="n">optimizer_thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">optimizer_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="c1"># Call appropriate method on original executor</span>
+        <span class="n">executor_method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">original</span><span class="p">,</span> <span class="n">method_name</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">executor_method</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer_stop</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="n">optimizer_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pass through any other attributes to the original executor&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">original</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Keep the command-line test section at the bottom (unchanged)</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--task&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;What is 2+2?&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--type&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;agentic&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;agentic&quot;</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;agentic&quot;</span><span class="p">:</span>
+        <span class="n">wrapper</span> <span class="o">=</span> <span class="n">OptimizedExecutorWrapper</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">wrapper</span><span class="o">.</span><span class="n">execute_comparison</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">wrapper</span> <span class="o">=</span> <span class="n">OptimizedExecutorWrapper</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">wrapper</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Result: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;response&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,183 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.connection module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gui.db module" href="gui.db.html" />
+    <link rel="prev" title="gui.config module" href="gui.config.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core.html">core package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="gui.html">gui package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gui.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="gui.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="gui.config.html">gui.config module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">gui.connection module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.api_get"><code class="docutils literal notranslate"><span class="pre">api_get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.api_post"><code class="docutils literal notranslate"><span class="pre">api_post()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.disconnect"><code class="docutils literal notranslate"><span class="pre">disconnect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.get_conn"><code class="docutils literal notranslate"><span class="pre">get_conn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.get_token"><code class="docutils literal notranslate"><span class="pre">get_token()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.is_online"><code class="docutils literal notranslate"><span class="pre">is_online()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gui.connection.verify_connection"><code class="docutils literal notranslate"><span class="pre">verify_connection()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="gui.db.html">gui.db module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gui.helpers.html">gui.helpers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gui.sidebar.html">gui.sidebar module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gui.theme.html">gui.theme module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gui.html#module-gui">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="gui.html">gui package</a></li>
+      <li class="breadcrumb-item active">gui.connection module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/gui.connection.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-gui.connection">
+<span id="gui-connection-module"></span><h1>gui.connection module<a class="headerlink" href="#module-gui.connection" title="Link to this heading"></a></h1>
+<p>gui/connection.py
+Manages live connection from HF Space to the laptop server via Cloudflare tunnel.</p>
+<dl class="simple">
+<dt>st.session_state[“conn”]:</dt><dd><p>url       : permanent Cloudflare tunnel URL
+token     : shared access token
+verified  : bool - reached /api/online successfully
+harness   : bool - measurement harness loaded on laptop
+mode      : “offline” | “online”
+error     : last error message</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.api_get">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">api_get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gui/connection.html#api_get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.api_get" title="Link to this definition"></a></dt>
+<dd><p>GET from live server. Returns (data, error).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.api_post">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">api_post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">payload</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gui/connection.html#api_post"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.api_post" title="Link to this definition"></a></dt>
+<dd><p>POST to live server. Returns (data, error).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.disconnect">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">disconnect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gui/connection.html#disconnect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.disconnect" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.get_conn">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">get_conn</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/gui/connection.html#get_conn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.get_conn" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.get_token">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">get_token</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/gui/connection.html#get_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.get_token" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.is_online">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">is_online</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/gui/connection.html#is_online"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.is_online" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="gui.connection.verify_connection">
+<span class="sig-prename descclassname"><span class="pre">gui.connection.</span></span><span class="sig-name descname"><span class="pre">verify_connection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/gui/connection.html#verify_connection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gui.connection.verify_connection" title="Link to this definition"></a></dt>
+<dd><p>Returns (success: bool, message: str, harness: bool)</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="gui.config.html" class="btn btn-neutral float-left" title="gui.config module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="gui.db.html" class="btn btn-neutral float-right" title="gui.db module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

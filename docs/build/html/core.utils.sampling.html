@@ -1,0 +1,446 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.utils.sampling module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.utils.task_loader module" href="core.utils.task_loader.html" />
+    <link rel="prev" title="core.utils.idle_baseline module" href="core.utils.idle_baseline.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.utils.html">core.utils package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.utils.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.utils.html#module-core.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.utils.html">core.utils package</a></li>
+      <li class="breadcrumb-item active">core.utils.sampling module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.utils.sampling.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.utils.sampling">
+<span id="core-utils-sampling-module"></span><h1>core.utils.sampling module<a class="headerlink" href="#module-core.utils.sampling" title="Link to this heading"></a></h1>
+<section id="high-frequency-sampling-utility">
+<h2>HIGH-FREQUENCY SAMPLING UTILITY<a class="headerlink" href="#high-frequency-sampling-utility" title="Link to this heading"></a></h2>
+<p>Author: Deepak Panigrahy
+Institution:
+Contact:</p>
+<p>Module: core/utils/sampling.py (Part of Module 1 - Energy Engine)</p>
+<section id="purpose">
+<h3>Purpose:<a class="headerlink" href="#purpose" title="Link to this heading"></a></h3>
+<p>This module provides a high-frequency sampling thread that reads RAPL energy
+counters at a configurable rate (default 100 Hz). This enables:</p>
+<ol class="arabic simple">
+<li><p>Capturing energy consumption during short agent steps (Req 1.46)</p></li>
+<li><p>Attributing energy to specific phases of agentic workflows</p></li>
+<li><p>Detecting energy spikes from context switches or tool calls</p></li>
+<li><p>Validating that sampling frequency is sufficient (Req 1.46)</p></li>
+</ol>
+</section>
+<section id="why-a-dedicated-sampling-thread">
+<h3>Why a Dedicated Sampling Thread:<a class="headerlink" href="#why-a-dedicated-sampling-thread" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>RAPL counters are cumulative; we need differences over short intervals.</p></li>
+<li><p>A background thread ensures consistent sampling without blocking the main
+experiment code.</p></li>
+<li><p>Samples are stored with timestamps for later correlation with workflow phases.</p></li>
+</ul>
+</section>
+<section id="requirements-covered">
+<h3>Requirements Covered:<a class="headerlink" href="#requirements-covered" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>Req 1.46 – RAPL Sampling Frequency Validation – ensures we capture enough</dt><dd><p>samples for short agent steps (default 100 Hz = 10ms intervals).</p>
+</dd>
+</dl>
+</section>
+<section id="design">
+<h3>Design:<a class="headerlink" href="#design" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>The sampler runs in a daemon thread so it exits when the main program exits.</p></li>
+<li><p>Samples are stored in a thread-safe queue to avoid locking issues.</p></li>
+<li><p>The main thread can retrieve samples after the measurement stops.</p></li>
+</ul>
+</section>
+<section id="usage-example">
+<h3>Usage Example:<a class="headerlink" href="#usage-example" title="Link to this heading"></a></h3>
+<blockquote>
+<div><p>sampler = HighFrequencySampler(rapl_reader, sampling_rate_hz=100)
+sampler.start()
+# … run experiment …
+sampler.stop()
+samples = sampler.get_samples()</p>
+<p># Or get samples since a specific timestamp
+recent = sampler.get_samples_since(start_time)</p>
+</div></blockquote>
+</section>
+</section>
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.utils.sampling.</span></span><span class="sig-name descname"><span class="pre">EnergySample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">package_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">core_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dram_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncore_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/utils/sampling.html#EnergySample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.EnergySample" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A single energy sample from the high-frequency sampler.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><a class="headerlink" href="#core.utils.sampling.EnergySample.timestamp" title="Link to this definition"></a></dt>
+<dd><p>Unix timestamp when the sample was taken.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.package_uj">
+<span class="sig-name descname"><span class="pre">package_uj</span></span><a class="headerlink" href="#core.utils.sampling.EnergySample.package_uj" title="Link to this definition"></a></dt>
+<dd><p>Package energy in microjoules.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.core_uj">
+<span class="sig-name descname"><span class="pre">core_uj</span></span><a class="headerlink" href="#core.utils.sampling.EnergySample.core_uj" title="Link to this definition"></a></dt>
+<dd><p>Core energy in microjoules.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.dram_uj">
+<span class="sig-name descname"><span class="pre">dram_uj</span></span><a class="headerlink" href="#core.utils.sampling.EnergySample.dram_uj" title="Link to this definition"></a></dt>
+<dd><p>DRAM energy in microjoules (may be None if unavailable).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.uncore_uj">
+<span class="sig-name descname"><span class="pre">uncore_uj</span></span><a class="headerlink" href="#core.utils.sampling.EnergySample.uncore_uj" title="Link to this definition"></a></dt>
+<dd><p>Uncore energy in microjoules (may be None).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.raw_values">
+<span class="sig-name descname"><span class="pre">raw_values</span></span><a class="headerlink" href="#core.utils.sampling.EnergySample.raw_values" title="Link to this definition"></a></dt>
+<dd><p>Raw values from all available domains.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">core_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">dram_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">package_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">raw_values</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.utils.sampling.EnergySample.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils/sampling.html#EnergySample.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.EnergySample.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert sample to dictionary for serialization.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">uncore_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.utils.sampling.</span></span><span class="sig-name descname"><span class="pre">HighFrequencySampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rapl_reader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_queue_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/utils/sampling.html#HighFrequencySampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>High-frequency RAPL sampling thread.</p>
+<p>This class runs a background thread that reads RAPL energy counters at a
+specified rate (default 100 Hz = every 10ms). Samples are stored in a
+thread-safe queue for later retrieval.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.rapl_reader">
+<span class="sig-name descname"><span class="pre">rapl_reader</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.rapl_reader" title="Link to this definition"></a></dt>
+<dd><p>RAPLReader instance to read energy counters.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.sampling_rate_hz">
+<span class="sig-name descname"><span class="pre">sampling_rate_hz</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.sampling_rate_hz" title="Link to this definition"></a></dt>
+<dd><p>Target sampling frequency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.interval">
+<span class="sig-name descname"><span class="pre">interval</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.interval" title="Link to this definition"></a></dt>
+<dd><p>Calculated interval between samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.running">
+<span class="sig-name descname"><span class="pre">running</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.running" title="Link to this definition"></a></dt>
+<dd><p>Whether the sampler thread is running.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.sample_queue">
+<span class="sig-name descname"><span class="pre">sample_queue</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.sample_queue" title="Link to this definition"></a></dt>
+<dd><p>Thread-safe queue of EnergySample objects.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>queue.Queue</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.thread">
+<span class="sig-name descname"><span class="pre">thread</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.thread" title="Link to this definition"></a></dt>
+<dd><p>Background sampler thread.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>threading.Thread</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.get_samples">
+<span class="sig-name descname"><span class="pre">get_samples</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#core.utils.sampling.EnergySample" title="core.utils.sampling.EnergySample"><span class="pre">EnergySample</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils/sampling.html#HighFrequencySampler.get_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.get_samples" title="Link to this definition"></a></dt>
+<dd><p>Get all samples currently in the queue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of EnergySample objects.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.get_samples_since">
+<span class="sig-name descname"><span class="pre">get_samples_since</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#core.utils.sampling.EnergySample" title="core.utils.sampling.EnergySample"><span class="pre">EnergySample</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils/sampling.html#HighFrequencySampler.get_samples_since"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.get_samples_since" title="Link to this definition"></a></dt>
+<dd><p>Get all samples taken after a specific timestamp.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timestamp</strong> – Unix timestamp (samples after this time are returned).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of EnergySample objects with timestamp &gt; given timestamp.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method consumes samples from the queue. If you need to keep
+them, call get_samples() first.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.get_statistics">
+<span class="sig-name descname"><span class="pre">get_statistics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils/sampling.html#HighFrequencySampler.get_statistics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.get_statistics" title="Link to this definition"></a></dt>
+<dd><p>Get sampling statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>sampling_rate_hz: Target rate</p></li>
+<li><p>interval_ms: Target interval in milliseconds</p></li>
+<li><p>samples_taken: Total samples taken</p></li>
+<li><p>samples_dropped: Samples dropped due to queue full</p></li>
+<li><p>current_queue_size: Current number of samples in queue</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with keys</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/utils/sampling.html#HighFrequencySampler.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.start" title="Link to this definition"></a></dt>
+<dd><p>Start the sampling thread.</p>
+<p>The thread runs in daemon mode, so it will automatically exit when the
+main program exits.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.start_time">
+<span class="sig-name descname"><span class="pre">start_time</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.start_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.utils.sampling.HighFrequencySampler.stop">
+<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#core.utils.sampling.EnergySample" title="core.utils.sampling.EnergySample"><span class="pre">EnergySample</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils/sampling.html#HighFrequencySampler.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.sampling.HighFrequencySampler.stop" title="Link to this definition"></a></dt>
+<dd><p>Stop the sampling thread and return all collected samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of EnergySample objects collected during the sampling period.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">thread</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Thread</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.utils.idle_baseline.html" class="btn btn-neutral float-left" title="core.utils.idle_baseline module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.utils.task_loader.html" class="btn btn-neutral float-right" title="core.utils.task_loader module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

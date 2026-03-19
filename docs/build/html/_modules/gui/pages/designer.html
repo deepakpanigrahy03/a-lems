@@ -1,0 +1,1008 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.designer &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.designer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.designer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/designer.py  —  🧪  Experiment Designer</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Design conditional multi-container experiment plans.</span>
+
+<span class="sd">Layout — two columns:</span>
+<span class="sd">  Left:  Design canvas (containers + conditions form)</span>
+<span class="sd">  Right: Live plan preview (ASCII tree) + gap detection suggestions</span>
+
+<span class="sd">Features:</span>
+<span class="sd">  ✅ Load templates from config/experiment_templates.yaml</span>
+<span class="sd">  ✅ Condition builder with metrics from config/experiment_designer.yaml</span>
+<span class="sd">  ✅ Multi-container plans with IF/THEN branching</span>
+<span class="sd">  ✅ Save plans to config/experiment_plans/ + push to execute queue</span>
+<span class="sd">  ✅ Gap detection panel with [+ Add to Queue] buttons</span>
+<span class="sd">  ✅ All data from config — zero hardcoding</span>
+
+<span class="sd">30% comments for researcher readability.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">DASHBOARD_CFG</span><span class="p">,</span> <span class="n">DESIGNER_CFG</span><span class="p">,</span> <span class="n">GAP_RULES</span><span class="p">,</span> <span class="n">PL</span><span class="p">,</span>
+                        <span class="n">PROJECT_ROOT</span><span class="p">,</span> <span class="n">TEMPLATES_CFG</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_yaml</span>
+
+    <span class="n">_YAML_OK</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_YAML_OK</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1"># ── Config shortcuts ──────────────────────────────────────────────────────────</span>
+<span class="n">_METRICS</span> <span class="o">=</span> <span class="n">DESIGNER_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;condition_metrics&quot;</span><span class="p">,</span> <span class="p">[])</span>
+<span class="n">_OPERATORS</span> <span class="o">=</span> <span class="n">DESIGNER_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;operators&quot;</span><span class="p">,</span> <span class="p">[])</span>
+<span class="n">_CONNECTORS</span> <span class="o">=</span> <span class="n">DESIGNER_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logical_connectors&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;AND&quot;</span><span class="p">,</span> <span class="s2">&quot;OR&quot;</span><span class="p">])</span>
+<span class="n">_TEMPLATES</span> <span class="o">=</span> <span class="n">TEMPLATES_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span> <span class="p">[])</span>
+<span class="n">_GAP_CFG</span> <span class="o">=</span> <span class="n">GAP_RULES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;settings&quot;</span><span class="p">,</span> <span class="p">{})</span>
+<span class="n">_GAP_RULES_LIST</span> <span class="o">=</span> <span class="n">GAP_RULES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rules&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+<span class="n">_PLANS_DIR</span> <span class="o">=</span> <span class="n">PROJECT_ROOT</span> <span class="o">/</span> <span class="n">DASHBOARD_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;designer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;plans_directory&quot;</span><span class="p">,</span> <span class="s2">&quot;config/experiment_plans&quot;</span>
+<span class="p">)</span>
+<span class="n">_MAX_CONT</span> <span class="o">=</span> <span class="n">DASHBOARD_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;designer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_containers_per_plan&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">_MAX_COND</span> <span class="o">=</span> <span class="n">DASHBOARD_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;designer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_conditions_per_container&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># STATE INIT</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_init_designer_state</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set up all designer session_state keys once.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;dsn_plan_name&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span> <span class="o">=</span> <span class="s2">&quot;My Plan&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;dsn_description&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;dsn_containers&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span> <span class="o">=</span> <span class="p">[</span><span class="n">_blank_container</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="s2">&quot;dsn_saved_plans&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_saved_plans</span> <span class="o">=</span> <span class="n">_load_saved_plans</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_blank_container</span><span class="p">(</span><span class="n">cid</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a blank container dict with default values.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;C</span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Container </span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">&quot;providers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;repetitions&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">&quot;cool_down&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[],</span>  <span class="c1"># list of condition dicts</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_blank_condition</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a blank condition dict.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="n">_METRICS</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;key&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">_METRICS</span> <span class="k">else</span> <span class="s2">&quot;tax_multiplier&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;operator&quot;</span><span class="p">:</span> <span class="s2">&quot;&gt;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>
+        <span class="s2">&quot;value2&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;connector&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;run&quot;</span><span class="p">:</span> <span class="s2">&quot;STOP&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># PLAN PERSISTENCE</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_save_plan</span><span class="p">(</span><span class="n">plan</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save plan to config/experiment_plans/plan_name.yaml.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_YAML_OK</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;PyYAML not installed&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_PLANS_DIR</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">safe_name</span> <span class="o">=</span> <span class="n">plan</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_PLANS_DIR</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">safe_name</span><span class="si">}</span><span class="s2">.yaml&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">_yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_unicode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_saved_plans</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load all saved plans from config/experiment_plans/.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_YAML_OK</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">_PLANS_DIR</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">plans</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">_PLANS_DIR</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.yaml&quot;</span><span class="p">)):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">_yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">):</span>
+                <span class="n">plans</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">plans</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_plan_to_queue_items</span><span class="p">(</span><span class="n">plan</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">all_tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a plan&#39;s containers to a list of queue-ready experiment dicts.</span>
+<span class="sd">    Simple execution: runs all containers sequentially (branching eval in Phase 4).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cont</span> <span class="ow">in</span> <span class="n">plan</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;containers&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="n">tasks</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tasks</span><span class="p">:</span>
+            <span class="n">tasks</span> <span class="o">=</span> <span class="n">all_tasks</span>
+        <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;providers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]):</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;core.execution.tests.test_harness&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;--task-id&quot;</span><span class="p">,</span>
+                    <span class="n">task</span><span class="p">,</span>
+                    <span class="s2">&quot;--provider&quot;</span><span class="p">,</span>
+                    <span class="n">provider</span><span class="p">,</span>
+                    <span class="s2">&quot;--repetitions&quot;</span><span class="p">,</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;repetitions&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span>
+                    <span class="s2">&quot;--cool-down&quot;</span><span class="p">,</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
+                    <span class="s2">&quot;--save-db&quot;</span><span class="p">,</span>
+                <span class="p">]</span>
+                <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">cont</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;single&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">task</span><span class="p">,</span>
+                        <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="n">provider</span><span class="p">,</span>
+                        <span class="s2">&quot;reps&quot;</span><span class="p">:</span> <span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;repetitions&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                        <span class="s2">&quot;country&quot;</span><span class="p">:</span> <span class="s2">&quot;US&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="n">cmd</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+    <span class="k">return</span> <span class="n">items</span>
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># TASK LOADER (same as execute.py — consistent source of truth)</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_tasks</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load task list from config/tasks.yaml.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">_YAML_OK</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">_yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">PROJECT_ROOT</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span> <span class="o">/</span> <span class="s2">&quot;tasks.yaml&quot;</span><span class="p">))</span>
+            <span class="n">tasks</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span> <span class="k">if</span> <span class="s2">&quot;id&quot;</span> <span class="ow">in</span> <span class="n">t</span><span class="p">]</span>
+            <span class="n">cats</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]:</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">ids</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ids</span><span class="p">,</span> <span class="n">cats</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span>
+        <span class="s2">&quot;SELECT DISTINCT task_name FROM experiments WHERE task_name IS NOT NULL ORDER BY task_name&quot;</span>
+    <span class="p">)</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">task_name</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="n">ids</span><span class="p">,</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="s2">&quot;&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">}</span>
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># PLAN PREVIEW — ASCII tree renderer</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_plan_preview</span><span class="p">(</span><span class="n">plan</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render an ASCII-art tree of the plan&#39;s container structure.&quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;Unnamed&quot;</span><span class="p">)</span>
+    <span class="n">conts</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;containers&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="n">plan</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cont</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">conts</span><span class="p">):</span>
+        <span class="n">is_last</span> <span class="o">=</span> <span class="n">i</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">conts</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;└──&quot;</span> <span class="k">if</span> <span class="n">is_last</span> <span class="k">else</span> <span class="s2">&quot;├──&quot;</span>
+        <span class="n">tasks_s</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])[:</span><span class="mi">3</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[]))</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">tasks_s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; +</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cont</span><span class="p">[</span><span class="s1">&#39;tasks&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">3</span><span class="si">}</span><span class="s2"> more&quot;</span>
+        <span class="n">provs_s</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;providers&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">cont</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">cont</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="s1">&#39;   &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_last</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;│  &#39;</span><span class="si">}</span><span class="s2">  tasks: </span><span class="si">{</span><span class="n">tasks_s</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(all)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="s1">&#39;   &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_last</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;│  &#39;</span><span class="si">}</span><span class="s2">  providers: </span><span class="si">{</span><span class="n">provs_s</span><span class="si">}</span><span class="s2">  ·  &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;repetitions&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2"> reps  ·  &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cool_down&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">)</span><span class="si">}</span><span class="s2">s cool-down&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Conditions</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">cond</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;conditions&quot;</span><span class="p">,</span> <span class="p">[])):</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metric&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+            <span class="n">op</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;operator&quot;</span><span class="p">,</span> <span class="s2">&quot;&gt;&quot;</span><span class="p">)</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">val2</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value2&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">run</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;STOP&quot;</span><span class="p">)</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;connector&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">val_s</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2"> AND </span><span class="si">{</span><span class="n">val2</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">op</span> <span class="o">==</span> <span class="s2">&quot;between&quot;</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+            <span class="n">conn_s</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">conn</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">conn</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="s1">&#39;   &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_last</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;│  &#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="s1">&#39;└&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">cont</span><span class="p">[</span><span class="s1">&#39;conditions&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;├&#39;</span><span class="si">}</span><span class="s2">── &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;IF </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">op</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">val_s</span><span class="si">}{</span><span class="n">conn_s</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">run</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="s2">&quot;&lt;div style=&#39;background:#050810;border:1px solid #1e2d45;&quot;</span>
+        <span class="s2">&quot;border-radius:6px;padding:12px 16px;font-family:monospace;&quot;</span>
+        <span class="s2">&quot;font-size:10px;line-height:1.7;color:#7090b0;white-space:pre;&#39;&gt;&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&amp;lt;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&amp;gt;&quot;</span><span class="p">)</span>
+        <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># GAP DETECTION — run rules against DB and surface suggestions</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_gap_detection</span><span class="p">(</span><span class="n">all_tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run gap detection rules against the live DB.</span>
+<span class="sd">    Returns list of suggestion dicts: {rule_id, emoji, title, body, action, template}.</span>
+<span class="sd">    Only runs rules where the SQL is safe to execute directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">suggestions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">min_runs</span> <span class="o">=</span> <span class="n">_GAP_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_runs_recommended&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="n">max_shown</span> <span class="o">=</span> <span class="n">DASHBOARD_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gap_detection&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;show_max_suggestions&quot;</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+
+    <span class="c1"># Rule 1: min_sample_size — task/provider cells with too few runs</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT e.task_name, e.provider, COUNT(r.run_id) as cnt &quot;</span>
+            <span class="s2">&quot;FROM experiments e &quot;</span>
+            <span class="s2">&quot;LEFT JOIN runs r ON e.exp_id = r.exp_id &quot;</span>
+            <span class="s2">&quot;AND r.workflow_type = &#39;linear&#39; &quot;</span>
+            <span class="s2">&quot;GROUP BY e.task_name, e.provider &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;HAVING cnt &lt; </span><span class="si">{</span><span class="n">min_runs</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="s2">&quot;ORDER BY cnt ASC &quot;</span>
+            <span class="s2">&quot;LIMIT 10&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">needed</span> <span class="o">=</span> <span class="n">min_runs</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">cnt</span><span class="p">)</span>
+            <span class="n">suggestions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;rule_id&quot;</span><span class="p">:</span> <span class="s2">&quot;min_sample_size&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;emoji&quot;</span><span class="p">:</span> <span class="s2">&quot;🔴&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2">: only </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">cnt</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Need </span><span class="si">{</span><span class="n">needed</span><span class="si">}</span><span class="s2"> more to reach minimum </span><span class="si">{</span><span class="n">min_runs</span><span class="si">}</span><span class="s2"> recommended for statistical confidence.&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;add_to_queue&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;queue_item&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Gap Fix: </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="p">,</span>
+                        <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+                        <span class="s2">&quot;reps&quot;</span><span class="p">:</span> <span class="n">needed</span><span class="p">,</span>
+                        <span class="s2">&quot;country&quot;</span><span class="p">:</span> <span class="s2">&quot;US&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;single&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;core.execution.tests.test_harness&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;--task-id&quot;</span><span class="p">,</span>
+                            <span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="p">,</span>
+                            <span class="s2">&quot;--provider&quot;</span><span class="p">,</span>
+                            <span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+                            <span class="s2">&quot;--repetitions&quot;</span><span class="p">,</span>
+                            <span class="nb">str</span><span class="p">(</span><span class="n">needed</span><span class="p">),</span>
+                            <span class="s2">&quot;--save-db&quot;</span><span class="p">,</span>
+                        <span class="p">],</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Rule 2: provider_balance — tasks where one provider has 2x more runs</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">bal_ratio</span> <span class="o">=</span> <span class="n">_GAP_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider_balance_ratio&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+        <span class="n">df2</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT task_name, &quot;</span>
+            <span class="s2">&quot;SUM(CASE WHEN provider=&#39;cloud&#39; THEN 1 ELSE 0 END) as cloud_cnt, &quot;</span>
+            <span class="s2">&quot;SUM(CASE WHEN provider=&#39;local&#39; THEN 1 ELSE 0 END) as local_cnt &quot;</span>
+            <span class="s2">&quot;FROM experiments e &quot;</span>
+            <span class="s2">&quot;JOIN runs r ON e.exp_id = r.exp_id &quot;</span>
+            <span class="s2">&quot;WHERE r.workflow_type = &#39;linear&#39; &quot;</span>
+            <span class="s2">&quot;GROUP BY task_name&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df2</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">c</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">cloud_cnt</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">local_cnt</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">l</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ratio</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span> <span class="o">/</span> <span class="nb">min</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="n">bal_ratio</span><span class="p">:</span>
+                    <span class="n">low_p</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span> <span class="k">if</span> <span class="n">l</span> <span class="o">&lt;</span> <span class="n">c</span> <span class="k">else</span> <span class="s2">&quot;cloud&quot;</span>
+                    <span class="n">high_p</span> <span class="o">=</span> <span class="s2">&quot;cloud&quot;</span> <span class="k">if</span> <span class="n">l</span> <span class="o">&lt;</span> <span class="n">c</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
+                    <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">l</span><span class="p">)</span>
+                    <span class="n">suggestions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;rule_id&quot;</span><span class="p">:</span> <span class="s2">&quot;provider_balance&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;emoji&quot;</span><span class="p">:</span> <span class="s2">&quot;🟡&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Provider imbalance: </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">high_p</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="n">c</span><span class="p">,</span><span class="n">l</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs vs </span><span class="si">{</span><span class="n">low_p</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">min</span><span class="p">(</span><span class="n">c</span><span class="p">,</span><span class="n">l</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs (</span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">× ratio). &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;Add </span><span class="si">{</span><span class="n">diff</span><span class="si">}</span><span class="s2"> more </span><span class="si">{</span><span class="n">low_p</span><span class="si">}</span><span class="s2"> runs.&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;add_to_queue&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;queue_item&quot;</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Balance: </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">low_p</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="p">,</span>
+                                <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="n">low_p</span><span class="p">,</span>
+                                <span class="s2">&quot;reps&quot;</span><span class="p">:</span> <span class="n">diff</span><span class="p">,</span>
+                                <span class="s2">&quot;country&quot;</span><span class="p">:</span> <span class="s2">&quot;US&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;single&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                    <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;core.execution.tests.test_harness&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;--task-id&quot;</span><span class="p">,</span>
+                                    <span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="p">,</span>
+                                    <span class="s2">&quot;--provider&quot;</span><span class="p">,</span>
+                                    <span class="n">low_p</span><span class="p">,</span>
+                                    <span class="s2">&quot;--repetitions&quot;</span><span class="p">,</span>
+                                    <span class="nb">str</span><span class="p">(</span><span class="n">diff</span><span class="p">),</span>
+                                    <span class="s2">&quot;--save-db&quot;</span><span class="p">,</span>
+                                <span class="p">],</span>
+                            <span class="p">},</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Rule 3: high variance (CV) — task/provider pairs with unreliable energy measurements</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cv_thresh</span> <span class="o">=</span> <span class="n">_GAP_CFG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;high_variance_cv&quot;</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">)</span>
+        <span class="n">df3</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT e.task_name, e.provider, COUNT(*) as cnt, &quot;</span>
+            <span class="s2">&quot;AVG(r.total_energy_uj) as mean_e, &quot;</span>
+            <span class="s2">&quot;MAX(r.total_energy_uj) as max_e, &quot;</span>
+            <span class="s2">&quot;MIN(r.total_energy_uj) as min_e &quot;</span>
+            <span class="s2">&quot;FROM experiments e &quot;</span>
+            <span class="s2">&quot;JOIN runs r ON e.exp_id = r.exp_id &quot;</span>
+            <span class="s2">&quot;WHERE r.workflow_type = &#39;agentic&#39; &quot;</span>
+            <span class="s2">&quot;GROUP BY e.task_name, e.provider &quot;</span>
+            <span class="s2">&quot;HAVING cnt &gt;= 3&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df3</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">mean_e</span> <span class="ow">and</span> <span class="n">row</span><span class="o">.</span><span class="n">mean_e</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Approximate CV from range (SQLite has no STDEV)</span>
+                <span class="n">approx_std</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">max_e</span> <span class="o">-</span> <span class="n">row</span><span class="o">.</span><span class="n">min_e</span>
+                <span class="p">)</span> <span class="o">/</span> <span class="mi">4</span>  <span class="c1"># range/4 ≈ std for normal dist</span>
+                <span class="n">cv</span> <span class="o">=</span> <span class="n">approx_std</span> <span class="o">/</span> <span class="n">row</span><span class="o">.</span><span class="n">mean_e</span>
+                <span class="k">if</span> <span class="n">cv</span> <span class="o">&gt;</span> <span class="n">cv_thresh</span><span class="p">:</span>
+                    <span class="n">n_more</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">cnt</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">))</span>
+                    <span class="n">suggestions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;rule_id&quot;</span><span class="p">:</span> <span class="s2">&quot;high_variance&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;emoji&quot;</span><span class="p">:</span> <span class="s2">&quot;🟡&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;High variance: </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2"> (CV≈</span><span class="si">{</span><span class="n">cv</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Energy spread is wide (min=</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">min_e</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">J, max=</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">max_e</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">J). &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;Add </span><span class="si">{</span><span class="n">n_more</span><span class="si">}</span><span class="s2"> more runs to reduce uncertainty.&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;add_to_queue&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;queue_item&quot;</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Reduce variance: </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="p">,</span>
+                                <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+                                <span class="s2">&quot;reps&quot;</span><span class="p">:</span> <span class="n">n_more</span><span class="p">,</span>
+                                <span class="s2">&quot;country&quot;</span><span class="p">:</span> <span class="s2">&quot;US&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;single&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                    <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;core.execution.tests.test_harness&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;--task-id&quot;</span><span class="p">,</span>
+                                    <span class="n">row</span><span class="o">.</span><span class="n">task_name</span><span class="p">,</span>
+                                    <span class="s2">&quot;--provider&quot;</span><span class="p">,</span>
+                                    <span class="n">row</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+                                    <span class="s2">&quot;--repetitions&quot;</span><span class="p">,</span>
+                                    <span class="nb">str</span><span class="p">(</span><span class="n">n_more</span><span class="p">),</span>
+                                    <span class="s2">&quot;--save-db&quot;</span><span class="p">,</span>
+                                <span class="p">],</span>
+                            <span class="p">},</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Rule 4: cold start coverage</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT SUM(CASE WHEN is_cold_start=1 THEN 1 ELSE 0 END) as cold, &quot;</span>
+            <span class="s2">&quot;COUNT(*) as total &quot;</span>
+            <span class="s2">&quot;FROM runs&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">cs</span> <span class="ow">and</span> <span class="n">cs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">pct</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cold&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="nb">int</span><span class="p">(</span><span class="n">cs</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="mi">100</span>
+            <span class="k">if</span> <span class="n">pct</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+                <span class="n">suggestions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;rule_id&quot;</span><span class="p">:</span> <span class="s2">&quot;cold_start_ratio&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;emoji&quot;</span><span class="p">:</span> <span class="s2">&quot;⚪&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Cold-start runs: </span><span class="si">{</span><span class="n">pct</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% (recommended ≥20%)&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="s2">&quot;Cold-start runs capture cache and memory warm-up effects. &quot;</span>
+                        <span class="s2">&quot;Run experiments immediately after system restart to increase coverage.&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;info_only&quot;</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Rule 5: no thermal stress data</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ht</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) as cnt FROM runs WHERE max_temp_c &gt; 85&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ht</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">ht</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cnt&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">suggestions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;rule_id&quot;</span><span class="p">:</span> <span class="s2">&quot;thermal_gap&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;emoji&quot;</span><span class="p">:</span> <span class="s2">&quot;⚪&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;No high-temperature runs captured&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="s2">&quot;No runs recorded when CPU exceeded 85°C. &quot;</span>
+                    <span class="s2">&quot;Load the Thermal Stress template to capture throttle-boundary behaviour.&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;suggest_template&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;template&quot;</span><span class="p">:</span> <span class="s2">&quot;thermal_stress&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Sort by priority, cap at max_shown</span>
+    <span class="n">suggestions</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;priority&quot;</span><span class="p">,</span> <span class="mi">99</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">suggestions</span><span class="p">[:</span><span class="n">max_shown</span><span class="p">]</span>
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># MAIN RENDER</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.designer.html#gui.pages.designer.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">_init_designer_state</span><span class="p">()</span>
+    <span class="n">all_tasks</span><span class="p">,</span> <span class="n">cat_map</span> <span class="o">=</span> <span class="n">_load_tasks</span><span class="p">()</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;🧪 Experiment Designer&quot;</span><span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span>
+        <span class="s2">&quot;Design conditional multi-container experiment plans. &quot;</span>
+        <span class="s2">&quot;Templates from config/experiment_templates.yaml.&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Template loader ───────────────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="n">_TEMPLATES</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;#### 📚 Load Template&quot;</span><span class="p">)</span>
+        <span class="n">template_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;— Select template —&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;emoji&#39;</span><span class="p">,</span><span class="s1">&#39;📋&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">  —  </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)[:</span><span class="mi">60</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">_TEMPLATES</span>
+        <span class="p">]</span>
+        <span class="n">chosen_idx</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+            <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">template_labels</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_template_select&quot;</span><span class="p">,</span> <span class="n">label_visibility</span><span class="o">=</span><span class="s2">&quot;collapsed&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">chosen_idx</span> <span class="o">!=</span> <span class="s2">&quot;— Select template —&quot;</span><span class="p">:</span>
+            <span class="n">tpl_idx</span> <span class="o">=</span> <span class="n">template_labels</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">chosen_idx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">tpl</span> <span class="o">=</span> <span class="n">_TEMPLATES</span><span class="p">[</span><span class="n">tpl_idx</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📥 Load &#39;</span><span class="si">{</span><span class="n">tpl</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_load_tpl&quot;</span><span class="p">):</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span> <span class="o">=</span> <span class="n">tpl</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span> <span class="o">=</span> <span class="n">tpl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="c1"># Convert template containers to designer format</span>
+                <span class="n">conts</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">tpl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;containers&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                    <span class="n">conts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;C</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">conts</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+                            <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;Container&quot;</span><span class="p">)),</span>
+                            <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                            <span class="s2">&quot;providers&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;providers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]),</span>
+                            <span class="s2">&quot;repetitions&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;repetitions&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                            <span class="s2">&quot;cool_down&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span>
+                            <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                <span class="p">{</span>
+                                    <span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                        <span class="s2">&quot;metric&quot;</span><span class="p">,</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;tax_multiplier&quot;</span><span class="p">)</span>
+                                    <span class="p">),</span>
+                                    <span class="s2">&quot;operator&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;operator&quot;</span><span class="p">,</span> <span class="s2">&quot;&gt;&quot;</span><span class="p">),</span>
+                                    <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+                                    <span class="s2">&quot;value2&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value2&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                                    <span class="s2">&quot;connector&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;connector&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                                    <span class="s2">&quot;run&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;STOP&quot;</span><span class="p">),</span>
+                                <span class="p">}</span>
+                                <span class="k">for</span> <span class="n">cond</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;conditions&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                            <span class="p">],</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">conts</span> <span class="k">if</span> <span class="n">conts</span> <span class="k">else</span> <span class="p">[</span><span class="n">_blank_container</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span>
+                <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded template: </span><span class="si">{</span><span class="n">tpl</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+        <span class="c1"># Estimated duration</span>
+        <span class="k">if</span> <span class="n">chosen_idx</span> <span class="o">!=</span> <span class="s2">&quot;— Select template —&quot;</span><span class="p">:</span>
+            <span class="n">tpl_idx</span> <span class="o">=</span> <span class="n">template_labels</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">chosen_idx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">tpl</span> <span class="o">=</span> <span class="n">_TEMPLATES</span><span class="p">[</span><span class="n">tpl_idx</span><span class="p">]</span>
+            <span class="n">dur</span> <span class="o">=</span> <span class="n">tpl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;estimated_duration_minutes&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⏱ Estimated duration: ~</span><span class="si">{</span><span class="n">dur</span><span class="si">}</span><span class="s2"> minutes&quot;</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+    <span class="c1"># ── Two-column layout: canvas | preview+gaps ──────────────────────────────</span>
+    <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+
+    <span class="k">with</span> <span class="n">left</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;#### 🔬 Design Canvas&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Plan metadata</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+            <span class="s2">&quot;Plan name&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_name_input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+            <span class="s2">&quot;Description (optional)&quot;</span><span class="p">,</span>
+            <span class="n">value</span><span class="o">=</span><span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span><span class="p">,</span>
+            <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_desc_input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Container builder</span>
+        <span class="n">containers</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span>
+
+        <span class="k">for</span> <span class="n">ci</span><span class="p">,</span> <span class="n">cont</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">containers</span><span class="p">):</span>
+            <span class="n">cid</span> <span class="o">=</span> <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+            <span class="n">is_last</span> <span class="o">=</span> <span class="n">ci</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">containers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="c1"># Container header</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:#0a1018;border:1px solid #1e2d45;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;border-left:3px solid #3b82f6;border-radius:5px;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;padding:8px 12px;margin-bottom:8px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:11px;font-weight:700;color:#4fc3f7;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;📦 </span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:10px;color:#3d5570;margin-left:8px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;/span&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Container fields</span>
+            <span class="n">cc1</span><span class="p">,</span> <span class="n">cc2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="k">with</span> <span class="n">cc1</span><span class="p">:</span>
+                <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+                    <span class="s2">&quot;Label&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">cid</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_label&quot;</span>
+                <span class="p">)</span>
+            <span class="k">with</span> <span class="n">cc2</span><span class="p">:</span>
+                <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+                    <span class="s2">&quot;ID&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">cid</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_id&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Tasks</span>
+            <span class="n">all_flag</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">checkbox</span><span class="p">(</span>
+                <span class="s2">&quot;All tasks&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_all&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">all_flag</span><span class="p">:</span>
+                <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;All </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_tasks</span><span class="p">)</span><span class="si">}</span><span class="s2"> tasks selected&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">multiselect</span><span class="p">(</span>
+                    <span class="s2">&quot;Tasks&quot;</span><span class="p">,</span>
+                    <span class="n">all_tasks</span><span class="p">,</span>
+                    <span class="n">default</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">t</span>
+                        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                        <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">all_tasks</span> <span class="ow">and</span> <span class="n">t</span> <span class="o">!=</span> <span class="s2">&quot;all&quot;</span>
+                    <span class="p">],</span>
+                    <span class="n">format_func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="n">cat_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                    <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_tasks&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Providers / reps / cool-down</span>
+            <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span><span class="p">,</span> <span class="n">c3</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;providers&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c1</span><span class="o">.</span><span class="n">multiselect</span><span class="p">(</span>
+                <span class="s2">&quot;Providers&quot;</span><span class="p">,</span>
+                <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">],</span>
+                <span class="n">default</span><span class="o">=</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;providers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]),</span>
+                <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_prov&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;repetitions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c2</span><span class="o">.</span><span class="n">number_input</span><span class="p">(</span>
+                <span class="s2">&quot;Reps&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;repetitions&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_reps&quot;</span>
+            <span class="p">)</span>
+            <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;cool_down&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c3</span><span class="o">.</span><span class="n">number_input</span><span class="p">(</span>
+                <span class="s2">&quot;Cool-down (s)&quot;</span><span class="p">,</span>
+                <span class="mi">0</span><span class="p">,</span>
+                <span class="mi">120</span><span class="p">,</span>
+                <span class="n">value</span><span class="o">=</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span>
+                <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_cd&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># ── Condition builder ─────────────────────────────────────────────</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="s2">&quot;&lt;div style=&#39;font-size:9px;font-weight:700;color:#3d5570;&quot;</span>
+                <span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:6px 0 4px;&#39;&gt;&quot;</span>
+                <span class="s2">&quot;⑃ Conditions (IF → THEN)&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">conds</span> <span class="o">=</span> <span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;conditions&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">for</span> <span class="n">ki</span><span class="p">,</span> <span class="n">cond</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">conds</span><span class="p">):</span>
+                <span class="n">ka</span><span class="p">,</span> <span class="n">kb</span><span class="p">,</span> <span class="n">kc</span><span class="p">,</span> <span class="n">kd</span><span class="p">,</span> <span class="n">ke</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="c1"># Metric selector</span>
+                <span class="n">metric_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_METRICS</span><span class="p">]</span>
+                <span class="n">metric_labels</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">m</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">m</span><span class="p">[</span><span class="s1">&#39;unit&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">m</span><span class="p">[</span><span class="s2">&quot;unit&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="n">m</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">_METRICS</span>
+                <span class="p">]</span>
+                <span class="n">cur_idx</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">metric_keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">cond</span><span class="p">[</span><span class="s2">&quot;metric&quot;</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">cond</span><span class="p">[</span><span class="s2">&quot;metric&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">metric_keys</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="n">cond</span><span class="p">[</span><span class="s2">&quot;metric&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric_keys</span><span class="p">[</span>
+                    <span class="n">ka</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+                        <span class="s2">&quot;Metric&quot;</span><span class="p">,</span>
+                        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">metric_keys</span><span class="p">)),</span>
+                        <span class="n">index</span><span class="o">=</span><span class="n">cur_idx</span><span class="p">,</span>
+                        <span class="n">format_func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="n">metric_labels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                        <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_cond_</span><span class="si">{</span><span class="n">ki</span><span class="si">}</span><span class="s2">_met&quot;</span><span class="p">,</span>
+                        <span class="n">label_visibility</span><span class="o">=</span><span class="s2">&quot;collapsed&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">]</span>
+
+                <span class="c1"># Operator</span>
+                <span class="n">op_syms</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="p">[</span><span class="s2">&quot;symbol&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">_OPERATORS</span><span class="p">]</span>
+                <span class="n">op_labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">_OPERATORS</span><span class="p">]</span>
+                <span class="n">op_idx</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">op_syms</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">cond</span><span class="p">[</span><span class="s2">&quot;operator&quot;</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">cond</span><span class="p">[</span><span class="s2">&quot;operator&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">op_syms</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="n">cond</span><span class="p">[</span><span class="s2">&quot;operator&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">op_syms</span><span class="p">[</span>
+                    <span class="n">kb</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+                        <span class="s2">&quot;Op&quot;</span><span class="p">,</span>
+                        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">op_syms</span><span class="p">)),</span>
+                        <span class="n">index</span><span class="o">=</span><span class="n">op_idx</span><span class="p">,</span>
+                        <span class="n">format_func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="n">op_labels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                        <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_cond_</span><span class="si">{</span><span class="n">ki</span><span class="si">}</span><span class="s2">_op&quot;</span><span class="p">,</span>
+                        <span class="n">label_visibility</span><span class="o">=</span><span class="s2">&quot;collapsed&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">]</span>
+
+                <span class="c1"># Value</span>
+                <span class="n">cond</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kc</span><span class="o">.</span><span class="n">number_input</span><span class="p">(</span>
+                    <span class="s2">&quot;Value&quot;</span><span class="p">,</span>
+                    <span class="n">value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+                    <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_cond_</span><span class="si">{</span><span class="n">ki</span><span class="si">}</span><span class="s2">_val&quot;</span><span class="p">,</span>
+                    <span class="n">label_visibility</span><span class="o">=</span><span class="s2">&quot;collapsed&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Run target</span>
+                <span class="n">cont_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">containers</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;STOP&quot;</span><span class="p">]</span>
+                <span class="n">run_val</span> <span class="o">=</span> <span class="n">cond</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;STOP&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">run_val</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cont_ids</span><span class="p">:</span>
+                    <span class="n">run_val</span> <span class="o">=</span> <span class="s2">&quot;STOP&quot;</span>
+                <span class="n">cond</span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kd</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+                    <span class="s2">&quot;→ Run&quot;</span><span class="p">,</span>
+                    <span class="n">cont_ids</span><span class="p">,</span>
+                    <span class="n">index</span><span class="o">=</span><span class="n">cont_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">run_val</span><span class="p">),</span>
+                    <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_cond_</span><span class="si">{</span><span class="n">ki</span><span class="si">}</span><span class="s2">_run&quot;</span><span class="p">,</span>
+                    <span class="n">label_visibility</span><span class="o">=</span><span class="s2">&quot;collapsed&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Remove condition button</span>
+                <span class="k">if</span> <span class="n">ke</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;✕&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;c_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">_cond_</span><span class="si">{</span><span class="n">ki</span><span class="si">}</span><span class="s2">_del&quot;</span><span class="p">):</span>
+                    <span class="n">conds</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">ki</span><span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+            <span class="c1"># Add condition button</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">conds</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">_MAX_COND</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;+ Add condition to </span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;add_cond_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                    <span class="n">conds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_blank_condition</span><span class="p">())</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+            <span class="n">cont</span><span class="p">[</span><span class="s2">&quot;conditions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">conds</span>
+
+            <span class="c1"># Remove container button (not for first container)</span>
+            <span class="k">if</span> <span class="n">ci</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🗑 Remove </span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;rem_cont_</span><span class="si">{</span><span class="n">ci</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                    <span class="n">containers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">ci</span><span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_last</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                    <span class="s2">&quot;&lt;hr style=&#39;border-color:#1e2d45;margin:8px 0;&#39;&gt;&quot;</span><span class="p">,</span>
+                    <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Add container</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">containers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">_MAX_CONT</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;+ Add Container&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;add_cont&quot;</span><span class="p">):</span>
+                <span class="n">containers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_blank_container</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">containers</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span> <span class="o">=</span> <span class="n">containers</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ── Action buttons ────────────────────────────────────────────────────</span>
+        <span class="n">plan</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span><span class="p">,</span>
+            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span><span class="p">,</span>
+            <span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="o">.</span><span class="n">now</span><span class="p">())[:</span><span class="mi">16</span><span class="p">],</span>
+            <span class="s2">&quot;containers&quot;</span><span class="p">:</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">,</span> <span class="n">b3</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="c1"># Save plan to YAML</span>
+        <span class="k">if</span> <span class="n">b1</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;💾 Save Plan&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_save&quot;</span><span class="p">):</span>
+            <span class="n">ok</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">_save_plan</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved to </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_saved_plans</span> <span class="o">=</span> <span class="n">_load_saved_plans</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Save failed: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Queue all containers</span>
+        <span class="k">if</span> <span class="n">b2</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+            <span class="s2">&quot;▶ Queue All&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;primary&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_queue&quot;</span>
+        <span class="p">):</span>
+            <span class="n">items</span> <span class="o">=</span> <span class="n">_plan_to_queue_items</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">all_tasks</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;ex_queue&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">ex_queue</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">ex_queue</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Queued </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span><span class="si">}</span><span class="s2"> experiments → go to ▶ Execute Run&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Reset canvas</span>
+        <span class="k">if</span> <span class="n">b3</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;🔄 Reset&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dsn_reset&quot;</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span> <span class="o">=</span> <span class="p">[</span><span class="n">_blank_container</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span> <span class="o">=</span> <span class="s2">&quot;My Plan&quot;</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+    <span class="c1"># ══════════════════════════════════════════════════════════════════════════</span>
+    <span class="c1"># RIGHT COLUMN: Preview + Saved Plans + Gap Detection</span>
+    <span class="c1"># ══════════════════════════════════════════════════════════════════════════</span>
+    <span class="k">with</span> <span class="n">right</span><span class="p">:</span>
+        <span class="c1"># ── Live plan preview ─────────────────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;#### 📐 Plan Preview&quot;</span><span class="p">)</span>
+        <span class="n">plan</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span><span class="p">,</span>
+            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span><span class="p">,</span>
+            <span class="s2">&quot;containers&quot;</span><span class="p">:</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">_render_plan_preview</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>
+
+        <span class="c1"># Experiment count estimate</span>
+        <span class="n">total_experiments</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">cont</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span><span class="p">:</span>
+            <span class="n">tasks</span> <span class="o">=</span> <span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">n_tasks</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_tasks</span><span class="p">)</span> <span class="k">if</span> <span class="n">tasks</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tasks</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+            <span class="n">total_experiments</span> <span class="o">+=</span> <span class="n">n_tasks</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">cont</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;providers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]))</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Estimated: </span><span class="si">{</span><span class="n">total_experiments</span><span class="si">}</span><span class="s2"> experiments × &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;repetitions&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2"> reps = &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_experiments</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;repetitions&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+        <span class="c1"># ── Saved plans ───────────────────────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;#### 📁 Saved Plans&quot;</span><span class="p">)</span>
+        <span class="n">saved</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_saved_plans</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">saved</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="s2">&quot;No saved plans yet.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="n">saved</span><span class="p">:</span>
+                <span class="n">sa</span><span class="p">,</span> <span class="n">sb</span><span class="p">,</span> <span class="n">sc</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="n">sa</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:#e8f0f8;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sp</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#3d5570;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;containers&#39;</span><span class="p">,[]))</span><span class="si">}</span><span class="s2"> containers&lt;/div&gt;&quot;</span><span class="p">,</span>
+                    <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">sb</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+                    <span class="s2">&quot;📥&quot;</span><span class="p">,</span>
+                    <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;sp_load_</span><span class="si">{</span><span class="n">sp</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Load this plan&quot;</span><span class="p">,</span>
+                <span class="p">):</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span> <span class="o">=</span> <span class="n">sp</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="s2">&quot;containers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">_blank_container</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span>
+                    <span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">sc</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+                    <span class="s2">&quot;▶&quot;</span><span class="p">,</span>
+                    <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;sp_run_</span><span class="si">{</span><span class="n">sp</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Queue this plan&quot;</span><span class="p">,</span>
+                <span class="p">):</span>
+                    <span class="n">items</span> <span class="o">=</span> <span class="n">_plan_to_queue_items</span><span class="p">(</span><span class="n">sp</span><span class="p">,</span> <span class="n">all_tasks</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="s2">&quot;ex_queue&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">ex_queue</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">ex_queue</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Queued </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs&quot;</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+        <span class="c1"># ── Gap detection suggestions ─────────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;#### 💡 Data Gap Suggestions&quot;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="s2">&quot;Detected by analysing your current DB coverage.&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">spinner</span><span class="p">(</span><span class="s2">&quot;Scanning for gaps...&quot;</span><span class="p">):</span>
+            <span class="n">suggestions</span> <span class="o">=</span> <span class="n">_run_gap_detection</span><span class="p">(</span><span class="n">all_tasks</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">suggestions</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;✅ No significant data gaps detected!&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">suggestions</span><span class="p">:</span>
+                <span class="n">clr</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;🔴&quot;</span><span class="p">:</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">,</span> <span class="s2">&quot;🟡&quot;</span><span class="p">:</span> <span class="s2">&quot;#f59e0b&quot;</span><span class="p">,</span> <span class="s2">&quot;⚪&quot;</span><span class="p">:</span> <span class="s2">&quot;#4b5563&quot;</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="n">s</span><span class="p">[</span><span class="s2">&quot;emoji&quot;</span><span class="p">],</span> <span class="s2">&quot;#3d5570&quot;</span>
+                <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">11;border:1px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">33;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;border-left:3px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;border-radius:5px;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;padding:8px 12px;margin-bottom:6px;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;font-weight:600;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;emoji&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#7090b0;margin-top:3px;line-height:1.5;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;body&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+                    <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Action button</span>
+                <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;add_to_queue&quot;</span> <span class="ow">and</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;queue_item&quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;+ Add to Queue&quot;</span><span class="p">,</span>
+                        <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;gap_</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;rule_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">][:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">):</span>
+                        <span class="k">if</span> <span class="s2">&quot;ex_queue&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+                            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">ex_queue</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">ex_queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;queue_item&quot;</span><span class="p">])</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Added to Execute Run queue!&quot;</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;suggest_template&quot;</span> <span class="ow">and</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;template&quot;</span><span class="p">):</span>
+                    <span class="n">tpl_name</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;template&quot;</span><span class="p">]</span>
+                    <span class="n">matching</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">_TEMPLATES</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">tpl_name</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">matching</span> <span class="ow">and</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;📋 Load &#39;</span><span class="si">{</span><span class="n">matching</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; template&quot;</span><span class="p">,</span>
+                        <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;gap_tpl_</span><span class="si">{</span><span class="n">tpl_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">):</span>
+                        <span class="n">tpl</span> <span class="o">=</span> <span class="n">matching</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_plan_name</span> <span class="o">=</span> <span class="n">tpl</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_description</span> <span class="o">=</span> <span class="n">tpl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                        <span class="n">conts</span> <span class="o">=</span> <span class="p">[]</span>
+                        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">tpl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;containers&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                            <span class="n">conts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="p">{</span>
+                                    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;C</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">conts</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+                                    <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;Container&quot;</span><span class="p">)),</span>
+                                    <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                                    <span class="s2">&quot;providers&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;providers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]),</span>
+                                    <span class="s2">&quot;repetitions&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;repetitions&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                                    <span class="s2">&quot;cool_down&quot;</span><span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span>
+                                    <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                                <span class="p">}</span>
+                            <span class="p">)</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">dsn_containers</span> <span class="o">=</span> <span class="n">conts</span> <span class="ow">or</span> <span class="p">[</span><span class="n">_blank_container</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

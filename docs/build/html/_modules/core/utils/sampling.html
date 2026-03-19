@@ -1,0 +1,612 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.utils.sampling &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../utils.html">core.utils</a></li>
+      <li class="breadcrumb-item active">core.utils.sampling</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.utils.sampling</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">HIGH-FREQUENCY SAMPLING UTILITY</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">Institution:</span>
+<span class="sd">Contact:</span>
+
+<span class="sd">Module: core/utils/sampling.py (Part of Module 1 - Energy Engine)</span>
+
+<span class="sd">Purpose:</span>
+<span class="sd">--------</span>
+<span class="sd">This module provides a high-frequency sampling thread that reads RAPL energy</span>
+<span class="sd">counters at a configurable rate (default 100 Hz). This enables:</span>
+
+<span class="sd">1. Capturing energy consumption during short agent steps (Req 1.46)</span>
+<span class="sd">2. Attributing energy to specific phases of agentic workflows</span>
+<span class="sd">3. Detecting energy spikes from context switches or tool calls</span>
+<span class="sd">4. Validating that sampling frequency is sufficient (Req 1.46)</span>
+
+<span class="sd">Why a Dedicated Sampling Thread:</span>
+<span class="sd">--------------------------------</span>
+<span class="sd">- RAPL counters are cumulative; we need differences over short intervals.</span>
+<span class="sd">- A background thread ensures consistent sampling without blocking the main</span>
+<span class="sd">  experiment code.</span>
+<span class="sd">- Samples are stored with timestamps for later correlation with workflow phases.</span>
+
+<span class="sd">Requirements Covered:</span>
+<span class="sd">--------------------</span>
+<span class="sd">Req 1.46 – RAPL Sampling Frequency Validation – ensures we capture enough</span>
+<span class="sd">           samples for short agent steps (default 100 Hz = 10ms intervals).</span>
+
+<span class="sd">Design:</span>
+<span class="sd">-------</span>
+<span class="sd">- The sampler runs in a daemon thread so it exits when the main program exits.</span>
+<span class="sd">- Samples are stored in a thread-safe queue to avoid locking issues.</span>
+<span class="sd">- The main thread can retrieve samples after the measurement stops.</span>
+
+<span class="sd">Usage Example:</span>
+<span class="sd">-------------</span>
+<span class="sd">    sampler = HighFrequencySampler(rapl_reader, sampling_rate_hz=100)</span>
+<span class="sd">    sampler.start()</span>
+<span class="sd">    # ... run experiment ...</span>
+<span class="sd">    sampler.stop()</span>
+<span class="sd">    samples = sampler.get_samples()</span>
+
+<span class="sd">    # Or get samples since a specific timestamp</span>
+<span class="sd">    recent = sampler.get_samples_since(start_time)</span>
+
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">queue</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="EnergySample">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.EnergySample">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnergySample</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A single energy sample from the high-frequency sampler.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        timestamp (float): Unix timestamp when the sample was taken.</span>
+<span class="sd">        package_uj (int): Package energy in microjoules.</span>
+<span class="sd">        core_uj (int): Core energy in microjoules.</span>
+<span class="sd">        dram_uj (int): DRAM energy in microjoules (may be None if unavailable).</span>
+<span class="sd">        uncore_uj (int): Uncore energy in microjoules (may be None).</span>
+<span class="sd">        raw_values (dict): Raw values from all available domains.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">package_uj</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">core_uj</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">dram_uj</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">uncore_uj</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">raw_values</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EnergySample.to_dict">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.EnergySample.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert sample to dictionary for serialization.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+            <span class="s2">&quot;package_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">package_uj</span><span class="p">,</span>
+            <span class="s2">&quot;core_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">core_uj</span><span class="p">,</span>
+            <span class="s2">&quot;dram_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dram_uj</span><span class="p">,</span>
+            <span class="s2">&quot;uncore_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncore_uj</span><span class="p">,</span>
+            <span class="s2">&quot;raw&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_values</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="HighFrequencySampler">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.HighFrequencySampler">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HighFrequencySampler</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    High-frequency RAPL sampling thread.</span>
+
+<span class="sd">    This class runs a background thread that reads RAPL energy counters at a</span>
+<span class="sd">    specified rate (default 100 Hz = every 10ms). Samples are stored in a</span>
+<span class="sd">    thread-safe queue for later retrieval.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        rapl_reader: RAPLReader instance to read energy counters.</span>
+<span class="sd">        sampling_rate_hz (int): Target sampling frequency.</span>
+<span class="sd">        interval (float): Calculated interval between samples.</span>
+<span class="sd">        running (bool): Whether the sampler thread is running.</span>
+<span class="sd">        sample_queue (queue.Queue): Thread-safe queue of EnergySample objects.</span>
+<span class="sd">        thread (threading.Thread): Background sampler thread.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">rapl_reader</span><span class="p">,</span> <span class="n">sampling_rate_hz</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">max_queue_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the high-frequency sampler.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rapl_reader: Initialized RAPLReader instance.</span>
+<span class="sd">            sampling_rate_hz: Target sampling frequency (default 100 Hz).</span>
+<span class="sd">            max_queue_size: Maximum number of samples to queue (prevents memory issues).</span>
+
+<span class="sd">        Req 1.46: Sampling frequency must be high enough for short agent steps.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rapl_reader</span> <span class="o">=</span> <span class="n">rapl_reader</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span> <span class="o">=</span> <span class="n">sampling_rate_hz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">sampling_rate_hz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_queue_size</span> <span class="o">=</span> <span class="n">max_queue_size</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="n">max_queue_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># For statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples_taken</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples_dropped</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Sampler initialized: rate=</span><span class="si">{</span><span class="n">sampling_rate_hz</span><span class="si">}</span><span class="s2">Hz, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;interval=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">ms&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="HighFrequencySampler.start">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the sampling thread.</span>
+
+<span class="sd">        The thread runs in daemon mode, so it will automatically exit when the</span>
+<span class="sd">        main program exits.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Sampler already running&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples_taken</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples_dropped</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Clear any existing samples</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_sampling_loop</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;RAPL-Sampler&quot;</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sampling thread started at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="si">}</span><span class="s2"> Hz&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HighFrequencySampler.stop">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.stop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">EnergySample</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop the sampling thread and return all collected samples.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of EnergySample objects collected during the sampling period.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Sampler not running&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+
+        <span class="c1"># Collect all samples from queue</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">())</span>
+            <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">actual_rate</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span> <span class="o">/</span> <span class="n">duration</span> <span class="k">if</span> <span class="n">duration</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Sampling stopped: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples in </span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">actual_rate</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> Hz actual, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">samples_dropped</span><span class="si">}</span><span class="s2"> dropped)&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Req 1.46: Validate sampling frequency</span>
+        <span class="k">if</span> <span class="n">actual_rate</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Sampling rate too low: </span><span class="si">{</span><span class="n">actual_rate</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> Hz &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(target </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="si">}</span><span class="s2"> Hz)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sampling_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Background sampling loop.</span>
+
+<span class="sd">        Runs at the configured interval, reading RAPL counters and storing</span>
+<span class="sd">        samples in the queue. If the queue fills up, oldest samples are dropped</span>
+<span class="sd">        to prevent memory issues.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Sampling loop started&quot;</span><span class="p">)</span>
+        <span class="n">next_sample</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Take sample</span>
+                <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">energy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_reader</span><span class="o">.</span><span class="n">read_energy_safe</span><span class="p">()</span>
+
+                <span class="c1"># Create sample object</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="n">EnergySample</span><span class="p">(</span>
+                    <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
+                    <span class="n">package_uj</span><span class="o">=</span><span class="n">energy</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">core_uj</span><span class="o">=</span><span class="n">energy</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">dram_uj</span><span class="o">=</span><span class="n">energy</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                    <span class="n">uncore_uj</span><span class="o">=</span><span class="n">energy</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+                    <span class="n">raw_values</span><span class="o">=</span><span class="n">energy</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Add to queue (non-blocking)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">samples_taken</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Full</span><span class="p">:</span>
+                    <span class="c1"># Queue full - remove oldest and add new</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">samples_dropped</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                        <span class="c1"># Shouldn&#39;t happen, but handle gracefully</span>
+                        <span class="k">pass</span>
+
+                <span class="c1"># Schedule next sample</span>
+                <span class="n">next_sample</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span>
+                <span class="n">sleep_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">next_sample</span> <span class="o">-</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+                <span class="k">if</span> <span class="n">sleep_time</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">sleep_time</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># We&#39;re falling behind – log warning but continue</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Sampling loop falling behind (interval &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms too short)&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">next_sample</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>  <span class="c1"># Reset timing</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sampling error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>  <span class="c1"># Brief pause before retry</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Sampling loop stopped&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HighFrequencySampler.get_samples">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.get_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">EnergySample</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get all samples currently in the queue.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of EnergySample objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">())</span>
+            <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="HighFrequencySampler.get_samples_since">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.get_samples_since">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_samples_since</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">EnergySample</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get all samples taken after a specific timestamp.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            timestamp: Unix timestamp (samples after this time are returned).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of EnergySample objects with timestamp &gt; given timestamp.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method consumes samples from the queue. If you need to keep</span>
+<span class="sd">            them, call get_samples() first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">all_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_samples</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">all_samples</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">timestamp</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="HighFrequencySampler.get_statistics">
+<a class="viewcode-back" href="../../../core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.get_statistics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get sampling statistics.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with keys:</span>
+<span class="sd">                - sampling_rate_hz: Target rate</span>
+<span class="sd">                - interval_ms: Target interval in milliseconds</span>
+<span class="sd">                - samples_taken: Total samples taken</span>
+<span class="sd">                - samples_dropped: Samples dropped due to queue full</span>
+<span class="sd">                - current_queue_size: Current number of samples in queue</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;sampling_rate_hz&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="p">,</span>
+            <span class="s2">&quot;interval_ms&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+            <span class="s2">&quot;samples_taken&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_taken</span><span class="p">,</span>
+            <span class="s2">&quot;samples_dropped&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_dropped</span><span class="p">,</span>
+            <span class="s2">&quot;current_queue_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queue</span><span class="o">.</span><span class="n">qsize</span><span class="p">(),</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># USAGE EXAMPLE</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Example: Test the high-frequency sampler.</span>
+
+<span class="sd">    Run with: python -m core.utils.sampling</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="c1"># Add project root to path</span>
+    <span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+    <span class="c1"># Set up logging</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;HIGH-FREQUENCY SAMPLER TEST&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Try to use real RAPL reader first</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.rapl_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAPLReader</span>
+
+        <span class="c1"># Load config</span>
+        <span class="n">config_path</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span> <span class="o">/</span> <span class="s2">&quot;hw_config.json&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Config file not found!&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Falling back to dummy reader...&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;No config file&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="c1"># Get RAPL config</span>
+        <span class="n">rapl_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG: rapl_config = </span><span class="si">{</span><span class="n">rapl_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">rapl_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;paths&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ No RAPL paths in config!&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Falling back to dummy reader...&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;No RAPL paths&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Initialize RAPL reader</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">rapl</span> <span class="o">=</span> <span class="n">RAPLReader</span><span class="p">(</span><span class="n">rapl_config</span><span class="p">)</span>
+
+            <span class="c1"># Test if it worked by trying to read</span>
+            <span class="n">test_read</span> <span class="o">=</span> <span class="n">rapl</span><span class="o">.</span><span class="n">read_energy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">test_read</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">test_read</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;✅ Using REAL RAPL reader with domains: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">test_read</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Sample reading: </span><span class="si">{</span><span class="n">test_read</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ RAPL reader initialized but returned zeros&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;RAPL read failed&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Could not initialize real RAPL reader: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Using dummy RAPL reader (simulated data)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Dummy reader</span>
+            <span class="k">class</span><span class="w"> </span><span class="nc">DummyRAPLReader</span><span class="p">:</span>
+                <span class="k">def</span><span class="w"> </span><span class="nf">read_energy_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+                    <span class="k">return</span> <span class="p">{</span>
+                        <span class="s2">&quot;package-0&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">2000000</span><span class="p">),</span>
+                        <span class="s2">&quot;core&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">500000</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">),</span>
+                        <span class="s2">&quot;uncore&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">100000</span><span class="p">,</span> <span class="mi">500000</span><span class="p">),</span>
+                    <span class="p">}</span>
+
+                <span class="k">def</span><span class="w"> </span><span class="nf">read_energy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_energy_safe</span><span class="p">()</span>
+
+                <span class="k">def</span><span class="w"> </span><span class="nf">get_available_domains</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="s2">&quot;uncore&quot;</span><span class="p">]</span>
+
+            <span class="n">rapl</span> <span class="o">=</span> <span class="n">DummyRAPLReader</span><span class="p">()</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Could not initialize real RAPL reader: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Using dummy RAPL reader (simulated data)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Dummy reader</span>
+        <span class="k">class</span><span class="w"> </span><span class="nc">DummyRAPLReader</span><span class="p">:</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">read_energy_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;package-0&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">2000000</span><span class="p">),</span>
+                    <span class="s2">&quot;core&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">500000</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">),</span>
+                    <span class="s2">&quot;uncore&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">100000</span><span class="p">,</span> <span class="mi">500000</span><span class="p">),</span>
+                <span class="p">}</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">read_energy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_energy_safe</span><span class="p">()</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">get_available_domains</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="s2">&quot;uncore&quot;</span><span class="p">]</span>
+
+        <span class="n">rapl</span> <span class="o">=</span> <span class="n">DummyRAPLReader</span><span class="p">()</span>
+
+    <span class="c1"># Create sampler</span>
+    <span class="n">sampler</span> <span class="o">=</span> <span class="n">HighFrequencySampler</span><span class="p">(</span><span class="n">rapl</span><span class="p">,</span> <span class="n">sampling_rate_hz</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_queue_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;📊 Sampler: </span><span class="si">{</span><span class="n">sampler</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="si">}</span><span class="s2"> Hz (</span><span class="si">{</span><span class="n">sampler</span><span class="o">.</span><span class="n">interval</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> ms interval)&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Start sampling</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">▶️ Starting sampler for 2 seconds...&quot;</span><span class="p">)</span>
+    <span class="n">sampler</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="c1"># Let it run for 2 seconds</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Stop and get samples</span>
+    <span class="n">samples</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="c1"># Display results</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📈 Collected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">samples</span><span class="p">:</span>
+        <span class="c1"># Show first few samples</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 First 3 samples:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">samples</span><span class="p">[:</span><span class="mi">3</span><span class="p">]):</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: t=</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">timestamp</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, PKG=</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">package_uj</span><span class="si">}</span><span class="s2"> µJ, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;CORE=</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">core_uj</span><span class="si">}</span><span class="s2"> µJ&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Calculate statistics</span>
+        <span class="n">timestamps</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">timestamp</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">]</span>
+        <span class="n">deltas</span> <span class="o">=</span> <span class="p">[</span><span class="n">timestamps</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">timestamps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">timestamps</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">deltas</span><span class="p">:</span>
+            <span class="n">avg_interval</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Statistics:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Average interval: </span><span class="si">{</span><span class="n">avg_interval</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Actual rate: </span><span class="si">{</span><span class="mi">1</span><span class="o">/</span><span class="n">avg_interval</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> Hz&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Target rate: </span><span class="si">{</span><span class="n">sampler</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="si">}</span><span class="s2"> Hz&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Test complete!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

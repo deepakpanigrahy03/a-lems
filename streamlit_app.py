@@ -7,12 +7,13 @@ Entry point — 3-layer navigation dispatcher.
   nav_section set, nav_page=None → Section landing card grid
   nav_section set, nav_page set  → Actual page
 """
-import sys
+
 import importlib
+import sys
 from pathlib import Path
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 _ROOT = Path(__file__).parent
 if str(_ROOT) not in sys.path:
@@ -25,7 +26,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 [data-testid="stAppViewContainer"] { background: #090d13; }
 [data-testid="stSidebar"]          { background: #0f1520; border-right: 1px solid #1e2d45; }
@@ -44,33 +46,44 @@ p, li { font-size:0.82rem; color:#b8c8d8; }
 .stDataFrame { font-size:0.78rem; }
 code { font-size:0.75rem; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
+from gui.config import (PAGE_META, PAGE_TO_SECTION, PAGES_BLOCKED,
+                        SECTION_ACCENTS, SECTION_PAGES)
+from gui.db import load_overview, load_runs, load_tax
 from gui.sidebar import render_sidebar
-from gui.db      import load_overview, load_runs, load_tax
-from gui.config  import PAGES_BLOCKED, PAGE_TO_SECTION, SECTION_PAGES, PAGE_META, SECTION_ACCENTS
 
 # ── Shared data ───────────────────────────────────────────────────────────────
-ov   = load_overview()
+ov = load_overview()
 runs = load_runs()
-tax  = load_tax()
+tax = load_tax()
 
-lin = runs[runs.workflow_type == "linear"]  if not runs.empty else pd.DataFrame()
+lin = runs[runs.workflow_type == "linear"] if not runs.empty else pd.DataFrame()
 age = runs[runs.workflow_type == "agentic"] if not runs.empty else pd.DataFrame()
 
 avg_lin_j = lin.energy_j.mean() if not lin.empty and "energy_j" in lin.columns else 0.0
 avg_age_j = age.energy_j.mean() if not age.empty and "energy_j" in age.columns else 0.0
-tax_mult  = avg_age_j / avg_lin_j if avg_lin_j > 0 else 0.0
+tax_mult = avg_age_j / avg_lin_j if avg_lin_j > 0 else 0.0
 
-plan_ms     = float(ov.get("avg_planning_ms",  0) or 0)
-exec_ms     = float(ov.get("avg_execution_ms", 0) or 0)
-synth_ms    = float(ov.get("avg_synthesis_ms", 0) or 0)
+plan_ms = float(ov.get("avg_planning_ms", 0) or 0)
+exec_ms = float(ov.get("avg_execution_ms", 0) or 0)
+synth_ms = float(ov.get("avg_synthesis_ms", 0) or 0)
 phase_total = plan_ms + exec_ms + synth_ms or 1
 
 CTX = dict(
-    ov=ov, runs=runs, tax=tax, lin=lin, age=age,
-    avg_lin_j=avg_lin_j, avg_age_j=avg_age_j, tax_mult=tax_mult,
-    plan_ms=plan_ms, exec_ms=exec_ms, synth_ms=synth_ms,
+    ov=ov,
+    runs=runs,
+    tax=tax,
+    lin=lin,
+    age=age,
+    avg_lin_j=avg_lin_j,
+    avg_age_j=avg_age_j,
+    tax_mult=tax_mult,
+    plan_ms=plan_ms,
+    exec_ms=exec_ms,
+    synth_ms=synth_ms,
     plan_pct=plan_ms / phase_total * 100,
     exec_pct=exec_ms / phase_total * 100,
     synth_pct=synth_ms / phase_total * 100,
@@ -78,79 +91,79 @@ CTX = dict(
 
 # ── Page modules ──────────────────────────────────────────────────────────────
 _PAGE_MODULES = {
-    "overview":          "gui.pages.overview",
-    "execute":           "gui.pages.execute",
-    "experiments":       "gui.pages.experiments",
-    "settings":          "gui.pages.settings",
-    "explorer":          "gui.pages.explorer",
-    "energy":            "gui.pages.energy",
-    "domains":           "gui.pages.domains",
-    "sustainability":    "gui.pages.sustainability",
-    "tax":               "gui.pages.tax",
-    "agentic_linear":    "gui.pages.agentic_linear",
-    "query_analysis":    "gui.pages.query_analysis",
-    "cpu":               "gui.pages.cpu",
-    "scheduler":         "gui.pages.scheduler",
-    "anomalies":         "gui.pages.anomalies",
+    "overview": "gui.pages.overview",
+    "execute": "gui.pages.execute",
+    "experiments": "gui.pages.experiments",
+    "settings": "gui.pages.settings",
+    "explorer": "gui.pages.explorer",
+    "energy": "gui.pages.energy",
+    "domains": "gui.pages.domains",
+    "sustainability": "gui.pages.sustainability",
+    "tax": "gui.pages.tax",
+    "agentic_linear": "gui.pages.agentic_linear",
+    "query_analysis": "gui.pages.query_analysis",
+    "cpu": "gui.pages.cpu",
+    "scheduler": "gui.pages.scheduler",
+    "anomalies": "gui.pages.anomalies",
     "research_insights": "gui.pages.research_insights",
-    "live":              "gui.pages.live",
-    "schema_docs":       "gui.pages.schema_docs",
-    "sql_query":         "gui.pages.sql_query",
-    "designer":          "gui.pages.designer",
-    "sessions":          "gui.pages.sessions",
-    "session_analysis":  "gui.pages.session_analysis",
-    "models":            "gui.pages.models",
+    "live": "gui.pages.live",
+    "schema_docs": "gui.pages.schema_docs",
+    "sql_query": "gui.pages.sql_query",
+    "designer": "gui.pages.designer",
+    "sessions": "gui.pages.sessions",
+    "session_analysis": "gui.pages.session_analysis",
+    "models": "gui.pages.models",
     # Data Quality
     # Energy & Silicon
-    "thermal":           "gui.pages.thermal",
-    "baseline":          "gui.pages.baseline",
+    "thermal": "gui.pages.thermal",
+    "baseline": "gui.pages.baseline",
     # Agentic Intelligence
-    "phase_drilldown":   "gui.pages.phase_drilldown",
+    "phase_drilldown": "gui.pages.phase_drilldown",
     # Sessions & Runs
-    "run_drilldown":     "gui.pages.run_drilldown",
+    "run_drilldown": "gui.pages.run_drilldown",
     # Research & Insights
-    "efficiency":        "gui.pages.efficiency",
-    "ml_features":       "gui.pages.ml_features_page",
-    "hypotheses":        "gui.pages.hypotheses",
+    "efficiency": "gui.pages.efficiency",
+    "ml_features": "gui.pages.ml_features_page",
+    "hypotheses": "gui.pages.hypotheses",
     # Environment
-    "carbon_country":    "gui.pages.carbon_country",
-    "water_methane":     "gui.pages.water_methane",
+    "carbon_country": "gui.pages.carbon_country",
+    "water_methane": "gui.pages.water_methane",
     # Developer Tools
-    "env_config":        "gui.pages.env_config",
-    "llm_log":           "gui.pages.llm_log",
-    "ml_export":         "gui.pages.ml_export",
+    "env_config": "gui.pages.env_config",
+    "llm_log": "gui.pages.llm_log",
+    "ml_export": "gui.pages.ml_export",
     # Silicon Lab
-    "hw_registry":       "gui.pages.hw_registry",
-    "silicon_compare":   "gui.pages.silicon_compare",
-    "silicon_journey":   "gui.pages.silicon_journey",
+    "hw_registry": "gui.pages.hw_registry",
+    "silicon_compare": "gui.pages.silicon_compare",
+    "silicon_journey": "gui.pages.silicon_journey",
     # Data Movement
-    "data_cache":        "gui.pages.data_cache",
-    "data_tokens":       "gui.pages.data_tokens",
-    "data_network":      "gui.pages.data_network",
-    "data_swap":         "gui.pages.data_swap",
-    "data_interrupts":   "gui.pages.data_interrupts",
+    "data_cache": "gui.pages.data_cache",
+    "data_tokens": "gui.pages.data_tokens",
+    "data_network": "gui.pages.data_network",
+    "data_swap": "gui.pages.data_swap",
+    "data_interrupts": "gui.pages.data_interrupts",
     # Data Quality
-    "dq_validity":       "gui.pages.dq_validity",
-    "dq_coverage":       "gui.pages.dq_coverage",
-    "dq_sufficiency":    "gui.pages.dq_sufficiency",
-    "dq_integrity":      "gui.pages.dq_integrity",
-    "dq_schema":         "gui.pages.dq_schema",
+    "dq_validity": "gui.pages.dq_validity",
+    "dq_coverage": "gui.pages.dq_coverage",
+    "dq_sufficiency": "gui.pages.dq_sufficiency",
+    "dq_integrity": "gui.pages.dq_integrity",
+    "dq_schema": "gui.pages.dq_schema",
 }
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 render_sidebar()
 
 nav_section = st.session_state.get("nav_section")
-nav_page    = st.session_state.get("nav_page")
-nav_last    = st.session_state.get("nav_last", {})
+nav_page = st.session_state.get("nav_page")
+nav_last = st.session_state.get("nav_last", {})
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _render_stub(page_id: str, section: str) -> None:
-    meta   = PAGE_META.get(page_id, {})
-    label  = meta.get("label", page_id)
-    icon   = meta.get("icon",  "◈")
-    desc   = meta.get("desc",  "")
+    meta = PAGE_META.get(page_id, {})
+    label = meta.get("label", page_id)
+    icon = meta.get("icon", "◈")
+    desc = meta.get("desc", "")
     accent = SECTION_ACCENTS.get(section, "#3b82f6")
     st.markdown(
         f"<div style='padding:48px 32px;text-align:center;"
@@ -166,7 +179,8 @@ def _render_stub(page_id: str, section: str) -> None:
         f"font-family:IBM Plex Mono,monospace;font-weight:700;"
         f"letter-spacing:.1em;'>COMING SOON</div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
 
 # ── 3-layer dispatcher ────────────────────────────────────────────────────────
@@ -178,6 +192,7 @@ if nav_section is None:
 # Layer 2 — Section, no page → Section landing
 elif nav_page is None:
     from gui.components.section_landing import render as _landing
+
     _landing(nav_section, last_page=nav_last.get(nav_section))
 
 # Layer 3 — Section + page → Page
@@ -185,6 +200,7 @@ else:
     # Breadcrumb (not on overview)
     if nav_page != "overview":
         from gui.components.breadcrumb import render as _bc
+
         _bc(nav_page)
 
     # Update last-visited memory
@@ -204,7 +220,8 @@ else:
             f"<div style='font-size:12px;color:#fca5a5;"
             f"font-family:IBM Plex Mono,monospace;line-height:1.7;'>{reason}</div>"
             f"</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
 
     # Stub
     elif nav_page not in _PAGE_MODULES:

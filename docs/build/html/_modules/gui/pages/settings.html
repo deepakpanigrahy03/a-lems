@@ -1,0 +1,283 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.settings &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.settings</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.settings</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/settings.py  —  ⚙  Settings</span>
+<span class="sd">Render function: render(ctx)</span>
+<span class="sd">ctx keys: ov, runs, tax, lin, age, avg_lin_j, avg_age_j, tax_mult,</span>
+<span class="sd">          plan_ms, exec_ms, synth_ms, plan_pct, exec_pct, synth_pct</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.express</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">px</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">plotly.subplots</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_subplots</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DB_PATH</span><span class="p">,</span> <span class="n">LIVE_API</span><span class="p">,</span> <span class="n">PL</span><span class="p">,</span> <span class="n">PROJECT_ROOT</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="n">q_safe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">_bar_gauge_html</span><span class="p">,</span> <span class="n">_gauge_html</span><span class="p">,</span> <span class="n">_human_carbon</span><span class="p">,</span>
+                         <span class="n">_human_energy</span><span class="p">,</span> <span class="n">_human_water</span><span class="p">,</span> <span class="n">fl</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">requests</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_req</span>
+
+    <span class="n">_REQUESTS_OK</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_REQUESTS_OK</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">_req</span><span class="p">:</span>
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;requests not installed&quot;</span><span class="p">)</span>
+
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_yaml</span>
+
+    <span class="n">_YAML_OK</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_YAML_OK</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.settings.html#gui.pages.settings.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_json</span>
+
+    <span class="n">ov</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;ov&quot;</span><span class="p">]</span>
+    <span class="n">runs</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;runs&quot;</span><span class="p">]</span>
+    <span class="n">tax</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;tax&quot;</span><span class="p">]</span>
+    <span class="n">avg_lin_j</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;avg_lin_j&quot;</span><span class="p">]</span>
+    <span class="n">avg_age_j</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;avg_age_j&quot;</span><span class="p">]</span>
+    <span class="n">tax_mult</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;tax_mult&quot;</span><span class="p">]</span>
+    <span class="n">plan_ms</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;plan_ms&quot;</span><span class="p">]</span>
+    <span class="n">exec_ms</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;exec_ms&quot;</span><span class="p">]</span>
+    <span class="n">synth_ms</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;synth_ms&quot;</span><span class="p">]</span>
+    <span class="n">plan_pct</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;plan_pct&quot;</span><span class="p">]</span>
+    <span class="n">exec_pct</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;exec_pct&quot;</span><span class="p">]</span>
+    <span class="n">synth_pct</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;synth_pct&quot;</span><span class="p">]</span>
+    <span class="n">lin</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;lin&quot;</span><span class="p">]</span>
+    <span class="n">age</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;⚙ Settings&quot;</span><span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="s2">&quot;Read-only view of all A-LEMS configuration files + live DB statistics&quot;</span><span class="p">)</span>
+
+    <span class="n">_cfg</span> <span class="o">=</span> <span class="n">PROJECT_ROOT</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_yaml</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_YAML_OK</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;pip install pyyaml&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">),</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_json</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">),</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="c1"># app_settings.yaml</span>
+    <span class="n">_app</span><span class="p">,</span> <span class="n">_app_e</span> <span class="o">=</span> <span class="n">_load_yaml</span><span class="p">(</span><span class="n">_cfg</span> <span class="o">/</span> <span class="s2">&quot;app_settings.yaml&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_app_e</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;app_settings.yaml: </span><span class="si">{</span><span class="n">_app_e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">_app</span><span class="p">:</span>
+        <span class="n">_db_eng</span> <span class="o">=</span> <span class="p">(</span><span class="n">_app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;database&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;engine&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+        <span class="n">_sr</span> <span class="o">=</span> <span class="p">((</span><span class="n">_app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;webui&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sampling_rate_hz&quot;</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">_cd</span> <span class="o">=</span> <span class="p">((</span><span class="n">_app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;experiment&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">_ta</span> <span class="o">=</span> <span class="p">((</span><span class="n">_app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;alerts&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temperature_threshold_celsius&quot;</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">_di</span> <span class="o">=</span> <span class="p">((</span><span class="n">_app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;experiment&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;default_iterations&quot;</span><span class="p">))</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">k1</span><span class="p">,</span> <span class="n">k2</span><span class="p">,</span> <span class="n">k3</span><span class="p">,</span> <span class="n">k4</span><span class="p">,</span> <span class="n">k5</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">k1</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;DB engine&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_db_eng</span><span class="p">))</span>
+        <span class="n">k2</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Sampling&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_sr</span><span class="si">}</span><span class="s2">Hz&quot;</span><span class="p">)</span>
+        <span class="n">k3</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Cool-down&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_cd</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+        <span class="n">k4</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Temp alert&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_ta</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">)</span>
+        <span class="n">k5</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Default iters&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_di</span><span class="p">))</span>
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">expander</span><span class="p">(</span><span class="s2">&quot;app_settings.yaml&quot;</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">_app</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+    <span class="c1"># hw_config.json</span>
+    <span class="n">_hw</span><span class="p">,</span> <span class="n">_hw_e</span> <span class="o">=</span> <span class="n">_load_json</span><span class="p">(</span><span class="n">_cfg</span> <span class="o">/</span> <span class="s2">&quot;hw_config.json&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_hw_e</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;hw_config.json: </span><span class="si">{</span><span class="n">_hw_e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">_hw</span><span class="p">:</span>
+        <span class="n">_cpu</span> <span class="o">=</span> <span class="n">_hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">_rapl</span> <span class="o">=</span> <span class="n">_hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">_ts</span> <span class="o">=</span> <span class="n">_hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbostat&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">_meta</span> <span class="o">=</span> <span class="n">_hw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">h1</span><span class="p">,</span> <span class="n">h2</span><span class="p">,</span> <span class="n">h3</span><span class="p">,</span> <span class="n">h4</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">h1</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;CPU&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_cpu</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">,</span> <span class="n">_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)))[:</span><span class="mi">30</span><span class="p">])</span>
+        <span class="n">h2</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Cores&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_cpu</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;physical_cores&quot;</span><span class="p">,</span> <span class="n">_cpu</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cores&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">))))</span>
+        <span class="n">_domains</span> <span class="o">=</span> <span class="n">_rapl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="n">_rapl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;available_domains&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">h3</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;RAPL domains&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">_domains</span> <span class="ow">or</span> <span class="p">[])))</span>
+        <span class="n">_ts_ok</span> <span class="o">=</span> <span class="n">_ts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;available&quot;</span><span class="p">,</span> <span class="n">_ts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;found&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="n">h4</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;turbostat&quot;</span><span class="p">,</span> <span class="s2">&quot;✅&quot;</span> <span class="k">if</span> <span class="n">_ts_ok</span> <span class="k">else</span> <span class="s2">&quot;❌&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">expander</span><span class="p">(</span><span class="s2">&quot;hw_config.json&quot;</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">_hw</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+    <span class="c1"># tasks.yaml</span>
+    <span class="n">_tc</span><span class="p">,</span> <span class="n">_tc_e</span> <span class="o">=</span> <span class="n">_load_yaml</span><span class="p">(</span><span class="n">_cfg</span> <span class="o">/</span> <span class="s2">&quot;tasks.yaml&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_tc_e</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tasks.yaml: </span><span class="si">{</span><span class="n">_tc_e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">_tc</span><span class="p">:</span>
+        <span class="n">_tlist</span> <span class="o">=</span> <span class="n">_tc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">t1</span><span class="p">,</span> <span class="n">t2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">t1</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Tasks defined&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">_tlist</span><span class="p">))</span>
+        <span class="n">t2</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Categories&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">({</span><span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">_tlist</span><span class="p">}))</span>
+        <span class="n">_tdf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;level&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;tool_calls&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">_tlist</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">_tdf</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hide_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">expander</span><span class="p">(</span><span class="s2">&quot;tasks.yaml&quot;</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">_tc</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+    <span class="c1"># models.json</span>
+    <span class="n">_mo</span><span class="p">,</span> <span class="n">_mo_e</span> <span class="o">=</span> <span class="n">_load_json</span><span class="p">(</span><span class="n">_cfg</span> <span class="o">/</span> <span class="s2">&quot;models.json&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_mo_e</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;models.json: </span><span class="si">{</span><span class="n">_mo_e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">_mo</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">expander</span><span class="p">(</span><span class="s2">&quot;models.json&quot;</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">_mo</span><span class="p">)</span>
+
+    <span class="c1"># DB stats</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;**Database row counts**&quot;</span><span class="p">)</span>
+    <span class="n">_dbs</span><span class="p">,</span> <span class="n">_dbs_e</span> <span class="o">=</span> <span class="n">q_safe</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT &#39;experiments&#39;        AS tbl, COUNT(*) AS rows FROM experiments UNION ALL</span>
+<span class="s2">        SELECT &#39;runs&#39;,              COUNT(*) FROM runs                         UNION ALL</span>
+<span class="s2">        SELECT &#39;energy_samples&#39;,    COUNT(*) FROM energy_samples               UNION ALL</span>
+<span class="s2">        SELECT &#39;cpu_samples&#39;,       COUNT(*) FROM cpu_samples                  UNION ALL</span>
+<span class="s2">        SELECT &#39;interrupt_samples&#39;, COUNT(*) FROM interrupt_samples            UNION ALL</span>
+<span class="s2">        SELECT &#39;orchestration_events&#39;, COUNT(*) FROM orchestration_events      UNION ALL</span>
+<span class="s2">        SELECT &#39;task_categories&#39;,   COUNT(*) FROM task_categories</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_dbs_e</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_dbs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">_dbs</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Table&quot;</span><span class="p">,</span> <span class="s2">&quot;Rows&quot;</span><span class="p">]</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">_dbs</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hide_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># PAGE: SUSTAINABILITY  (new — carved out of energy page)</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

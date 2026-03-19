@@ -1,0 +1,183 @@
+# docs/llm-context/examples.yaml
+# Working examples of A-LEMS tools
+
+example_1:
+  name: "llm_context.py"
+  purpose: "Generate context for LLM code changes"
+  file: "scripts/tools/llm_context.py"
+  code: |
+    #!/usr/bin/env python3
+    \"\"\"
+    LLM Context Generator for A-LEMS
+    Run: python scripts/tools/llm_context.py --change "your request"
+    \"\"\"
+    
+    import argparse
+    import ast
+    import glob
+    import os
+    import re
+    import subprocess
+    from datetime import datetime
+    from pathlib import Path
+    from typing import Dict, List, Any
+    
+    class LLMContextGenerator:
+        def __init__(self, change_request: str):
+            self.request = change_request
+            self.repo_root = self._find_repo_root()
+            self.context = {
+                'timestamp': datetime.now().isoformat(),
+                'request': change_request,
+                'files': {},
+                'schema': {},
+                'dependencies': [],
+                'questions': [],
+                'related_files': [],
+                'data_flow': []
+            }
+        
+        def _find_repo_root(self) -> Path:
+            current = Path(__file__).resolve().parent
+            while current != current.parent:
+                if (current / '.git').exists():
+                    return current
+                current = current.parent
+            return Path.cwd()
+        
+        def generate(self) -> str:
+            # Parse request
+            self._parse_request()
+            # Extract schema
+            self._extract_schema()
+            # Find related files
+            self._find_related_files()
+            # Trace data flow
+            self._trace_data_flow()
+            # Get dependencies
+            self._get_dependencies()
+            
+            return self._format_output()
+        
+        def _parse_request(self):
+            table_match = re.search(r'(\w+)\s+table', self.request.lower())
+            if table_match:
+                self.context['target_table'] = table_match.group(1)
+            
+            column_matches = re.findall(r'(\w+)\s+column', self.request.lower())
+            if column_matches:
+                self.context['target_columns'] = column_matches
+        
+        def _extract_schema(self):
+            schema_path = self.repo_root / 'core' / 'database' / 'schema.py'
+            if schema_path.exists():
+                with open(schema_path) as f:
+                    content = f.read()
+                
+                tables = re.findall(r'CREATE TABLE (\w+) \(([^;]+)\)', content, re.DOTALL)
+                for table, definition in tables:
+                    if table == self.context.get('target_table'):
+                        self.context['schema'][table] = definition.strip()
+        
+        def _find_related_files(self):
+            target = self.context.get('target_table', 'runs')
+            
+            for root, _, files in os.walk(self.repo_root / 'core'):
+                for file in files:
+                    if file.endswith('.py'):
+                        path = Path(root) / file
+                        with open(path) as f:
+                            content = f.read()
+                            if target in content:
+                                rel_path = str(path.relative_to(self.repo_root))
+                                self.context['related_files'].append(rel_path)
+        
+        def _trace_data_flow(self):
+            target = self.context.get('target_table', 'runs')
+            
+            for file_path in self.context['related_files']:
+                full_path = self.repo_root / file_path
+                with open(full_path) as f:
+                    content = f.read()
+                    if f"INSERT INTO {target}" in content:
+                        self.context['data_flow'].append({
+                            'file': file_path,
+                            'type': 'insert'
+                        })
+        
+        def _get_dependencies(self):
+            try:
+                result = subprocess.run(
+                    ['pydeps', 'core/database/', '--show-deps', '--noshow'],
+                    capture_output=True, text=True, timeout=5,
+                    cwd=self.repo_root
+                )
+                self.context['dependencies'] = result.stdout.split('\n')[:10]
+            except:
+                self.context['dependencies'] = ["pydeps not available"]
+        
+        def _format_output(self) -> str:
+            output = []
+            output.append("📋 A-LEMS CHANGE CONTEXT")
+            output.append("="*60)
+            output.append(f"Generated: {self.context['timestamp']}")
+            output.append(f"Request: {self.context['request']}")
+            output.append("")
+            
+            if 'target_table' in self.context:
+                output.append(f"🎯 Target Table: {self.context['target_table']}")
+            if 'target_columns' in self.context:
+                output.append(f"📊 Target Columns: {', '.join(self.context['target_columns'])}")
+            
+            return '\n'.join(output)
+    
+    def main():
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--change", required=True)
+        parser.add_argument("--output", "-o")
+        args = parser.parse_args()
+        
+        generator = LLMContextGenerator(args.change)
+        output = generator.generate()
+        
+        if args.output:
+            with open(args.output, 'w') as f:
+                f.write(output)
+            print(f"✅ Saved to {args.output}")
+        else:
+            print(output)
+    
+    if __name__ == "__main__":
+        main()
+  
+  key_patterns:
+    - "Class with _find_repo_root() method"
+    - "argparse for command line"
+    - "Path manipulation with pathlib"
+    - "File walking with os.walk"
+    - "Subprocess for external tools"
+    - "Dictionary for results"
+
+example_2:
+  name: "web_controller.py"
+  purpose: "UI for all developer tools"
+  file: "scripts/tools/web_controller.py"
+  key_patterns:
+    - "Flask app with routes"
+    - "HTML template embedded as string"
+    - "JavaScript for async calls"
+    - "runTool function that calls subprocess"
+    - "tool_scripts dict mapping names to files"
+    - "send_from_directory for static files"
+
+example_3:
+  name: "column_flow.py"
+  purpose: "Trace database column data flow"
+  file: "scripts/tools/column_flow.py"
+  key_patterns:
+    - "Reads config from app_settings.yaml"
+    - "Connects to SQLite"
+    - "PRAGMA table_info for schema"
+    - "Glob to find Python files"
+    - "String search for INSERT statements"
+    - "Path.relative_to for clean paths"

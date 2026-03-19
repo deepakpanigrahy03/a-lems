@@ -1,0 +1,408 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.hardware_collector &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.hardware_collector</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.hardware_collector</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">HARDWARE COLLECTOR – System state monitoring functions</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">Functions moved from harness.py during refactoring.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Store last good temperature as module-level variable</span>
+<span class="n">_last_good_temp</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_measure_network_latency</span><span class="p">(</span><span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;api.groq.com&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Measure network latency to cloud provider.</span>
+
+<span class="sd">    Purpose:</span>
+<span class="sd">        Separate network delays from true orchestration overhead.</span>
+<span class="sd">        This is critical for cloud experiments where network latency</span>
+<span class="sd">        can dominate measurements.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        hostname: Cloud provider hostname</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with DNS and ping latencies</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">network_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Measure DNS resolution time</span>
+    <span class="n">dns_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">socket</span><span class="o">.</span><span class="n">gethostbyname</span><span class="p">(</span><span class="n">hostname</span><span class="p">)</span>
+        <span class="n">dns_latency</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">dns_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+        <span class="n">network_metrics</span><span class="p">[</span><span class="s2">&quot;dns_latency_ms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dns_latency</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">network_metrics</span><span class="p">[</span><span class="s2">&quot;dns_latency_ms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">network_metrics</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_warmup_run</span><span class="p">(</span><span class="n">executor</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">is_agentic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform a warmup run to eliminate initialization effects.</span>
+
+<span class="sd">    Scientific rationale:</span>
+<span class="sd">        First run often includes:</span>
+<span class="sd">        - Cold caches</span>
+<span class="sd">        - API connection establishment</span>
+<span class="sd">        - Python JIT compilation</span>
+<span class="sd">        - Model loading (local models)</span>
+
+<span class="sd">    These would skew energy measurements, so we discard warmup.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        executor: Linear or Agentic executor</span>
+<span class="sd">        prompt: The task prompt</span>
+<span class="sd">        is_agentic: Whether this is agentic (uses comparison method)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;🔥 Warmup run (results discarded)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_agentic</span><span class="p">:</span>
+        <span class="n">executor</span><span class="o">.</span><span class="n">execute_comparison</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+    <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;✅ Warmup complete&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># =========================================================================</span>
+<span class="c1"># FIX M3-1: Governor/Turbo Control</span>
+<span class="c1"># =========================================================================</span>
+<div class="viewcode-block" id="get_governor">
+<a class="viewcode-back" href="../../../core.execution.hardware_collector.html#core.execution.hardware_collector.get_governor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_governor</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get current CPU frequency governor.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        &#39;performance&#39;, &#39;powersave&#39;, &#39;ondemand&#39;, etc., or &#39;unknown&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read governor: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="get_turbo_status">
+<a class="viewcode-back" href="../../../core.execution.hardware_collector.html#core.execution.hardware_collector.get_turbo_status">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_turbo_status</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get turbo boost status.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        &#39;enabled&#39; if turbo is on, &#39;disabled&#39; if off, &#39;unknown&#39; if can&#39;t read</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Intel p-state driver</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/sys/devices/system/cpu/intel_pstate/no_turbo&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># 0 = turbo enabled, 1 = turbo disabled</span>
+            <span class="k">return</span> <span class="s2">&quot;disabled&quot;</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">else</span> <span class="s2">&quot;enabled&quot;</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Alternative location for some systems</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/sys/devices/system/cpu/cpufreq/boost&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;enabled&quot;</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">else</span> <span class="s2">&quot;disabled&quot;</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read turbo status: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">&quot;unknown&quot;</span></div>
+
+
+
+<span class="c1"># =========================================================================</span>
+<span class="c1"># FIX M3-2: Interrupt Rate</span>
+<span class="c1"># =========================================================================</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_interrupts</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read total interrupt count from /proc/stat.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Total interrupts since boot, or 0 if cannot read</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/stat&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;intr&quot;</span><span class="p">):</span>
+                    <span class="c1"># Format: intr &lt;total&gt; &lt;interrupts...&gt;</span>
+                    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read interrupts: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">0</span>
+
+
+<div class="viewcode-block" id="get_interrupt_rate">
+<a class="viewcode-back" href="../../../core.execution.hardware_collector.html#core.execution.hardware_collector.get_interrupt_rate">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_interrupt_rate</span><span class="p">(</span><span class="n">before</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">after</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">duration_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate interrupt rate from start/end readings.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        before: Interrupt count at start</span>
+<span class="sd">        after: Interrupt count at end</span>
+<span class="sd">        duration_seconds: Duration of measurement</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Interrupts per second</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">duration_seconds</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">after</span> <span class="o">-</span> <span class="n">before</span><span class="p">)</span> <span class="o">/</span> <span class="n">duration_seconds</span></div>
+
+
+
+<span class="c1"># =========================================================================</span>
+<span class="c1"># FIX M3-3: Temperature Tracking</span>
+<span class="c1"># =========================================================================</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_temperature</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read current package temperature in Celsius.</span>
+
+<span class="sd">    Tries multiple sources:</span>
+<span class="sd">    1. Thermal zone (most common)</span>
+<span class="sd">    2. Coretemp hwmon (fallback)</span>
+<span class="sd">    3. Any hwmon with temp1_input</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Temperature in °C, or last known good temperature if reading fails</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># ========== START OF FIXES ==========</span>
+
+    <span class="c1"># Store last good temperature as instance variable</span>
+
+    <span class="k">global</span> <span class="n">_last_good_temp</span>
+
+    <span class="c1"># Method 1: Try ALL thermal zones (not just zone0)</span>
+    <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>  <span class="c1"># ← CHANGED: Loop through zones 0-9</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/sys/class/thermal/thermal_zone</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">/temp&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">/</span> <span class="mf">1000.0</span>
+                <span class="c1"># Sanity check: valid CPU temps are between 10°C and 100°C</span>
+                <span class="k">if</span> <span class="mi">10</span> <span class="o">&lt;</span> <span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>  <span class="c1"># ← NEW: Add sanity check</span>
+                    <span class="n">_last_good_temp</span> <span class="o">=</span> <span class="n">temp</span>
+                    <span class="k">return</span> <span class="n">temp</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+    <span class="c1"># Method 2: Try all hwmon devices (already does this)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+
+        <span class="k">for</span> <span class="n">hwmon</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;/sys/class/hwmon/hwmon*/temp1_input&quot;</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">hwmon</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">/</span> <span class="mf">1000.0</span>
+                <span class="k">if</span> <span class="mi">10</span> <span class="o">&lt;</span> <span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>  <span class="c1"># ← NEW: Add sanity check</span>
+                    <span class="n">_last_good_temp</span> <span class="o">=</span> <span class="n">temp</span>
+                    <span class="k">return</span> <span class="n">temp</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># ========== END OF FIXES ==========</span>
+
+    <span class="c1"># Return last known good temperature instead of 0.0</span>
+    <span class="k">if</span> <span class="n">_last_good_temp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning last good temperature: </span><span class="si">{</span><span class="n">_last_good_temp</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_last_good_temp</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Could not read temperature&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mf">0.0</span>
+
+
+<span class="c1"># =========================================================================</span>
+<span class="c1"># FIX M3-4: Cold Start Flag</span>
+<span class="c1"># =========================================================================</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_cold_start</span><span class="p">(</span><span class="n">run_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determine if this is a cold start run.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        run_number: Current run number (1-based)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if this is the first run in the batch</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">run_number</span> <span class="o">==</span> <span class="mi">1</span>
+
+
+<span class="c1"># =========================================================================</span>
+<span class="c1"># FIX M3-5: Background Noise</span>
+<span class="c1"># =========================================================================</span>
+<div class="viewcode-block" id="get_background_cpu">
+<a class="viewcode-back" href="../../../core.execution.hardware_collector.html#core.execution.hardware_collector.get_background_cpu">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_background_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get current background CPU usage percent.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        CPU usage percentage (0-100)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Short interval to get current usage</span>
+        <span class="k">return</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not get CPU percent: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">0.0</span></div>
+
+
+
+<div class="viewcode-block" id="get_process_count">
+<a class="viewcode-back" href="../../../core.execution.hardware_collector.html#core.execution.hardware_collector.get_process_count">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_process_count</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get number of running processes.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Total number of processes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">psutil</span><span class="o">.</span><span class="n">pids</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not get process count: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+
+<span class="c1"># =========================================================================</span>
+<span class="c1"># FIX M3-6: Memory Metrics (RSS, VMS - process level)</span>
+<span class="c1"># =========================================================================</span>
+<div class="viewcode-block" id="get_process_memory">
+<a class="viewcode-back" href="../../../core.execution.hardware_collector.html#core.execution.hardware_collector.get_process_memory">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_process_memory</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get memory usage for the current Python process.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with:</span>
+<span class="sd">        - rss_mb: Resident Set Size in MB (physical memory)</span>
+<span class="sd">        - vms_mb: Virtual Memory Size in MB (total virtual address space)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;rss_mb&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;vms_mb&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span>
+        <span class="n">mem_info</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span>
+        <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;rss_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mem_info</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>  <span class="c1"># Convert to MB</span>
+        <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;vms_mb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mem_info</span><span class="o">.</span><span class="n">vms</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>  <span class="c1"># Convert to MB</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Process memory: RSS=</span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;rss_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB, VMS=</span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;vms_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not get process memory: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">metrics</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

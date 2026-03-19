@@ -1,0 +1,385 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.utils.debug &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../utils.html">core.utils</a></li>
+      <li class="breadcrumb-item active">core.utils.debug</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.utils.debug</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">DEBUG UTILITY - Unified debugging across all A-LEMS modules</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This module provides a consistent debugging interface. Debug output can be</span>
+<span class="sd">enabled globally or per-module via environment variables.</span>
+
+<span class="sd">Usage in your code:</span>
+<span class="sd">    from core.utils.debug import dprint, set_debug</span>
+
+<span class="sd">    dprint(&quot;Reading MSR...&quot;, msr=0x60d, value=12345)  # Only prints if debug on</span>
+
+<span class="sd">Environment variables:</span>
+<span class="sd">    export A_LEMS_DEBUG=1           # Enable ALL debug output</span>
+<span class="sd">    export A_LEMS_DEBUG_MODULES=msr_reader,rapl_reader  # Specific modules only</span>
+<span class="sd">    export A_LEMS_DEBUG_FILE=/tmp/a-lems-debug.log  # Log to file (optional)</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span>
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># GLOBAL STATE</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="n">_DEBUG_ENABLED</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">_DEBUG_MODULES</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="n">_DEBUG_FILE</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">_DEBUG_COLORS</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<span class="c1"># ANSI color codes for pretty output</span>
+<div class="viewcode-block" id="Colors">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.Colors">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Colors</span><span class="p">:</span>
+    <span class="n">BLUE</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[94m&quot;</span>
+    <span class="n">GREEN</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[92m&quot;</span>
+    <span class="n">YELLOW</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[93m&quot;</span>
+    <span class="n">RED</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[91m&quot;</span>
+    <span class="n">MAGENTA</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[95m&quot;</span>
+    <span class="n">CYAN</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[96m&quot;</span>
+    <span class="n">BOLD</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[1m&quot;</span>
+    <span class="n">DIM</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[2m&quot;</span>
+    <span class="n">RESET</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[0m&quot;</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># INITIALIZATION</span>
+<span class="c1"># ============================================================================</span>
+
+
+<div class="viewcode-block" id="init_debug_from_env">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.init_debug_from_env">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">init_debug_from_env</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize debug settings from environment variables.</span>
+<span class="sd">    Call this once at program start.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_DEBUG_ENABLED</span><span class="p">,</span> <span class="n">_DEBUG_MODULES</span><span class="p">,</span> <span class="n">_DEBUG_FILE</span><span class="p">,</span> <span class="n">_DEBUG_COLORS</span>
+
+    <span class="c1"># Check global debug flag</span>
+    <span class="n">debug_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;A_LEMS_DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">debug_env</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;on&quot;</span><span class="p">]:</span>
+        <span class="n">_DEBUG_ENABLED</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">_DEBUG_MODULES</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># Empty set means ALL modules</span>
+
+    <span class="c1"># Check module-specific debug</span>
+    <span class="n">modules_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;A_LEMS_DEBUG_MODULES&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">modules_env</span><span class="p">:</span>
+        <span class="n">_DEBUG_MODULES</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules_env</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">))</span>
+        <span class="n">_DEBUG_ENABLED</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Enable debug for these modules</span>
+
+    <span class="c1"># Check debug file</span>
+    <span class="n">debug_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;A_LEMS_DEBUG_FILE&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">debug_file</span><span class="p">:</span>
+        <span class="n">_DEBUG_FILE</span> <span class="o">=</span> <span class="n">debug_file</span>
+
+    <span class="c1"># Check if we should disable colors (for log files)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;A_LEMS_DEBUG_NOCOLOR&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">]:</span>
+        <span class="n">_DEBUG_COLORS</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">_DEBUG_ENABLED</span><span class="p">:</span>
+        <span class="n">dprint_raw</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🐛 Debug initialized - Modules: </span><span class="si">{</span><span class="n">_DEBUG_MODULES</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;ALL&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># CORE FUNCTIONS</span>
+<span class="c1"># ============================================================================</span>
+
+
+<div class="viewcode-block" id="set_debug">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.set_debug">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_debug</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enable/disable debug for current module programmatically.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        enabled: True to enable, False to disable</span>
+<span class="sd">        module: Module name (auto-detected if None)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_DEBUG_ENABLED</span><span class="p">,</span> <span class="n">_DEBUG_MODULES</span>
+
+    <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Auto-detect calling module</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">enabled</span><span class="p">:</span>
+        <span class="n">_DEBUG_MODULES</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+        <span class="n">_DEBUG_ENABLED</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_DEBUG_MODULES</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+
+    <span class="n">dprint_raw</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🐛 Debug </span><span class="si">{</span><span class="s1">&#39;enabled&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">enabled</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;disabled&#39;</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_debug_enabled">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.is_debug_enabled">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_debug_enabled</span><span class="p">(</span><span class="n">module_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if debug is enabled for given module.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        module_name: Module name (auto-detected if None)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if debug should be printed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_DEBUG_ENABLED</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_DEBUG_MODULES</span><span class="p">:</span>
+        <span class="c1"># Empty set means ALL modules</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">module_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Auto-detect calling module</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
+        <span class="n">module_name</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">module_name</span> <span class="ow">in</span> <span class="n">_DEBUG_MODULES</span></div>
+
+
+
+<div class="viewcode-block" id="dprint">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.dprint">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dprint</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Debug print – only prints if debug is enabled for current module.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        dprint(&quot;Reading MSR...&quot;)  # Simple message</span>
+<span class="sd">        dprint(&quot;Value:&quot;, 12345)   # Multiple args</span>
+<span class="sd">        dprint(&quot;Counters:&quot;, c2=100, c3=200)  # Keyword args become key=value</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        dprint(&quot;MSR read failed&quot;, msr=0x60d, error=&quot;Timeout&quot;)</span>
+<span class="sd">        dprint(&quot;C-state counters:&quot;, **counters)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Auto-detect calling module</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
+    <span class="n">module</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_debug_enabled</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+        <span class="k">return</span>
+
+    <span class="n">dprint_raw</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="dprint_raw">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.dprint_raw">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dprint_raw</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Raw debug print – bypasses module check. Use for internal debug messages.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Format timestamp</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="c1"># Build message</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Add timestamp and module with color</span>
+    <span class="k">if</span> <span class="n">_DEBUG_COLORS</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">DIM</span><span class="si">}{</span><span class="n">timestamp</span><span class="si">}{</span><span class="n">Colors</span><span class="o">.</span><span class="n">RESET</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">CYAN</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">]</span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">RESET</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Add regular args</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+    <span class="c1"># Add kwargs as key=value</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">kv_pairs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">_DEBUG_COLORS</span><span class="p">:</span>
+                <span class="n">kv_pairs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="si">}{</span><span class="n">k</span><span class="si">}{</span><span class="n">Colors</span><span class="o">.</span><span class="n">RESET</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">Colors</span><span class="o">.</span><span class="n">GREEN</span><span class="si">}{</span><span class="n">v</span><span class="si">}{</span><span class="n">Colors</span><span class="o">.</span><span class="n">RESET</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">kv_pairs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">kv_pairs</span><span class="p">))</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+    <span class="c1"># Print to stderr (so it doesn&#39;t interfere with normal output)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+
+    <span class="c1"># Also write to debug file if specified</span>
+    <span class="k">if</span> <span class="n">_DEBUG_FILE</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">_DEBUG_FILE</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="c1"># Strip colors for log file</span>
+                <span class="n">plain_message</span> <span class="o">=</span> <span class="n">message</span>
+                <span class="k">for</span> <span class="n">color</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">BLUE</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">GREEN</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">MAGENTA</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">CYAN</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">BOLD</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">DIM</span><span class="p">,</span>
+                    <span class="n">Colors</span><span class="o">.</span><span class="n">RESET</span><span class="p">,</span>
+                <span class="p">]:</span>
+                    <span class="n">plain_message</span> <span class="o">=</span> <span class="n">plain_message</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">plain_message</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># CONVENIENCE DECORATOR</span>
+<span class="c1"># ============================================================================</span>
+
+
+<div class="viewcode-block" id="trace">
+<a class="viewcode-back" href="../../../core.utils.debug.html#core.utils.debug.trace">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">trace</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator to trace function calls with debug output.</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        @trace</span>
+<span class="sd">        def my_function(x, y):</span>
+<span class="sd">            return x + y</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__module__</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">is_debug_enabled</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;→ </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;← </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> =&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># AUTO-INIT</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="c1"># Initialize when module is imported</span>
+<span class="n">init_debug_from_env</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

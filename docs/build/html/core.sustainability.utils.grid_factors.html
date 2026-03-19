@@ -1,0 +1,200 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.sustainability.utils.grid_factors module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.sustainability.utils.time_aware_factors module" href="core.sustainability.utils.time_aware_factors.html" />
+    <link rel="prev" title="core.sustainability.utils.conversions module" href="core.sustainability.utils.conversions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.sustainability.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.html#module-core.sustainability">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.sustainability.html">core.sustainability package</a></li>
+          <li class="breadcrumb-item"><a href="core.sustainability.utils.html">core.sustainability.utils package</a></li>
+      <li class="breadcrumb-item active">core.sustainability.utils.grid_factors module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.sustainability.utils.grid_factors.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.sustainability.utils.grid_factors">
+<span id="core-sustainability-utils-grid-factors-module"></span><h1>core.sustainability.utils.grid_factors module<a class="headerlink" href="#module-core.sustainability.utils.grid_factors" title="Link to this heading"></a></h1>
+<section id="grid-factors-load-grid-intensity-data">
+<h2>GRID FACTORS – Load grid intensity data<a class="headerlink" href="#grid-factors-load-grid-intensity-data" title="Link to this heading"></a></h2>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactorManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.sustainability.utils.grid_factors.</span></span><span class="sig-name descname"><span class="pre">GridFactorManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_loader</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/sustainability/utils/grid_factors.html#GridFactorManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactorManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Manages grid intensity factors by reading from config file.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactorManager.WORLD_AVERAGES">
+<span class="sig-name descname"><span class="pre">WORLD_AVERAGES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'carbon':</span> <span class="pre">0.475,</span> <span class="pre">'methane':</span> <span class="pre">0.18,</span> <span class="pre">'water':</span> <span class="pre">2.0}</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactorManager.WORLD_AVERAGES" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactorManager.get_factors">
+<span class="sig-name descname"><span class="pre">get_factors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#core.sustainability.utils.grid_factors.GridFactors" title="core.sustainability.utils.grid_factors.GridFactors"><span class="pre">GridFactors</span></a></span></span><a class="reference internal" href="_modules/core/sustainability/utils/grid_factors.html#GridFactorManager.get_factors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactorManager.get_factors" title="Link to this definition"></a></dt>
+<dd><p>Get grid factors for a country.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactorManager.list_countries">
+<span class="sig-name descname"><span class="pre">list_countries</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/core/sustainability/utils/grid_factors.html#GridFactorManager.list_countries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactorManager.list_countries" title="Link to this definition"></a></dt>
+<dd><p>Get list of available countries.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.sustainability.utils.grid_factors.</span></span><span class="sig-name descname"><span class="pre">GridFactors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carbon_kg_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">water_l_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methane_g_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_quality</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sources</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/sustainability/utils/grid_factors.html#GridFactors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Grid factors for a country.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors.carbon_kg_per_kwh">
+<span class="sig-name descname"><span class="pre">carbon_kg_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors.carbon_kg_per_kwh" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors.country_code">
+<span class="sig-name descname"><span class="pre">country_code</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors.country_code" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors.data_quality">
+<span class="sig-name descname"><span class="pre">data_quality</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'medium'</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors.data_quality" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors.methane_g_per_kwh">
+<span class="sig-name descname"><span class="pre">methane_g_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors.methane_g_per_kwh" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors.sources">
+<span class="sig-name descname"><span class="pre">sources</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors.sources" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.utils.grid_factors.GridFactors.water_l_per_kwh">
+<span class="sig-name descname"><span class="pre">water_l_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.sustainability.utils.grid_factors.GridFactors.water_l_per_kwh" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.sustainability.utils.conversions.html" class="btn btn-neutral float-left" title="core.sustainability.utils.conversions module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.sustainability.utils.time_aware_factors.html" class="btn btn-neutral float-right" title="core.sustainability.utils.time_aware_factors module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

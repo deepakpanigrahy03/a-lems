@@ -1,0 +1,170 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.display_formatter module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.execution.experiment_runner module" href="core.execution.experiment_runner.html" />
+    <link rel="prev" title="core.execution.base module" href="core.execution.base.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.execution.html">core.execution package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.execution.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#module-core.execution">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.execution.html">core.execution package</a></li>
+      <li class="breadcrumb-item active">core.execution.display_formatter module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.execution.display_formatter.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.execution.display_formatter">
+<span id="core-execution-display-formatter-module"></span><h1>core.execution.display_formatter module<a class="headerlink" href="#module-core.execution.display_formatter" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.display_formatter.display_hardware">
+<span class="sig-prename descclassname"><span class="pre">core.execution.display_formatter.</span></span><span class="sig-name descname"><span class="pre">display_hardware</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">runs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/display_formatter.html#display_hardware"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.display_formatter.display_hardware" title="Link to this definition"></a></dt>
+<dd><p>Display ALL hardware parameters from DerivedEnergyMeasurement (Layer 3).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.display_formatter.display_ipc_analysis">
+<span class="sig-prename descclassname"><span class="pre">core.execution.display_formatter.</span></span><span class="sig-name descname"><span class="pre">display_ipc_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">all_linear</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_agentic</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/display_formatter.html#display_ipc_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.display_formatter.display_ipc_analysis" title="Link to this definition"></a></dt>
+<dd><p>Display IPC efficiency analysis comparing linear and agentic runs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>all_linear</strong> – List of linear run results</p></li>
+<li><p><strong>all_agentic</strong> – List of agentic run results</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.display_formatter.display_pair_hardware">
+<span class="sig-prename descclassname"><span class="pre">core.execution.display_formatter.</span></span><span class="sig-name descname"><span class="pre">display_pair_hardware</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">linear_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agentic_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/display_formatter.html#display_pair_hardware"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.display_formatter.display_pair_hardware" title="Link to this definition"></a></dt>
+<dd><p>Display hardware parameters for each pair.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.display_formatter.display_sustainability_header">
+<span class="sig-prename descclassname"><span class="pre">core.execution.display_formatter.</span></span><span class="sig-name descname"><span class="pre">display_sustainability_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">all_linear</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/display_formatter.html#display_sustainability_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.display_formatter.display_sustainability_header" title="Link to this definition"></a></dt>
+<dd><p>Display grid information and sources.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.display_formatter.display_workflow_comparison">
+<span class="sig-prename descclassname"><span class="pre">core.execution.display_formatter.</span></span><span class="sig-name descname"><span class="pre">display_workflow_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">linear_stats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agentic_stats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/display_formatter.html#display_workflow_comparison"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.display_formatter.display_workflow_comparison" title="Link to this definition"></a></dt>
+<dd><p>Display workflow comparison table.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.execution.base.html" class="btn btn-neutral float-left" title="core.execution.base module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.execution.experiment_runner.html" class="btn btn-neutral float-right" title="core.execution.experiment_runner module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

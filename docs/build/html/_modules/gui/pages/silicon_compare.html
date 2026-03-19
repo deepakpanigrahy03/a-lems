@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.silicon_compare &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.silicon_compare</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.silicon_compare</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/silicon_compare.py  —  ⇌  Cross-Silicon Compare</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Compare energy profiles across different silicon (hw_id).</span>
+<span class="sd">Controlled comparison: same task × model × workflow, different hardware.</span>
+<span class="sd">Currently shows single-machine profile with multi-machine ready structure.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#fb923c&quot;</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.silicon_compare.html#gui.pages.silicon_compare.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># ── Check how many machines we have ──────────────────────────────────────</span>
+    <span class="n">hw_count</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM hardware_config&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">hw_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No hardware registered yet.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Load all runs with hw metadata ────────────────────────────────────────</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            r.run_id,</span>
+<span class="s2">            r.hw_id,</span>
+<span class="s2">            h.hostname,</span>
+<span class="s2">            h.cpu_model,</span>
+<span class="s2">            h.cpu_architecture,</span>
+<span class="s2">            h.cpu_cores,</span>
+<span class="s2">            e.workflow_type,</span>
+<span class="s2">            e.model_name,</span>
+<span class="s2">            e.task_name,</span>
+<span class="s2">            e.provider,</span>
+<span class="s2">            r.total_energy_uj/1e6  AS energy_j,</span>
+<span class="s2">            r.dynamic_energy_uj/1e6 AS dynamic_energy_j,</span>
+<span class="s2">            r.ipc,</span>
+<span class="s2">            r.cache_miss_rate,</span>
+<span class="s2">            r.package_temp_celsius AS temp_c,</span>
+<span class="s2">            r.avg_power_watts,</span>
+<span class="s2">            r.duration_ns/1e6      AS duration_ms,</span>
+<span class="s2">            r.interrupt_rate,</span>
+<span class="s2">            r.carbon_g,</span>
+<span class="s2">            r.energy_per_token</span>
+<span class="s2">        FROM runs r</span>
+<span class="s2">        JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">        JOIN hardware_config h ON r.hw_id = h.hw_id</span>
+<span class="s2">        WHERE r.total_energy_uj IS NOT NULL</span>
+<span class="s2">        ORDER BY r.run_id DESC</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No runs with hardware metadata yet.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">machines</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+    <span class="n">hw_labels</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">row</span><span class="p">[</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]:</span> <span class="sa">f</span><span class="s2">&quot;hw_</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;hw_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="s2">&quot;hw_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1"># ── Header ────────────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Cross-Silicon Compare — </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">machines</span><span class="p">)</span><span class="si">}</span><span class="s2"> machine</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">machines</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:12px;color:#94a3b8;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;  ·  &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hw_labels</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Single machine message if only 1 ─────────────────────────────────────</span>
+    <span class="k">if</span> <span class="n">hw_count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:12px 16px;background:#1a1a2e;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-left:3px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-radius:0 8px 8px 0;margin-bottom:16px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-size:11px;color:#c4b5fd;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1.7;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;b&gt;Single machine mode.&lt;/b&gt; Connect additional hardware hosts &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;to enable true cross-silicon comparison. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Showing full silicon profile for the current machine.&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ── Filters ───────────────────────────────────────────────────────────────</span>
+    <span class="n">col1</span><span class="p">,</span> <span class="n">col2</span><span class="p">,</span> <span class="n">col3</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;task_name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="n">sel_task</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_task&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+        <span class="n">models</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;model_name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="n">sel_model</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Model&quot;</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_model&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col3</span><span class="p">:</span>
+        <span class="n">workflows</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="n">sel_wf</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Workflow&quot;</span><span class="p">,</span> <span class="n">workflows</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_wf&quot;</span><span class="p">)</span>
+
+    <span class="n">view</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">sel_task</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="n">view</span><span class="p">[</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;task_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">sel_task</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">sel_model</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="n">view</span><span class="p">[</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;model_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">sel_model</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">sel_wf</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="n">view</span><span class="p">[</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">sel_wf</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">view</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No runs match the selected filters.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Energy by hardware ────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Energy distribution by hardware&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">col1</span><span class="p">,</span> <span class="n">col2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">hw_id</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">view</span><span class="p">[</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">hw_id</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">lbl</span> <span class="o">=</span> <span class="n">hw_labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">hw_id</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;hw_</span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">lbl</span><span class="p">,</span>
+                    <span class="n">marker_color</span><span class="o">=</span><span class="n">ACCENT</span><span class="p">,</span>
+                    <span class="n">line_color</span><span class="o">=</span><span class="n">ACCENT</span><span class="p">,</span>
+                    <span class="n">boxmean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">280</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Energy (J)&quot;</span><span class="p">,</span> <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_energy_box&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+        <span class="c1"># Energy by workflow on this hardware</span>
+        <span class="n">fig2</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">view</span><span class="p">[</span><span class="n">view</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig2</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span> <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">nbinsx</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig2</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">280</span><span class="p">,</span>
+            <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;overlay&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Energy (J)&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Run count&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig2</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_energy_hist&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Key metrics by hardware × workflow ────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Silicon profile — key metrics&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">summary</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">view</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;hw_id&quot;</span><span class="p">,</span> <span class="s2">&quot;workflow_type&quot;</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+            <span class="n">runs</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;energy_j&quot;</span><span class="p">,</span> <span class="s2">&quot;count&quot;</span><span class="p">),</span>
+            <span class="n">avg_energy</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;energy_j&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">),</span>
+            <span class="n">avg_ipc</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;ipc&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">),</span>
+            <span class="n">avg_cmr</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">),</span>
+            <span class="n">avg_temp</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;temp_c&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">),</span>
+            <span class="n">avg_power</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;avg_power_watts&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">),</span>
+            <span class="n">avg_duration</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;hw_label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">hw_labels</span><span class="p">)</span>
+    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;cell&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;hw_label&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot; · &quot;</span> <span class="o">+</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;avg_energy&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg energy (J)&quot;</span><span class="p">,</span> <span class="s2">&quot;#f59e0b&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;avg_ipc&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg IPC&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;avg_cmr&quot;</span><span class="p">,</span> <span class="s2">&quot;Cache miss rate&quot;</span><span class="p">,</span> <span class="s2">&quot;#a78bfa&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;avg_temp&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg pkg temp (°C)&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;avg_power&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg power (W)&quot;</span><span class="p">,</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">fig3</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">col_n</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+        <span class="n">fig3</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">summary</span><span class="p">[</span><span class="s2">&quot;cell&quot;</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">summary</span><span class="p">[</span><span class="n">col_n</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">visible</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">col_n</span> <span class="o">==</span> <span class="s2">&quot;avg_energy&quot;</span> <span class="k">else</span> <span class="s2">&quot;legendonly&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="n">fig3</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+        <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Value&quot;</span><span class="p">,</span> <span class="n">xaxis_tickangle</span><span class="o">=-</span><span class="mi">20</span>
+    <span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig3</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_metrics_bar&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Per-task energy profile ───────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="s2">&quot;task_name&quot;</span> <span class="ow">in</span> <span class="n">view</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">view</span><span class="p">[</span><span class="s2">&quot;task_name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Energy by task × workflow&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">task_e</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">view</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;task_name&quot;</span><span class="p">,</span> <span class="s2">&quot;workflow_type&quot;</span><span class="p">])[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">fig4</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">task_e</span><span class="p">[</span><span class="n">task_e</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig4</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;task_name&quot;</span><span class="p">],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span>
+                    <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                    <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig4</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span>
+            <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Avg energy (J)&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_tickangle</span><span class="o">=-</span><span class="mi">30</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig4</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sc_task_energy&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Summary table ─────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Full summary table&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">display</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span>
+        <span class="p">[</span>
+            <span class="s2">&quot;cell&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;runs&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_energy&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_ipc&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_cmr&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_temp&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_power&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;avg_duration&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">display</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;Hardware · Workflow&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Runs&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Avg Energy (J)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Avg IPC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Cache Miss Rate&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Avg Temp (°C)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Avg Power (W)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Avg Duration (ms)&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">display</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+    <span class="c1"># ── Multi-host placeholder ────────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="n">hw_count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-top:20px;padding:16px 20px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border:1px dashed </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">44;border-radius:10px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:12px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:6px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;⊕ Multi-Silicon Comparison — Coming Soon&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#475569;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1.7;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Register additional machines via &lt;b&gt;Settings → Multi-Host Config&lt;/b&gt;.&lt;br&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Once connected, this page will show side-by-side energy profiles:&lt;br&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;same experiment · same model · same task · different silicon.&lt;br&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Compare x86 vs ARM64 vs RISC-V energy cost per token.&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

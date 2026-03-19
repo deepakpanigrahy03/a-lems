@@ -1,0 +1,407 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.models package &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.models.baseline_measurement module" href="core.models.baseline_measurement.html" />
+    <link rel="prev" title="core.execution.sample_processor module" href="core.execution.sample_processor.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.models package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-core.models">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.models package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.models.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-models-package">
+<h1>core.models package<a class="headerlink" href="#core-models-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.models.baseline_measurement.html">core.models.baseline_measurement module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.models.baseline_measurement.html#baseline-measurement-layer-2-idle-reference">BASELINE MEASUREMENT – Layer 2: Idle Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.baseline_id"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.baseline_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.timestamp"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.power_watts"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.duration_seconds"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.duration_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.sample_count"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.sample_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.std_dev_watts"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.std_dev_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.cpu_temperature_c"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.cpu_temperature_c</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.method"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.method</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.metadata"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.metadata</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id0"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.baseline_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.core_power_w"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.core_power_w</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id1"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.cpu_temperature_c</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id2"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.duration_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.estimate_energy_uj"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.estimate_energy_uj()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id3"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.metadata</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id4"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.method</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.min_energy_uj"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.min_energy_uj()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.min_power_watts"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.min_power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.package_power_w"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.package_power_w</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id5"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id6"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.sample_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id7"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.std_dev_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#id8"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.to_dict"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement.to_json"><code class="docutils literal notranslate"><span class="pre">BaselineMeasurement.to_json()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.models.derived_energy_measurement.html">core.models.derived_energy_measurement module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.models.derived_energy_measurement.html#derived-energy-measurement-layer-3-analysis-results">DERIVED ENERGY MEASUREMENT – Layer 3: Analysis Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.baseline_id"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.baseline_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c2_ticks"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c2_ticks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c2_time_seconds"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c2_time_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c3_ticks"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c3_ticks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c3_time_seconds"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c3_time_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c6_ticks"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c6_ticks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c6_time_seconds"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c6_time_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c7_ticks"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c7_ticks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c7_time_seconds"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c7_time_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.c_state_residencies"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.c_state_residencies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.cache_misses"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.cache_misses</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.cache_references"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.cache_references</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.context_switches_involuntary"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.context_switches_involuntary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.context_switches_voluntary"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.context_switches_voluntary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.core_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.core_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.core_temps_celsius"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.core_temps_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.cycles"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.cycles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.dram_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.dram_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.duration_seconds"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.duration_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.end_time"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.end_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.exp_end_time"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.exp_end_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.exp_start_time"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.exp_start_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.frequency_mhz"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.frequency_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.gpu_frequency_mhz"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.gpu_frequency_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.gpu_rc6_percent"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.gpu_rc6_percent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.idle_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.idle_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.instructions"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.instructions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.ipc"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.ipc</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.kernel_time_ms"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.kernel_time_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.major_page_faults"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.major_page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.measurement_id"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.measurement_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.minor_page_faults"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.minor_page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.orchestration_tax_j"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.orchestration_tax_j</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.orchestration_tax_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.orchestration_tax_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.package_energy_j"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.package_energy_j</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.package_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.package_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.package_temp_celsius"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.package_temp_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.page_faults"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.reasoning_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.reasoning_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.reasoning_ratio"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.reasoning_ratio</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.ring_bus_current_mhz"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.ring_bus_current_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.ring_bus_max_mhz"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.ring_bus_max_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.ring_bus_min_mhz"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.ring_bus_min_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.run_queue_length"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.run_queue_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.start_time"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.start_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.tax_ratio"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.tax_ratio</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.thermal_during_experiment"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.thermal_during_experiment</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.thermal_now_active"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.thermal_now_active</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.thermal_since_boot"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.thermal_since_boot</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.thermal_throttle"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.thermal_throttle</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.thread_migrations"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.thread_migrations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.to_dict"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.to_json"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.to_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.total_context_switches"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.total_context_switches</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.tsc_frequency_hz"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.tsc_frequency_hz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.uncore_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.uncore_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.user_time_ms"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.user_time_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.wakeup_latency_us"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.wakeup_latency_us</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.workload_energy_j"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.workload_energy_j</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement.workload_energy_uj"><code class="docutils literal notranslate"><span class="pre">DerivedEnergyMeasurement.workload_energy_uj</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.models.energy_measurement.html">core.models.energy_measurement module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.models.energy_measurement.html#energy-measurement-data-models">ENERGY MEASUREMENT DATA MODELS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.calculate_derived_metrics"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.calculate_derived_metrics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.core_energy_uj"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.core_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.dram_energy_uj"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.dram_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.duration_seconds"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.duration_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.end_time"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.end_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.gpu_energy_uj"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.gpu_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.idle_baseline_energy_uj"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.idle_baseline_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.inference_ratio"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.inference_ratio()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.kernel_time_ms"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.kernel_time_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.measurement_id"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.measurement_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.measurement_valid"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.measurement_valid</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.package_energy_uj"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.package_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.performance_counters"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.performance_counters</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.power_state"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.power_state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.raw_rapl_end"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.raw_rapl_end</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.raw_rapl_start"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.raw_rapl_start</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.run_queue_length"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.run_queue_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.sample_count"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.sample_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.sampling_rate_hz"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.sampling_rate_hz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.start_time"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.start_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.thermal"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.thermal</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.to_dict"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.to_json"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.to_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.uncore_waste_uj"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.uncore_waste_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.user_time_ms"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.user_time_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.EnergyMeasurement.validation_issues"><code class="docutils literal notranslate"><span class="pre">EnergyMeasurement.validation_issues</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.branch_misses"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.branch_misses</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.branches"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.branches</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.cache_miss_rate"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cache_miss_rate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.cache_misses"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cache_misses</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.cache_references"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cache_references</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.context_switches_involuntary"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.context_switches_involuntary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.context_switches_voluntary"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.context_switches_voluntary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.cpu_clock_ms"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cpu_clock_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.cpu_cycles"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cpu_cycles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.instructions_per_cycle"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.instructions_per_cycle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.instructions_retired"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.instructions_retired</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.major_page_faults"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.major_page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.minor_page_faults"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.minor_page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.task_clock_ms"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.task_clock_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.thread_migrations"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.thread_migrations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.to_dict"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PerformanceCounters.total_context_switches"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.total_context_switches()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState"><code class="docutils literal notranslate"><span class="pre">PowerState</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.c_state_residencies"><code class="docutils literal notranslate"><span class="pre">PowerState.c_state_residencies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.core_power_watts"><code class="docutils literal notranslate"><span class="pre">PowerState.core_power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.deepest_cstate"><code class="docutils literal notranslate"><span class="pre">PowerState.deepest_cstate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.frequencies_mhz"><code class="docutils literal notranslate"><span class="pre">PowerState.frequencies_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.gpu_power_watts"><code class="docutils literal notranslate"><span class="pre">PowerState.gpu_power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.igpu_frequency_mhz"><code class="docutils literal notranslate"><span class="pre">PowerState.igpu_frequency_mhz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.igpu_rc6_percent"><code class="docutils literal notranslate"><span class="pre">PowerState.igpu_rc6_percent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.package_power_watts"><code class="docutils literal notranslate"><span class="pre">PowerState.package_power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.package_temperature_celsius"><code class="docutils literal notranslate"><span class="pre">PowerState.package_temperature_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.ram_power_watts"><code class="docutils literal notranslate"><span class="pre">PowerState.ram_power_watts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.to_dict"><code class="docutils literal notranslate"><span class="pre">PowerState.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.PowerState.tsc_frequency_mhz"><code class="docutils literal notranslate"><span class="pre">PowerState.tsc_frequency_mhz</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings"><code class="docutils literal notranslate"><span class="pre">ThermalReadings</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.core_temperatures_celsius"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.core_temperatures_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.gpu_temperature_celsius"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.gpu_temperature_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.is_throttling"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.is_throttling()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.package_temperature_celsius"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.package_temperature_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.pch_temperature_celsius"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.pch_temperature_celsius</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.prochot_events"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.prochot_events</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.thermal_throttle_count"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.thermal_throttle_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.energy_measurement.html#core.models.energy_measurement.ThermalReadings.to_dict"><code class="docutils literal notranslate"><span class="pre">ThermalReadings.to_dict()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.models.performance_counters.html">core.models.performance_counters module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.models.performance_counters.html#performance-counters-data-model">PERFORMANCE COUNTERS DATA MODEL</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.branch_misses"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.branch_misses</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.branches"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.branches</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.cache_miss_rate"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cache_miss_rate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.cache_misses"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cache_misses</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.cache_references"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cache_references</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.context_switches_involuntary"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.context_switches_involuntary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.context_switches_voluntary"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.context_switches_voluntary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.cpu_clock_ms"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cpu_clock_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.cpu_cycles"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.cpu_cycles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.duration_ms"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.duration_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.instructions_per_cycle"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.instructions_per_cycle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.instructions_retired"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.instructions_retired</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.major_page_faults"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.major_page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.minor_page_faults"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.minor_page_faults</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.task_clock_ms"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.task_clock_ms</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.thread_migrations"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.thread_migrations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.to_dict"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.to_json"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.to_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.performance_counters.html#core.models.performance_counters.PerformanceCounters.total_context_switches"><code class="docutils literal notranslate"><span class="pre">PerformanceCounters.total_context_switches()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.models.raw_energy_measurement.html">core.models.raw_energy_measurement module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.models.raw_energy_measurement.html#raw-energy-measurement-layer-1-ground-truth">RAW ENERGY MEASUREMENT – Layer 1: Ground Truth</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.measurement_id"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.measurement_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.start_time"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.start_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.end_time"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.end_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.duration_seconds"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.duration_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.rapl_start_uj"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.rapl_start_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.rapl_end_uj"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.rapl_end_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.perf"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.perf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.turbostat"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.turbostat</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.thermal"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.thermal</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.power_state"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.power_state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.scheduler_metrics"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.scheduler_metrics</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.samples"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.sampling_rate_hz"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.sampling_rate_hz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.metadata"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.metadata</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.core_energy_uj"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.core_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.dram_energy_uj"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.dram_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id0"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.duration_seconds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id1"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.end_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id2"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.measurement_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id3"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.metadata</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.msr_metrics"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.msr_metrics</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.package_energy_j"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.package_energy_j</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.package_energy_uj"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.package_energy_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id4"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.perf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id5"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.power_state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id6"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.rapl_end_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id7"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.rapl_start_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id8"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id9"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.sampling_rate_hz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.scheduler_end"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.scheduler_end</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id10"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.scheduler_metrics</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.scheduler_start"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.scheduler_start</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id11"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.start_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id12"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.thermal</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.thermal_during_experiment"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.thermal_during_experiment</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.thermal_now_active"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.thermal_now_active</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.thermal_samples"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.thermal_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.thermal_since_boot"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.thermal_since_boot</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.to_dict"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.to_json"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.to_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.raw_energy_measurement.html#id13"><code class="docutils literal notranslate"><span class="pre">RawEnergyMeasurement.turbostat</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-core.models">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core.models" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.execution.sample_processor.html" class="btn btn-neutral float-left" title="core.execution.sample_processor module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.models.baseline_measurement.html" class="btn btn-neutral float-right" title="core.models.baseline_measurement module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

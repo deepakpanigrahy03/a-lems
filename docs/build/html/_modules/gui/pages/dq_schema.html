@@ -1,0 +1,249 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.dq_schema &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.dq_schema</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.dq_schema</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/dq_schema.py  —  ≡  Schema Log</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Schema version history — migration log, applied changes, current version.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.dq_schema.html#gui.pages.dq_schema.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">accent</span> <span class="o">=</span> <span class="s2">&quot;#f472b6&quot;</span>
+
+    <span class="c1"># ── Current version ───────────────────────────────────────────────────────</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT version, applied_at, description</span>
+<span class="s2">        FROM schema_version</span>
+<span class="s2">        ORDER BY version DESC</span>
+<span class="s2">        LIMIT 1</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+
+    <span class="n">version</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+    <span class="n">applied_at</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;applied_at&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+    <span class="n">desc</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;No description&quot;</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:16px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">12,</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;display:flex;align-items:center;gap:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:36px;font-weight:800;color:</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1;&#39;&gt;v</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:#94a3b8;text-transform:uppercase;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;letter-spacing:.1em;margin-top:2px;&#39;&gt;Current schema version&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:13px;color:#f1f5f9;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:3px;&#39;&gt;</span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:#475569;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;Applied: </span><span class="si">{</span><span class="n">applied_at</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Full version history ──────────────────────────────────────────────────</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT version, applied_at, description</span>
+<span class="s2">        FROM schema_version</span>
+<span class="s2">        ORDER BY version DESC</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Migration history — </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="p">)</span><span class="si">}</span><span class="s2"> versions&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">history</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No schema version records found.&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">history</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="n">is_current</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">version</span>
+            <span class="n">brd_clr</span> <span class="o">=</span> <span class="n">accent</span> <span class="k">if</span> <span class="n">is_current</span> <span class="k">else</span> <span class="s2">&quot;#1f2937&quot;</span>
+            <span class="n">txt_clr</span> <span class="o">=</span> <span class="s2">&quot;#f1f5f9&quot;</span> <span class="k">if</span> <span class="n">is_current</span> <span class="k">else</span> <span class="s2">&quot;#94a3b8&quot;</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:10px 14px;background:#111827;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">brd_clr</span><span class="si">}</span><span class="s2">44;border-left:3px solid </span><span class="si">{</span><span class="n">brd_clr</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;border-radius:0 8px 8px 0;margin-bottom:6px;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:12px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:14px;font-weight:700;color:</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&lt;span style=</span><span class="se">\&quot;</span><span class="s1">font-size:8px;padding:1px 6px;border-radius:3px;background:#052e1a;color:#4ade80;font-weight:700;</span><span class="se">\&quot;</span><span class="s1">&gt;CURRENT&lt;/span&gt;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_current</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:11px;color:</span><span class="si">{</span><span class="n">txt_clr</span><span class="si">}</span><span class="s2">;flex:1;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">,</span><span class="s1">&#39;—&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:10px;color:#475569;&#39;&gt;</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;applied_at&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="c1"># ── Table inventory ───────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;margin:20px 0 12px;&#39;&gt;Live table inventory&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">tables_q</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT name AS table_name</span>
+<span class="s2">        FROM sqlite_master</span>
+<span class="s2">        WHERE type=&#39;table&#39;</span>
+<span class="s2">        ORDER BY name</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tables_q</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">row_counts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">tbl</span> <span class="ow">in</span> <span class="n">tables_q</span><span class="p">[</span><span class="s2">&quot;table_name&quot;</span><span class="p">]:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cnt</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM </span><span class="si">{</span><span class="n">tbl</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">row_counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;Table&quot;</span><span class="p">:</span> <span class="n">tbl</span><span class="p">,</span>
+                        <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="n">cnt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">cnt</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">row_counts</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;Table&quot;</span><span class="p">:</span> <span class="n">tbl</span><span class="p">,</span> <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">})</span>
+
+        <span class="n">inv_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">row_counts</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">inv_df</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+    <span class="c1"># ── Views ─────────────────────────────────────────────────────────────────</span>
+    <span class="n">views_q</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT name AS view_name</span>
+<span class="s2">        FROM sqlite_master</span>
+<span class="s2">        WHERE type=&#39;view&#39;</span>
+<span class="s2">        ORDER BY name</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">views_q</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;margin:16px 0 8px;&#39;&gt;Views&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">views_q</span><span class="p">[</span><span class="s2">&quot;view_name&quot;</span><span class="p">]:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:6px 12px;background:#111827;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;border:1px solid #1f2937;border-radius:6px;margin-bottom:4px;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-size:11px;color:#60a5fa;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

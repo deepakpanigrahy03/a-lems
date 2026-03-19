@@ -1,4 +1,4 @@
-from .linear import LinearExecutor
 from .agentic import AgenticExecutor
+from .linear import LinearExecutor
 
-__all__ = ['LinearExecutor', 'AgenticExecutor']
+__all__ = ["LinearExecutor", "AgenticExecutor"]

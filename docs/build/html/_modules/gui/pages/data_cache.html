@@ -1,0 +1,349 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.data_cache &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.data_cache</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.data_cache</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/data_cache.py  —  ◧  Cache &amp; Memory</span>
+<span class="sd">Energy cost of cache misses and memory pressure.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.pages._dm_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">col_exists</span><span class="p">,</span> <span class="n">get_runs</span><span class="p">,</span> <span class="n">no_data_banner</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#a78bfa&quot;</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.data_cache.html#gui.pages.data_cache.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">get_runs</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">no_data_banner</span><span class="p">(</span><span class="s2">&quot;No runs in database yet.&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># Only keep rows with valid cache data</span>
+    <span class="k">if</span> <span class="s2">&quot;cache_miss_rate&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">no_data_banner</span><span class="p">(</span><span class="s2">&quot;cache_miss_rate not collected yet.&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">no_data_banner</span><span class="p">(</span><span class="s2">&quot;No runs with cache miss rate data yet.&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">lin</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">]</span>
+    <span class="n">age</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;agentic&quot;</span><span class="p">]</span>
+
+    <span class="n">avg_cmr_lin</span> <span class="o">=</span> <span class="n">lin</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">lin</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">avg_cmr_age</span> <span class="o">=</span> <span class="n">age</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">age</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">avg_ipc_lin</span> <span class="o">=</span> <span class="n">lin</span><span class="p">[</span><span class="s2">&quot;ipc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">lin</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="s2">&quot;ipc&quot;</span> <span class="ow">in</span> <span class="n">lin</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">avg_ipc_age</span> <span class="o">=</span> <span class="n">age</span><span class="p">[</span><span class="s2">&quot;ipc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">age</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="s2">&quot;ipc&quot;</span> <span class="ow">in</span> <span class="n">age</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">avg_rss</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;rss_memory_mb&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;rss_memory_mb&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="c1"># ── Header ────────────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Cache &amp; Memory — </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;&#39;&gt;&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&lt;div style=&#39;font-size:18px;font-weight:700;color:</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#94a3b8;text-transform:uppercase;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-top:3px;&#39;&gt;</span><span class="si">{</span><span class="n">l</span><span class="si">}</span><span class="s2">&lt;/div&gt;&lt;/div&gt;&quot;</span>
+                <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_cmr_lin</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Cache miss linear&quot;</span><span class="p">,</span> <span class="n">WF_COLORS</span><span class="p">[</span><span class="s2">&quot;linear&quot;</span><span class="p">]),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_cmr_age</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Cache miss agentic&quot;</span><span class="p">,</span> <span class="n">WF_COLORS</span><span class="p">[</span><span class="s2">&quot;agentic&quot;</span><span class="p">]),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_ipc_lin</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;IPC linear&quot;</span><span class="p">,</span> <span class="n">WF_COLORS</span><span class="p">[</span><span class="s2">&quot;linear&quot;</span><span class="p">]),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_ipc_age</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;IPC agentic&quot;</span><span class="p">,</span> <span class="n">WF_COLORS</span><span class="p">[</span><span class="s2">&quot;agentic&quot;</span><span class="p">]),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_rss</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg RSS memory&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">),</span>
+                <span class="p">]</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Cache miss rate vs Energy ─────────────────────────────────────────────</span>
+    <span class="n">col1</span><span class="p">,</span> <span class="n">col2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">has_energy</span> <span class="o">=</span> <span class="s2">&quot;energy_j&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
+
+    <span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Cache miss rate vs Energy&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">has_energy</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">],</span>
+                    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.6</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">280</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Cache miss rate&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Energy (J)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dm_cache_scatter&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;IPC vs Energy&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fig2</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">col_exists</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s2">&quot;ipc&quot;</span><span class="p">,</span> <span class="s2">&quot;energy_j&quot;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">sub</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">]</span>
+                <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span>
+                    <span class="n">sub</span><span class="p">[</span><span class="s2">&quot;ipc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;ipc&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="p">]</span>
+                <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">fig2</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                    <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;ipc&quot;</span><span class="p">],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">],</span>
+                        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span>
+                        <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.6</span><span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+        <span class="n">fig2</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">280</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;IPC&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Energy (J)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig2</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dm_ipc_scatter&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Distribution ──────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Cache miss rate distribution&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">fig3</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">][</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">fig3</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span> <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">nbinsx</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="n">fig3</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+        <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+        <span class="n">height</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span>
+        <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;overlay&quot;</span><span class="p">,</span>
+        <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Cache miss rate&quot;</span><span class="p">,</span>
+        <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Run count&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig3</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dm_cache_hist&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── RSS Memory ────────────────────────────────────────────────────────────</span>
+    <span class="n">col3</span><span class="p">,</span> <span class="n">col4</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">col3</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;RSS memory by workflow&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;rss_memory_mb&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">mem_stats</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">)[</span><span class="s2">&quot;rss_memory_mb&quot;</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">])</span>
+                <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">fig4</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">stat</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;median&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">),</span>
+            <span class="p">]:</span>
+                <span class="n">fig4</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                    <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">mem_stats</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">mem_stats</span><span class="p">[</span><span class="n">stat</span><span class="p">],</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">stat</span><span class="p">,</span>
+                        <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                        <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">fig4</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span> <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;RSS (MB)&quot;</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig4</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dm_rss_bar&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;rss_memory_mb not in dataset.&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col4</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Energy by cache efficiency tier&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">has_energy</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;cache_tier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span>
+                <span class="n">df</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">],</span>
+                <span class="n">bins</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Low &lt;30%&quot;</span><span class="p">,</span> <span class="s2">&quot;Med 30-50%&quot;</span><span class="p">,</span> <span class="s2">&quot;High &gt;50%&quot;</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">tier_e</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;cache_tier&quot;</span><span class="p">,</span> <span class="s2">&quot;workflow_type&quot;</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">fig5</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">sub</span> <span class="o">=</span> <span class="n">tier_e</span><span class="p">[</span><span class="n">tier_e</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">fig5</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                    <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;cache_tier&quot;</span><span class="p">],</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">],</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span>
+                        <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                        <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">fig5</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span> <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Avg energy (J)&quot;</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig5</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;dm_tier_energy&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Insight ───────────────────────────────────────────────────────────────</span>
+    <span class="n">cmr_delta</span> <span class="o">=</span> <span class="n">avg_cmr_age</span> <span class="o">-</span> <span class="n">avg_cmr_lin</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-top:8px;padding:10px 14px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:#1a0e40;border-left:3px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-radius:0 8px 8px 0;font-size:11px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;color:#c4b5fd;font-family:IBM Plex Mono,monospace;line-height:1.7;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Agentic runs have &lt;b&gt;</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">cmr_delta</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;higher&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">cmr_delta</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;lower&#39;</span><span class="si">}</span><span class="s2">&lt;/b&gt; cache miss rate than linear. &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Higher cache miss rates force expensive DRAM accesses, increasing energy.&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

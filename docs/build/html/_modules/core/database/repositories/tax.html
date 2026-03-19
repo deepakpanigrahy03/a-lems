@@ -1,0 +1,254 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.repositories.tax &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.database.repositories.tax</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.database.repositories.tax</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">TAX REPOSITORY – Handles orchestration tax computation and storage</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">PURPOSE:</span>
+<span class="sd">    Contains logic for computing and storing orchestration tax summaries.</span>
+<span class="sd">    Pairs linear and agentic runs and calculates tax = agentic - linear.</span>
+
+<span class="sd">WHY THIS EXISTS:</span>
+<span class="sd">    - Separates tax logic from other database operations</span>
+<span class="sd">    - Tax is a research concept that may evolve</span>
+<span class="sd">    - Part of splitting the god object manager.py</span>
+
+<span class="sd">AUTHOR: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseInterface</span>
+
+
+<div class="viewcode-block" id="TaxRepository">
+<a class="viewcode-back" href="../../../../core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaxRepository</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Repository for orchestration tax operations.</span>
+
+<span class="sd">    Handles pairing of linear/agentic runs and tax computation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DatabaseInterface</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize with database adapter.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            db: DatabaseInterface instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">db</span>
+
+<div class="viewcode-block" id="TaxRepository.create_tax_summaries">
+<a class="viewcode-back" href="../../../../core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository.create_tax_summaries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create tax summary entries for all agentic runs in an experiment.</span>
+
+<span class="sd">        This method:</span>
+<span class="sd">        1. Finds all runs in the experiment</span>
+<span class="sd">        2. Pairs linear and agentic runs by run_number</span>
+<span class="sd">        3. Computes tax = agentic_dynamic_uj - linear_dynamic_uj</span>
+<span class="sd">        4. Stores results in orchestration_tax_summary table</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            exp_id: Experiment ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get all runs with their run_number and workflow_type</span>
+        <span class="n">runs_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            SELECT r.run_id, r.run_number, e.workflow_type</span>
+<span class="sd">            FROM runs r</span>
+<span class="sd">            JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="sd">            WHERE r.exp_id = ?</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">exp_id</span><span class="p">,),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Build mapping: run_number -&gt; {linear: run_id, agentic: run_id}</span>
+        <span class="n">pairs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">runs_info</span><span class="p">:</span>
+            <span class="n">num</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;run_number&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">num</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+                <span class="n">pairs</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">pairs</span><span class="p">[</span><span class="n">num</span><span class="p">][</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]</span>
+
+        <span class="c1"># For each pair that has both linear and agentic, compute tax</span>
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">pairs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">linear_id</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+            <span class="n">agentic_id</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">linear_id</span> <span class="ow">and</span> <span class="n">agentic_id</span><span class="p">:</span>
+                <span class="c1"># Get dynamic energies</span>
+                <span class="n">energies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                    <span class="s2">&quot;SELECT run_id, dynamic_energy_uj FROM runs WHERE run_id IN (?, ?)&quot;</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">agentic_id</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">energy_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]:</span> <span class="n">e</span><span class="p">[</span><span class="s2">&quot;dynamic_energy_uj&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">energies</span><span class="p">}</span>
+
+                <span class="n">linear_uj</span> <span class="o">=</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">agentic_uj</span> <span class="o">=</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agentic_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">tax_uj</span> <span class="o">=</span> <span class="n">agentic_uj</span> <span class="o">-</span> <span class="n">linear_uj</span>
+                <span class="n">tax_percent</span> <span class="o">=</span> <span class="p">(</span><span class="n">tax_uj</span> <span class="o">/</span> <span class="n">agentic_uj</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">agentic_uj</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                    INSERT INTO orchestration_tax_summary</span>
+<span class="sd">                    (linear_run_id, agentic_run_id, linear_dynamic_uj, agentic_dynamic_uj,</span>
+<span class="sd">                     orchestration_tax_uj, tax_percent)</span>
+<span class="sd">                    VALUES (?, ?, ?, ?, ?, ?)</span>
+<span class="sd">                &quot;&quot;&quot;</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">agentic_id</span><span class="p">,</span> <span class="n">linear_uj</span><span class="p">,</span> <span class="n">agentic_uj</span><span class="p">,</span> <span class="n">tax_uj</span><span class="p">,</span> <span class="n">tax_percent</span><span class="p">),</span>
+                <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TaxRepository.create_tax_summary_for_pair">
+<a class="viewcode-back" href="../../../../core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository.create_tax_summary_for_pair">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tax_summary_for_pair</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">linear_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">agentic_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">linear_uj</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">agentic_uj</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">linear_orchestration_uj</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">agentic_orchestration_uj</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create tax summary for ONE specific pair.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            linear_id: Linear run ID</span>
+<span class="sd">            agentic_id: Agentic run ID</span>
+<span class="sd">            linear_uj: Linear dynamic energy in microjoules</span>
+<span class="sd">            agentic_uj: Agentic dynamic energy in microjoules</span>
+<span class="sd">            linear_orchestration_uj: Linear orchestration overhead</span>
+<span class="sd">            agentic_orchestration_uj: Agentic orchestration overhead</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tax_uj</span> <span class="o">=</span> <span class="n">agentic_uj</span> <span class="o">-</span> <span class="n">linear_uj</span>
+        <span class="n">tax_percent</span> <span class="o">=</span> <span class="p">(</span><span class="n">tax_uj</span> <span class="o">/</span> <span class="n">agentic_uj</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">agentic_uj</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            INSERT INTO orchestration_tax_summary</span>
+<span class="sd">            (linear_run_id, agentic_run_id, linear_dynamic_uj, agentic_dynamic_uj,</span>
+<span class="sd">             orchestration_tax_uj, tax_percent,</span>
+<span class="sd">             linear_orchestration_uj, agentic_orchestration_uj)</span>
+<span class="sd">            VALUES (?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">linear_id</span><span class="p">,</span>
+                <span class="n">agentic_id</span><span class="p">,</span>
+                <span class="n">linear_uj</span><span class="p">,</span>
+                <span class="n">agentic_uj</span><span class="p">,</span>
+                <span class="n">tax_uj</span><span class="p">,</span>
+                <span class="n">tax_percent</span><span class="p">,</span>
+                <span class="n">linear_orchestration_uj</span><span class="p">,</span>
+                <span class="n">agentic_orchestration_uj</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

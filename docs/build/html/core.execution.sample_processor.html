@@ -1,0 +1,179 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.sample_processor module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.models package" href="core.models.html" />
+    <link rel="prev" title="core.execution.repetition module" href="core.execution.repetition.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.execution.html">core.execution package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.execution.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#module-core.execution">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.execution.html">core.execution package</a></li>
+      <li class="breadcrumb-item active">core.execution.sample_processor module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.execution.sample_processor.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.execution.sample_processor">
+<span id="core-execution-sample-processor-module"></span><h1>core.execution.sample_processor module<a class="headerlink" href="#module-core.execution.sample_processor" title="Link to this heading"></a></h1>
+<section id="sample-processor-handle-energy-cpu-and-interrupt-sample-processing">
+<h2>SAMPLE PROCESSOR – Handle energy, CPU, and interrupt sample processing<a class="headerlink" href="#sample-processor-handle-energy-cpu-and-interrupt-sample-processing" title="Link to this heading"></a></h2>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.sample_processor.calculate_thermal_metrics">
+<span class="sig-prename descclassname"><span class="pre">core.execution.sample_processor.</span></span><span class="sig-name descname"><span class="pre">calculate_thermal_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu_samples</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/core/execution/sample_processor.html#calculate_thermal_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.sample_processor.calculate_thermal_metrics" title="Link to this definition"></a></dt>
+<dd><p>Calculate thermal metrics from CPU samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (start_temp_c, max_temp_c, min_temp_c, thermal_delta_c)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.sample_processor.load_canonical_metrics">
+<span class="sig-prename descclassname"><span class="pre">core.execution.sample_processor.</span></span><span class="sig-name descname"><span class="pre">load_canonical_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/core/execution/sample_processor.html#load_canonical_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.sample_processor.load_canonical_metrics" title="Link to this definition"></a></dt>
+<dd><p>Load canonical metrics from turbostat_override.yaml.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (canonical_metrics dict, store_extra boolean)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.sample_processor.process_cpu_samples">
+<span class="sig-prename descclassname"><span class="pre">core.execution.sample_processor.</span></span><span class="sig-name descname"><span class="pre">process_cpu_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_energy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">canonical_metrics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store_extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/core/execution/sample_processor.html#process_cpu_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.sample_processor.process_cpu_samples" title="Link to this definition"></a></dt>
+<dd><p>Extract CPU samples from turbostat continuous data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of CPU sample dictionaries</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.sample_processor.process_energy_samples">
+<span class="sig-prename descclassname"><span class="pre">core.execution.sample_processor.</span></span><span class="sig-name descname"><span class="pre">process_energy_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_engine</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/core/execution/sample_processor.html#process_energy_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.sample_processor.process_energy_samples" title="Link to this definition"></a></dt>
+<dd><p>Process energy samples from energy_engine.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple of (energy_samples, interrupt_samples)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.execution.repetition.html" class="btn btn-neutral float-left" title="core.execution.repetition module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.models.html" class="btn btn-neutral float-right" title="core.models package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

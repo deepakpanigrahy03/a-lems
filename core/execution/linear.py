@@ -33,7 +33,7 @@ import psutil
 import socket
 import logging
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from core.utils.debug import dprint
@@ -93,346 +93,129 @@ class LinearExecutor:
         self.max_tokens = self.config.get('max_tokens', 1024)
         self.temperature = self.config.get('temperature', 0.7)
         self.provider = self.config.get('provider', 'unknown')
-        self.model_path = self.config.get('model_path') 
+        self.model_path = self.config.get('model_path')
+        
+        # ====================================================================
+        # Performance optimization: Cache for local model
+        # ====================================================================
+        self._llm = None
+        self._effective_kbps_list = []
         
         if self.provider not in ['ollama', 'local'] and not self.api_key:
             logger.warning(f"API key missing: {self.config.get('api_key_env')}")
         logger.info(f"LinearExecutor initialized: {self.config.get('model_id')} ({self.provider})")
 
+    # =========================================================================
+    # MAIN EXECUTION ENTRY POINT
+    # =========================================================================
     def execute(self, prompt: str, temperature: Optional[float] = None) -> Dict[str, Any]:
         """
-        Execute a single LLM call (linear workflow) with precise timing.
+        Execute a single LLM call with precise timing and comprehensive metrics.
         
-        Purpose:
-            This is the baseline measurement for orchestration tax experiments.
-            A single API call with no tools, planning, or synthesis.
-            
-        Why this exists:
-            - Measures energy of pure LLM inference (Req 3.6)
-            - Provides baseline for comparing agentic overhead
-            - Tracks token usage for cost analysis
-            - Exact start/end timestamps for energy correlation
-            
+        Architecture:
+            1. Validate request and capture pre-execution state
+            2. Execute provider-specific API call
+            3. Capture post-execution metrics (network, timing)
+            4. Build interaction record (always, even on failure)
+            5. Construct unified result dictionary
+        
         Args:
             prompt: User query or task description
-            temperature: Optional override (0.0 for reproducibility, 0.7 for normal)
+            temperature: Optional temperature override
             
         Returns:
-            Dictionary with:
-                - experiment_id: Unique ID for traceability
-                - start_time: Unix timestamp (for energy alignment)
-                - end_time: Unix timestamp (for energy alignment)
-                - response: Model output text
-                - tokens: Token usage statistics
-                - execution_time_ms: Total time (Req 3.6)
-                - prompt_chars: Length of input
-                - response_chars: Length of output
-                - prompt_bytes: Size in bytes
-                - response_bytes: Size in bytes
-                - timestamp: ISO format timestamp
-                - model: Model ID used
-                - provider: Provider name
+            Dictionary with complete execution metrics
         """
         experiment_id = str(uuid.uuid4())[:8]
         start_time = time.time()
-        # Capture network metrics before API call
-        net_before = self._get_network_metrics()        
+        
+        # ====================================================================
+        # Step 1: Validate request and get effective temperature
+        # ====================================================================
+        error, effective_temp = self._validate_request(temperature)
+        
+        # ====================================================================
+        # Step 2: Capture pre-request network state (always)
+        # ====================================================================
+        net_before = self._get_network_metrics()
+        
         dprint(f"\n{'='*60}")
         dprint(f"🚀 LINEAR EXECUTION [{experiment_id}]: {prompt[:100]}...")
         dprint(f"{'='*60}")
         
-        if self.provider not in ['ollama', 'local'] and not self.api_key:
-            logger.error("No API key available")
-            return {
-                "experiment_id": experiment_id,
-                "start_time": start_time,
-                "end_time": time.time(),
-                "response": "Error: No API key",
-                "tokens": {},
-                "error": "API key not found"
-            }
+        # ====================================================================
+        # Step 3: Execute provider-specific API call
+        # ====================================================================
+        content, tokens, api_latency_ms, prompt_bytes, response_bytes, effective_kbps, error = \
+            self._execute_provider(prompt, effective_temp, error)
         
-        # Use provided temperature or default
-        temp = temperature if temperature is not None else self.temperature
+        # ====================================================================
+        # Step 4: Calculate post-execution metrics (always, even on failure)
+        # ====================================================================
+        end_time = time.time()
+        execution_time_ms = (end_time - start_time) * 1000
         
-        dprint(f"📨 Calling {self.provider} API (temp={temp})...")
+        # Network metrics - always calculate
+        net_metrics = self._compute_network_metrics(net_before)
         
-        try:
-            effective_kbps = 0
-            api_latency_ms = 0
-            tokens = {}
-            content = ""
-            response_bytes = 0
-            prompt_bytes = 0
-
-            # ====================================================================
-            # Handle different provider formats
-            # ====================================================================
-            if self.provider == 'ollama':
-                # Local Ollama API (no API key needed)
-                api_start = time.time()
-                # Calculate bytes sent
-                prompt_bytes = len(prompt.encode('utf-8'))                
-                response = requests.post(
-                    self.config['api_endpoint'],
-                    json={
-                        "model": self.config['model_id'],
-                        "messages": [{"role": "user", "content": prompt}],
-                        "stream": False,
-                        "options": {
-                            "temperature": temp,
-                            "num_predict": self.max_tokens
-                        }
-                    },
-                    timeout=30
-                )
-                api_latency_ms = (time.time() - api_start) * 1000 
-                response.raise_for_status()
-                data = response.json()
-                content = data['message']['content']
-                response_bytes = len(content.encode('utf-8'))
-                total_bytes = prompt_bytes + response_bytes
-                effective_kbps = (total_bytes * 8) / (api_latency_ms / 1000) / 1000 if api_latency_ms > 0 else 0 
-                # Track effective_kbps for this call
-                if not hasattr(self, '_effective_kbps_list'):
-                    self._effective_kbps_list = []
-                self._effective_kbps_list.append(effective_kbps)  
-
-                
-                               
-                # Ollama doesn't return tokens, estimate
-                tokens = {
-                    'prompt': len(prompt.split()),
-                    'completion': len(content.split()),
-                    'total': len(prompt.split()) + len(content.split())
-                }
-                # Store interaction data
-                interaction = {
-                    'step_index': 1,
-                    'workflow_type': 'linear',
-                    'prompt': prompt,
-                    'response': content,
-                    'model_name': self.config.get('model_id'),
-                    'provider': self.provider,
-                    'prompt_tokens': tokens.get('prompt', 0),
-                    'completion_tokens': tokens.get('completion', 0),
-                    'total_tokens': tokens.get('total', 0),
-                    'api_latency_ms': api_latency_ms,
-                    'compute_time_ms': execution_time_ms,
-                    'bytes_sent': bytes_sent,
-                    'bytes_recv': bytes_recv,
-                    'tcp_retransmits': tcp_retransmits,
-                    'throughput_kbps': effective_kbps
-
-                }
-
-                print(f"🔍 DEBUG - Created interaction with {len(interaction)} fields")
-                print(f"🔍 DEBUG - Network metrics: sent={bytes_sent}, recv={bytes_recv}, retrans={tcp_retransmits}")
-                
-                # Store in pending list
-                if not hasattr(self, 'pending_interactions'):
-                    self.pending_interactions = []
-                    print(f"🔍 DEBUG - Initialized pending_interactions")
-                
-                self.pending_interactions.append(interaction)
-                print(f"🔍 DEBUG - Added interaction, now has {len(self.pending_interactions)} items")
-                
-
-            # ====================================================================
-            # NEW: Local GGUF model using llama-cpp-python
-            # ====================================================================
-            elif self.provider == 'local':
-                api_start = time.time()
-                prompt_bytes = len(prompt.encode('utf-8'))
-                
-                try:
-                    from llama_cpp import Llama
-                    
-                    # Load model (consider caching for performance)
-                    llm = Llama(model_path=self.model_path)
-                    
-                    # Run inference
-                    response = llm(
-                        prompt,
-                        max_tokens=self.max_tokens,
-                        temperature=temp,
-                        echo=False
-                    )
-                    
-                    api_latency_ms = (time.time() - api_start) * 1000
-                    content = response['choices'][0]['text'].strip()
-                    
-                    # Get token counts from response
-                    tokens = {
-                        'prompt': response['usage']['prompt_tokens'],
-                        'completion': response['usage']['completion_tokens'],
-                        'total': response['usage']['total_tokens']
-                    }
-                    # Store interaction data
-                    interaction = {
-                        'step_index': 1,
-                        'workflow_type': 'linear',
-                        'prompt': prompt,
-                        'response': content,
-                        'model_name': self.config.get('model_id'),
-                        'provider': self.provider,
-                        'prompt_tokens': tokens.get('prompt', 0),
-                        'completion_tokens': tokens.get('completion', 0),
-                        'total_tokens': tokens.get('total', 0),
-                        'api_latency_ms': api_latency_ms,
-                        'compute_time_ms': execution_time_ms,
-                        'bytes_sent': bytes_sent,
-                        'bytes_recv': bytes_recv,
-                        'tcp_retransmits': tcp_retransmits,
-                        'throughput_kbps': effective_kbps
-                    }
-
-                    
-                    if not hasattr(self, 'pending_interactions'):
-                        self.pending_interactions = []
-                    self.pending_interactions.append(interaction)
-                    dprint(f"🔍 DEBUG - Added interaction to pending list, now has {len(self.pending_interactions)} items")            
-
-                    # Calculate bytes for throughput (optional)
-                    response_bytes = len(content.encode('utf-8'))
-                    total_bytes = prompt_bytes + response_bytes
-                    effective_kbps = (total_bytes * 8) / (api_latency_ms / 1000) / 1000 if api_latency_ms > 0 else 0
-                    
-                except Exception as e:
-                    logger.error(f"Local model inference failed: {e}")
-                    raise   
-
-            else:
-                # Cloud APIs (Groq, OpenAI, etc.)
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                # Calculate bytes sent
-
-                prompt_bytes = len(prompt.encode('utf-8'))
-                payload = {
-                    "model": self.config['model_id'],
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": self.max_tokens,
-                    "temperature": temp
-                }
-                api_start = time.time()
-                response = requests.post(
-                    self.config['api_endpoint'],
-                    headers=headers,
-                    json=payload,
-                    timeout=30
-                )
-                api_latency_ms = (time.time() - api_start) * 1000 
-                response.raise_for_status()
-                data = response.json()
-                
-                if 'choices' in data:
-                    content = data['choices'][0]['message']['content']
-                    usage = data.get('usage', {})
-                    tokens = {
-                        'prompt': usage.get('prompt_tokens', 0),
-                        'completion': usage.get('completion_tokens', 0),
-                        'total': usage.get('total_tokens', 0)
-                    }
-
-
-                    # ============================================================
-                    # ADD THIS - Store interaction data for cloud provider
-                    # ============================================================
-                    interaction = {
-                        'step_index': 1,
-                        'workflow_type': 'linear',
-                        'prompt': prompt,
-                        'response': content,
-                        'model_name': self.config.get('model_id'),
-                        'provider': self.provider,
-                        'prompt_tokens': tokens.get('prompt', 0),
-                        'completion_tokens': tokens.get('completion', 0),
-                        'total_tokens': tokens.get('total', 0),
-                        'api_latency_ms': api_latency_ms,
-                        'compute_time_ms': execution_time_ms,
-                        'bytes_sent': bytes_sent,
-                        'bytes_recv': bytes_recv,
-                        'tcp_retransmits': tcp_retransmits,
-                        'throughput_kbps': effective_kbps
-                    }
-                  
-                    # Calculate bytes received and throughput
-                    response_bytes = len(content.encode('utf-8'))
-                    total_bytes = prompt_bytes + response_bytes
-                    effective_kbps = (total_bytes * 8) / (api_latency_ms / 1000) / 1000 if api_latency_ms > 0 else 0
-
-                    
-                else:
-                    content = str(data)
-                    tokens = {}
-                    logger.warning(f"Unexpected API response format")
-            
-            end_time = time.time()
-            execution_time_ms = (end_time - start_time) * 1000
-
-            avg_effective_kbps = 0
-            if hasattr(self, '_effective_kbps_list') and self._effective_kbps_list:
-                avg_effective_kbps = sum(self._effective_kbps_list) / len(self._effective_kbps_list)
-            # Capture network metrics after API call
-            net_after = self._get_network_metrics()
-            
-            # Calculate network deltas
-            bytes_sent = net_after['bytes_sent'] - net_before['bytes_sent']
-            bytes_recv = net_after['bytes_recv'] - net_before['bytes_recv']
-            tcp_retransmits = net_after['tcp_retransmits'] - net_before['tcp_retransmits'] 
-
-            dprint(f"🔍 LLM DEBUG - Network: sent={bytes_sent}, recv={bytes_recv}, retrans={tcp_retransmits}")
-
-            result = {
-                "experiment_id": experiment_id,
-                "start_time": start_time,
-                "end_time": end_time,
-                "response": content,
-                "tokens": tokens,
-                "execution_time_ms": execution_time_ms,
-                "api_latency_ms": api_latency_ms,
-                "compute_time_ms": execution_time_ms,
-                "effective_kbps": effective_kbps,
-                "avg_effective_kbps": avg_effective_kbps,
-                "pending_interactions": getattr(self, 'pending_interactions', []),
-                # NEW: Network metrics
-                "bytes_sent": bytes_sent,
-                "bytes_recv": bytes_recv,
-                "tcp_retransmits": tcp_retransmits,                 
-                "prompt_chars": len(prompt),
-                "response_chars": len(content),
-                "prompt_bytes": len(prompt.encode('utf-8')),
-                "response_bytes": len(content.encode('utf-8')),
-                "timestamp": datetime.now().isoformat(),
-                "model": self.config.get('model_id'),
-                "provider": self.provider
-            }
-
-            print(f"🔍 LLM DEBUG - Result dict has {len(result.get('pending_interactions', []))} pending interactions")
-
+        # Safe compute time (never negative due to clock jitter)
+        compute_time_ms = max(0, execution_time_ms - api_latency_ms)
+        
+        # Update throughput rolling average
+        avg_effective_kbps = self._update_throughput(effective_kbps)
+        
+        # Safe content handling
+        response_content = content if content is not None else ""
+        status = "success" if error is None else "failure"
+        
+        # ====================================================================
+        # Step 5: Build interaction record (ALWAYS, even on failure)
+        # ====================================================================
+        interaction = self._build_interaction(
+            prompt=prompt,
+            response=response_content,
+            tokens=tokens,
+            api_latency_ms=api_latency_ms,
+            effective_kbps=effective_kbps,
+            compute_time_ms=compute_time_ms,
+            net_metrics=net_metrics,
+            error=error,
+            status=status
+        )
+        
+        # Store in pending interactions list
+        if not hasattr(self, 'pending_interactions'):
             self.pending_interactions = []
-            dprint(f"✅ Linear complete: {execution_time_ms:.0f}ms, {tokens.get('total', 0)} tokens")
-            return result
-            
-        except Exception as e:
-            end_time = time.time()
-            logger.error(f"LLM call failed: {e}")
-            return {
-                "experiment_id": experiment_id,
-                "start_time": start_time,
-                "end_time": end_time,
-                "response": f"Error: {e}",
-                "tokens": {},
-                "error": str(e),
-                "execution_time_ms": (end_time - start_time) * 1000,
-                "bytes_sent": 0,
-                "bytes_recv": 0,
-                "tcp_retransmits": 0                
-                
-            }
+        self.pending_interactions.append(interaction)
+        
+        # ====================================================================
+        # Step 6: Build unified result dictionary (ONE schema for all cases)
+        # ====================================================================
+        result = self._build_result(
+            experiment_id=experiment_id,
+            start_time=start_time,
+            end_time=end_time,
+            status=status,
+            response=response_content,
+            tokens=tokens,
+            error=error,
+            execution_time_ms=execution_time_ms,
+            api_latency_ms=api_latency_ms,
+            compute_time_ms=compute_time_ms,
+            effective_kbps=effective_kbps,
+            avg_effective_kbps=avg_effective_kbps,
+            interaction=interaction,
+            net_metrics=net_metrics,
+            prompt=prompt,
+            prompt_bytes=prompt_bytes,
+            response_bytes=response_bytes
+        )
+        
+        # Clear for next run
+        self.pending_interactions = []
+        
+        dprint(f"✅ Linear complete: {execution_time_ms:.0f}ms, {tokens.get('total', 0)} tokens")
+        return result
 
     def execute_comparison(self, task: str) -> Dict[str, Any]:
         """
@@ -449,6 +232,185 @@ class LinearExecutor:
         """
         prompt = BASE_TASK_PROMPT.format(task=task)
         return self.execute(prompt)
+
+    # =========================================================================
+    # PRIVATE HELPER METHODS
+    # =========================================================================
+
+    def _validate_request(self, temperature: Optional[float]) -> Tuple[Optional[str], float]:
+        """
+        Validate the request and return effective temperature.
+        
+        Returns:
+            Tuple of (error, effective_temperature)
+        """
+        error = None
+        if self.provider not in ['ollama', 'local'] and not self.api_key:
+            error = "API key not found"
+            logger.error(f"No API key available for {self.provider}")
+        
+        effective_temp = temperature if temperature is not None else self.temperature
+        return error, effective_temp
+
+    def _execute_provider(self, prompt: str, temp: float, current_error: Optional[str]) -> Tuple:
+        """
+        Execute provider-specific API call.
+        
+        Returns:
+            Tuple of (content, tokens, api_latency_ms, prompt_bytes, 
+                     response_bytes, effective_kbps, error)
+        """
+        content = None
+        tokens = {}
+        api_latency_ms = 0
+        prompt_bytes = len(prompt.encode('utf-8'))
+        response_bytes = 0
+        effective_kbps = 0
+        error = current_error
+        
+        # ====================================================================
+        # Skip execution if we already have an error (e.g., missing API key)
+        # ====================================================================
+        if error is not None:
+            return content, tokens, api_latency_ms, prompt_bytes, response_bytes, effective_kbps, error
+        
+        try:
+            dprint(f"📨 Calling {self.provider} API (temp={temp})...")
+            
+            # ================================================================
+            # Provider-specific implementations
+            # ================================================================
+            if self.provider == 'ollama':
+                content, tokens, api_latency_ms = self._call_ollama(prompt, temp)
+                
+            elif self.provider == 'local':
+                content, tokens, api_latency_ms = self._call_local(prompt, temp)
+                
+            else:
+                content, tokens, api_latency_ms = self._call_cloud(prompt, temp)
+            
+            # ================================================================
+            # Calculate throughput if we have content
+            # ================================================================
+            if content:
+                response_bytes = len(content.encode('utf-8'))
+                effective_kbps = self._compute_throughput(
+                    prompt_bytes, response_bytes, api_latency_ms
+                )
+                
+        except Exception as e:
+            error = str(e)
+            logger.error(f"LLM call failed: {e}")
+            # All other values remain at defaults
+        
+        return content, tokens, api_latency_ms, prompt_bytes, response_bytes, effective_kbps, error
+
+    def _call_ollama(self, prompt: str, temp: float) -> Tuple[str, Dict, float]:
+        """Call Ollama local API."""
+        api_start = time.time()
+        
+        response = requests.post(
+            self.config['api_endpoint'],
+            json={
+                "model": self.config['model_id'],
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "options": {
+                    "temperature": temp,
+                    "num_predict": self.max_tokens
+                }
+            },
+            timeout=30
+        )
+        
+        api_latency_ms = (time.time() - api_start) * 1000
+        response.raise_for_status()
+        data = response.json()
+        content = data['message']['content']
+        
+        # ====================================================================
+        # Ollama doesn't return tokens, estimate based on words
+        # ====================================================================
+        tokens = {
+            'prompt': len(prompt.split()),
+            'completion': len(content.split()),
+            'total': len(prompt.split()) + len(content.split())
+        }
+        
+        return content, tokens, api_latency_ms
+
+    def _call_local(self, prompt: str, temp: float) -> Tuple[str, Dict, float]:
+        """Call local GGUF model using llama-cpp-python."""
+        api_start = time.time()
+        
+        # ====================================================================
+        # Lazy-load model for performance (cache after first load)
+        # ====================================================================
+        if self._llm is None:
+            from llama_cpp import Llama
+            self._llm = Llama(model_path=self.model_path)
+        
+        response = self._llm(
+            prompt,
+            max_tokens=self.max_tokens,
+            temperature=temp,
+            echo=False
+        )
+        
+        api_latency_ms = (time.time() - api_start) * 1000
+        content = response['choices'][0]['text'].strip()
+        
+        tokens = {
+            'prompt': response['usage']['prompt_tokens'],
+            'completion': response['usage']['completion_tokens'],
+            'total': response['usage']['total_tokens']
+        }
+        
+        return content, tokens, api_latency_ms
+
+    def _call_cloud(self, prompt: str, temp: float) -> Tuple[str, Dict, float]:
+        """Call cloud API (Groq, OpenAI, etc.)."""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": self.config['model_id'],
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": self.max_tokens,
+            "temperature": temp
+        }
+        
+        api_start = time.time()
+        response = requests.post(
+            self.config['api_endpoint'],
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        api_latency_ms = (time.time() - api_start) * 1000
+        response.raise_for_status()
+        data = response.json()
+        
+        # ====================================================================
+        # Handle different API response formats
+        # ====================================================================
+        if 'choices' in data:
+            content = data['choices'][0]['message']['content']
+            usage = data.get('usage', {})
+            tokens = {
+                'prompt': usage.get('prompt_tokens', 0),
+                'completion': usage.get('completion_tokens', 0),
+                'total': usage.get('total_tokens', 0)
+            }
+        else:
+            content = str(data)
+            tokens = {}
+            logger.warning(f"Unexpected API response format")
+        
+        return content, tokens, api_latency_ms
+
     def _get_network_metrics(self) -> Dict[str, Any]:
         """
         Get network I/O metrics before/after API call.
@@ -459,15 +421,23 @@ class LinearExecutor:
             - bytes_recv: Total bytes received
             - tcp_retransmits: Number of TCP retransmissions
         """
-        metrics = {}
+        metrics = {
+            'bytes_sent': 0,
+            'bytes_recv': 0,
+            'tcp_retransmits': 0
+        }
         
         try:
-            # Get network I/O counters
+            # ====================================================================
+            # Get network I/O counters from psutil
+            # ====================================================================
             net_io = psutil.net_io_counters()
             metrics['bytes_sent'] = net_io.bytes_sent
             metrics['bytes_recv'] = net_io.bytes_recv
             
-            # Get TCP retransmits (Linux only)
+            # ====================================================================
+            # Get TCP retransmits from /proc/net/snmp (Linux only)
+            # ====================================================================
             with open('/proc/net/snmp', 'r') as f:
                 for line in f:
                     if line.startswith('Tcp:'):
@@ -478,8 +448,135 @@ class LinearExecutor:
                         break
         except Exception as e:
             logger.debug(f"Could not get network metrics: {e}")
-            metrics['bytes_sent'] = 0
-            metrics['bytes_recv'] = 0
-            metrics['tcp_retransmits'] = 0
+            # Keep defaults (zeros)
         
-        return metrics    
+        return metrics
+
+    def _compute_network_metrics(self, net_before: Dict) -> Dict[str, int]:
+        """
+        Compute network delta metrics.
+        
+        Args:
+            net_before: Network metrics before execution
+            
+        Returns:
+            Dictionary with bytes_sent, bytes_recv, tcp_retransmits deltas
+        """
+        net_after = self._get_network_metrics()
+        
+        return {
+            'bytes_sent': net_after['bytes_sent'] - net_before['bytes_sent'],
+            'bytes_recv': net_after['bytes_recv'] - net_before['bytes_recv'],
+            'tcp_retransmits': net_after['tcp_retransmits'] - net_before['tcp_retransmits']
+        }
+
+    def _compute_throughput(self, prompt_bytes: int, response_bytes: int, latency_ms: float) -> float:
+        """
+        Compute effective throughput in kbps.
+        
+        Formula: (total_bytes * 8) / (latency_seconds) / 1000
+        
+        Args:
+            prompt_bytes: Size of prompt in bytes
+            response_bytes: Size of response in bytes
+            latency_ms: API latency in milliseconds
+            
+        Returns:
+            Throughput in kbps (0 if latency_ms <= 0)
+        """
+        if latency_ms <= 0:
+            return 0
+        
+        total_bytes = prompt_bytes + response_bytes
+        latency_seconds = latency_ms / 1000
+        return (total_bytes * 8) / latency_seconds / 1000
+
+    def _update_throughput(self, kbps: float) -> float:
+        """
+        Update rolling average of throughput.
+        
+        Maintains a bounded list of the last 100 throughput values
+        to compute a rolling average without memory leaks.
+        
+        Args:
+            kbps: Current throughput value
+            
+        Returns:
+            Current rolling average (or 0 if no values)
+        """
+        if kbps <= 0:
+            return 0
+        
+        # ====================================================================
+        # Append to bounded list (keep last 100)
+        # ====================================================================
+        self._effective_kbps_list.append(kbps)
+        self._effective_kbps_list = self._effective_kbps_list[-100:]
+        
+        return sum(self._effective_kbps_list) / len(self._effective_kbps_list)
+
+    def _build_interaction(self, prompt: str, response: str, tokens: Dict,
+                          api_latency_ms: float, effective_kbps: float,
+                          compute_time_ms: float, net_metrics: Dict,
+                          error: Optional[str], status: str) -> Dict:
+        """
+        Build interaction record for LLM interaction table.
+        
+        This record is ALWAYS created, even on failure, to avoid dataset bias.
+        """
+        return {
+            'step_index': 1,
+            'workflow_type': 'linear',
+            'status': status,
+            'prompt': prompt,
+            'response': response if error is None else f"Error: {error}",
+            'model_name': self.config.get('model_id'),
+            'provider': self.provider,
+            'prompt_tokens': tokens.get('prompt', 0) if error is None else 0,
+            'completion_tokens': tokens.get('completion', 0) if error is None else 0,
+            'total_tokens': tokens.get('total', 0) if error is None else 0,
+            'api_latency_ms': api_latency_ms,
+            'throughput_kbps': effective_kbps,  # Even partial transfers count
+            'bytes_sent': net_metrics['bytes_sent'],
+            'bytes_recv': net_metrics['bytes_recv'],
+            'tcp_retransmits': net_metrics['tcp_retransmits'],
+            'error': error,
+            'compute_time_ms': compute_time_ms
+        }
+
+    def _build_result(self, experiment_id: str, start_time: float, end_time: float,
+                     status: str, response: str, tokens: Dict, error: Optional[str],
+                     execution_time_ms: float, api_latency_ms: float, compute_time_ms: float,
+                     effective_kbps: float, avg_effective_kbps: float,
+                     interaction: Dict, net_metrics: Dict, prompt: str,
+                     prompt_bytes: int, response_bytes: int) -> Dict:
+        """
+        Build unified result dictionary with ONE schema for all cases.
+        
+        This ensures consistent data structure regardless of success/failure.
+        """
+        return {
+            "experiment_id": experiment_id,
+            "start_time": start_time,
+            "end_time": end_time,
+            "status": status,
+            "response": response if error is None else f"Error: {error}",
+            "tokens": tokens if error is None else {},
+            "error": error,
+            "execution_time_ms": execution_time_ms,
+            "api_latency_ms": api_latency_ms,
+            "compute_time_ms": compute_time_ms,
+            "effective_kbps": effective_kbps,
+            "avg_effective_kbps": avg_effective_kbps,
+            "pending_interactions": [interaction],
+            "bytes_sent": net_metrics['bytes_sent'],
+            "bytes_recv": net_metrics['bytes_recv'],
+            "tcp_retransmits": net_metrics['tcp_retransmits'],
+            "prompt_chars": len(prompt),
+            "response_chars": len(response),
+            "prompt_bytes": prompt_bytes,
+            "response_bytes": response_bytes,
+            "timestamp": datetime.now().isoformat(),
+            "model": self.config.get('model_id'),
+            "provider": self.provider
+        }

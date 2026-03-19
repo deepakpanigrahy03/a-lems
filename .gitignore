@@ -78,3 +78,19 @@ experiments.db
 config/.env
 config/.env
 .env
+
+# Generated documentation
+docs/generated/
+docs-src/*/build/
+docs-src/*/_build/
+docs-src/*/.cache/
+
+# Generated documentation
+docs/generated/
+docs-src/*/site/
+docs-src/*/_build/
+docs-src/*/build/
+.env
+context.txt
+diagrams/
+archive/

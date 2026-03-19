@@ -1,0 +1,188 @@
+# docs/llm-context/code_patterns.yaml
+# A-LEMS Coding Standards and Patterns
+
+file_structure:
+  core_modules:
+    - pattern: "core/readers/*_reader.py"
+      required_elements:
+        - "Class named [Name]Reader"
+        - "__init__(self, config)"
+        - "read() or equivalent method"
+        - "Proper error handling with try/except"
+    
+    - pattern: "core/execution/*.py"
+      required_elements:
+        - "Class for main functionality"
+        - "Type hints on all methods"
+        - "Docstrings with Args/Returns/Raises"
+    
+    - pattern: "core/database/repositories/*.py"
+      required_elements:
+        - "Class named [Name]Repository"
+        - "__init__(self, db)"
+        - "Methods correspond to database operations"
+        - "Never write raw SQL outside repositories"
+
+  tool_scripts:
+    location: "scripts/tools/"
+    pattern: |
+      #!/usr/bin/env python3
+      \"\"\"
+      [Tool Description]
+      Run: python scripts/tools/[name].py [args]
+      \"\"\"
+      
+      import argparse
+      import sys
+      from pathlib import Path
+      
+      class [Name]Tool:
+          def __init__(self):
+              self.repo_root = self._find_repo_root()
+          
+          def _find_repo_root(self) -> Path:
+              \"\"\"Find repository root (where .git is)\"\"\"
+              current = Path(__file__).resolve().parent
+              while current != current.parent:
+                  if (current / '.git').exists():
+                      return current
+                  current = current.parent
+              return Path.cwd()
+          
+          def run(self, args):
+              \"\"\"Main tool logic\"\"\"
+              # Implementation
+              pass
+      
+      def main():
+          parser = argparse.ArgumentParser()
+          parser.add_argument("--option", required=True, help="Description")
+          args = parser.parse_args()
+          
+          tool = [Name]Tool()
+          result = tool.run(args)
+          print(result)
+      
+      if __name__ == "__main__":
+          main()
+
+function_style:
+  type_hints:
+    required: true
+    examples:
+      - "def calculate(data: dict[str, float]) -> int:"
+      - "def process(items: list[str]) -> tuple[int, str]:"
+      - "def maybe(value: Optional[int] = None) -> str | None:"
+  
+  docstrings:
+    format: "Google style"
+    example: |
+      def calculate_tax(linear_energy: float, agentic_energy: float) -> float:
+          \"\"\"Calculate orchestration tax multiplier.
+          
+          Args:
+              linear_energy: Energy consumed by linear workflow (Joules)
+              agentic_energy: Energy consumed by agentic workflow (Joules)
+          
+          Returns:
+              Tax multiplier (agentic/linear)
+          
+          Raises:
+              ValueError: If linear_energy is zero
+          \"\"\"
+          if linear_energy == 0:
+              raise ValueError("Linear energy cannot be zero")
+          return agentic_energy / linear_energy
+  
+  error_handling:
+    patterns:
+      - name: "File operations"
+        code: |
+          try:
+              with open(path) as f:
+                  data = f.read()
+          except FileNotFoundError:
+              logging.warning(f"File not found: {path}")
+              return None
+          except Exception as e:
+              logging.error(f"Error reading {path}: {e}")
+              raise
+      
+      - name: "Database operations"
+        code: |
+          try:
+              cursor = self.conn.execute(query, params)
+              return cursor.fetchall()
+          except sqlite3.Error as e:
+              logging.error(f"Database error: {e}")
+              raise DatabaseError(f"Query failed: {e}")
+      
+      - name: "External commands"
+        code: |
+          try:
+              result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+              if result.returncode != 0:
+                  logging.warning(f"Command failed: {result.stderr}")
+              return result
+          except subprocess.TimeoutExpired:
+              logging.error("Command timed out")
+              return None
+
+database_patterns:
+  repository_pattern:
+    example: |
+      class RunsRepository:
+          def __init__(self, db: DatabaseInterface):
+              self.db = db
+          
+          def insert_run(self, exp_id: int, hw_id: int, run_data: dict) -> int:
+              \"\"\"Insert a run and return run_id.\"\"\"
+              fields = self._extract_from_ml_features(run_data)
+              return self.db.insert_run(exp_id, hw_id, fields)
+          
+          def get_runs_by_experiment(self, exp_id: int) -> list[dict]:
+              \"\"\"Get all runs for an experiment.\"\"\"
+              return self.db.execute(
+                  "SELECT * FROM runs WHERE exp_id = ?", 
+                  (exp_id,)
+              ).fetchall()
+  
+  insert_pattern:
+    example: |
+      # In save_pair() method
+      with db.transaction():
+          linear_id = db.insert_run(exp_id, hw_id, linear_result)
+          agentic_id = db.insert_run(exp_id, hw_id, agentic_result)
+          
+          # Save samples
+          db.insert_energy_samples(linear_id, linear_samples)
+          db.insert_energy_samples(agentic_id, agentic_samples)
+          
+          # Create tax summary
+          db.create_tax_summary_for_pair(linear_id, agentic_id, ...)
+
+web_controller_patterns:
+  adding_new_tool:
+    steps:
+      - step: 1
+        action: "Add script to scripts/tools/[name].py"
+      
+      - step: 2
+        action: "Add to tool_scripts dict in web_controller.py"
+        code: |
+          tool_scripts = {
+              # ... existing tools
+              'new_tool': 'new_tool.py'
+          }
+      
+      - step: 3
+        action: "Add card to HTML dashboard"
+        code: |
+          <div class="card">
+              <h3>📋 New Tool</h3>
+              <p>Description</p>
+              <button onclick="runTool('new_tool', '--option value')">Run</button>
+          </div>
+      
+      - step: 4
+        action: "Add to requirements-tools.txt if needed"

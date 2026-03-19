@@ -1,0 +1,315 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.models.performance_counters module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.models.raw_energy_measurement module" href="core.models.raw_energy_measurement.html" />
+    <link rel="prev" title="core.models.energy_measurement module" href="core.models.energy_measurement.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.models.html">core.models package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.models.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.models.html#module-core.models">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.models.html">core.models package</a></li>
+      <li class="breadcrumb-item active">core.models.performance_counters module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.models.performance_counters.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.models.performance_counters">
+<span id="core-models-performance-counters-module"></span><h1>core.models.performance_counters module<a class="headerlink" href="#module-core.models.performance_counters" title="Link to this heading"></a></h1>
+<section id="performance-counters-data-model">
+<h2>PERFORMANCE COUNTERS DATA MODEL<a class="headerlink" href="#performance-counters-data-model" title="Link to this heading"></a></h2>
+<p>This module defines the PerformanceCounters data class used throughout Module 1
+to store hardware performance counter readings.</p>
+<p>The class provides:
+- Type-safe fields for all counter types
+- Derived metrics (IPC, cache miss rate)
+- Serialization methods</p>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.models.performance_counters.</span></span><span class="sig-name descname"><span class="pre">PerformanceCounters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions_retired</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cpu_cycles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_references</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_misses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">major_page_faults</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minor_page_faults</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_switches_voluntary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_switches_involuntary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thread_migrations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branches</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_misses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cpu_clock_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_clock_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/models/performance_counters.html#PerformanceCounters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Hardware performance counter readings from perf_events.</p>
+<p>These counters provide insight into what the CPU was actually doing
+during the measurement interval. They help distinguish between:
+- Actual computation (instructions retired)
+- Memory bottlenecks (cache misses)
+- OS scheduler overhead (context switches)</p>
+<p>Req 1.5: Instruction density (IPC)
+Req 1.6: Cache behavior
+Req 1.10: Page faults
+Req 1.43: Thread migrations</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.branch_misses">
+<span class="sig-name descname"><span class="pre">branch_misses</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.branch_misses" title="Link to this definition"></a></dt>
+<dd><p>Mispredicted branches.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.branches">
+<span class="sig-name descname"><span class="pre">branches</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.branches" title="Link to this definition"></a></dt>
+<dd><p>Branch instructions executed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.cache_miss_rate">
+<span class="sig-name descname"><span class="pre">cache_miss_rate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/models/performance_counters.html#PerformanceCounters.cache_miss_rate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.cache_miss_rate" title="Link to this definition"></a></dt>
+<dd><p>Calculate cache miss rate.</p>
+<p>Higher miss rates indicate memory bandwidth pressure,
+which can increase energy consumption significantly.</p>
+<p>Req 1.6: Cache behavior</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Miss rate between 0.0 and 1.0</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.cache_misses">
+<span class="sig-name descname"><span class="pre">cache_misses</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.cache_misses" title="Link to this definition"></a></dt>
+<dd><p>Number of cache misses (LLC misses).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.cache_references">
+<span class="sig-name descname"><span class="pre">cache_references</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.cache_references" title="Link to this definition"></a></dt>
+<dd><p>Number of cache references (LLC accesses).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.context_switches_involuntary">
+<span class="sig-name descname"><span class="pre">context_switches_involuntary</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.context_switches_involuntary" title="Link to this definition"></a></dt>
+<dd><p>Involuntary context switches (scheduler preempted).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.context_switches_voluntary">
+<span class="sig-name descname"><span class="pre">context_switches_voluntary</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.context_switches_voluntary" title="Link to this definition"></a></dt>
+<dd><p>Voluntary context switches (process yielded CPU).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.cpu_clock_ms">
+<span class="sig-name descname"><span class="pre">cpu_clock_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.cpu_clock_ms" title="Link to this definition"></a></dt>
+<dd><p>CPU time consumed in milliseconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.cpu_cycles">
+<span class="sig-name descname"><span class="pre">cpu_cycles</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.cpu_cycles" title="Link to this definition"></a></dt>
+<dd><p>Number of CPU cycles elapsed.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.duration_ms">
+<span class="sig-name descname"><span class="pre">duration_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.duration_ms" title="Link to this definition"></a></dt>
+<dd><p>Duration over which counters were measured.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.instructions_per_cycle">
+<span class="sig-name descname"><span class="pre">instructions_per_cycle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/models/performance_counters.html#PerformanceCounters.instructions_per_cycle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.instructions_per_cycle" title="Link to this definition"></a></dt>
+<dd><p>Calculate Instructions Per Cycle (IPC).</p>
+<p>IPC tells us how efficiently the CPU was running:
+- High IPC (&gt;1) means CPU was doing useful work
+- Low IPC (&lt;0.5) suggests stalls (waiting for memory)</p>
+<p>Req 1.5: Instruction density</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Instructions per cycle, or 0.0 if no cycles</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.instructions_retired">
+<span class="sig-name descname"><span class="pre">instructions_retired</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.instructions_retired" title="Link to this definition"></a></dt>
+<dd><p>Number of instructions retired (actual work done).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.major_page_faults">
+<span class="sig-name descname"><span class="pre">major_page_faults</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.major_page_faults" title="Link to this definition"></a></dt>
+<dd><p>Major page faults (needed disk I/O).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.minor_page_faults">
+<span class="sig-name descname"><span class="pre">minor_page_faults</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.minor_page_faults" title="Link to this definition"></a></dt>
+<dd><p>Minor page faults (resolved in memory).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.task_clock_ms">
+<span class="sig-name descname"><span class="pre">task_clock_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.task_clock_ms" title="Link to this definition"></a></dt>
+<dd><p>Task elapsed time in milliseconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.thread_migrations">
+<span class="sig-name descname"><span class="pre">thread_migrations</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.thread_migrations" title="Link to this definition"></a></dt>
+<dd><p>Thread migrations between CPU cores.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/models/performance_counters.html#PerformanceCounters.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict with all fields and derived metrics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/models/performance_counters.html#PerformanceCounters.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.to_json" title="Link to this definition"></a></dt>
+<dd><p>Convert to JSON string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON string with pretty formatting</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.performance_counters.PerformanceCounters.total_context_switches">
+<span class="sig-name descname"><span class="pre">total_context_switches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/models/performance_counters.html#PerformanceCounters.total_context_switches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.performance_counters.PerformanceCounters.total_context_switches" title="Link to this definition"></a></dt>
+<dd><p>Total context switches (voluntary + involuntary).</p>
+<p>Req 1.12: Kernel context switches</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Total number of context switches</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.models.energy_measurement.html" class="btn btn-neutral float-left" title="core.models.energy_measurement module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.models.raw_energy_measurement.html" class="btn btn-neutral float-right" title="core.models.raw_energy_measurement module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

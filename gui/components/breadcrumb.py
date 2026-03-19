@@ -8,8 +8,10 @@ Shows:  ← ENERGY & SILICON  /  Energy Lab
 Clicking the section name → sets nav_page = None → section landing.
 ─────────────────────────────────────────────────────────────────────────────
 """
+
 import streamlit as st
-from gui.config import PAGE_TO_SECTION, PAGE_META, SECTION_ACCENTS
+
+from gui.config import PAGE_META, PAGE_TO_SECTION, SECTION_ACCENTS
 
 
 def render(page_id: str) -> None:
@@ -41,4 +43,5 @@ def render(page_id: str) -> None:
         f"<span style='margin:0 6px;opacity:.4;'>/</span>"
         f"<span>{page_label}</span>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )

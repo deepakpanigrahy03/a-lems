@@ -1,5 +1,5 @@
-import streamlit as st
 import graphviz
+import streamlit as st
 
 graph = graphviz.Digraph()
 

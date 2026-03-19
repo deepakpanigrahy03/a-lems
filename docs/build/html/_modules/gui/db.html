@@ -1,0 +1,259 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.db &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.db</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.db</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/db.py</span>
+<span class="sd">Database access layer — connection, query helpers, cached data loaders.</span>
+<span class="sd">All other modules import from here; nothing else touches SQLite directly.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DB_PATH</span>
+
+
+<span class="c1"># ── Low-level connection ───────────────────────────────────────────────────────</span>
+<div class="viewcode-block" id="db">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.db">[docs]</a>
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">db</span><span class="p">():</span>
+    <span class="n">con</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">DB_PATH</span><span class="p">),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="n">con</span><span class="o">.</span><span class="n">row_factory</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Row</span>
+    <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA journal_mode=WAL&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">con</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">con</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+
+<span class="c1"># ── Query helpers ──────────────────────────────────────────────────────────────</span>
+<div class="viewcode-block" id="q">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.q">[docs]</a>
+<span class="nd">@st</span><span class="o">.</span><span class="n">cache_data</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">show_spinner</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">q</span><span class="p">(</span><span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cached query — raises on error so callers see it.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">db</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">con</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="q_safe">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.q_safe">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q_safe</span><span class="p">(</span><span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Uncached query — returns (DataFrame, error_str). Use in UI pages.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">db</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">con</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">),</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">_e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">_e</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="q1">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.q1">[docs]</a>
+<span class="nd">@st</span><span class="o">.</span><span class="n">cache_data</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">show_spinner</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">q1</span><span class="p">(</span><span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">())</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cached single-row query — returns dict (empty on error).&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">db</span><span class="p">()</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">con</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+            <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">if</span> <span class="n">row</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span></div>
+
+
+
+<span class="c1"># ── Cached bulk loaders ────────────────────────────────────────────────────────</span>
+<div class="viewcode-block" id="load_overview">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.load_overview">[docs]</a>
+<span class="nd">@st</span><span class="o">.</span><span class="n">cache_data</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">show_spinner</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_overview</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            COUNT(DISTINCT e.exp_id) AS total_experiments,</span>
+<span class="s2">            COUNT(r.run_id)          AS total_runs,</span>
+<span class="s2">            SUM(CASE WHEN r.workflow_type=&#39;linear&#39;  THEN 1 ELSE 0 END) AS linear_runs,</span>
+<span class="s2">            SUM(CASE WHEN r.workflow_type=&#39;agentic&#39; THEN 1 ELSE 0 END) AS agentic_runs,</span>
+<span class="s2">            AVG(CASE WHEN r.workflow_type=&#39;linear&#39;  THEN r.total_energy_uj END)/1e6 AS avg_linear_j,</span>
+<span class="s2">            AVG(CASE WHEN r.workflow_type=&#39;agentic&#39; THEN r.total_energy_uj END)/1e6 AS avg_agentic_j,</span>
+<span class="s2">            MAX(r.total_energy_uj)/1e6 AS max_energy_j,</span>
+<span class="s2">            MIN(r.total_energy_uj)/1e6 AS min_energy_j,</span>
+<span class="s2">            SUM(r.total_energy_uj)/1e6 AS total_energy_j,</span>
+<span class="s2">            AVG(r.ipc) AS avg_ipc, MAX(r.ipc) AS max_ipc,</span>
+<span class="s2">            AVG(r.cache_miss_rate)*100 AS avg_cache_miss_pct,</span>
+<span class="s2">            SUM(r.carbon_g)*1000 AS total_carbon_mg,</span>
+<span class="s2">            AVG(r.carbon_g)*1000 AS avg_carbon_mg,</span>
+<span class="s2">            AVG(r.water_ml) AS avg_water_ml,</span>
+<span class="s2">            AVG(CASE WHEN r.workflow_type=&#39;agentic&#39; THEN r.planning_time_ms  END) AS avg_planning_ms,</span>
+<span class="s2">            AVG(CASE WHEN r.workflow_type=&#39;agentic&#39; THEN r.execution_time_ms END) AS avg_execution_ms,</span>
+<span class="s2">            AVG(CASE WHEN r.workflow_type=&#39;agentic&#39; THEN r.synthesis_time_ms END) AS avg_synthesis_ms</span>
+<span class="s2">        FROM experiments e LEFT JOIN runs r ON e.exp_id = r.exp_id</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_runs">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.load_runs">[docs]</a>
+<span class="nd">@st</span><span class="o">.</span><span class="n">cache_data</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">show_spinner</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_runs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            r.run_id, r.exp_id, r.workflow_type, r.run_number,</span>
+<span class="s2">            r.duration_ns/1e6               AS duration_ms,</span>
+<span class="s2">            r.total_energy_uj/1e6           AS energy_j,</span>
+<span class="s2">            r.dynamic_energy_uj/1e6         AS dynamic_energy_j,</span>
+<span class="s2">            r.ipc, r.cache_miss_rate, r.thread_migrations,</span>
+<span class="s2">            r.context_switches_voluntary, r.context_switches_involuntary,</span>
+<span class="s2">            r.total_context_switches, r.frequency_mhz,</span>
+<span class="s2">            r.package_temp_celsius, r.thermal_delta_c, r.thermal_throttle_flag,</span>
+<span class="s2">            r.interrupt_rate, r.api_latency_ms,</span>
+<span class="s2">            r.planning_time_ms, r.execution_time_ms, r.synthesis_time_ms,</span>
+<span class="s2">            r.llm_calls, r.tool_calls, r.total_tokens,</span>
+<span class="s2">            r.complexity_level, r.complexity_score,</span>
+<span class="s2">            r.carbon_g, r.water_ml,</span>
+<span class="s2">            r.energy_per_token, r.energy_per_instruction,</span>
+<span class="s2">            e.provider, e.country_code, e.model_name, e.task_name,</span>
+<span class="s2">            r.governor, r.turbo_enabled,</span>
+<span class="s2">            r.rss_memory_mb, r.vms_memory_mb,</span>
+<span class="s2">            r.prompt_tokens, r.completion_tokens,</span>
+<span class="s2">            r.dns_latency_ms, r.compute_time_ms,</span>
+<span class="s2">            r.swap_total_mb, r.swap_start_used_mb,</span>
+<span class="s2">            r.swap_end_used_mb, r.swap_end_percent,</span>
+<span class="s2">            r.wakeup_latency_us, r.interrupts_per_second,</span>
+<span class="s2">            r.instructions, r.cycles,</span>
+<span class="s2">            r.start_time_ns, r.avg_power_watts,</span>
+<span class="s2">            r.experiment_valid, r.background_cpu_percent</span>
+<span class="s2">             </span>
+<span class="s2">        FROM runs r</span>
+<span class="s2">        JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">        ORDER BY r.run_id DESC</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_tax">
+<a class="viewcode-back" href="../../gui.db.html#gui.db.load_tax">[docs]</a>
+<span class="nd">@st</span><span class="o">.</span><span class="n">cache_data</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">show_spinner</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_tax</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            ots.comparison_id, ots.linear_run_id, ots.agentic_run_id,</span>
+<span class="s2">            ots.tax_percent,</span>
+<span class="s2">            ots.orchestration_tax_uj/1e6 AS tax_j,</span>
+<span class="s2">            ots.linear_dynamic_uj/1e6    AS linear_dynamic_j,</span>
+<span class="s2">            ots.agentic_dynamic_uj/1e6   AS agentic_dynamic_j,</span>
+<span class="s2">            ra.planning_time_ms, ra.execution_time_ms, ra.synthesis_time_ms,</span>
+<span class="s2">            ra.llm_calls, ra.tool_calls, ra.total_tokens,</span>
+<span class="s2">            el.task_name, el.country_code, el.provider</span>
+<span class="s2">        FROM orchestration_tax_summary ots</span>
+<span class="s2">        JOIN runs rl ON ots.linear_run_id  = rl.run_id</span>
+<span class="s2">        JOIN runs ra ON ots.agentic_run_id = ra.run_id</span>
+<span class="s2">        JOIN experiments el ON rl.exp_id = el.exp_id</span>
+<span class="s2">        ORDER BY ots.tax_percent DESC</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

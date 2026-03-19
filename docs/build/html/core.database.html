@@ -1,0 +1,339 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database package &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.database.repositories package" href="core.database.repositories.html" />
+    <link rel="prev" title="core package" href="core.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.database package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-core.database">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.database package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.database.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-database-package">
+<h1>core.database package<a class="headerlink" href="#core-database-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.database.repositories.html">core.database.repositories package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.events.html">core.database.repositories.events module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.events.html#events-repository-handles-orchestration-events-insertion">EVENTS REPOSITORY – Handles orchestration events insertion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.events.html#core.database.repositories.events.EventsRepository"><code class="docutils literal notranslate"><span class="pre">EventsRepository</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.runs.html">core.database.repositories.runs module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.runs.html#runs-repository-handles-insertion-of-run-data-and-derived-metrics">RUNS REPOSITORY – Handles insertion of run data and derived metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.runs.html#core.database.repositories.runs.RunsRepository"><code class="docutils literal notranslate"><span class="pre">RunsRepository</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.samples.html">core.database.repositories.samples module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.samples.html#samples-repository-handles-high-frequency-sample-insertion">SAMPLES REPOSITORY – Handles high-frequency sample insertion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.samples.html#core.database.repositories.samples.SamplesRepository"><code class="docutils literal notranslate"><span class="pre">SamplesRepository</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.tax.html">core.database.repositories.tax module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.tax.html#tax-repository-handles-orchestration-tax-computation-and-storage">TAX REPOSITORY – Handles orchestration tax computation and storage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository"><code class="docutils literal notranslate"><span class="pre">TaxRepository</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.thermal.html">core.database.repositories.thermal module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.thermal.html#core.database.repositories.thermal.ThermalRepository"><code class="docutils literal notranslate"><span class="pre">ThermalRepository</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.html#module-core.database.repositories">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.EventsRepository"><code class="docutils literal notranslate"><span class="pre">EventsRepository</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.EventsRepository.insert_events"><code class="docutils literal notranslate"><span class="pre">EventsRepository.insert_events()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.RunsRepository"><code class="docutils literal notranslate"><span class="pre">RunsRepository</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.RunsRepository.insert_run"><code class="docutils literal notranslate"><span class="pre">RunsRepository.insert_run()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.RunsRepository.update_run_stats"><code class="docutils literal notranslate"><span class="pre">RunsRepository.update_run_stats()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.SamplesRepository"><code class="docutils literal notranslate"><span class="pre">SamplesRepository</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.SamplesRepository.insert_cpu_samples"><code class="docutils literal notranslate"><span class="pre">SamplesRepository.insert_cpu_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.SamplesRepository.insert_energy_samples"><code class="docutils literal notranslate"><span class="pre">SamplesRepository.insert_energy_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.repositories.html#core.database.repositories.SamplesRepository.insert_interrupt_samples"><code class="docutils literal notranslate"><span class="pre">SamplesRepository.insert_interrupt_samples()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.database.base.html">core.database.base module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.base.html#database-interface-abstract-base-class-for-all-database-adapters">DATABASE INTERFACE – Abstract Base Class for All Database Adapters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseError"><code class="docutils literal notranslate"><span class="pre">DatabaseError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.close"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.commit"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.commit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.connect"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.connect()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.create_tables"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.create_tables()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.create_tax_summaries"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.create_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.execute"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.execute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.execute_many"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.execute_many()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.get_ml_data"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.get_ml_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.get_run"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.get_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.get_runs_by_experiment"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.get_runs_by_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.get_tax_summaries"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.get_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_baseline"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_baseline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_cpu_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_cpu_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_energy_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_energy_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_experiment"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_hardware"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_hardware()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_interrupt_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_interrupt_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_orchestration_events"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_orchestration_events()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.insert_run"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.insert_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.rollback"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.rollback()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface.transaction"><code class="docutils literal notranslate"><span class="pre">DatabaseInterface.transaction()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.factory.html">core.database.factory module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.factory.html#database-factory-creates-appropriate-database-adapter-based-on-configuration">DATABASE FACTORY – Creates appropriate database adapter based on configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.factory.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.factory.html#core.database.factory.DatabaseFactory"><code class="docutils literal notranslate"><span class="pre">DatabaseFactory</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.factory.html#core.database.factory.DatabaseFactory.create"><code class="docutils literal notranslate"><span class="pre">DatabaseFactory.create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.factory.html#core.database.factory.DatabaseFactory.list_supported_engines"><code class="docutils literal notranslate"><span class="pre">DatabaseFactory.list_supported_engines()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.factory.html#core.database.factory.DatabaseFactory.register_adapter"><code class="docutils literal notranslate"><span class="pre">DatabaseFactory.register_adapter()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.manager.html">core.database.manager module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.manager.html#database-manager-lightweight-orchestrator-for-database-operations">DATABASE MANAGER – Lightweight orchestrator for database operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager"><code class="docutils literal notranslate"><span class="pre">DatabaseManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.close"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.commit"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.commit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.create_tables"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.create_tables()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.create_tax_summaries"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.create_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.create_tax_summary_for_pair"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.create_tax_summary_for_pair()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.get_ml_data"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_ml_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.get_run"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.get_runs_by_experiment"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_runs_by_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.get_tax_summaries"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_baseline"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_baseline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_cpu_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_cpu_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_energy_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_energy_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_environment_config"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_environment_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_experiment"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_hardware"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_hardware()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_interrupt_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_interrupt_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_orchestration_events"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_orchestration_events()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_run"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.insert_thermal_samples"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.insert_thermal_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.rollback"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.rollback()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.transaction"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.transaction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager.html#core.database.manager.DatabaseManager.update_run_stats"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.update_run_stats()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.manager_oldversion.html">core.database.manager_oldversion module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.manager_oldversion.html#database-manager-module-4-persistent-storage-for-alems-experiments">DATABASE MANAGER – Module 4: Persistent Storage for A‑LEMS Experiments</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager"><code class="docutils literal notranslate"><span class="pre">DatabaseManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager.close"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager.get_ml_data"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_ml_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager.get_run"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager.get_runs_by_experiment"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_runs_by_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager.get_tax_summaries"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.get_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.manager_oldversion.html#core.database.manager_oldversion.DatabaseManager.save_experiment"><code class="docutils literal notranslate"><span class="pre">DatabaseManager.save_experiment()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.migration_manager.html">core.database.migration_manager module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.migration_manager.html#core.database.migration_manager.MigrationManager"><code class="docutils literal notranslate"><span class="pre">MigrationManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.migration_manager.html#core.database.migration_manager.MigrationManager.apply_migrations"><code class="docutils literal notranslate"><span class="pre">MigrationManager.apply_migrations()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.migration_manager.html#core.database.migration_manager.MigrationManager.get_current_version"><code class="docutils literal notranslate"><span class="pre">MigrationManager.get_current_version()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.migration_manager.html#core.database.migration_manager.MigrationManager.get_pending_migrations"><code class="docutils literal notranslate"><span class="pre">MigrationManager.get_pending_migrations()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.migration_manager.html#core.database.migration_manager.migrate"><code class="docutils literal notranslate"><span class="pre">migrate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.schema.html">core.database.schema module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.schema.html#database-schema-sql-definitions-for-all-alems-tables">DATABASE SCHEMA – SQL definitions for all A‑LEMS tables</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.schema.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.sqlite_adapter.html">core.database.sqlite_adapter module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.sqlite_adapter.html#sqlite-adapter-sqlite-implementation-of-databaseinterface">SQLITE ADAPTER – SQLite implementation of DatabaseInterface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.close"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.commit"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.commit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.connect"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.connect()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.create_tables"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.create_tables()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.create_tax_summaries"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.create_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.execute"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.execute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.execute_many"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.execute_many()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_ml_data"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.get_ml_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_run"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.get_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_runs_by_experiment"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.get_runs_by_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_tax_summaries"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.get_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_baseline"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_baseline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_cpu_samples"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_cpu_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_energy_samples"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_energy_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_environment_config"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_environment_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_experiment"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_experiment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_hardware"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_hardware()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_interrupt_samples"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_interrupt_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_llm_interaction"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_llm_interaction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_orchestration_events"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_orchestration_events()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_run"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.insert_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.rollback"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.rollback()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.transaction"><code class="docutils literal notranslate"><span class="pre">SQLiteAdapter.transaction()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-core.database">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core.database" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.html" class="btn btn-neutral float-left" title="core package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.database.repositories.html" class="btn btn-neutral float-right" title="core.database.repositories package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,665 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.sidebar &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.sidebar</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.sidebar</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/sidebar.py</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">A-LEMS sidebar — Phase 3: 11 clean section buttons.</span>
+
+<span class="sd">Sidebar contains:</span>
+<span class="sd">  • Brand panel (logo, name, version, connection dot)</span>
+<span class="sd">  • Active session banner</span>
+<span class="sd">  • Live Lab panel (connect/disconnect)</span>
+<span class="sd">  • 11 section navigation buttons (coloured dot + name)</span>
+<span class="sd">  • Theme toggle</span>
+<span class="sd">  • Footer (RAPL spark bars + stats)</span>
+
+<span class="sd">Session state written here:</span>
+<span class="sd">  nav_section  — clicked section name | None</span>
+<span class="sd">  nav_page     — None (always cleared on section click → goes to landing)</span>
+<span class="sd">  nav_last     — preserved (not touched here)</span>
+
+<span class="sd">render_sidebar() returns None (dispatcher reads session state directly).</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">DB_PATH</span><span class="p">,</span> <span class="n">SECTION_ACCENTS</span><span class="p">,</span> <span class="n">SECTION_PAGES</span><span class="p">,</span> <span class="n">SECTIONS</span><span class="p">,</span>
+                        <span class="n">STATUS_COLORS</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.connection</span><span class="w"> </span><span class="kn">import</span> <span class="n">disconnect</span><span class="p">,</span> <span class="n">get_conn</span><span class="p">,</span> <span class="n">verify_connection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q1</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">_tokens</span>
+
+
+<span class="c1"># ── CSS ───────────────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_css</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">&lt;style&gt;</span>
+<span class="s2">@import url(&#39;https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&amp;display=swap&#39;);</span>
+
+<span class="s2">[data-testid=&quot;stSidebar&quot;],</span>
+<span class="s2">[data-testid=&quot;stSidebarContent&quot;] </span><span class="se">{{</span>
+<span class="s2">    background: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg1&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    border-right: 0.5px solid </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] * </span><span class="se">{{</span>
+<span class="s2">    font-family: &#39;IBM Plex Mono&#39;, monospace !important;</span>
+<span class="s2">    box-sizing: border-box;</span>
+<span class="se">}}</span>
+
+<span class="s2">/* ── Kill default button styling ────────────────────────────────── */</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] .stButton &gt; button </span><span class="se">{{</span>
+<span class="s2">    background: transparent !important;</span>
+<span class="s2">    border: none !important;</span>
+<span class="s2">    border-left: 2px solid transparent !important;</span>
+<span class="s2">    border-radius: 0 7px 7px 0 !important;</span>
+<span class="s2">    padding: 8px 12px 8px 10px !important;</span>
+<span class="s2">    font-size: 12.5px !important;</span>
+<span class="s2">    font-weight: 400 !important;</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;t2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    text-align: left !important;</span>
+<span class="s2">    width: 100% !important;</span>
+<span class="s2">    cursor: pointer !important;</span>
+<span class="s2">    transition: background .13s, border-color .13s, color .13s !important;</span>
+<span class="s2">    margin: 1px 0 !important;</span>
+<span class="s2">    position: relative !important;</span>
+<span class="s2">    line-height: 1.2 !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] .stButton &gt; button:hover </span><span class="se">{{</span>
+<span class="s2">    background: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    cursor: pointer !important;</span>
+<span class="se">}}</span>
+
+<span class="s2">/* ── Active section button ──────────────────────────────────────── */</span>
+<span class="s2">.alems-active [data-testid=&quot;stButton&quot;] &gt; button </span><span class="se">{{</span>
+<span class="s2">    background: linear-gradient(90deg, </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2">ee, </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg1&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2">) !important;</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    font-weight: 600 !important;</span>
+<span class="s2">    cursor: pointer !important;</span>
+<span class="se">}}</span>
+
+<span class="s2">/* ── Expander ───────────────────────────────────────────────────── */</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] [data-testid=&quot;stExpander&quot;] </span><span class="se">{{</span>
+<span class="s2">    background: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    border: 0.5px solid </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    border-radius: 8px !important;</span>
+<span class="s2">    margin: 3px 4px !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] details &gt; summary </span><span class="se">{{</span>
+<span class="s2">    font-size: 11px !important;</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;t2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    cursor: pointer !important;</span>
+<span class="s2">    padding: 7px 10px !important;</span>
+<span class="s2">    overflow: visible !important;</span>
+<span class="se">}}</span>
+
+<span class="s2">/* ── Inputs ─────────────────────────────────────────────────────── */</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] input </span><span class="se">{{</span>
+<span class="s2">    background: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    border: 0.5px solid </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    border-radius: 6px !important;</span>
+<span class="s2">    font-size: 11px !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] input:focus </span><span class="se">{{</span>
+<span class="s2">    border-color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    box-shadow: 0 0 0 2px </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2">22 !important;</span>
+<span class="s2">    outline: none !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] label p </span><span class="se">{{</span>
+<span class="s2">    font-size: 9px !important;</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;t3&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="s2">    text-transform: uppercase !important;</span>
+<span class="s2">    letter-spacing: .1em !important;</span>
+<span class="se">}}</span>
+
+<span class="s2">/* ── Scrollbar ──────────────────────────────────────────────────── */</span>
+<span class="s2">[data-testid=&quot;stSidebarContent&quot;]::-webkit-scrollbar </span><span class="se">{{</span><span class="s2"> width: 3px; </span><span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebarContent&quot;]::-webkit-scrollbar-track </span><span class="se">{{</span><span class="s2"> background: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;bg1&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2">; </span><span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebarContent&quot;]::-webkit-scrollbar-thumb </span><span class="se">{{</span>
+<span class="s2">    background: </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;brd2&quot;</span><span class="p">]</span><span class="si">}</span><span class="s2">; border-radius: 2px; </span><span class="se">}}</span>
+
+<span class="s2">/* Force pointer everywhere */</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] button </span><span class="se">{{</span><span class="s2"> cursor: pointer !important; </span><span class="se">}}</span>
+<span class="s2">&lt;/style&gt;&quot;&quot;&quot;</span>
+
+
+<span class="c1"># ── Helpers ───────────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_live_url</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_j</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span> <span class="k">as</span> <span class="n">_P</span>
+
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="n">_P</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;live_url.json&quot;</span><span class="p">,</span> <span class="n">_P</span><span class="p">(</span><span class="s2">&quot;live_url.json&quot;</span><span class="p">)]:</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_j</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+    <span class="k">return</span> <span class="p">{}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_divider</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;height:0.5px;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;brd&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;margin:6px 0;&#39;&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># ── Brand panel ───────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_brand</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">online</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+    <span class="n">dot_clr</span> <span class="o">=</span> <span class="s2">&quot;#22c55e&quot;</span> <span class="k">if</span> <span class="n">online</span> <span class="k">else</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;t3&quot;</span><span class="p">]</span>
+    <span class="n">dot_glow</span> <span class="o">=</span> <span class="s2">&quot;box-shadow:0 0 0 3px #22c55e22;&quot;</span> <span class="k">if</span> <span class="n">online</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="c1"># Logo click → go to overview (clear section)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 10px 10px;border-bottom:0.5px solid </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;brd&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:8px;margin-bottom:3px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;width:28px;height:28px;border-radius:7px;flex-shrink:0;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,#052e16,#064e3b);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:0.5px solid #22c55e44;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;display:flex;align-items:center;justify-content:center;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;box-shadow:0 3px 10px #22c55e18;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;svg viewBox=&#39;0 0 28 28&#39; width=&#39;20&#39; height=&#39;20&#39; fill=&#39;none&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;defs&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;radialGradient id=&#39;rg1&#39; cx=&#39;40%&#39; cy=&#39;35%&#39; r=&#39;60%&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;stop offset=&#39;0%&#39; stop-color=&#39;#6ee7b7&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;stop offset=&#39;50%&#39; stop-color=&#39;#059669&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;stop offset=&#39;100%&#39; stop-color=&#39;#022c22&#39;/&gt;&lt;/radialGradient&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/defs&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;circle cx=&#39;14&#39; cy=&#39;14&#39; r=&#39;7&#39; fill=&#39;url(#rg1)&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;ellipse cx=&#39;14&#39; cy=&#39;14&#39; rx=&#39;11&#39; ry=&#39;4&#39; stroke=&#39;#22c55e&#39;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot; stroke-width=&#39;0.9&#39; fill=&#39;none&#39; opacity=&#39;0.7&#39; transform=&#39;rotate(-15,14,14)&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;line x1=&#39;14&#39; y1=&#39;2&#39; x2=&#39;14&#39; y2=&#39;7&#39; stroke=&#39;#6ee7b7&#39; stroke-width=&#39;1.2&#39; stroke-linecap=&#39;round&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;line x1=&#39;14&#39; y1=&#39;21&#39; x2=&#39;14&#39; y2=&#39;26&#39; stroke=&#39;#6ee7b7&#39; stroke-width=&#39;1.2&#39; stroke-linecap=&#39;round&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;circle cx=&#39;14&#39; cy=&#39;2&#39; r=&#39;1.4&#39; fill=&#39;#6ee7b7&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;circle cx=&#39;14&#39; cy=&#39;26&#39; r=&#39;1.4&#39; fill=&#39;#6ee7b7&#39;/&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/svg&gt;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:17px;font-weight:800;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t1&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;letter-spacing:-.5px;&#39;&gt;A-LEMS&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:8px;padding:1px 5px;border-radius:3px;font-weight:600;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;bg2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;accent&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;brd2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;&#39;&gt;v2.1&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-left:auto;width:8px;height:8px;border-radius:50%;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">dot_clr</span><span class="si">}</span><span class="s2">;</span><span class="si">{</span><span class="n">dot_glow</span><span class="si">}</span><span class="s2">flex-shrink:0;&#39;&gt;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;text-transform:uppercase;letter-spacing:.13em;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;AI Energy Measurement&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Logo → overview</span>
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;⌂  Home · Overview&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;nav_home&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_section&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_page&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+
+<span class="c1"># ── Session banner ────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_session_banner</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT group_id,</span>
+<span class="s2">                   COUNT(*) as total_exps,</span>
+<span class="s2">                   SUM(CASE WHEN status=&#39;completed&#39; THEN 1 ELSE 0 END) as done,</span>
+<span class="s2">                   SUM(CASE WHEN status=&#39;running&#39;   THEN 1 ELSE 0 END) as running,</span>
+<span class="s2">                   SUM(CASE WHEN status=&#39;failed&#39;    THEN 1 ELSE 0 END) as failed,</span>
+<span class="s2">                   SUM(runs_completed) as runs_done,</span>
+<span class="s2">                   SUM(runs_total)     as runs_total</span>
+<span class="s2">            FROM experiments</span>
+<span class="s2">            WHERE group_id=(SELECT group_id FROM experiments ORDER BY exp_id DESC LIMIT 1)</span>
+<span class="s2">            GROUP BY group_id</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">row</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;group_id&quot;</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_exps&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;done&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">run_</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">fail_</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">runs_d</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runs_done&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">runs_t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runs_total&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">run_</span><span class="p">:</span>
+            <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;RUNNING&quot;</span><span class="p">,</span> <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">fail_</span><span class="p">:</span>
+            <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;FAILED&quot;</span><span class="p">,</span> <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">done</span> <span class="o">==</span> <span class="n">total</span><span class="p">:</span>
+            <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;COMPLETED&quot;</span><span class="p">,</span> <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;completed&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;PENDING&quot;</span><span class="p">,</span> <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;pending&quot;</span><span class="p">]</span>
+
+        <span class="n">short</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;group_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;session_&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[:</span><span class="mi">18</span><span class="p">]</span>
+        <span class="n">pct</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">runs_d</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">runs_t</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin:8px 6px 4px;padding:9px 11px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;bg2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">33;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-left:2.5px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;border-radius:8px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;position:relative;overflow:hidden;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;position:absolute;top:0;right:0;width:50px;height:50px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:radial-gradient(circle,</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">10 0%,transparent 70%);pointer-events:none;&#39;&gt;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;font-weight:700;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;text-transform:uppercase;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;letter-spacing:.12em;margin-bottom:2px;display:flex;align-items:center;gap:5px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;width:5px;height:5px;border-radius:50%;background:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;flex-shrink:0;&#39;&gt;&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Active Session&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t1&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;font-weight:500;margin-bottom:1px;&#39;&gt;</span><span class="si">{</span><span class="n">short</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;margin-bottom:5px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">done</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> exps · </span><span class="si">{</span><span class="n">runs_d</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">runs_t</span><span class="si">}</span><span class="s2"> runs&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;bg3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;border-radius:2px;height:3px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:linear-gradient(90deg,</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">99,</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">);&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;width:</span><span class="si">{</span><span class="n">pct</span><span class="si">}</span><span class="s2">%;height:100%;border-radius:2px;&#39;&gt;&lt;/div&gt;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+
+<span class="c1"># ── Live Lab panel ────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_live_lab</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">get_conn</span><span class="p">()</span>
+    <span class="n">online</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verified&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">_live</span> <span class="o">=</span> <span class="n">_read_live_url</span><span class="p">()</span>
+    <span class="n">lab_live</span> <span class="o">=</span> <span class="n">_live</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;online&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">clr</span> <span class="o">=</span> <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">online</span> <span class="k">else</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Connected · &quot;</span> <span class="o">+</span> <span class="n">conn</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">26</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">online</span>
+        <span class="k">else</span> <span class="p">(</span>
+            <span class="s2">&quot;🟢 Lab online — click Connect&quot;</span> <span class="k">if</span> <span class="n">lab_live</span> <span class="k">else</span> <span class="s2">&quot;Offline · analysis mode&quot;</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin:4px 6px;padding:7px 11px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;bg2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;border:0.5px solid </span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;brd&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-left:2px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;border-radius:8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;font-weight:700;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;🟢&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">online</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;🔌&#39;</span><span class="si">}</span><span class="s2">  Live Lab&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;&#39;&gt;</span><span class="si">{</span><span class="n">sub</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">online</span><span class="p">:</span>
+        <span class="n">hclr</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">conn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;harness&quot;</span><span class="p">)</span>
+            <span class="k">else</span> <span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s2">&quot;pending&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">hclr</span><span class="si">}</span><span class="s2">;padding:1px 10px 3px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;● </span><span class="si">{</span><span class="s1">&#39;Harness ready&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">conn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;harness&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Harness unavailable&#39;</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;⏏  Disconnect&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;nav_disconnect&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="n">disconnect</span><span class="p">()</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;show_connect&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;show_connect&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+            <span class="s2">&quot;⚡  Connect to Live Lab&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;toggle_connect&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;show_connect&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;show_connect&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;show_connect&quot;</span><span class="p">]:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;line-height:1.6;margin-bottom:6px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Run &lt;code style=&#39;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;accent&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;&#39;&gt;tunnel_agent.py&lt;/code&gt; on your lab machine.&lt;br&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;b style=&#39;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t2&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;&#39;&gt;URL changes each session.&lt;/b&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">_au</span> <span class="o">=</span> <span class="n">_live</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;url&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">lab_live</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">_at</span> <span class="o">=</span> <span class="n">_live</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">lab_live</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">lab_live</span> <span class="ow">and</span> <span class="n">_au</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">STATUS_COLORS</span><span class="p">[</span><span class="s1">&#39;running&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;padding:0 0 4px;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;🟢 Auto-detected!&lt;/div&gt;&quot;</span><span class="p">,</span>
+                    <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">_url</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+                <span class="s2">&quot;Lab URL&quot;</span><span class="p">,</span>
+                <span class="n">value</span><span class="o">=</span><span class="n">_au</span><span class="p">,</span>
+                <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;https://xxxx.trycloudflare.com&quot;</span><span class="p">,</span>
+                <span class="n">key</span><span class="o">=</span><span class="s2">&quot;conn_url&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">_tok</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+                <span class="s2">&quot;Access token&quot;</span><span class="p">,</span>
+                <span class="n">value</span><span class="o">=</span><span class="n">_at</span><span class="p">,</span>
+                <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;alems-xxxxxxxxxxxxxxxx&quot;</span><span class="p">,</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;password&quot;</span><span class="p">,</span>
+                <span class="n">key</span><span class="o">=</span><span class="s2">&quot;conn_tok&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;🔗  Connect&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;nav_connect&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">_url</span><span class="p">:</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Enter the lab URL&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="ow">not</span> <span class="n">_tok</span><span class="p">:</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Enter the access token&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">spinner</span><span class="p">(</span><span class="s2">&quot;Connecting...&quot;</span><span class="p">):</span>
+                        <span class="n">ok</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">harness</span> <span class="o">=</span> <span class="n">verify_connection</span><span class="p">(</span><span class="n">_url</span><span class="p">,</span> <span class="n">_tok</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
+                        <span class="n">conn</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                            <span class="p">{</span>
+                                <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="n">_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">),</span>
+                                <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">_tok</span><span class="p">,</span>
+                                <span class="s2">&quot;verified&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                                <span class="s2">&quot;harness&quot;</span><span class="p">:</span> <span class="n">harness</span><span class="p">,</span>
+                                <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;online&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                            <span class="p">}</span>
+                        <span class="p">)</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;conn&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Connected · harness </span><span class="si">{</span><span class="s1">&#39;ready&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">harness</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;unavailable&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">conn</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;conn&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">conn</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">conn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">):</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Last error: </span><span class="si">{</span><span class="n">conn</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># ── Section nav — THE MAIN CHANGE: 11 clean buttons ──────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_nav</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;11 section buttons. Coloured dot + name. Active section highlighted.&quot;&quot;&quot;</span>
+    <span class="n">active_section</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;nav_section&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">SECTIONS</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">SECTION_PAGES</span><span class="p">[</span><span class="n">section</span><span class="p">]</span>
+        <span class="n">accent</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span>
+        <span class="n">active</span> <span class="o">=</span> <span class="n">section</span> <span class="o">==</span> <span class="n">active_section</span>
+
+        <span class="c1"># Wrap active item for CSS</span>
+        <span class="k">if</span> <span class="n">active</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;&lt;div class=&#39;alems-active&#39;&gt;&quot;</span><span class="p">,</span> <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Button label: coloured dot + section name</span>
+        <span class="c1"># We can&#39;t put HTML in button labels — use unicode bullet styled via CSS</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">&quot;</span>  <span class="c1"># spaces reserved for ::before dot</span>
+        <span class="c1"># _icons = {&quot;COMMAND CENTRE&quot;:&quot;:material/terminal:&quot;,&quot;ENERGY &amp; SILICON&quot;:&quot;:material/bolt:&quot;,&quot;AGENTIC INTELLIGENCE&quot;:&quot;:material/psychology:&quot;,&quot;DATA MOVEMENT&quot;:&quot;:material/swap_horiz:&quot;,&quot;SESSIONS &amp; RUNS&quot;:&quot;:material/history:&quot;,&quot;RESEARCH &amp; INSIGHTS&quot;:&quot;:material/biotech:&quot;,&quot;ENVIRONMENT&quot;:&quot;:material/eco:&quot;,&quot;DATA QUALITY&quot;:&quot;:material/fact_check:&quot;,&quot;SILICON LAB&quot;:&quot;:material/memory:&quot;,&quot;DEVELOPER TOOLS&quot;:&quot;:material/code:&quot;,&quot;SETTINGS&quot;:&quot;:material/settings:&quot;}</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;sec_</span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_section&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">section</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_page&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># always show landing first</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">active</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span> <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Inject dot colours via CSS targeted at each button&#39;s aria-label</span>
+    <span class="n">dot_css</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">SECTIONS</span><span class="p">:</span>
+        <span class="n">accent</span> <span class="o">=</span> <span class="n">SECTION_PAGES</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span>
+        <span class="n">safe</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&amp;&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&amp;&quot;</span><span class="p">)</span>
+        <span class="n">dot_css</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] button[aria-label=&quot;  </span><span class="si">{</span><span class="n">safe</span><span class="si">}</span><span class="s2">&quot;] p </span><span class="se">{{</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">cc !important;</span>
+<span class="s2">    text-align: left !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] button[aria-label=&quot;</span><span class="si">{</span><span class="n">safe</span><span class="si">}</span><span class="s2">&quot;]::before </span><span class="se">{{</span>
+<span class="s2">    display: none !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] button[aria-label=&quot;  </span><span class="si">{</span><span class="n">safe</span><span class="si">}</span><span class="s2">&quot;]:hover </span><span class="se">{{</span>
+<span class="s2">    border-left: 2px solid </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">66 !important;</span>
+<span class="se">}}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] button[aria-label=&quot;  </span><span class="si">{</span><span class="n">safe</span><span class="si">}</span><span class="s2">&quot;]:hover p </span><span class="se">{{</span>
+<span class="s2">    color: </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="se">}}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+    <span class="c1"># Active section gets full accent border</span>
+    <span class="n">active_sec</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;nav_section&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">active_sec</span> <span class="ow">and</span> <span class="n">active_sec</span> <span class="ow">in</span> <span class="n">SECTION_PAGES</span><span class="p">:</span>
+        <span class="n">acc</span> <span class="o">=</span> <span class="n">SECTION_PAGES</span><span class="p">[</span><span class="n">active_sec</span><span class="p">][</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span>
+        <span class="n">safe_a</span> <span class="o">=</span> <span class="n">active_sec</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&amp;&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&amp;&quot;</span><span class="p">)</span>
+        <span class="n">dot_css</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">.alems-active [data-testid=&quot;stButton&quot;] &gt; button[aria-label=&quot;  </span><span class="si">{</span><span class="n">safe_a</span><span class="si">}</span><span class="s2">&quot;] </span><span class="se">{{</span>
+<span class="s2">    border-left: 2px solid </span><span class="si">{</span><span class="n">acc</span><span class="si">}</span><span class="s2"> !important;</span>
+<span class="se">}}</span><span class="s2">&quot;&quot;&quot;</span>
+
+        <span class="n">dot_css</span> <span class="o">+=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] .stButton &gt; button {</span>
+<span class="s2">    -webkit-user-select: none;</span>
+<span class="s2">}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] .stButton &gt; button::after {</span>
+<span class="s2">    display: none !important;</span>
+<span class="s2">}</span>
+<span class="s2">[data-testid=&quot;stSidebar&quot;] .stButton &gt; button p {</span>
+<span class="s2">    pointer-events: none;</span>
+<span class="s2">    text-align: left !important;</span>
+<span class="s2">}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;style&gt;</span><span class="si">{</span><span class="n">dot_css</span><span class="si">}</span><span class="s2">&lt;/style&gt;&quot;</span><span class="p">,</span> <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="c1"># ── Settings ──────────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_settings</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">dark</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;theme&quot;</span><span class="p">,</span> <span class="s2">&quot;dark&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;dark&quot;</span>
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+        <span class="s2">&quot;☀  Light mode&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;☾  Dark mode&quot;</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sidebar_theme_toggle&quot;</span><span class="p">,</span>
+        <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;theme&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;light&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;dark&quot;</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+
+<span class="c1"># ── Footer ────────────────────────────────────────────────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_footer</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">_divider</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">_h</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="mi">6</span><span class="p">,</span>
+        <span class="mi">8</span><span class="p">,</span>
+        <span class="mi">10</span><span class="p">,</span>
+        <span class="mi">7</span><span class="p">,</span>
+        <span class="mi">12</span><span class="p">,</span>
+        <span class="mi">9</span><span class="p">,</span>
+        <span class="mi">11</span><span class="p">,</span>
+        <span class="mi">8</span><span class="p">,</span>
+        <span class="mi">14</span><span class="p">,</span>
+        <span class="mi">10</span><span class="p">,</span>
+        <span class="mi">13</span><span class="p">,</span>
+        <span class="mi">9</span><span class="p">,</span>
+        <span class="mi">11</span><span class="p">,</span>
+        <span class="mi">8</span><span class="p">,</span>
+        <span class="mi">10</span><span class="p">,</span>
+        <span class="mi">12</span><span class="p">,</span>
+        <span class="mi">9</span><span class="p">,</span>
+        <span class="mi">7</span><span class="p">,</span>
+        <span class="mi">11</span><span class="p">,</span>
+        <span class="mi">13</span><span class="p">,</span>
+        <span class="mi">10</span><span class="p">,</span>
+        <span class="mi">8</span><span class="p">,</span>
+        <span class="mi">12</span><span class="p">,</span>
+        <span class="mi">9</span><span class="p">,</span>
+        <span class="mi">11</span><span class="p">,</span>
+        <span class="mi">10</span><span class="p">,</span>
+        <span class="mi">8</span><span class="p">,</span>
+        <span class="mi">13</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">_c</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">SECTION_ACCENTS</span><span class="p">[</span><span class="s2">&quot;ENERGY &amp; SILICON&quot;</span><span class="p">],</span>
+        <span class="n">SECTION_ACCENTS</span><span class="p">[</span><span class="s2">&quot;COMMAND CENTRE&quot;</span><span class="p">],</span>
+        <span class="n">SECTION_ACCENTS</span><span class="p">[</span><span class="s2">&quot;AGENTIC INTELLIGENCE&quot;</span><span class="p">],</span>
+        <span class="n">SECTION_ACCENTS</span><span class="p">[</span><span class="s2">&quot;DATA MOVEMENT&quot;</span><span class="p">],</span>
+    <span class="p">]</span>
+    <span class="n">bars</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;flex:1;height:</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">px;background:</span><span class="si">{</span><span class="n">_c</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="mi">4</span><span class="p">]</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-radius:1px 1px 0 0;opacity:0.65;min-width:3px;&#39;&gt;&lt;/div&gt;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">_h</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:flex-end;gap:1px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;height:16px;margin:0 6px 6px;&#39;&gt;</span><span class="si">{</span><span class="n">bars</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">nr</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM runs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+        <span class="n">ne</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM experiments&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+        <span class="n">ns</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT group_id) AS n FROM experiments&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;—&quot;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;gap:14px;padding:0 8px 4px;&#39;&gt;&quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&lt;div style=&#39;font-weight:700;font-size:14px;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;accent&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;text-transform:uppercase;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;letter-spacing:.09em;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;margin-top:1px;&#39;&gt;</span><span class="si">{</span><span class="n">l</span><span class="si">}</span><span class="s2">&lt;/div&gt;&lt;/div&gt;&quot;</span>
+                <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">nr</span><span class="p">,</span> <span class="s2">&quot;Runs&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">ne</span><span class="p">,</span> <span class="s2">&quot;Exps&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="s2">&quot;Sessions&quot;</span><span class="p">)]</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:8px;color:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;t3&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;padding:0 8px 6px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DB_PATH</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> · RAPL · perf · psutil&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;⟳  Refresh&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;nav_refresh&quot;</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">cache_data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+
+<span class="c1"># ── Entry point ───────────────────────────────────────────────────────────────</span>
+<div class="viewcode-block" id="render_sidebar">
+<a class="viewcode-back" href="../../gui.sidebar.html#gui.sidebar.render_sidebar">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render_sidebar</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render sidebar. Sets nav_section + nav_page in session_state.&quot;&quot;&quot;</span>
+    <span class="n">dark</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;theme&quot;</span><span class="p">,</span> <span class="s2">&quot;dark&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;dark&quot;</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">_tokens</span><span class="p">(</span><span class="n">dark</span><span class="p">)</span>
+
+    <span class="c1"># Initialise state on first load</span>
+    <span class="k">if</span> <span class="s2">&quot;nav_section&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_section&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="s2">&quot;nav_page&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_page&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="s2">&quot;nav_last&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_last&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">sidebar</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="n">_css</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_conn</span><span class="p">()</span>
+        <span class="n">online</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verified&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">_brand</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">online</span><span class="p">)</span>
+        <span class="n">_session_banner</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">_live_lab</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;height:0.5px;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;brd&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;margin:8px 0 4px;&#39;&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">_nav</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;height:0.5px;background:</span><span class="si">{</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;brd&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">;margin:4px 0 6px;&#39;&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">_settings</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">_footer</span><span class="p">(</span><span class="n">t</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

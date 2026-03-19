@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.sample_processor &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.sample_processor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.sample_processor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">SAMPLE PROCESSOR – Handle energy, CPU, and interrupt sample processing</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="process_energy_samples">
+<a class="viewcode-back" href="../../../core.execution.sample_processor.html#core.execution.sample_processor.process_energy_samples">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_energy_samples</span><span class="p">(</span><span class="n">energy_engine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process energy samples from energy_engine.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (energy_samples, interrupt_samples)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">energy_samples</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">energy_engine</span><span class="p">,</span> <span class="s2">&quot;last_samples&quot;</span><span class="p">):</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">energy_engine</span><span class="o">.</span><span class="n">last_samples</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples in energy_engine.last_samples&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Samples are tuples - identify them by structure</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="c1"># This is an energy sample: (timestamp, {&#39;core&#39;:..., &#39;package-0&#39;:..., &#39;uncore&#39;:...})</span>
+                <span class="n">timestamp</span><span class="p">,</span> <span class="n">energy_dict</span> <span class="o">=</span> <span class="n">sample</span>
+                <span class="n">energy_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span>
+                            <span class="n">timestamp</span> <span class="o">*</span> <span class="mi">1_000_000_000</span>
+                        <span class="p">),</span>  <span class="c1"># Convert seconds to ns</span>
+                        <span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;core_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># DRAM not in samples</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+                <span class="c1"># This is an interrupt sample: (timestamp, value)</span>
+                <span class="n">interrupt_timestamp</span><span class="p">,</span> <span class="n">interrupt_value</span> <span class="o">=</span> <span class="n">sample</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT RAW - timestamp: </span><span class="si">{</span><span class="n">interrupt_timestamp</span><span class="si">}</span><span class="s2">, type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">interrupt_timestamp</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT RAW - value: </span><span class="si">{</span><span class="n">interrupt_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT CALC - divided by 1e9: </span><span class="si">{</span><span class="n">interrupt_timestamp</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 INTERRUPT CALC - epoch time: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="n">interrupt_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">interrupt_timestamp</span><span class="p">),</span>
+                        <span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">:</span> <span class="n">interrupt_value</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Unknown sample format: </span><span class="si">{</span><span class="n">sample</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;📊 Processed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">energy_samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> energy samples, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">interrupt_samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> interrupt samples&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">energy_samples</span><span class="p">,</span> <span class="n">interrupt_samples</span></div>
+
+
+
+<div class="viewcode-block" id="process_cpu_samples">
+<a class="viewcode-back" href="../../../core.execution.sample_processor.html#core.execution.sample_processor.process_cpu_samples">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_cpu_samples</span><span class="p">(</span><span class="n">raw_energy</span><span class="p">,</span> <span class="n">canonical_metrics</span><span class="p">,</span> <span class="n">store_extra</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extract CPU samples from turbostat continuous data.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of CPU sample dictionaries</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cpu_samples</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="nb">hasattr</span><span class="p">(</span><span class="n">raw_energy</span><span class="p">,</span> <span class="s2">&quot;turbostat&quot;</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">raw_energy</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dataframe&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">raw_energy</span><span class="o">.</span><span class="n">turbostat</span><span class="p">[</span><span class="s2">&quot;dataframe&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Get timing info from metadata</span>
+        <span class="n">start_ns</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">interval_ns</span> <span class="o">=</span> <span class="mi">100_000_000</span>  <span class="c1"># Default 100ms</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">raw_energy</span><span class="p">,</span> <span class="s2">&quot;metadata&quot;</span><span class="p">):</span>
+            <span class="n">start_ns</span> <span class="o">=</span> <span class="n">raw_energy</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbostat_start_ns&quot;</span><span class="p">)</span>
+            <span class="n">interval_ns</span> <span class="o">=</span> <span class="n">raw_energy</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbostat_interval_ns&quot;</span><span class="p">,</span> <span class="mi">100_000_000</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                <span class="c1"># Calculate timestamp using monotonic clock</span>
+                <span class="k">if</span> <span class="n">start_ns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">timestamp_ns</span> <span class="o">=</span> <span class="n">start_ns</span> <span class="o">+</span> <span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">interval_ns</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Fallback to old method</span>
+                    <span class="n">timestamp_ns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">raw_energy</span><span class="o">.</span><span class="n">start_time</span> <span class="o">+</span> <span class="n">idx</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">)</span>
+
+                <span class="c1"># Start with timestamp</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="n">timestamp_ns</span><span class="p">}</span>
+
+                <span class="c1"># Extract canonical metrics</span>
+                <span class="k">for</span> <span class="n">our_name</span><span class="p">,</span> <span class="n">turbostat_col</span> <span class="ow">in</span> <span class="n">canonical_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">turbostat_col</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+
+                        <span class="c1"># Scale percentages (C-states, GPU RC6)</span>
+                        <span class="k">if</span> <span class="n">our_name</span> <span class="ow">in</span> <span class="p">[</span>
+                            <span class="s2">&quot;c1_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;c2_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;c3_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;c6_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;c7_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;pkg_c8_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;pkg_c9_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;pkg_c10_residency&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;gpu_rc6&quot;</span><span class="p">,</span>
+                        <span class="p">]:</span>
+                            <span class="n">val</span> <span class="o">=</span> <span class="n">val</span> <span class="o">/</span> <span class="mf">100.0</span>
+
+                        <span class="c1"># IPC might need scaling if &gt;10</span>
+                        <span class="k">if</span> <span class="n">our_name</span> <span class="o">==</span> <span class="s2">&quot;ipc&quot;</span> <span class="ow">and</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                            <span class="n">val</span> <span class="o">=</span> <span class="n">val</span> <span class="o">/</span> <span class="mf">10.0</span>
+
+                        <span class="n">sample</span><span class="p">[</span><span class="n">our_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                        <span class="n">sample</span><span class="p">[</span><span class="n">our_name</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+                <span class="c1"># Store all other columns in JSON</span>
+                <span class="k">if</span> <span class="n">store_extra</span><span class="p">:</span>
+                    <span class="n">extra</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">canonical_metrics</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                            <span class="n">val</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                                <span class="k">try</span><span class="p">:</span>
+                                    <span class="n">extra</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                                <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                                    <span class="n">extra</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                    <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;extra_metrics_json&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span> <span class="k">if</span> <span class="n">extra</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span>
+
+                <span class="n">cpu_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;📊 Extracted </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cpu_samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> CPU samples with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">canonical_metrics</span><span class="p">)</span><span class="si">}</span><span class="s2"> canonical metrics&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">cpu_samples</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 First 3 CPU samples:&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sample</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cpu_samples</span><span class="p">[:</span><span class="mi">3</span><span class="p">]):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Sample </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">sample</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cpu_samples</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_thermal_metrics">
+<a class="viewcode-back" href="../../../core.execution.sample_processor.html#core.execution.sample_processor.calculate_thermal_metrics">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_thermal_metrics</span><span class="p">(</span><span class="n">cpu_samples</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate thermal metrics from CPU samples.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (start_temp_c, max_temp_c, min_temp_c, thermal_delta_c)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cpu_samples</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">cpu_samples</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">temps</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">cpu_samples</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">temps</span><span class="p">:</span>
+            <span class="n">start_temp_c</span> <span class="o">=</span> <span class="n">temps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># First sample</span>
+            <span class="n">max_temp_c</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">temps</span><span class="p">)</span>  <span class="c1"># Maximum during run</span>
+            <span class="n">min_temp_c</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">temps</span><span class="p">)</span>  <span class="c1"># Minimum during run</span>
+            <span class="n">thermal_delta_c</span> <span class="o">=</span> <span class="n">max_temp_c</span> <span class="o">-</span> <span class="n">start_temp_c</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">start_temp_c</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">max_temp_c</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">min_temp_c</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">thermal_delta_c</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">start_temp_c</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_temp_c</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">min_temp_c</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">thermal_delta_c</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">start_temp_c</span><span class="p">,</span> <span class="n">max_temp_c</span><span class="p">,</span> <span class="n">min_temp_c</span><span class="p">,</span> <span class="n">thermal_delta_c</span></div>
+
+
+
+<div class="viewcode-block" id="load_canonical_metrics">
+<a class="viewcode-back" href="../../../core.execution.sample_processor.html#core.execution.sample_processor.load_canonical_metrics">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_canonical_metrics</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load canonical metrics from turbostat_override.yaml.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (canonical_metrics dict, store_extra boolean)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">canonical_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">store_extra</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">override_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/turbostat_override.yaml&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">override_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">override_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">override_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">canonical_metrics</span> <span class="o">=</span> <span class="n">override_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;canonical_metrics&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">store_extra</span> <span class="o">=</span> <span class="n">override_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;store_extra_in_json&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;📋 Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">canonical_metrics</span><span class="p">)</span><span class="si">}</span><span class="s2"> canonical metrics from override file&quot;</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Failed to load override file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">canonical_metrics</span><span class="p">,</span> <span class="n">store_extra</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

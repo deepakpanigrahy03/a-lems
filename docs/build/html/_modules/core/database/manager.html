@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.manager &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.database.manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.database.manager</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">DATABASE MANAGER – Lightweight orchestrator for database operations</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">PURPOSE:</span>
+<span class="sd">    Provides a unified interface to the database layer by coordinating:</span>
+<span class="sd">    - Database adapter (SQLite/PostgreSQL)</span>
+<span class="sd">    - Repositories for different data domains</span>
+<span class="sd">    - Transaction management</span>
+<span class="sd">    - Connection lifecycle</span>
+
+<span class="sd">WHY THIS EXISTS:</span>
+<span class="sd">    - Single entry point for all database operations</span>
+<span class="sd">    - Hides complexity of repositories from callers</span>
+<span class="sd">    - Manages adapter lifecycle</span>
+<span class="sd">    - Follows facade pattern</span>
+
+<span class="sd">AUTHOR: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseInterface</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseFactory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.repositories</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">EventsRepository</span><span class="p">,</span> <span class="n">RunsRepository</span><span class="p">,</span> <span class="n">SamplesRepository</span><span class="p">,</span>
+                           <span class="n">TaxRepository</span><span class="p">,</span> <span class="n">ThermalRepository</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DatabaseManager">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatabaseManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Main interface to the A‑LEMS database.</span>
+
+<span class="sd">    This class orchestrates all database operations by delegating to:</span>
+<span class="sd">    - A database adapter (SQLite/PostgreSQL)</span>
+<span class="sd">    - Specialized repositories for different data domains</span>
+
+<span class="sd">    Usage:</span>
+<span class="sd">        config = config_loader.get_db_config()</span>
+<span class="sd">        db = DatabaseManager(config)</span>
+
+<span class="sd">        # Insert data</span>
+<span class="sd">        exp_id = db.insert_experiment(experiment_data)</span>
+<span class="sd">        run_id = db.insert_run(exp_id, hw_id, run_data)</span>
+
+<span class="sd">        # Query data</span>
+<span class="sd">        runs = db.get_runs_by_experiment(exp_id)</span>
+<span class="sd">        ml_data = db.get_ml_data()</span>
+
+<span class="sd">        # Transaction management</span>
+<span class="sd">        with db.transaction():</span>
+<span class="sd">            db.insert_hardware(hw_data)</span>
+<span class="sd">            db.insert_baseline(baseline_data)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize database manager with configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Database configuration dictionary from ConfigLoader</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DatabaseInterface</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>
+
+        <span class="c1"># Initialize repositories</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">runs</span> <span class="o">=</span> <span class="n">RunsRepository</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span> <span class="o">=</span> <span class="n">EventsRepository</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">SamplesRepository</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tax</span> <span class="o">=</span> <span class="n">TaxRepository</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal</span> <span class="o">=</span> <span class="n">ThermalRepository</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create database adapter and establish connection.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">DatabaseFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DatabaseManager.close">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close database connection.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Transaction Management</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseManager.transaction">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.transaction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Begin a transaction context.</span>
+
+<span class="sd">        Usage:</span>
+<span class="sd">            with db.transaction():</span>
+<span class="sd">                db.insert_experiment(data1)</span>
+<span class="sd">                db.insert_experiment(data2)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.commit">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.commit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commit the current transaction.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.rollback">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.rollback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rollback the current transaction.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Table Management</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseManager.create_tables">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.create_tables">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create all tables if they don&#39;t exist.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">create_tables</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Core Insert Methods (Delegated to Repositories)</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseManager.insert_experiment">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_experiment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert a new experiment record.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">insert_experiment</span><span class="p">(</span><span class="n">experiment_data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_hardware">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_hardware">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_hardware</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hardware_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert or retrieve hardware configuration.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">insert_hardware</span><span class="p">(</span><span class="n">hardware_data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_environment_config">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_environment_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_environment_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert environment config or return existing ID&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">insert_environment_config</span><span class="p">(</span><span class="n">env_data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_baseline">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_baseline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert an idle baseline measurement.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">insert_baseline</span><span class="p">(</span><span class="n">baseline_data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_run">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_run</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">run_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a complete run with all metrics.</span>
+
+<span class="sd">        Delegates to RunsRepository for the complex 80+ column insert.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">insert_run</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">run_data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_orchestration_events">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_orchestration_events">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_orchestration_events</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert orchestration events for a run.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">insert_events</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">events</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_energy_samples">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_energy_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_energy_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert high-frequency RAPL samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">insert_energy_samples</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">samples</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_cpu_samples">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_cpu_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_cpu_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert CPU samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">insert_cpu_samples</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">samples</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_interrupt_samples">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_interrupt_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_interrupt_samples</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert interrupt samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">insert_interrupt_samples</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">samples</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.create_tax_summaries">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.create_tax_summaries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create tax summaries for an experiment.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tax</span><span class="o">.</span><span class="n">create_tax_summaries</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.insert_thermal_samples">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.insert_thermal_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_thermal_samples</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">thermal_samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert thermal samples for a run.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal</span><span class="o">.</span><span class="n">insert_thermal_samples</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">thermal_samples</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Query Methods (Delegated to Adapter)</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseManager.get_run">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.get_run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve a single run by ID.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.get_runs_by_experiment">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.get_runs_by_experiment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_runs_by_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve all runs for an experiment.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_runs_by_experiment</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.get_tax_summaries">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.get_tax_summaries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve tax summaries.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_tax_summaries</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.get_ml_data">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.get_ml_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ml_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve flattened ML data.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_ml_data</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DatabaseManager.update_run_stats">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.update_run_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_run_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update run with aggregated statistics from samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">update_run_stats</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Context Manager Support</span>
+    <span class="c1"># ========================================================================</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enter context manager.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Exit context manager - close connection.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DatabaseManager.create_tax_summary_for_pair">
+<a class="viewcode-back" href="../../../core.database.manager.html#core.database.manager.DatabaseManager.create_tax_summary_for_pair">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tax_summary_for_pair</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">linear_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">agentic_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">linear_uj</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">agentic_uj</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">linear_orchestration_uj</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">agentic_orchestration_uj</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create tax summary for one pair.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            exp_id: Experiment ID</span>
+<span class="sd">            linear_id: Linear run ID</span>
+<span class="sd">            agentic_id: Agentic run ID</span>
+<span class="sd">            linear_uj: Linear dynamic energy in microjoules</span>
+<span class="sd">            agentic_uj: Agentic dynamic energy in microjoules</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tax</span><span class="o">.</span><span class="n">create_tax_summary_for_pair</span><span class="p">(</span>
+            <span class="n">linear_id</span><span class="p">,</span>
+            <span class="n">agentic_id</span><span class="p">,</span>
+            <span class="n">linear_uj</span><span class="p">,</span>
+            <span class="n">agentic_uj</span><span class="p">,</span>
+            <span class="n">linear_orchestration_uj</span><span class="p">,</span>
+            <span class="n">agentic_orchestration_uj</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

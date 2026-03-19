@@ -1,0 +1,557 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.tests.run_experiment &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.tests.run_experiment</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.tests.run_experiment</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">REAL EXPERIMENT – Run statistically significant experiments</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="c1"># Add project root to path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.agentic</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgenticExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.display_formatter</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_pair_hardware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.experiment_runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentHarness</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.task_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">list_task_summary</span><span class="p">,</span> <span class="n">load_tasks</span>
+
+
+<div class="viewcode-block" id="parse_arguments">
+<a class="viewcode-back" href="../../../../core.execution.tests.run_experiment.html#core.execution.tests.run_experiment.parse_arguments">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_arguments</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse command line arguments.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Run A-LEMS experiments&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--repetitions&quot;</span><span class="p">,</span> <span class="s2">&quot;-n&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--cool-down&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--tasks&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;simple,capital&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--list-tasks&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--no-warmup&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--provider&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;cloud&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--country&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--save-db&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--providers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Comma-separated providers&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Show detailed hardware output per pair&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--optimizer&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Use optimizer wrapper&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="run_provider_task">
+<a class="viewcode-back" href="../../../../core.execution.tests.run_experiment.html#core.execution.tests.run_experiment.run_provider_task">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_provider_task</span><span class="p">(</span>
+    <span class="n">harness</span><span class="p">,</span> <span class="n">runner</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="n">repetitions</span><span class="p">,</span> <span class="n">cool_down</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">config</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run all repetitions for ONE provider-task combination.</span>
+<span class="sd">    Returns stats dict or None if failed.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        harness: ExperimentHarness instance</span>
+<span class="sd">        runner: ExperimentRunner instance</span>
+<span class="sd">        task: Task dictionary</span>
+<span class="sd">        provider: Provider name</span>
+<span class="sd">        repetitions: Number of repetitions</span>
+<span class="sd">        cool_down: Cool down seconds</span>
+<span class="sd">        args: Command line arguments</span>
+<span class="sd">        config: ConfigLoader instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   </span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">60</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   📋 </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">60</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Setup executors for this provider</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="n">linear_config</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_model_config</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+    <span class="n">agentic_config</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_model_config</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">linear_config</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">agentic_config</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ❌ Failed to load </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2"> configs, skipping...&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">optimizer</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.optimizer_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizedExecutorWrapper</span>
+
+        <span class="n">linear</span> <span class="o">=</span> <span class="n">OptimizedExecutorWrapper</span><span class="p">(</span><span class="n">linear_config</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+        <span class="n">agentic</span> <span class="o">=</span> <span class="n">OptimizedExecutorWrapper</span><span class="p">(</span><span class="n">agentic_config</span><span class="p">,</span> <span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">linear</span> <span class="o">=</span> <span class="n">LinearExecutor</span><span class="p">(</span><span class="n">linear_config</span><span class="p">)</span>
+        <span class="n">agentic</span> <span class="o">=</span> <span class="n">AgenticExecutor</span><span class="p">(</span><span class="n">agentic_config</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Optimizer:    </span><span class="si">{</span><span class="s1">&#39;Yes&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">args</span><span class="o">.</span><span class="n">optimizer</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;No&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Setup database for this provider-task</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exp_id</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">hw_id</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">runs_completed</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_db</span><span class="p">:</span>
+            <span class="n">db</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">env_id</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">setup_database</span><span class="p">()</span>
+
+            <span class="n">config</span><span class="o">.</span><span class="n">sync_task_categories</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="p">)</span>
+            <span class="n">runner</span><span class="o">.</span><span class="n">ensure_baseline_in_db</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">harness</span><span class="p">)</span>
+            <span class="n">exp_id</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">create_experiment</span><span class="p">(</span>
+                <span class="n">db</span><span class="p">,</span>
+                <span class="n">task</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span>
+                <span class="n">task</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+                <span class="n">provider</span><span class="p">,</span>
+                <span class="n">linear_config</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">country</span><span class="p">,</span>
+                <span class="n">repetitions</span><span class="p">,</span>
+                <span class="n">hw_id</span><span class="p">,</span>
+                <span class="n">env_id</span><span class="p">,</span>
+                <span class="n">optimizer</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Storage for results</span>
+        <span class="n">linear_results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">agentic_results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">taxes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">runs_completed</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># ========================================================================</span>
+        <span class="c1"># Repetition loop</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">repetitions</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">      </span><span class="si">{</span><span class="s1">&#39;─&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Repetition </span><span class="si">{</span><span class="n">rep</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">repetitions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      </span><span class="si">{</span><span class="s1">&#39;─&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Run linear</span>
+                <span class="n">linear_result</span> <span class="o">=</span> <span class="n">harness</span><span class="o">.</span><span class="n">run_linear</span><span class="p">(</span>
+                    <span class="n">executor</span><span class="o">=</span><span class="n">linear</span><span class="p">,</span>
+                    <span class="n">prompt</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;prompt&quot;</span><span class="p">],</span>
+                    <span class="n">task_id</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span>
+                    <span class="n">is_cloud</span><span class="o">=</span><span class="p">(</span><span class="n">provider</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span> <span class="s2">&quot;openrouter&quot;</span><span class="p">]),</span>
+                    <span class="n">country_code</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">country</span><span class="p">,</span>
+                    <span class="n">run_number</span><span class="o">=</span><span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Run agentic</span>
+                <span class="n">agentic_result</span> <span class="o">=</span> <span class="n">harness</span><span class="o">.</span><span class="n">run_agentic</span><span class="p">(</span>
+                    <span class="n">executor</span><span class="o">=</span><span class="n">agentic</span><span class="p">,</span>
+                    <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;prompt&quot;</span><span class="p">],</span>
+                    <span class="n">task_id</span><span class="o">=</span><span class="n">task</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span>
+                    <span class="n">is_cloud</span><span class="o">=</span><span class="p">(</span><span class="n">provider</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span> <span class="s2">&quot;openrouter&quot;</span><span class="p">]),</span>
+                    <span class="n">country_code</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">country</span><span class="p">,</span>
+                    <span class="n">run_number</span><span class="o">=</span><span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Store</span>
+                <span class="n">linear_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">linear_result</span><span class="p">)</span>
+                <span class="n">agentic_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agentic_result</span><span class="p">)</span>
+
+                <span class="c1"># Calculate tax</span>
+                <span class="n">linear_energy</span> <span class="o">=</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span>
+                <span class="n">agentic_energy</span> <span class="o">=</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span>
+                <span class="n">tax</span> <span class="o">=</span> <span class="n">agentic_energy</span> <span class="o">/</span> <span class="n">linear_energy</span> <span class="k">if</span> <span class="n">linear_energy</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="n">taxes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tax</span><span class="p">)</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">         Linear:  </span><span class="si">{</span><span class="n">linear_energy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         Agentic: </span><span class="si">{</span><span class="n">agentic_energy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         Tax: </span><span class="si">{</span><span class="n">tax</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Insert to database</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">save_db</span> <span class="ow">and</span> <span class="n">db</span><span class="p">:</span>
+                    <span class="n">runner</span><span class="o">.</span><span class="n">save_pair</span><span class="p">(</span>
+                        <span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">,</span> <span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         ✅ Pair </span><span class="si">{</span><span class="n">rep</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">repetitions</span><span class="si">}</span><span class="s2"> saved&quot;</span><span class="p">)</span>
+
+                    <span class="c1"># Update progress in real-time</span>
+                    <span class="n">runs_completed</span> <span class="o">=</span> <span class="p">(</span><span class="n">rep</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+                    <span class="n">runner</span><span class="o">.</span><span class="n">update_progress</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">)</span>
+
+                <span class="c1"># Cool down</span>
+                <span class="k">if</span> <span class="n">rep</span> <span class="o">&lt;</span> <span class="n">repetitions</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">         ⏳ Cooling down </span><span class="si">{</span><span class="n">cool_down</span><span class="si">}</span><span class="s2">s...&quot;</span><span class="p">)</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">cool_down</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="ne">KeyboardInterrupt</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ❌ ERROR in </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">db</span> <span class="ow">and</span> <span class="n">exp_id</span><span class="p">:</span>
+                <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;KeyboardInterrupt (user cancelled)&quot;</span>
+                <span class="n">runner</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span>
+                    <span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">error_msg</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   ⚠️ Experiment </span><span class="si">{</span><span class="n">exp_id</span><span class="si">}</span><span class="s2"> marked as failed after </span><span class="si">{</span><span class="n">runs_completed</span><span class="si">}</span><span class="s2"> runs&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># ========================================================================</span>
+        <span class="c1"># UPDATE EXPERIMENT STATUS - SUCCESS</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="k">if</span> <span class="n">db</span><span class="p">:</span>
+            <span class="n">runs_completed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">linear_results</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">agentic_results</span><span class="p">)</span>
+            <span class="n">runner</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ✅ Experiment </span><span class="si">{</span><span class="n">exp_id</span><span class="si">}</span><span class="s2"> completed with </span><span class="si">{</span><span class="n">runs_completed</span><span class="si">}</span><span class="s2"> runs&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ========================================================================</span>
+        <span class="c1"># DISPLAY HARDWARE PARAMETERS (verbose mode only)</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.display_formatter</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_pair_hardware</span>
+
+            <span class="n">display_pair_hardware</span><span class="p">(</span>
+                <span class="n">linear_results</span><span class="p">,</span>
+                <span class="n">agentic_results</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> HARDWARE DETAILS&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ========================================================================</span>
+        <span class="c1"># Calculate statistics for this provider-task</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="n">linear_energies</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">linear_results</span><span class="p">]</span>
+        <span class="n">agentic_energies</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">agentic_results</span><span class="p">]</span>
+
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="n">provider</span><span class="p">,</span>
+            <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="n">task</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;linear_energy_j&quot;</span><span class="p">:</span> <span class="n">calc_stats</span><span class="p">(</span><span class="n">linear_energies</span><span class="p">),</span>
+            <span class="s2">&quot;agentic_energy_j&quot;</span><span class="p">:</span> <span class="n">calc_stats</span><span class="p">(</span><span class="n">agentic_energies</span><span class="p">),</span>
+            <span class="s2">&quot;orchestration_tax&quot;</span><span class="p">:</span> <span class="n">calc_stats</span><span class="p">(</span><span class="n">taxes</span><span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">stats</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="c1"># ERROR HANDLING - Update experiment status with error</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ❌ ERROR in </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">db</span> <span class="ow">and</span> <span class="n">exp_id</span><span class="p">:</span>
+            <span class="n">runner</span><span class="o">.</span><span class="n">update_status</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;   ⚠️ Experiment </span><span class="si">{</span><span class="n">exp_id</span><span class="si">}</span><span class="s2"> marked as failed after </span><span class="si">{</span><span class="n">runs_completed</span><span class="si">}</span><span class="s2"> runs&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="c1"># CLEANUP - Always close database</span>
+        <span class="c1"># ========================================================================</span>
+        <span class="k">if</span> <span class="n">db</span><span class="p">:</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="run_task">
+<a class="viewcode-back" href="../../../../core.execution.tests.run_experiment.html#core.execution.tests.run_experiment.run_task">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_task</span><span class="p">(</span><span class="n">harness</span><span class="p">,</span> <span class="n">runner</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">providers</span><span class="p">,</span> <span class="n">repetitions</span><span class="p">,</span> <span class="n">cool_down</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run one task across all providers.</span>
+<span class="sd">    Returns list of stats for each provider.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="n">providers</span><span class="p">:</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">run_provider_task</span><span class="p">(</span>
+            <span class="n">harness</span><span class="p">,</span> <span class="n">runner</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="n">repetitions</span><span class="p">,</span> <span class="n">cool_down</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">config</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">stats</span><span class="p">:</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ✅ </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> complete:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;      Tax: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;orchestration_tax&#39;</span><span class="p">][</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;orchestration_tax&#39;</span><span class="p">][</span><span class="s1">&#39;ci_lower&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;orchestration_tax&#39;</span><span class="p">][</span><span class="s1">&#39;ci_upper&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<div class="viewcode-block" id="run_all_experiments">
+<a class="viewcode-back" href="../../../../core.execution.tests.run_experiment.html#core.execution.tests.run_experiment.run_all_experiments">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_all_experiments</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run all tasks with all providers.</span>
+<span class="sd">    Returns list of all results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 A-LEMS REAL EXPERIMENT&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Load configuration</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">ConfigLoader</span><span class="p">()</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+
+    <span class="c1"># Get defaults</span>
+    <span class="n">default_repetitions</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">experiment</span><span class="p">,</span> <span class="s2">&quot;default_iterations&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;experiment&quot;</span><span class="p">)</span>
+        <span class="k">else</span> <span class="mi">30</span>
+    <span class="p">)</span>
+    <span class="n">default_cool_down</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">experiment</span><span class="p">,</span> <span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;experiment&quot;</span><span class="p">)</span>
+        <span class="k">else</span> <span class="mi">30</span>
+    <span class="p">)</span>
+
+    <span class="n">repetitions</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">repetitions</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">repetitions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_repetitions</span>
+    <span class="p">)</span>
+    <span class="n">cool_down</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cool_down</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">cool_down</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_cool_down</span>
+
+    <span class="c1"># Parse providers</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">providers</span><span class="p">:</span>
+        <span class="n">providers</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">providers</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">:</span>
+        <span class="n">providers</span> <span class="o">=</span> <span class="p">[</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">providers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Load tasks</span>
+    <span class="n">all_tasks</span> <span class="o">=</span> <span class="n">load_tasks</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">tasks</span> <span class="o">==</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span>
+        <span class="n">selected_tasks</span> <span class="o">=</span> <span class="n">all_tasks</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">task_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">tid</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">tid</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+        <span class="n">selected_tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">all_tasks</span> <span class="k">if</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">task_ids</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_tasks</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ No valid tasks selected.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Configuration:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Providers:    </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">providers</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Tasks:        </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_tasks</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Repetitions:  </span><span class="si">{</span><span class="n">repetitions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cool-down:    </span><span class="si">{</span><span class="n">cool_down</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Create harness and runner</span>
+    <span class="n">harness</span> <span class="o">=</span> <span class="n">ExperimentHarness</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">ExperimentRunner</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="c1"># Ensure baseline (once per session)</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">ensure_baseline</span><span class="p">(</span><span class="n">harness</span><span class="p">)</span>
+    <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span> <span class="o">=</span> <span class="n">baseline</span>
+
+    <span class="c1"># Run all experiments</span>
+    <span class="n">all_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">selected_tasks</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">70</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 TASK: </span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (Level </span><span class="si">{</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">70</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">task_results</span> <span class="o">=</span> <span class="n">run_task</span><span class="p">(</span>
+            <span class="n">harness</span><span class="p">,</span> <span class="n">runner</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">providers</span><span class="p">,</span> <span class="n">repetitions</span><span class="p">,</span> <span class="n">cool_down</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">config</span>
+        <span class="p">)</span>
+        <span class="n">all_results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">task_results</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">all_results</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">args</span></div>
+
+
+
+<div class="viewcode-block" id="display_master_summary">
+<a class="viewcode-back" href="../../../../core.execution.tests.run_experiment.html#core.execution.tests.run_experiment.display_master_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_master_summary</span><span class="p">(</span><span class="n">all_results</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Display final summary table.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">all_results</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">85</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 MASTER SUMMARY&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">85</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;Provider&#39;</span><span class="si">:</span><span class="s2">&lt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Task&#39;</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Linear (J)&#39;</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Agentic (J)&#39;</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Tax (x)&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;CI Range&#39;</span><span class="si">:</span><span class="s2">&gt;18</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">85</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">all_results</span><span class="p">:</span>
+        <span class="n">provider</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;provider&quot;</span><span class="p">]</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;task&quot;</span><span class="p">][:</span><span class="mi">18</span><span class="p">]</span>
+        <span class="n">linear</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;linear_energy_j&#39;</span><span class="p">][</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">agentic</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;agentic_energy_j&#39;</span><span class="p">][</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">tax_mean</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">][</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+        <span class="n">ci_lower</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">][</span><span class="s2">&quot;ci_lower&quot;</span><span class="p">]</span>
+        <span class="n">ci_upper</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">][</span><span class="s2">&quot;ci_upper&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ci_lower</span><span class="p">):</span>
+            <span class="n">ci_display</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">ci_lower</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">ci_upper</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span>
+            <span class="n">tax_display</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tax_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ci_display</span> <span class="o">=</span> <span class="s2">&quot;N/A&quot;</span>
+            <span class="n">tax_display</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tax_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x*&quot;</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">provider</span><span class="si">:</span><span class="s2">&lt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">task</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">linear</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">agentic</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">tax_display</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">ci_display</span><span class="si">:</span><span class="s2">&gt;18</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">85</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../../core.execution.tests.run_experiment.html#core.execution.tests.run_experiment.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main entry point - minimal logic.&quot;&quot;&quot;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parse_arguments</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">list_tasks</span><span class="p">:</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="n">load_tasks</span><span class="p">()</span>
+        <span class="n">list_task_summary</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="n">all_results</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">run_all_experiments</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">all_results</span><span class="p">:</span>
+        <span class="n">display_master_summary</span><span class="p">(</span><span class="n">all_results</span><span class="p">)</span>
+
+        <span class="c1"># Save to JSON</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;data/experiment_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.json&quot;</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">all_results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💾 Results saved to: </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ All experiments complete!&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">0</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

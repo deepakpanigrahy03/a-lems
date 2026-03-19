@@ -11,10 +11,10 @@ if str(project_root) not in sys.path:
 from core.readers.rapl_reader import RAPLReader
 
 # Load config
-with open('config/hw_config.json') as f:
+with open("config/hw_config.json") as f:
     config = json.load(f)
 
-rapl_config = config.get('rapl', {})
+rapl_config = config.get("rapl", {})
 print(f"Config being passed: {rapl_config}")
 
 # Initialize reader

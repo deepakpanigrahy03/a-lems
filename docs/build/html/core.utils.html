@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.utils package &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.utils.baseline_manager module" href="core.utils.baseline_manager.html" />
+    <link rel="prev" title="core.sustainability.calculator module" href="core.sustainability.calculator.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.utils package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-core.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.utils package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-utils-package">
+<h1>core.utils package<a class="headerlink" href="#core-utils-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.baseline_manager.html">core.utils.baseline_manager module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.baseline_manager.html#baseline-manager-handles-storage-and-retrieval-of-baseline-measurements">BASELINE MANAGER – Handles storage and retrieval of baseline measurements</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.baseline_manager.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.baseline_manager.html#core.utils.baseline_manager.BaselineManager"><code class="docutils literal notranslate"><span class="pre">BaselineManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.baseline_manager.html#core.utils.baseline_manager.BaselineManager.get_latest"><code class="docutils literal notranslate"><span class="pre">BaselineManager.get_latest()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.baseline_manager.html#core.utils.baseline_manager.BaselineManager.load"><code class="docutils literal notranslate"><span class="pre">BaselineManager.load()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.baseline_manager.html#core.utils.baseline_manager.BaselineManager.save"><code class="docutils literal notranslate"><span class="pre">BaselineManager.save()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.core_pinner.html">core.utils.core_pinner module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.core_pinner.html#core-pinner-utility-cpu-affinity-management">CORE PINNER UTILITY – CPU Affinity Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.core_pinner.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.core_pinner.html#core.utils.core_pinner.CorePinner"><code class="docutils literal notranslate"><span class="pre">CorePinner</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.core_pinner.html#core.utils.core_pinner.CorePinner.get_current_affinity"><code class="docutils literal notranslate"><span class="pre">CorePinner.get_current_affinity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.core_pinner.html#core.utils.core_pinner.CorePinner.pin_to_cores"><code class="docutils literal notranslate"><span class="pre">CorePinner.pin_to_cores()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.debug.html">core.utils.debug module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#debug-utility-unified-debugging-across-all-a-lems-modules">DEBUG UTILITY - Unified debugging across all A-LEMS modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors"><code class="docutils literal notranslate"><span class="pre">Colors</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.BLUE"><code class="docutils literal notranslate"><span class="pre">Colors.BLUE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.BOLD"><code class="docutils literal notranslate"><span class="pre">Colors.BOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.CYAN"><code class="docutils literal notranslate"><span class="pre">Colors.CYAN</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.DIM"><code class="docutils literal notranslate"><span class="pre">Colors.DIM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.GREEN"><code class="docutils literal notranslate"><span class="pre">Colors.GREEN</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.MAGENTA"><code class="docutils literal notranslate"><span class="pre">Colors.MAGENTA</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.RED"><code class="docutils literal notranslate"><span class="pre">Colors.RED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.RESET"><code class="docutils literal notranslate"><span class="pre">Colors.RESET</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.Colors.YELLOW"><code class="docutils literal notranslate"><span class="pre">Colors.YELLOW</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.dprint"><code class="docutils literal notranslate"><span class="pre">dprint()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.dprint_raw"><code class="docutils literal notranslate"><span class="pre">dprint_raw()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.init_debug_from_env"><code class="docutils literal notranslate"><span class="pre">init_debug_from_env()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.is_debug_enabled"><code class="docutils literal notranslate"><span class="pre">is_debug_enabled()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.set_debug"><code class="docutils literal notranslate"><span class="pre">set_debug()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.debug.html#core.utils.debug.trace"><code class="docutils literal notranslate"><span class="pre">trace()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.idle_baseline.html">core.utils.idle_baseline module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.idle_baseline.html#core.utils.idle_baseline.apply_baseline_correction"><code class="docutils literal notranslate"><span class="pre">apply_baseline_correction()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.idle_baseline.html#core.utils.idle_baseline.get_system_state"><code class="docutils literal notranslate"><span class="pre">get_system_state()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.idle_baseline.html#core.utils.idle_baseline.measure_idle_baseline"><code class="docutils literal notranslate"><span class="pre">measure_idle_baseline()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.sampling.html">core.utils.sampling module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.sampling.html#high-frequency-sampling-utility">HIGH-FREQUENCY SAMPLING UTILITY</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#purpose">Purpose:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#why-a-dedicated-sampling-thread">Why a Dedicated Sampling Thread:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#requirements-covered">Requirements Covered:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#design">Design:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#usage-example">Usage Example:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample"><code class="docutils literal notranslate"><span class="pre">EnergySample</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.timestamp"><code class="docutils literal notranslate"><span class="pre">EnergySample.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.package_uj"><code class="docutils literal notranslate"><span class="pre">EnergySample.package_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.core_uj"><code class="docutils literal notranslate"><span class="pre">EnergySample.core_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.dram_uj"><code class="docutils literal notranslate"><span class="pre">EnergySample.dram_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.uncore_uj"><code class="docutils literal notranslate"><span class="pre">EnergySample.uncore_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.raw_values"><code class="docutils literal notranslate"><span class="pre">EnergySample.raw_values</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id0"><code class="docutils literal notranslate"><span class="pre">EnergySample.core_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id1"><code class="docutils literal notranslate"><span class="pre">EnergySample.dram_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id2"><code class="docutils literal notranslate"><span class="pre">EnergySample.package_uj</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id3"><code class="docutils literal notranslate"><span class="pre">EnergySample.raw_values</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id4"><code class="docutils literal notranslate"><span class="pre">EnergySample.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.EnergySample.to_dict"><code class="docutils literal notranslate"><span class="pre">EnergySample.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id5"><code class="docutils literal notranslate"><span class="pre">EnergySample.uncore_uj</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.rapl_reader"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.rapl_reader</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.sampling_rate_hz"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.sampling_rate_hz</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.interval"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.interval</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.running"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.running</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.sample_queue"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.sample_queue</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.thread"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.thread</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.get_samples"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.get_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.get_samples_since"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.get_samples_since()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.get_statistics"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.get_statistics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.start"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.start()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.start_time"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.start_time</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#core.utils.sampling.HighFrequencySampler.stop"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.stop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.sampling.html#id6"><code class="docutils literal notranslate"><span class="pre">HighFrequencySampler.thread</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.task_loader.html">core.utils.task_loader module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.task_loader.html#core.utils.task_loader.get_task_by_id"><code class="docutils literal notranslate"><span class="pre">get_task_by_id()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.task_loader.html#core.utils.task_loader.get_tasks_by_level"><code class="docutils literal notranslate"><span class="pre">get_tasks_by_level()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.task_loader.html#core.utils.task_loader.list_task_summary"><code class="docutils literal notranslate"><span class="pre">list_task_summary()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.task_loader.html#core.utils.task_loader.load_tasks"><code class="docutils literal notranslate"><span class="pre">load_tasks()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.utils.validators.html">core.utils.validators module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.validators.html#validators-check-measurement-quality-req-1-46-req-1-9">VALIDATORS – Check measurement quality (Req 1.46, Req 1.9)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.validators.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.utils.validators.html#core.utils.validators.MeasurementValidator"><code class="docutils literal notranslate"><span class="pre">MeasurementValidator</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.validators.html#core.utils.validators.MeasurementValidator.validate"><code class="docutils literal notranslate"><span class="pre">MeasurementValidator.validate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-core.utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core.utils" title="Link to this heading"></a></h2>
+<section id="task-loader-load-predefined-tasks-from-yaml-configuration">
+<h3>TASK LOADER – Load predefined tasks from YAML configuration<a class="headerlink" href="#task-loader-load-predefined-tasks-from-yaml-configuration" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>Purpose:</dt><dd><p>Provides a central interface to load task definitions from config/tasks.yaml.
+Used by both experiment runner and GUI to ensure consistency.</p>
+</dd>
+</dl>
+<section id="author-deepak-panigrahy">
+<h4>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h4>
+</section>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="core.utils.get_task_by_id">
+<span class="sig-prename descclassname"><span class="pre">core.utils.</span></span><span class="sig-name descname"><span class="pre">get_task_by_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tasks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/utils.html#get_task_by_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.get_task_by_id" title="Link to this definition"></a></dt>
+<dd><p>Find a task by its ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_id</strong> – The task identifier (e.g., ‘simple’, ‘capital’)</p></li>
+<li><p><strong>tasks</strong> – Optional list of tasks. If None, loads fresh.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Task dictionary or None if not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.utils.get_tasks_by_level">
+<span class="sig-prename descclassname"><span class="pre">core.utils.</span></span><span class="sig-name descname"><span class="pre">get_tasks_by_level</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tasks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils.html#get_tasks_by_level"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.get_tasks_by_level" title="Link to this definition"></a></dt>
+<dd><p>Filter tasks by complexity level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>level</strong> – 1, 2, or 3</p></li>
+<li><p><strong>tasks</strong> – Optional list of tasks. If None, loads fresh.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of tasks matching the level.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.utils.list_task_summary">
+<span class="sig-prename descclassname"><span class="pre">core.utils.</span></span><span class="sig-name descname"><span class="pre">list_task_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tasks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/utils.html#list_task_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.list_task_summary" title="Link to this definition"></a></dt>
+<dd><p>Print a formatted summary of all tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tasks</strong> – Optional list of tasks. If None, loads fresh.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.utils.load_tasks">
+<span class="sig-prename descclassname"><span class="pre">core.utils.</span></span><span class="sig-name descname"><span class="pre">load_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/utils.html#load_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.utils.load_tasks" title="Link to this definition"></a></dt>
+<dd><p>Load tasks from YAML file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config_path</strong> – Path to tasks.yaml. If None, uses default ‘config/tasks.yaml’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of task dictionaries, each containing id, name, description,
+level, tool_calls, prompt, tags.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If config file does not exist.</p></li>
+<li><p><strong>yaml.YAMLError</strong> – If YAML parsing fails.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.sustainability.calculator.html" class="btn btn-neutral float-left" title="core.sustainability.calculator module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.utils.baseline_manager.html" class="btn btn-neutral float-right" title="core.utils.baseline_manager module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

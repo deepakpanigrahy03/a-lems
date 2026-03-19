@@ -6,32 +6,40 @@ Shows CPU spec, RAPL capabilities, AVX/VMX flags, GPU, run statistics.
 Foundation for multi-host silicon comparison.
 ─────────────────────────────────────────────────────────────────────────────
 """
-import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
+
 import json
 
-from gui.db     import q, q1
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
 from gui.config import PL, STATUS_COLORS
+from gui.db import q, q1
 
 ACCENT = "#fb923c"
 
 
 def _flag_badge(val, true_label="✓", false_label="✗") -> str:
     if val in (1, True, "1", "true", "True"):
-        return (f"<span style='background:#052e1a;color:#4ade80;font-size:9px;"
-                f"padding:1px 6px;border-radius:3px;font-weight:700;'>{true_label}</span>")
-    return (f"<span style='background:#2a0c0c;color:#f87171;font-size:9px;"
-            f"padding:1px 6px;border-radius:3px;font-weight:700;'>{false_label}</span>")
+        return (
+            f"<span style='background:#052e1a;color:#4ade80;font-size:9px;"
+            f"padding:1px 6px;border-radius:3px;font-weight:700;'>{true_label}</span>"
+        )
+    return (
+        f"<span style='background:#2a0c0c;color:#f87171;font-size:9px;"
+        f"padding:1px 6px;border-radius:3px;font-weight:700;'>{false_label}</span>"
+    )
 
 
 def _cap_badge(val, label) -> str:
     has = val in (1, True, "1", "true", "True")
-    bg  = "#052e1a" if has else "#1a1a2e"
+    bg = "#052e1a" if has else "#1a1a2e"
     clr = "#4ade80" if has else "#475569"
-    return (f"<span style='background:{bg};color:{clr};font-size:9px;"
-            f"padding:1px 6px;border-radius:3px;font-weight:700;"
-            f"margin-right:4px;'>{label}</span>")
+    return (
+        f"<span style='background:{bg};color:{clr};font-size:9px;"
+        f"padding:1px 6px;border-radius:3px;font-weight:700;"
+        f"margin-right:4px;'>{label}</span>"
+    )
 
 
 def render(ctx: dict) -> None:
@@ -71,7 +79,8 @@ def render(ctx: dict) -> None:
             f"font-family:IBM Plex Mono,monospace;'>"
             f"Hardware is registered automatically on first experiment run.</div>"
             f"</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
         return
 
     # ── Header ────────────────────────────────────────────────────────────────
@@ -89,32 +98,35 @@ def render(ctx: dict) -> None:
         f"font-family:IBM Plex Mono,monospace;'>"
         f"Hardware registry — silicon profiles for multi-host experiments</div>"
         f"</div></div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     # ── Per-machine cards ─────────────────────────────────────────────────────
     for _, hw in hw_df.iterrows():
-        hw_id    = hw.get("hw_id", "?")
+        hw_id = hw.get("hw_id", "?")
         hostname = hw.get("hostname") or f"hw_{hw_id}"
-        cpu      = hw.get("cpu_model") or "Unknown CPU"
-        arch     = hw.get("cpu_architecture") or "?"
-        cores    = hw.get("cpu_cores") or "?"
-        threads  = hw.get("cpu_threads") or "?"
-        ram      = hw.get("ram_gb") or "?"
+        cpu = hw.get("cpu_model") or "Unknown CPU"
+        arch = hw.get("cpu_architecture") or "?"
+        cores = hw.get("cpu_cores") or "?"
+        threads = hw.get("cpu_threads") or "?"
+        ram = hw.get("ram_gb") or "?"
         sys_type = hw.get("system_type") or "unknown"
-        mfr      = hw.get("system_manufacturer") or ""
-        product  = hw.get("system_product") or ""
-        kernel   = hw.get("kernel_version") or "?"
-        virt     = hw.get("virtualization_type") or "none"
-        runs_n   = int(hw.get("total_runs") or 0)
-        exps_n   = int(hw.get("total_exps") or 0)
-        avg_e    = hw.get("avg_energy_j") or 0
-        avg_ipc  = hw.get("avg_ipc") or 0
-        avg_tmp  = hw.get("avg_temp") or 0
+        mfr = hw.get("system_manufacturer") or ""
+        product = hw.get("system_product") or ""
+        kernel = hw.get("kernel_version") or "?"
+        virt = hw.get("virtualization_type") or "none"
+        runs_n = int(hw.get("total_runs") or 0)
+        exps_n = int(hw.get("total_exps") or 0)
+        avg_e = hw.get("avg_energy_j") or 0
+        avg_ipc = hw.get("avg_ipc") or 0
+        avg_tmp = hw.get("avg_temp") or 0
 
         # RAPL domains
         rapl_raw = hw.get("rapl_domains") or "[]"
         try:
-            rapl_domains = json.loads(rapl_raw) if isinstance(rapl_raw, str) else rapl_raw
+            rapl_domains = (
+                json.loads(rapl_raw) if isinstance(rapl_raw, str) else rapl_raw
+            )
         except Exception:
             rapl_domains = [rapl_raw]
 
@@ -127,7 +139,6 @@ def render(ctx: dict) -> None:
             f"border-top:3px solid {ACCENT};"
             f"border-radius:10px;padding:18px 20px;"
             f"background:#111827;margin-bottom:16px;'>"
-
             # Title row
             f"<div style='display:flex;align-items:center;gap:12px;margin-bottom:14px;'>"
             f"<div style='font-size:22px;font-weight:800;color:{ACCENT};"
@@ -137,7 +148,6 @@ def render(ctx: dict) -> None:
             f"<div style='margin-left:auto;font-size:10px;color:#475569;"
             f"font-family:IBM Plex Mono,monospace;'>{mfr} {product} · {sys_type}</div>"
             f"</div>"
-
             # CPU row
             f"<div style='font-size:12px;color:#94a3b8;"
             f"font-family:IBM Plex Mono,monospace;margin-bottom:10px;'>"
@@ -145,38 +155,42 @@ def render(ctx: dict) -> None:
             f"  ·  {arch}  ·  {cores}C/{threads}T  ·  {ram}GB RAM"
             f"  ·  kernel {kernel}"
             f"</div>"
-
             # Capability badges
             f"<div style='margin-bottom:10px;'>"
-            + _cap_badge(hw.get("has_avx2"),  "AVX2")
+            + _cap_badge(hw.get("has_avx2"), "AVX2")
             + _cap_badge(hw.get("has_avx512"), "AVX512")
-            + _cap_badge(hw.get("has_vmx"),    "VMX/VT-x")
-            + _cap_badge(hw.get("rapl_has_dram"),   "RAPL DRAM")
+            + _cap_badge(hw.get("has_vmx"), "VMX/VT-x")
+            + _cap_badge(hw.get("rapl_has_dram"), "RAPL DRAM")
             + _cap_badge(hw.get("rapl_has_uncore"), "RAPL Uncore")
             + f"<span style='font-size:9px;color:#475569;margin-left:8px;'>"
             f"RAPL: {', '.join(rapl_domains) if rapl_domains else 'unknown'}</span>"
             f"</div>"
-
             # GPU row
-            + (f"<div style='font-size:11px;color:#94a3b8;"
-               f"font-family:IBM Plex Mono,monospace;margin-bottom:10px;'>"
-               f"GPU: <span style='color:#f1f5f9;'>{gpu_model}</span>"
-               f"  ({gpu_count} device{'s' if gpu_count != 1 else ''})"
-               f"  ·  Virt: {virt}</div>"
-               if gpu_count > 0 or gpu_model != "None" else "")
-
+            + (
+                f"<div style='font-size:11px;color:#94a3b8;"
+                f"font-family:IBM Plex Mono,monospace;margin-bottom:10px;'>"
+                f"GPU: <span style='color:#f1f5f9;'>{gpu_model}</span>"
+                f"  ({gpu_count} device{'s' if gpu_count != 1 else ''})"
+                f"  ·  Virt: {virt}</div>"
+                if gpu_count > 0 or gpu_model != "None"
+                else ""
+            )
             + f"</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
 
         # Stats row below the card
         stat_cols = st.columns(5)
-        for col, (val, label, clr) in zip(stat_cols, [
-            (f"{runs_n:,}",        "Total runs",    ACCENT),
-            (f"{exps_n:,}",        "Experiments",   "#60a5fa"),
-            (f"{avg_e:.2f}J",      "Avg energy",    "#f59e0b"),
-            (f"{avg_ipc:.2f}",     "Avg IPC",       "#22c55e"),
-            (f"{avg_tmp:.1f}°C",   "Avg pkg temp",  "#ef4444"),
-        ]):
+        for col, (val, label, clr) in zip(
+            stat_cols,
+            [
+                (f"{runs_n:,}", "Total runs", ACCENT),
+                (f"{exps_n:,}", "Experiments", "#60a5fa"),
+                (f"{avg_e:.2f}J", "Avg energy", "#f59e0b"),
+                (f"{avg_ipc:.2f}", "Avg IPC", "#22c55e"),
+                (f"{avg_tmp:.1f}°C", "Avg pkg temp", "#ef4444"),
+            ],
+        ):
             with col:
                 st.markdown(
                     f"<div style='padding:8px 12px;background:#1f2937;"
@@ -186,12 +200,14 @@ def render(ctx: dict) -> None:
                     f"<div style='font-size:8px;color:#475569;text-transform:uppercase;"
                     f"letter-spacing:.08em;margin-top:3px;'>{label}</div>"
                     f"</div>",
-                    unsafe_allow_html=True)
+                    unsafe_allow_html=True,
+                )
 
         # Energy distribution chart for this hw
         if runs_n > 0:
-            with st.expander(f"Energy distribution — hw_{hw_id} ({runs_n} runs)",
-                             expanded=False):
+            with st.expander(
+                f"Energy distribution — hw_{hw_id} ({runs_n} runs)", expanded=False
+            ):
                 hw_runs = q(f"""
                     SELECT
                         r.total_energy_uj/1e6 AS energy_j,
@@ -209,27 +225,35 @@ def render(ctx: dict) -> None:
                     fig = go.Figure()
                     wf_colors = {"linear": "#22c55e", "agentic": "#ef4444"}
                     for wf, clr in wf_colors.items():
-                        sub = hw_runs[hw_runs["workflow_type"] == wf]["energy_j"].dropna()
+                        sub = hw_runs[hw_runs["workflow_type"] == wf][
+                            "energy_j"
+                        ].dropna()
                         if sub.empty:
                             continue
-                        fig.add_trace(go.Histogram(
-                            x=sub, name=wf,
-                            marker_color=clr, opacity=0.7, nbinsx=40))
+                        fig.add_trace(
+                            go.Histogram(
+                                x=sub, name=wf, marker_color=clr, opacity=0.7, nbinsx=40
+                            )
+                        )
                     fig.update_layout(
                         **{**PL, "margin": dict(l=40, r=20, t=20, b=30)},
-                        height=200, barmode="overlay",
+                        height=200,
+                        barmode="overlay",
                         xaxis_title="Energy (J)",
                         yaxis_title="Run count",
-                        showlegend=True)
-                    st.plotly_chart(fig, use_container_width=True,
-                                   key=f"hw_energy_dist_{hw_id}")
+                        showlegend=True,
+                    )
+                    st.plotly_chart(
+                        fig, use_container_width=True, key=f"hw_energy_dist_{hw_id}"
+                    )
 
     # ── Baseline profiles ─────────────────────────────────────────────────────
     st.markdown(
         f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
         f"text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px;'>"
         f"Idle Baselines</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     baselines = q("""
         SELECT baseline_id, timestamp, package_power_watts,
@@ -249,21 +273,27 @@ def render(ctx: dict) -> None:
         fig2 = go.Figure()
         for col_n, label, clr in [
             ("package_power_watts", "Package", ACCENT),
-            ("core_power_watts",    "Core",    "#22c55e"),
-            ("uncore_power_watts",  "Uncore",  "#3b82f6"),
-            ("dram_power_watts",    "DRAM",    "#a78bfa"),
+            ("core_power_watts", "Core", "#22c55e"),
+            ("uncore_power_watts", "Uncore", "#3b82f6"),
+            ("dram_power_watts", "DRAM", "#a78bfa"),
         ]:
             vals = baselines[col_n].dropna()
             if vals.empty:
                 continue
-            fig2.add_trace(go.Bar(
-                x=list(range(len(baselines))),
-                y=vals,
-                name=label,
-                marker_color=clr,
-                marker_line_width=0))
+            fig2.add_trace(
+                go.Bar(
+                    x=list(range(len(baselines))),
+                    y=vals,
+                    name=label,
+                    marker_color=clr,
+                    marker_line_width=0,
+                )
+            )
         fig2.update_layout(
-            **PL, height=220, barmode="group",
+            **PL,
+            height=220,
+            barmode="group",
             xaxis_title="Baseline index",
-            yaxis_title="Idle power (W)")
+            yaxis_title="Idle power (W)",
+        )
         st.plotly_chart(fig2, use_container_width=True, key="hw_baseline_bar")

@@ -41,14 +41,14 @@ AUTHOR: Deepak Panigrahy
 ================================================================================
 """
 
+import hashlib
+import json
+import logging
 import os
 import sqlite3
-import json
-import hashlib
-import logging
-from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -481,6 +481,7 @@ LEFT JOIN orchestration_tax_summary ots ON r.run_id = ots.agentic_run_id;
 # DATABASE MANAGER CLASS
 # ------------------------------------------------------------------------------
 
+
 class DatabaseManager:
     """
     Main interface to the A‑LEMS SQLite database.
@@ -560,33 +561,41 @@ class DatabaseManager:
             return None
 
         # Try to find existing hardware record.
-        cursor = self.conn.execute("""
+        cursor = self.conn.execute(
+            """
             SELECT hw_id FROM hardware_config
             WHERE hostname = ? AND kernel_version = ?
-        """, (hardware_info.get('hostname'), hardware_info.get('kernel_version')))
+        """,
+            (hardware_info.get("hostname"), hardware_info.get("kernel_version")),
+        )
         row = cursor.fetchone()
         if row:
-            return row['hw_id']
+            return row["hw_id"]
 
         # Insert new hardware record.
-        cursor = self.conn.execute("""
+        cursor = self.conn.execute(
+            """
             INSERT INTO hardware_config
             (hostname, cpu_model, cpu_cores, cpu_threads, ram_gb, kernel_version,
              microcode_version, rapl_domains)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            hardware_info.get('hostname'),
-            hardware_info.get('cpu_model'),
-            hardware_info.get('cpu_cores'),
-            hardware_info.get('cpu_threads'),
-            hardware_info.get('ram_gb'),
-            hardware_info.get('kernel_version'),
-            hardware_info.get('microcode_version'),
-            hardware_info.get('rapl_domains')
-        ))
+        """,
+            (
+                hardware_info.get("hostname"),
+                hardware_info.get("cpu_model"),
+                hardware_info.get("cpu_cores"),
+                hardware_info.get("cpu_threads"),
+                hardware_info.get("ram_gb"),
+                hardware_info.get("kernel_version"),
+                hardware_info.get("microcode_version"),
+                hardware_info.get("rapl_domains"),
+            ),
+        )
         return cursor.lastrowid
 
-    def _compute_run_state_hash(self, run_data: Dict[str, Any], hw_id: Optional[int], baseline_id: Optional[str]) -> str:
+    def _compute_run_state_hash(
+        self, run_data: Dict[str, Any], hw_id: Optional[int], baseline_id: Optional[str]
+    ) -> str:
         """
         Compute a cryptographic hash of the system state for reproducibility.
 
@@ -615,10 +624,12 @@ class DatabaseManager:
         )
         return hashlib.sha256(state_str.encode()).hexdigest()
 
-    def save_experiment(self,
-                        experiment_meta: Dict[str, Any],
-                        runs: List[Dict[str, Any]],
-                        hardware_info: Optional[Dict[str, Any]] = None) -> int:
+    def save_experiment(
+        self,
+        experiment_meta: Dict[str, Any],
+        runs: List[Dict[str, Any]],
+        hardware_info: Optional[Dict[str, Any]] = None,
+    ) -> int:
         """
         Save a complete experiment with all its runs.
 
@@ -658,19 +669,22 @@ class DatabaseManager:
         # Step 1: Insert experiment record
         # ---------------------------------------------------------
         with self.conn:
-            cursor = self.conn.execute("""
+            cursor = self.conn.execute(
+                """
                 INSERT INTO experiments
                 (name, description, workflow_type, model_name, provider, task_name, country_code)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                experiment_meta.get('name', 'unnamed'),
-                experiment_meta.get('description', ''),
-                experiment_meta.get('workflow_type'),
-                experiment_meta.get('model_name'),
-                experiment_meta.get('provider'),
-                experiment_meta.get('task_name'),
-                experiment_meta.get('country_code', 'US')
-            ))
+            """,
+                (
+                    experiment_meta.get("name", "unnamed"),
+                    experiment_meta.get("description", ""),
+                    experiment_meta.get("workflow_type"),
+                    experiment_meta.get("model_name"),
+                    experiment_meta.get("provider"),
+                    experiment_meta.get("task_name"),
+                    experiment_meta.get("country_code", "US"),
+                ),
+            )
             exp_id = cursor.lastrowid
 
         # ---------------------------------------------------------
@@ -686,7 +700,7 @@ class DatabaseManager:
             run_id = self._insert_run(exp_id, hw_id, run)
             # The run's ml_features contains an 'experiment_id' field (UUID from harness)
             # We use that to link later for tax summary.
-            exp_uuid = run.get('ml_features', {}).get('experiment_id')
+            exp_uuid = run.get("ml_features", {}).get("experiment_id")
             if exp_uuid:
                 run_ids[exp_uuid] = run_id
 
@@ -697,7 +711,9 @@ class DatabaseManager:
 
         return exp_id
 
-    def _insert_run(self, exp_id: int, hw_id: Optional[int], run_data: Dict[str, Any]) -> int:
+    def _insert_run(
+        self, exp_id: int, hw_id: Optional[int], run_data: Dict[str, Any]
+    ) -> int:
         """
         Insert a single run into the runs table, plus all associated events/samples.
 
@@ -717,16 +733,16 @@ class DatabaseManager:
         # ---------------------------------------------------------
         # Extract data from the nested structure
         # ---------------------------------------------------------
-        ml = run_data.get('ml_features', {})            # Flattened ML features (77 columns)
-        layer3 = run_data.get('layer3_derived', {})      # DerivedEnergyMeasurement
-        exec_data = run_data.get('execution', {})        # Execution metadata
-        sus = run_data.get('sustainability', {})         # Sustainability metrics
+        ml = run_data.get("ml_features", {})  # Flattened ML features (77 columns)
+        layer3 = run_data.get("layer3_derived", {})  # DerivedEnergyMeasurement
+        exec_data = run_data.get("execution", {})  # Execution metadata
+        sus = run_data.get("sustainability", {})  # Sustainability metrics
 
         # ---------------------------------------------------------
         # Timing: we approximate start/end from harness timestamp and duration.
         # ---------------------------------------------------------
         # harness_timestamp is an ISO string; convert to seconds since epoch.
-        harness_ts_str = run_data.get('harness_timestamp', datetime.now().isoformat())
+        harness_ts_str = run_data.get("harness_timestamp", datetime.now().isoformat())
         try:
             dt = datetime.fromisoformat(harness_ts_str)
             start_time_s = dt.timestamp()
@@ -734,123 +750,127 @@ class DatabaseManager:
             start_time_s = datetime.now().timestamp()
         start_time_ns = int(start_time_s * 1_000_000_000)
 
-        duration_ms = ml.get('duration_ms', 0)
+        duration_ms = ml.get("duration_ms", 0)
         duration_ns = int(duration_ms * 1_000_000)
         end_time_ns = start_time_ns + duration_ns
 
         # ---------------------------------------------------------
         # Energy values: always stored in microjoules.
         # ---------------------------------------------------------
-        total_energy_j = ml.get('energy_j', 0)
+        total_energy_j = ml.get("energy_j", 0)
         total_energy_uj = int(total_energy_j * 1_000_000)
 
         # For now, dynamic_energy = total_energy (baseline correction later)
         dynamic_energy_uj = total_energy_uj
         baseline_energy_uj = None  # not yet implemented
 
-        avg_power_watts = ml.get('avg_power_watts', 0)
+        avg_power_watts = ml.get("avg_power_watts", 0)
 
         # ---------------------------------------------------------
         # Performance counters and scheduler
         # ---------------------------------------------------------
-        instructions = ml.get('instructions', 0)
-        cycles = ml.get('cycles', 0)
-        ipc = ml.get('ipc', 0)
-        cache_misses = ml.get('cache_misses', 0)
-        cache_references = ml.get('cache_references', 0)
-        cache_miss_rate = ml.get('cache_miss_rate', 0)
-        page_faults = ml.get('page_faults', 0)
-        major_page_faults = ml.get('major_page_faults', 0)
-        minor_page_faults = ml.get('minor_page_faults', 0)
+        instructions = ml.get("instructions", 0)
+        cycles = ml.get("cycles", 0)
+        ipc = ml.get("ipc", 0)
+        cache_misses = ml.get("cache_misses", 0)
+        cache_references = ml.get("cache_references", 0)
+        cache_miss_rate = ml.get("cache_miss_rate", 0)
+        page_faults = ml.get("page_faults", 0)
+        major_page_faults = ml.get("major_page_faults", 0)
+        minor_page_faults = ml.get("minor_page_faults", 0)
 
-        context_switches_voluntary = ml.get('context_switches_voluntary', 0)
-        context_switches_involuntary = ml.get('context_switches_involuntary', 0)
-        total_context_switches = ml.get('total_context_switches', 0)
-        thread_migrations = ml.get('thread_migrations', 0)
-        run_queue_length = ml.get('run_queue_length', 0)
-        kernel_time_ms = ml.get('kernel_time_ms', 0)
-        user_time_ms = ml.get('user_time_ms', 0)
+        context_switches_voluntary = ml.get("context_switches_voluntary", 0)
+        context_switches_involuntary = ml.get("context_switches_involuntary", 0)
+        total_context_switches = ml.get("total_context_switches", 0)
+        thread_migrations = ml.get("thread_migrations", 0)
+        run_queue_length = ml.get("run_queue_length", 0)
+        kernel_time_ms = ml.get("kernel_time_ms", 0)
+        user_time_ms = ml.get("user_time_ms", 0)
 
         # ---------------------------------------------------------
         # Frequency and ring
         # ---------------------------------------------------------
-        frequency_mhz = ml.get('frequency_mhz', 0)
-        ring_bus_freq_mhz = ml.get('ring_bus_freq_mhz', 0)
+        frequency_mhz = ml.get("frequency_mhz", 0)
+        ring_bus_freq_mhz = ml.get("ring_bus_freq_mhz", 0)
 
         # ---------------------------------------------------------
         # Thermal metrics
         # ---------------------------------------------------------
-        package_temp_celsius = ml.get('package_temp_celsius')
-        baseline_temp_celsius = ml.get('baseline_temp_celsius')
-        start_temp_c = ml.get('start_temp_c')
-        max_temp_c = ml.get('max_temp_c')
-        thermal_delta_c = (max_temp_c - start_temp_c) if (start_temp_c is not None and max_temp_c is not None) else None
+        package_temp_celsius = ml.get("package_temp_celsius")
+        baseline_temp_celsius = ml.get("baseline_temp_celsius")
+        start_temp_c = ml.get("start_temp_c")
+        max_temp_c = ml.get("max_temp_c")
+        thermal_delta_c = (
+            (max_temp_c - start_temp_c)
+            if (start_temp_c is not None and max_temp_c is not None)
+            else None
+        )
 
-        thermal_during_experiment = ml.get('thermal_during_experiment', False)
-        thermal_now_active = ml.get('thermal_now_active', False)
-        thermal_since_boot = ml.get('thermal_since_boot', False)
-        experiment_valid = ml.get('experiment_valid', True)
+        thermal_during_experiment = ml.get("thermal_during_experiment", False)
+        thermal_now_active = ml.get("thermal_now_active", False)
+        thermal_since_boot = ml.get("thermal_since_boot", False)
+        experiment_valid = ml.get("experiment_valid", True)
 
         # ---------------------------------------------------------
         # C‑states
         # ---------------------------------------------------------
-        c2_time_seconds = ml.get('c2_time_seconds', 0)
-        c3_time_seconds = ml.get('c3_time_seconds', 0)
-        c6_time_seconds = ml.get('c6_time_seconds', 0)
-        c7_time_seconds = ml.get('c7_time_seconds', 0)
+        c2_time_seconds = ml.get("c2_time_seconds", 0)
+        c3_time_seconds = ml.get("c3_time_seconds", 0)
+        c6_time_seconds = ml.get("c6_time_seconds", 0)
+        c7_time_seconds = ml.get("c7_time_seconds", 0)
 
         # ---------------------------------------------------------
         # MSR / wakeup
         # ---------------------------------------------------------
-        wakeup_latency_us = ml.get('wakeup_latency_us', 0)
-        interrupt_rate = ml.get('interrupt_rate', 0)
-        thermal_throttle_flag = ml.get('thermal_throttle_flag', 0)
+        wakeup_latency_us = ml.get("wakeup_latency_us", 0)
+        interrupt_rate = ml.get("interrupt_rate", 0)
+        thermal_throttle_flag = ml.get("thermal_throttle_flag", 0)
 
         # ---------------------------------------------------------
         # Memory
         # ---------------------------------------------------------
-        rss_memory_mb = ml.get('rss_memory_mb', 0)
-        vms_memory_mb = ml.get('vms_memory_mb', 0)
+        rss_memory_mb = ml.get("rss_memory_mb", 0)
+        vms_memory_mb = ml.get("vms_memory_mb", 0)
 
         # ---------------------------------------------------------
         # Tokens
         # ---------------------------------------------------------
-        total_tokens = ml.get('total_tokens', 0)
-        prompt_tokens = ml.get('prompt_tokens', 0)
-        completion_tokens = ml.get('completion_tokens', 0)
+        total_tokens = ml.get("total_tokens", 0)
+        prompt_tokens = ml.get("prompt_tokens", 0)
+        completion_tokens = ml.get("completion_tokens", 0)
 
         # ---------------------------------------------------------
         # Network
         # ---------------------------------------------------------
-        dns_latency_ms = ml.get('dns_latency_ms', 0)
-        api_latency_ms = ml.get('api_latency_ms', 0)
-        compute_time_ms = ml.get('compute_time_ms', 0)
+        dns_latency_ms = ml.get("dns_latency_ms", 0)
+        api_latency_ms = ml.get("api_latency_ms", 0)
+        compute_time_ms = ml.get("compute_time_ms", 0)
 
         # ---------------------------------------------------------
         # System state
         # ---------------------------------------------------------
-        governor = ml.get('governor', 'unknown')
-        turbo_enabled = ml.get('turbo_enabled', False)
-        is_cold_start = ml.get('is_cold_start', False)
-        background_cpu_percent = ml.get('background_cpu_percent', 0)
-        process_count = ml.get('process_count', 0)
+        governor = ml.get("governor", "unknown")
+        turbo_enabled = ml.get("turbo_enabled", False)
+        is_cold_start = ml.get("is_cold_start", False)
+        background_cpu_percent = ml.get("background_cpu_percent", 0)
+        process_count = ml.get("process_count", 0)
 
         # ---------------------------------------------------------
         # Agentic‑specific (may be None for linear runs)
         # ---------------------------------------------------------
-        planning_time_ms = ml.get('planning_time_ms')
-        execution_time_ms = ml.get('execution_time_ms')
-        synthesis_time_ms = ml.get('synthesis_time_ms')
-        phase_planning_ratio = ml.get('phase_planning_ratio')
-        phase_execution_ratio = ml.get('phase_execution_ratio')
-        phase_synthesis_ratio = ml.get('phase_synthesis_ratio')
-        llm_calls = ml.get('llm_calls')
-        tool_calls = ml.get('tool_calls')
-        tools_used = ml.get('tools_used')
-        steps = ml.get('steps')
-        avg_step_time_ms = ml.get('avg_step_time_ms')
-        complexity_level = ml.get('complexity_level')
-        complexity_score = ml.get('complexity_score')
+        planning_time_ms = ml.get("planning_time_ms")
+        execution_time_ms = ml.get("execution_time_ms")
+        synthesis_time_ms = ml.get("synthesis_time_ms")
+        phase_planning_ratio = ml.get("phase_planning_ratio")
+        phase_execution_ratio = ml.get("phase_execution_ratio")
+        phase_synthesis_ratio = ml.get("phase_synthesis_ratio")
+        llm_calls = ml.get("llm_calls")
+        tool_calls = ml.get("tool_calls")
+        tools_used = ml.get("tools_used")
+        steps = ml.get("steps")
+        avg_step_time_ms = ml.get("avg_step_time_ms")
+        complexity_level = ml.get("complexity_level")
+        complexity_score = ml.get("complexity_score")
 
         # ---------------------------------------------------------
         # Sustainability
@@ -859,14 +879,16 @@ class DatabaseManager:
         water_ml = None
         methane_mg = None
         if sus:
-            carbon_g = sus.get('carbon', {}).get('grams')
-            water_ml = sus.get('water', {}).get('milliliters')
-            methane_mg = sus.get('methane', {}).get('grams')
+            carbon_g = sus.get("carbon", {}).get("grams")
+            water_ml = sus.get("water", {}).get("milliliters")
+            methane_mg = sus.get("methane", {}).get("grams")
 
         # ---------------------------------------------------------
         # Derived efficiency metrics (computed here)
         # ---------------------------------------------------------
-        energy_per_instruction = (total_energy_j / instructions) if instructions else None
+        energy_per_instruction = (
+            (total_energy_j / instructions) if instructions else None
+        )
         energy_per_cycle = (total_energy_j / cycles) if cycles else None
         energy_per_token = (total_energy_j / total_tokens) if total_tokens else None
         instructions_per_token = (instructions / total_tokens) if total_tokens else None
@@ -875,14 +897,15 @@ class DatabaseManager:
         # ---------------------------------------------------------
         # Run state hash (cryptographic fingerprint)
         # ---------------------------------------------------------
-        baseline_id = run_data.get('baseline_id')  # may be None
+        baseline_id = run_data.get("baseline_id")  # may be None
         run_state_hash = self._compute_run_state_hash(ml, hw_id, baseline_id)
 
         # ---------------------------------------------------------
         # Insert the main run record
         # ---------------------------------------------------------
         with self.conn:
-            cursor = self.conn.execute("""
+            cursor = self.conn.execute(
+                """
                 INSERT INTO runs (
                     exp_id, hw_id, baseline_id, run_number,
                     start_time_ns, end_time_ns, duration_ns,
@@ -933,49 +956,107 @@ class DatabaseManager:
                     ?, ?, ?, ?,
                     ?, ?
                 )
-            """, (
-                exp_id, hw_id, baseline_id, ml.get('run_number'),
-                start_time_ns, end_time_ns, duration_ns,
-                total_energy_uj, dynamic_energy_uj, baseline_energy_uj, avg_power_watts,
-                instructions, cycles, ipc, cache_misses, cache_references, cache_miss_rate,
-                page_faults, major_page_faults, minor_page_faults,
-                context_switches_voluntary, context_switches_involuntary, total_context_switches,
-                thread_migrations, run_queue_length, kernel_time_ms, user_time_ms,
-                frequency_mhz, ring_bus_freq_mhz,
-                package_temp_celsius, baseline_temp_celsius, start_temp_c, max_temp_c, thermal_delta_c,
-                thermal_during_experiment, thermal_now_active, thermal_since_boot, experiment_valid,
-                c2_time_seconds, c3_time_seconds, c6_time_seconds, c7_time_seconds,
-                wakeup_latency_us, interrupt_rate, thermal_throttle_flag,
-                rss_memory_mb, vms_memory_mb,
-                total_tokens, prompt_tokens, completion_tokens,
-                dns_latency_ms, api_latency_ms, compute_time_ms,
-                governor, turbo_enabled, is_cold_start, background_cpu_percent, process_count,
-                planning_time_ms, execution_time_ms, synthesis_time_ms,
-                phase_planning_ratio, phase_execution_ratio, phase_synthesis_ratio,
-                llm_calls, tool_calls, tools_used, steps, avg_step_time_ms,
-                complexity_level, complexity_score,
-                carbon_g, water_ml, methane_mg,
-                energy_per_instruction, energy_per_cycle, energy_per_token,
-                instructions_per_token, interrupts_per_second,
-                run_state_hash
-            ))
+            """,
+                (
+                    exp_id,
+                    hw_id,
+                    baseline_id,
+                    ml.get("run_number"),
+                    start_time_ns,
+                    end_time_ns,
+                    duration_ns,
+                    total_energy_uj,
+                    dynamic_energy_uj,
+                    baseline_energy_uj,
+                    avg_power_watts,
+                    instructions,
+                    cycles,
+                    ipc,
+                    cache_misses,
+                    cache_references,
+                    cache_miss_rate,
+                    page_faults,
+                    major_page_faults,
+                    minor_page_faults,
+                    context_switches_voluntary,
+                    context_switches_involuntary,
+                    total_context_switches,
+                    thread_migrations,
+                    run_queue_length,
+                    kernel_time_ms,
+                    user_time_ms,
+                    frequency_mhz,
+                    ring_bus_freq_mhz,
+                    package_temp_celsius,
+                    baseline_temp_celsius,
+                    start_temp_c,
+                    max_temp_c,
+                    thermal_delta_c,
+                    thermal_during_experiment,
+                    thermal_now_active,
+                    thermal_since_boot,
+                    experiment_valid,
+                    c2_time_seconds,
+                    c3_time_seconds,
+                    c6_time_seconds,
+                    c7_time_seconds,
+                    wakeup_latency_us,
+                    interrupt_rate,
+                    thermal_throttle_flag,
+                    rss_memory_mb,
+                    vms_memory_mb,
+                    total_tokens,
+                    prompt_tokens,
+                    completion_tokens,
+                    dns_latency_ms,
+                    api_latency_ms,
+                    compute_time_ms,
+                    governor,
+                    turbo_enabled,
+                    is_cold_start,
+                    background_cpu_percent,
+                    process_count,
+                    planning_time_ms,
+                    execution_time_ms,
+                    synthesis_time_ms,
+                    phase_planning_ratio,
+                    phase_execution_ratio,
+                    phase_synthesis_ratio,
+                    llm_calls,
+                    tool_calls,
+                    tools_used,
+                    steps,
+                    avg_step_time_ms,
+                    complexity_level,
+                    complexity_score,
+                    carbon_g,
+                    water_ml,
+                    methane_mg,
+                    energy_per_instruction,
+                    energy_per_cycle,
+                    energy_per_token,
+                    instructions_per_token,
+                    interrupts_per_second,
+                    run_state_hash,
+                ),
+            )
             run_id = cursor.lastrowid
 
         # ---------------------------------------------------------
         # Insert orchestration events (if any)
         # ---------------------------------------------------------
-        if 'orchestration_events' in run_data:
-            self._insert_orchestration_events(run_id, run_data['orchestration_events'])
+        if "orchestration_events" in run_data:
+            self._insert_orchestration_events(run_id, run_data["orchestration_events"])
 
         # ---------------------------------------------------------
         # Insert high‑frequency samples (if any)
         # ---------------------------------------------------------
-        if 'energy_samples' in run_data:
-            self._insert_energy_samples(run_id, run_data['energy_samples'])
-        if 'cpu_samples' in run_data:
-            self._insert_cpu_samples(run_id, run_data['cpu_samples'])
-        if 'interrupt_samples' in run_data:
-            self._insert_interrupt_samples(run_id, run_data['interrupt_samples'])
+        if "energy_samples" in run_data:
+            self._insert_energy_samples(run_id, run_data["energy_samples"])
+        if "cpu_samples" in run_data:
+            self._insert_cpu_samples(run_id, run_data["cpu_samples"])
+        if "interrupt_samples" in run_data:
+            self._insert_interrupt_samples(run_id, run_data["interrupt_samples"])
 
         return run_id
 
@@ -995,27 +1076,30 @@ class DatabaseManager:
         """
         with self.conn:
             for ev in events:
-                self.conn.execute("""
+                self.conn.execute(
+                    """
                     INSERT INTO orchestration_events
                     (run_id, step_index, phase, event_type, start_time_ns, end_time_ns,
                      duration_ns, power_watts, cpu_util_percent, interrupt_rate,
                      event_energy_uj, tax_contribution_uj, tax_percent)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    run_id,
-                    ev.get('step_index'),
-                    ev.get('phase'),
-                    ev.get('event_type'),
-                    ev.get('start_time_ns'),
-                    ev.get('end_time_ns'),
-                    ev.get('duration_ns'),
-                    ev.get('power_watts'),
-                    ev.get('cpu_util_percent'),
-                    ev.get('interrupt_rate'),
-                    ev.get('event_energy_uj'),
-                    ev.get('tax_contribution_uj'),
-                    ev.get('tax_percent')
-                ))
+                """,
+                    (
+                        run_id,
+                        ev.get("step_index"),
+                        ev.get("phase"),
+                        ev.get("event_type"),
+                        ev.get("start_time_ns"),
+                        ev.get("end_time_ns"),
+                        ev.get("duration_ns"),
+                        ev.get("power_watts"),
+                        ev.get("cpu_util_percent"),
+                        ev.get("interrupt_rate"),
+                        ev.get("event_energy_uj"),
+                        ev.get("tax_contribution_uj"),
+                        ev.get("tax_percent"),
+                    ),
+                )
 
     def _insert_energy_samples(self, run_id: int, samples: List[Dict[str, Any]]):
         """
@@ -1031,18 +1115,21 @@ class DatabaseManager:
         """
         with self.conn:
             for s in samples:
-                self.conn.execute("""
+                self.conn.execute(
+                    """
                     INSERT INTO energy_samples
                     (run_id, timestamp_ns, pkg_energy_uj, core_energy_uj, uncore_energy_uj, dram_energy_uj)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    run_id,
-                    s.get('timestamp_ns'),
-                    s.get('pkg_energy_uj'),
-                    s.get('core_energy_uj'),
-                    s.get('uncore_energy_uj'),
-                    s.get('dram_energy_uj')
-                ))
+                """,
+                    (
+                        run_id,
+                        s.get("timestamp_ns"),
+                        s.get("pkg_energy_uj"),
+                        s.get("core_energy_uj"),
+                        s.get("uncore_energy_uj"),
+                        s.get("dram_energy_uj"),
+                    ),
+                )
 
     def _insert_cpu_samples(self, run_id: int, samples: List[Dict[str, Any]]):
         """
@@ -1057,16 +1144,19 @@ class DatabaseManager:
         """
         with self.conn:
             for s in samples:
-                self.conn.execute("""
+                self.conn.execute(
+                    """
                     INSERT INTO cpu_samples
                     (run_id, timestamp_ns, cpu_util_percent, cpu_freq_mhz)
                     VALUES (?, ?, ?, ?)
-                """, (
-                    run_id,
-                    s.get('timestamp_ns'),
-                    s.get('cpu_util_percent'),
-                    s.get('cpu_freq_mhz')
-                ))
+                """,
+                    (
+                        run_id,
+                        s.get("timestamp_ns"),
+                        s.get("cpu_util_percent"),
+                        s.get("cpu_freq_mhz"),
+                    ),
+                )
 
     def _insert_interrupt_samples(self, run_id: int, samples: List[Dict[str, Any]]):
         """
@@ -1081,15 +1171,14 @@ class DatabaseManager:
         """
         with self.conn:
             for s in samples:
-                self.conn.execute("""
+                self.conn.execute(
+                    """
                     INSERT INTO interrupt_samples
                     (run_id, timestamp_ns, interrupts_per_sec)
                     VALUES (?, ?, ?)
-                """, (
-                    run_id,
-                    s.get('timestamp_ns'),
-                    s.get('interrupts_per_sec')
-                ))
+                """,
+                    (run_id, s.get("timestamp_ns"), s.get("interrupts_per_sec")),
+                )
 
     def _create_tax_summaries(self, exp_id: int, run_ids: Dict[str, int]):
         """
@@ -1110,12 +1199,15 @@ class DatabaseManager:
         # ---------------------------------------------------------
         # Get all runs for this experiment with their run_number and workflow_type
         # ---------------------------------------------------------
-        cursor = self.conn.execute("""
+        cursor = self.conn.execute(
+            """
             SELECT r.run_id, r.run_number, e.workflow_type
             FROM runs r
             JOIN experiments e ON r.exp_id = e.exp_id
             WHERE r.exp_id = ?
-        """, (exp_id,))
+        """,
+            (exp_id,),
+        )
         runs_info = cursor.fetchall()
 
         # ---------------------------------------------------------
@@ -1123,35 +1215,50 @@ class DatabaseManager:
         # ---------------------------------------------------------
         pairs = {}
         for r in runs_info:
-            num = r['run_number']
+            num = r["run_number"]
             if num not in pairs:
                 pairs[num] = {}
-            pairs[num][r['workflow_type']] = r['run_id']
+            pairs[num][r["workflow_type"]] = r["run_id"]
 
         # ---------------------------------------------------------
         # For each pair that has both linear and agentic, compute tax
         # ---------------------------------------------------------
         for num, pair in pairs.items():
-            linear_id = pair.get('linear')
-            agentic_id = pair.get('agentic')
+            linear_id = pair.get("linear")
+            agentic_id = pair.get("agentic")
             if linear_id and agentic_id:
                 # Retrieve dynamic energies
-                cursor = self.conn.execute("""
+                cursor = self.conn.execute(
+                    """
                     SELECT dynamic_energy_uj FROM runs WHERE run_id IN (?, ?)
-                """, (linear_id, agentic_id))
-                energies = {row['run_id']: row['dynamic_energy_uj'] for row in cursor.fetchall()}
+                """,
+                    (linear_id, agentic_id),
+                )
+                energies = {
+                    row["run_id"]: row["dynamic_energy_uj"] for row in cursor.fetchall()
+                }
                 linear_uj = energies.get(linear_id, 0)
                 agentic_uj = energies.get(agentic_id, 0)
                 tax_uj = agentic_uj - linear_uj
                 tax_percent = (tax_uj / agentic_uj * 100) if agentic_uj > 0 else 0
 
                 with self.conn:
-                    self.conn.execute("""
+                    self.conn.execute(
+                        """
                         INSERT INTO orchestration_tax_summary
                         (linear_run_id, agentic_run_id, linear_dynamic_uj, agentic_dynamic_uj,
                          orchestration_tax_uj, tax_percent)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    """, (linear_id, agentic_id, linear_uj, agentic_uj, tax_uj, tax_percent))
+                    """,
+                        (
+                            linear_id,
+                            agentic_id,
+                            linear_uj,
+                            agentic_uj,
+                            tax_uj,
+                            tax_percent,
+                        ),
+                    )
 
     # --------------------------------------------------------------------------
     # QUERY METHODS
@@ -1181,7 +1288,9 @@ class DatabaseManager:
         Returns:
             List of run dictionaries.
         """
-        cursor = self.conn.execute("SELECT * FROM runs WHERE exp_id = ? ORDER BY run_number", (exp_id,))
+        cursor = self.conn.execute(
+            "SELECT * FROM runs WHERE exp_id = ? ORDER BY run_number", (exp_id,)
+        )
         return [dict(row) for row in cursor.fetchall()]
 
     def get_tax_summaries(self, exp_id: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -1198,11 +1307,14 @@ class DatabaseManager:
             cursor = self.conn.execute("SELECT * FROM orchestration_tax_summary")
         else:
             # Join with runs to filter by experiment
-            cursor = self.conn.execute("""
+            cursor = self.conn.execute(
+                """
                 SELECT ots.* FROM orchestration_tax_summary ots
                 JOIN runs r ON ots.linear_run_id = r.run_id
                 WHERE r.exp_id = ?
-            """, (exp_id,))
+            """,
+                (exp_id,),
+            )
         return [dict(row) for row in cursor.fetchall()]
 
     def get_ml_data(self, workflow: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -1219,7 +1331,9 @@ class DatabaseManager:
             List of dictionaries, each representing one run with all ML columns.
         """
         if workflow:
-            cursor = self.conn.execute("SELECT * FROM ml_features WHERE workflow_type = ?", (workflow,))
+            cursor = self.conn.execute(
+                "SELECT * FROM ml_features WHERE workflow_type = ?", (workflow,)
+            )
         else:
             cursor = self.conn.execute("SELECT * FROM ml_features")
         return [dict(row) for row in cursor.fetchall()]
@@ -1248,8 +1362,8 @@ if __name__ == "__main__":
     Creates an in‑memory database, inserts a dummy experiment and run,
     and queries back the data to verify functionality.
     """
-    import tempfile
     import os
+    import tempfile
 
     print("=" * 60)
     print("Testing DatabaseManager standalone...")
@@ -1265,88 +1379,88 @@ if __name__ == "__main__":
 
         # Dummy experiment metadata
         experiment_meta = {
-            'name': 'test_experiment',
-            'description': 'Standalone test',
-            'workflow_type': 'linear',
-            'model_name': 'test-model',
-            'provider': 'test',
-            'task_name': 'test-task',
-            'country_code': 'US'
+            "name": "test_experiment",
+            "description": "Standalone test",
+            "workflow_type": "linear",
+            "model_name": "test-model",
+            "provider": "test",
+            "task_name": "test-task",
+            "country_code": "US",
         }
 
         # Dummy run data (minimal ml_features)
         dummy_run = {
-            'ml_features': {
-                'run_number': 1,
-                'duration_ms': 1000.0,
-                'energy_j': 0.5,
-                'avg_power_watts': 0.5,
-                'instructions': 1000000,
-                'cycles': 2000000,
-                'ipc': 0.5,
-                'cache_misses': 10000,
-                'cache_references': 100000,
-                'cache_miss_rate': 0.1,
-                'page_faults': 10,
-                'major_page_faults': 0,
-                'minor_page_faults': 10,
-                'context_switches_voluntary': 50,
-                'context_switches_involuntary': 5,
-                'total_context_switches': 55,
-                'thread_migrations': 10,
-                'run_queue_length': 0.1,
-                'kernel_time_ms': 10.0,
-                'user_time_ms': 20.0,
-                'frequency_mhz': 2000.0,
-                'ring_bus_freq_mhz': 1800.0,
-                'package_temp_celsius': 45.0,
-                'baseline_temp_celsius': 40.0,
-                'start_temp_c': 42.0,
-                'max_temp_c': 46.0,
-                'thermal_during_experiment': False,
-                'thermal_now_active': False,
-                'thermal_since_boot': False,
-                'experiment_valid': True,
-                'c2_time_seconds': 0.1,
-                'c3_time_seconds': 0.2,
-                'c6_time_seconds': 0.0,
-                'c7_time_seconds': 0.0,
-                'wakeup_latency_us': 5.0,
-                'interrupt_rate': 1000.0,
-                'thermal_throttle_flag': 0,
-                'rss_memory_mb': 150.0,
-                'vms_memory_mb': 750.0,
-                'total_tokens': 100,
-                'prompt_tokens': 40,
-                'completion_tokens': 60,
-                'dns_latency_ms': 10.0,
-                'api_latency_ms': 50.0,
-                'compute_time_ms': 40.0,
-                'governor': 'powersave',
-                'turbo_enabled': True,
-                'is_cold_start': True,
-                'background_cpu_percent': 2.5,
-                'process_count': 350,
-                'planning_time_ms': None,
-                'execution_time_ms': None,
-                'synthesis_time_ms': None,
-                'phase_planning_ratio': None,
-                'phase_execution_ratio': None,
-                'phase_synthesis_ratio': None,
-                'llm_calls': None,
-                'tool_calls': None,
-                'tools_used': None,
-                'steps': None,
-                'avg_step_time_ms': None,
-                'complexity_level': None,
-                'complexity_score': None,
-                'experiment_id': 'dummy-uuid-1234'
+            "ml_features": {
+                "run_number": 1,
+                "duration_ms": 1000.0,
+                "energy_j": 0.5,
+                "avg_power_watts": 0.5,
+                "instructions": 1000000,
+                "cycles": 2000000,
+                "ipc": 0.5,
+                "cache_misses": 10000,
+                "cache_references": 100000,
+                "cache_miss_rate": 0.1,
+                "page_faults": 10,
+                "major_page_faults": 0,
+                "minor_page_faults": 10,
+                "context_switches_voluntary": 50,
+                "context_switches_involuntary": 5,
+                "total_context_switches": 55,
+                "thread_migrations": 10,
+                "run_queue_length": 0.1,
+                "kernel_time_ms": 10.0,
+                "user_time_ms": 20.0,
+                "frequency_mhz": 2000.0,
+                "ring_bus_freq_mhz": 1800.0,
+                "package_temp_celsius": 45.0,
+                "baseline_temp_celsius": 40.0,
+                "start_temp_c": 42.0,
+                "max_temp_c": 46.0,
+                "thermal_during_experiment": False,
+                "thermal_now_active": False,
+                "thermal_since_boot": False,
+                "experiment_valid": True,
+                "c2_time_seconds": 0.1,
+                "c3_time_seconds": 0.2,
+                "c6_time_seconds": 0.0,
+                "c7_time_seconds": 0.0,
+                "wakeup_latency_us": 5.0,
+                "interrupt_rate": 1000.0,
+                "thermal_throttle_flag": 0,
+                "rss_memory_mb": 150.0,
+                "vms_memory_mb": 750.0,
+                "total_tokens": 100,
+                "prompt_tokens": 40,
+                "completion_tokens": 60,
+                "dns_latency_ms": 10.0,
+                "api_latency_ms": 50.0,
+                "compute_time_ms": 40.0,
+                "governor": "powersave",
+                "turbo_enabled": True,
+                "is_cold_start": True,
+                "background_cpu_percent": 2.5,
+                "process_count": 350,
+                "planning_time_ms": None,
+                "execution_time_ms": None,
+                "synthesis_time_ms": None,
+                "phase_planning_ratio": None,
+                "phase_execution_ratio": None,
+                "phase_synthesis_ratio": None,
+                "llm_calls": None,
+                "tool_calls": None,
+                "tools_used": None,
+                "steps": None,
+                "avg_step_time_ms": None,
+                "complexity_level": None,
+                "complexity_score": None,
+                "experiment_id": "dummy-uuid-1234",
             },
-            'sustainability': {
-                'carbon': {'grams': 0.0001},
-                'water': {'milliliters': 0.001},
-                'methane': {'grams': 0.00001}
-            }
+            "sustainability": {
+                "carbon": {"grams": 0.0001},
+                "water": {"milliliters": 0.001},
+                "methane": {"grams": 0.00001},
+            },
         }
 
         # Save experiment
@@ -1371,7 +1485,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         # Clean up temp file
-        os.unlink(db_path)        
+        os.unlink(db_path)

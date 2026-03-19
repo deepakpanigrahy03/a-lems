@@ -1,0 +1,367 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.thermal &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.thermal</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.thermal</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/thermal.py  —  🌡  Thermal Analysis</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Per-run temperature time series, throttle events, thermal delta.</span>
+<span class="sd">Uses thermal_samples table (24,729 rows) with all_zones_json.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span><span class="p">,</span> <span class="n">STATUS_COLORS</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#f59e0b&quot;</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.thermal.html#gui.pages.thermal.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">runs</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runs&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
+
+    <span class="n">total_samples</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM thermal_samples&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+    <span class="n">throttle_count</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM thermal_samples WHERE throttle_event=1&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="ow">or</span> <span class="mi">0</span>
+    <span class="p">)</span>
+    <span class="n">affected_runs</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">q1</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT COUNT(DISTINCT run_id) AS n FROM thermal_samples WHERE throttle_event=1&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="mi">0</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Header ────────────────────────────────────────────────────────────────</span>
+    <span class="n">throttle_pct</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">round</span><span class="p">(</span><span class="n">throttle_count</span> <span class="o">/</span> <span class="n">total_samples</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_samples</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="p">)</span>
+    <span class="n">health_clr</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;#22c55e&quot;</span>
+        <span class="k">if</span> <span class="n">throttle_pct</span> <span class="o">&lt;</span> <span class="mi">10</span>
+        <span class="k">else</span> <span class="s2">&quot;#f59e0b&quot;</span> <span class="k">if</span> <span class="n">throttle_pct</span> <span class="o">&lt;</span> <span class="mi">50</span> <span class="k">else</span> <span class="s2">&quot;#ef4444&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Thermal Analysis — </span><span class="si">{</span><span class="n">total_samples</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> samples&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;&#39;&gt;&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&lt;div style=&#39;font-size:18px;font-weight:700;color:</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#94a3b8;text-transform:uppercase;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-top:3px;&#39;&gt;</span><span class="si">{</span><span class="n">l</span><span class="si">}</span><span class="s2">&lt;/div&gt;&lt;/div&gt;&quot;</span>
+                <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_samples</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Total samples&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">throttle_count</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Throttle events&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">affected_runs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Affected runs&quot;</span><span class="p">,</span> <span class="s2">&quot;#f97316&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">throttle_pct</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span> <span class="s2">&quot;Throttle rate&quot;</span><span class="p">,</span> <span class="n">health_clr</span><span class="p">),</span>
+                <span class="p">]</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Alert if ALL samples are throttled</span>
+    <span class="k">if</span> <span class="n">throttle_pct</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:10px 14px;background:#2a0c0c;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-left:3px solid #ef4444;border-radius:0 8px 8px 0;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-size:11px;color:#fca5a5;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:12px;line-height:1.7;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;⚠ &lt;b&gt;</span><span class="si">{</span><span class="n">throttle_pct</span><span class="si">}</span><span class="s2">% of thermal samples have throttle_event=1.&lt;/b&gt; &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;This likely means the throttle_event field records a sensor state &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(e.g. always-on flag) rather than actual throttling. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Check your thermal sensor collection logic. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Cross-reference with thermal_throttle_flag in runs table.&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ── Run-level thermal stats ───────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">runs</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="s2">&quot;package_temp_celsius&quot;</span> <span class="ow">in</span> <span class="n">runs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">col1</span><span class="p">,</span> <span class="n">col2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Package temp distribution by workflow&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">df_t</span> <span class="o">=</span> <span class="n">runs</span><span class="p">[</span>
+                <span class="n">runs</span><span class="p">[</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">runs</span><span class="p">[</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">sub</span> <span class="o">=</span> <span class="n">df_t</span><span class="p">[</span><span class="n">df_t</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">][</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                    <span class="n">go</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span> <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">line_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">boxmean</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Package temp (°C)&quot;</span><span class="p">,</span> <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;th_temp_box&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Thermal delta vs Energy&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fig2</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s2">&quot;thermal_delta_c&quot;</span> <span class="ow">in</span> <span class="n">runs</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;energy_j&quot;</span> <span class="ow">in</span> <span class="n">runs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">wf</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">WF_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">sub</span> <span class="o">=</span> <span class="n">runs</span><span class="p">[</span><span class="n">runs</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">wf</span><span class="p">]</span>
+                    <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span>
+                        <span class="n">sub</span><span class="p">[</span><span class="s2">&quot;thermal_delta_c&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+                        <span class="o">&amp;</span> <span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+                        <span class="o">&amp;</span> <span class="p">(</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="p">]</span>
+                    <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">fig2</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                        <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;thermal_delta_c&quot;</span><span class="p">],</span>
+                            <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;energy_j&quot;</span><span class="p">],</span>
+                            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                            <span class="n">name</span><span class="o">=</span><span class="n">wf</span><span class="p">,</span>
+                            <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.6</span><span class="p">),</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+            <span class="n">fig2</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+                <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span>
+                <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Thermal delta (°C)&quot;</span><span class="p">,</span>
+                <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Energy (J)&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig2</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;th_delta_scatter&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Time-series drilldown ─────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Time-series drilldown — thermal zones per run&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">run_ids</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT DISTINCT run_id FROM thermal_samples</span>
+<span class="s2">        ORDER BY run_id DESC LIMIT 100</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_id&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">())</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">run_ids</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No thermal sample data yet.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">sel_run</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+        <span class="s2">&quot;Select run&quot;</span><span class="p">,</span> <span class="n">run_ids</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;th_run_sel&quot;</span><span class="p">,</span> <span class="n">format_func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Run </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">samples</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT timestamp_ns/1e9 AS time_s,</span>
+<span class="s2">               cpu_temp, system_temp, wifi_temp,</span>
+<span class="s2">               throttle_event, all_zones_json, sensor_count</span>
+<span class="s2">        FROM thermal_samples</span>
+<span class="s2">        WHERE run_id = </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">sel_run</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">        ORDER BY timestamp_ns</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">samples</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No samples for this run.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">samples</span><span class="p">[</span><span class="s2">&quot;time_s&quot;</span><span class="p">]</span> <span class="o">-=</span> <span class="n">samples</span><span class="p">[</span><span class="s2">&quot;time_s&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+    <span class="c1"># Parse JSON zones for first row to show available sensors</span>
+    <span class="n">first_json</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">samples</span><span class="p">[</span><span class="s2">&quot;all_zones_json&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">samples</span><span class="p">[</span><span class="s2">&quot;all_zones_json&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+        <span class="k">else</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">zones</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">first_json</span><span class="p">)</span>
+        <span class="n">zone_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">zones</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">zone_keys</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">fig3</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+    <span class="c1"># Core temp traces</span>
+    <span class="k">for</span> <span class="n">col_n</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;cpu_temp&quot;</span><span class="p">,</span> <span class="s2">&quot;CPU Package&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;system_temp&quot;</span><span class="p">,</span> <span class="s2">&quot;System&quot;</span><span class="p">,</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;wifi_temp&quot;</span><span class="p">,</span> <span class="s2">&quot;WiFi&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span>
+    <span class="p">]:</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">samples</span><span class="p">[</span><span class="n">samples</span><span class="p">[</span><span class="n">col_n</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">samples</span><span class="p">[</span><span class="n">col_n</span><span class="p">]</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">100</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">fig3</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;time_s&quot;</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="n">col_n</span><span class="p">],</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">clr</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Throttle event markers</span>
+    <span class="n">throttled</span> <span class="o">=</span> <span class="n">samples</span><span class="p">[</span><span class="n">samples</span><span class="p">[</span><span class="s2">&quot;throttle_event&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">throttled</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">fig3</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">throttled</span><span class="p">[</span><span class="s2">&quot;time_s&quot;</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">throttled</span><span class="p">[</span><span class="s2">&quot;cpu_temp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Throttle event&quot;</span><span class="p">,</span>
+                <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;#ef4444&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">fig3</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+        <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Time (s)&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Temperature (°C)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig3</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;th_ts_</span><span class="si">{</span><span class="n">sel_run</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Show JSON zones table</span>
+    <span class="k">if</span> <span class="n">zone_keys</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:#475569;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-top:4px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Sensors available: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">zone_keys</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Stats for this run</span>
+    <span class="n">stat_cols</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">stat_cols</span><span class="p">,</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">samples</span><span class="p">[</span><span class="s1">&#39;cpu_temp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">,</span> <span class="s2">&quot;Max CPU temp&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">samples</span><span class="p">[</span><span class="s1">&#39;cpu_temp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">,</span> <span class="s2">&quot;Min CPU temp&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">samples</span><span class="p">[</span><span class="s1">&#39;cpu_temp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">,</span> <span class="s2">&quot;Avg CPU temp&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">throttled</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Throttle events&quot;</span><span class="p">),</span>
+        <span class="p">],</span>
+    <span class="p">):</span>
+        <span class="k">with</span> <span class="n">col</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

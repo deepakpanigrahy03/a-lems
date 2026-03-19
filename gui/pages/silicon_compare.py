@@ -6,12 +6,13 @@ Controlled comparison: same task × model × workflow, different hardware.
 Currently shows single-machine profile with multi-machine ready structure.
 ─────────────────────────────────────────────────────────────────────────────
 """
-import streamlit as st
+
 import pandas as pd
 import plotly.graph_objects as go
+import streamlit as st
 
-from gui.db     import q, q1
 from gui.config import PL, WF_COLORS
+from gui.db import q, q1
 
 ACCENT = "#fb923c"
 
@@ -75,7 +76,8 @@ def render(ctx: dict) -> None:
         f"<div style='font-size:12px;color:#94a3b8;font-family:IBM Plex Mono,monospace;'>"
         + "  ·  ".join(hw_labels.values())
         + "</div></div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     # ── Single machine message if only 1 ─────────────────────────────────────
     if hw_count == 1:
@@ -88,7 +90,8 @@ def render(ctx: dict) -> None:
             f"<b>Single machine mode.</b> Connect additional hardware hosts "
             f"to enable true cross-silicon comparison. "
             f"Showing full silicon profile for the current machine.</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
 
     # ── Filters ───────────────────────────────────────────────────────────────
     col1, col2, col3 = st.columns(3)
@@ -103,9 +106,12 @@ def render(ctx: dict) -> None:
         sel_wf = st.selectbox("Workflow", workflows, key="sc_wf")
 
     view = df.copy()
-    if sel_task  != "All": view = view[view["task_name"]    == sel_task]
-    if sel_model != "All": view = view[view["model_name"]   == sel_model]
-    if sel_wf    != "All": view = view[view["workflow_type"] == sel_wf]
+    if sel_task != "All":
+        view = view[view["task_name"] == sel_task]
+    if sel_model != "All":
+        view = view[view["model_name"] == sel_model]
+    if sel_wf != "All":
+        view = view[view["workflow_type"] == sel_wf]
 
     if view.empty:
         st.info("No runs match the selected filters.")
@@ -116,24 +122,28 @@ def render(ctx: dict) -> None:
         f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
         f"text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;'>"
         f"Energy distribution by hardware</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     col1, col2 = st.columns(2)
 
     with col1:
         fig = go.Figure()
         for hw_id in sorted(view["hw_id"].unique()):
-            sub  = view[view["hw_id"] == hw_id]["energy_j"].dropna()
-            lbl  = hw_labels.get(hw_id, f"hw_{hw_id}")
-            if sub.empty: continue
-            fig.add_trace(go.Box(
-                y=sub, name=lbl,
-                marker_color=ACCENT, line_color=ACCENT,
-                boxmean=True))
-        fig.update_layout(
-            **PL, height=280,
-            yaxis_title="Energy (J)",
-            showlegend=False)
+            sub = view[view["hw_id"] == hw_id]["energy_j"].dropna()
+            lbl = hw_labels.get(hw_id, f"hw_{hw_id}")
+            if sub.empty:
+                continue
+            fig.add_trace(
+                go.Box(
+                    y=sub,
+                    name=lbl,
+                    marker_color=ACCENT,
+                    line_color=ACCENT,
+                    boxmean=True,
+                )
+            )
+        fig.update_layout(**PL, height=280, yaxis_title="Energy (J)", showlegend=False)
         st.plotly_chart(fig, use_container_width=True, key="sc_energy_box")
 
     with col2:
@@ -141,14 +151,18 @@ def render(ctx: dict) -> None:
         fig2 = go.Figure()
         for wf, clr in WF_COLORS.items():
             sub = view[view["workflow_type"] == wf]["energy_j"].dropna()
-            if sub.empty: continue
-            fig2.add_trace(go.Histogram(
-                x=sub, name=wf,
-                marker_color=clr, opacity=0.7, nbinsx=40))
+            if sub.empty:
+                continue
+            fig2.add_trace(
+                go.Histogram(x=sub, name=wf, marker_color=clr, opacity=0.7, nbinsx=40)
+            )
         fig2.update_layout(
-            **PL, height=280, barmode="overlay",
+            **PL,
+            height=280,
+            barmode="overlay",
             xaxis_title="Energy (J)",
-            yaxis_title="Run count")
+            yaxis_title="Run count",
+        )
         st.plotly_chart(fig2, use_container_width=True, key="sc_energy_hist")
 
     # ── Key metrics by hardware × workflow ────────────────────────────────────
@@ -156,43 +170,50 @@ def render(ctx: dict) -> None:
         f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
         f"text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;'>"
         f"Silicon profile — key metrics</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
-    summary = view.groupby(["hw_id", "workflow_type"]).agg(
-        runs        =("energy_j",     "count"),
-        avg_energy  =("energy_j",     "mean"),
-        avg_ipc     =("ipc",          "mean"),
-        avg_cmr     =("cache_miss_rate","mean"),
-        avg_temp    =("temp_c",       "mean"),
-        avg_power   =("avg_power_watts","mean"),
-        avg_duration=("duration_ms",  "mean"),
-    ).round(3).reset_index()
+    summary = (
+        view.groupby(["hw_id", "workflow_type"])
+        .agg(
+            runs=("energy_j", "count"),
+            avg_energy=("energy_j", "mean"),
+            avg_ipc=("ipc", "mean"),
+            avg_cmr=("cache_miss_rate", "mean"),
+            avg_temp=("temp_c", "mean"),
+            avg_power=("avg_power_watts", "mean"),
+            avg_duration=("duration_ms", "mean"),
+        )
+        .round(3)
+        .reset_index()
+    )
 
     summary["hw_label"] = summary["hw_id"].map(hw_labels)
     summary["cell"] = summary["hw_label"] + " · " + summary["workflow_type"]
 
     metrics = [
-        ("avg_energy",   "Avg energy (J)",    "#f59e0b"),
-        ("avg_ipc",      "Avg IPC",            "#22c55e"),
-        ("avg_cmr",      "Cache miss rate",    "#a78bfa"),
-        ("avg_temp",     "Avg pkg temp (°C)",  "#ef4444"),
-        ("avg_power",    "Avg power (W)",      "#3b82f6"),
+        ("avg_energy", "Avg energy (J)", "#f59e0b"),
+        ("avg_ipc", "Avg IPC", "#22c55e"),
+        ("avg_cmr", "Cache miss rate", "#a78bfa"),
+        ("avg_temp", "Avg pkg temp (°C)", "#ef4444"),
+        ("avg_power", "Avg power (W)", "#3b82f6"),
     ]
 
     fig3 = go.Figure()
     for col_n, label, clr in metrics:
-        fig3.add_trace(go.Bar(
-            x=summary["cell"],
-            y=summary[col_n],
-            name=label,
-            marker_color=clr,
-            marker_line_width=0,
-            visible=True if col_n == "avg_energy" else "legendonly",
-        ))
+        fig3.add_trace(
+            go.Bar(
+                x=summary["cell"],
+                y=summary[col_n],
+                name=label,
+                marker_color=clr,
+                marker_line_width=0,
+                visible=True if col_n == "avg_energy" else "legendonly",
+            )
+        )
     fig3.update_layout(
-        **PL, height=300, barmode="group",
-        yaxis_title="Value",
-        xaxis_tickangle=-20)
+        **PL, height=300, barmode="group", yaxis_title="Value", xaxis_tickangle=-20
+    )
     st.plotly_chart(fig3, use_container_width=True, key="sc_metrics_bar")
 
     # ── Per-task energy profile ───────────────────────────────────────────────
@@ -201,22 +222,36 @@ def render(ctx: dict) -> None:
             f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
             f"text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;'>"
             f"Energy by task × workflow</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
 
-        task_e = view.groupby(
-            ["task_name", "workflow_type"])["energy_j"].mean().reset_index()
+        task_e = (
+            view.groupby(["task_name", "workflow_type"])["energy_j"]
+            .mean()
+            .reset_index()
+        )
         fig4 = go.Figure()
         for wf, clr in WF_COLORS.items():
             sub = task_e[task_e["workflow_type"] == wf]
-            if sub.empty: continue
-            fig4.add_trace(go.Bar(
-                x=sub["task_name"], y=sub["energy_j"],
-                name=wf, marker_color=clr, marker_line_width=0))
+            if sub.empty:
+                continue
+            fig4.add_trace(
+                go.Bar(
+                    x=sub["task_name"],
+                    y=sub["energy_j"],
+                    name=wf,
+                    marker_color=clr,
+                    marker_line_width=0,
+                )
+            )
         fig4.update_layout(
-            **PL, height=260, barmode="group",
+            **PL,
+            height=260,
+            barmode="group",
             xaxis_title="Task",
             yaxis_title="Avg energy (J)",
-            xaxis_tickangle=-30)
+            xaxis_tickangle=-30,
+        )
         st.plotly_chart(fig4, use_container_width=True, key="sc_task_energy")
 
     # ── Summary table ─────────────────────────────────────────────────────────
@@ -224,15 +259,30 @@ def render(ctx: dict) -> None:
         f"<div style='font-size:11px;font-weight:600;color:{ACCENT};"
         f"text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;'>"
         f"Full summary table</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
-    display = summary[[
-        "cell", "runs", "avg_energy", "avg_ipc",
-        "avg_cmr", "avg_temp", "avg_power", "avg_duration"
-    ]].copy()
+    display = summary[
+        [
+            "cell",
+            "runs",
+            "avg_energy",
+            "avg_ipc",
+            "avg_cmr",
+            "avg_temp",
+            "avg_power",
+            "avg_duration",
+        ]
+    ].copy()
     display.columns = [
-        "Hardware · Workflow", "Runs", "Avg Energy (J)", "Avg IPC",
-        "Cache Miss Rate", "Avg Temp (°C)", "Avg Power (W)", "Avg Duration (ms)"
+        "Hardware · Workflow",
+        "Runs",
+        "Avg Energy (J)",
+        "Avg IPC",
+        "Cache Miss Rate",
+        "Avg Temp (°C)",
+        "Avg Power (W)",
+        "Avg Duration (ms)",
     ]
     st.dataframe(display, use_container_width=True, height=300)
 
@@ -252,4 +302,5 @@ def render(ctx: dict) -> None:
             f"same experiment · same model · same task · different silicon.<br>"
             f"Compare x86 vs ARM64 vs RISC-V energy cost per token.</div>"
             f"</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )

@@ -3,6 +3,7 @@ gui/pages/_dm_helpers.py
 Shared helpers for data movement pages.
 Uses CTX runs (from load_runs) — no separate DB query.
 """
+
 import pandas as pd
 import streamlit as st
 
@@ -10,7 +11,7 @@ import streamlit as st
 def rgba(hex6: str, alpha: float = 0.13) -> str:
     """Convert '#rrggbb' to 'rgba(r,g,b,alpha)' for Plotly fillcolor."""
     h = hex6.lstrip("#")
-    r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
     return f"rgba({r},{g},{b},{alpha})"
 
 
@@ -35,4 +36,5 @@ def no_data_banner(message: str, accent: str = "#a78bfa") -> None:
         f"<div style='font-size:11px;color:#475569;"
         f"font-family:IBM Plex Mono,monospace;'>{message}</div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )

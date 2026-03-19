@@ -1,0 +1,1148 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.agentic &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.agentic</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.agentic</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">AGENTIC AI EXECUTOR – Multi-step LLM with tool support</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">Purpose: Implements agentic AI workflows to measure orchestration tax.</span>
+<span class="sd">    - Plans tasks, uses tools, synthesizes results</span>
+<span class="sd">    - Phase-level timing for scientific analysis</span>
+
+<span class="sd">SCIENTIFIC NOTES:</span>
+<span class="sd">    - Uses SAME base prompt as linear for fair comparison</span>
+<span class="sd">    - Planning phase uses temperature=0 for reproducibility</span>
+<span class="sd">    - Phase timing separates planning/execution/synthesis</span>
+<span class="sd">    - Complexity score weights multiple factors with proper normalization</span>
+<span class="sd">    - Both cloud (Groq) and local (Ollama) providers supported</span>
+
+<span class="sd">Requirements:</span>
+<span class="sd">    Req 3.1: Dual-Harness Support – local/cloud via config</span>
+<span class="sd">    Req 3.2: Complexity-Level Logic – based on tool calls</span>
+<span class="sd">    Req 3.6: Device Handoff Latency – phase-level timing</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># STANDARDIZED BASE PROMPT – Same as linear for fair comparison</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">BASE_TASK_PROMPT</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Task: </span><span class="si">{task}</span>
+
+<span class="s2">Please provide a complete and thorough answer.</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="AgenticExecutor">
+<a class="viewcode-back" href="../../../core.execution.agentic.html#core.execution.AgenticExecutor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AgenticExecutor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes agentic AI workflows with tool support.</span>
+
+<span class="sd">    Workflow:</span>
+<span class="sd">        1. Planning Phase: LLM creates step-by-step execution plan</span>
+<span class="sd">        2. Execution Phase: Each step runs (tool or LLM)</span>
+<span class="sd">        3. Synthesis Phase: Combine all results into final answer</span>
+
+<span class="sd">    Number of LLM calls = 1 (plan) + N (steps) + 1 (synthesis)</span>
+<span class="sd">    where N is the number of steps that require LLM reasoning.</span>
+
+<span class="sd">    All configuration comes from Module 0 – no hardcoding.</span>
+<span class="sd">    Debug output controlled by A_LEMS_DEBUG environment variable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize executor with model configuration from Module 0.</span>
+
+<span class="sd">        Purpose:</span>
+<span class="sd">            Load all settings from config files so the executor can work with</span>
+<span class="sd">            different models (local/cloud) without code changes.</span>
+
+<span class="sd">        Why this exists:</span>
+<span class="sd">            Req 3.1 requires supporting both local and cloud models.</span>
+<span class="sd">            All configuration comes from Module 0&#39;s models.json.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_config: Dictionary containing:</span>
+<span class="sd">                - provider: &quot;groq&quot;, &quot;anthropic&quot;, &quot;openai&quot;, &quot;ollama&quot;, etc.</span>
+<span class="sd">                - api_endpoint: URL for API calls</span>
+<span class="sd">                - api_key_env: Environment variable name for API key</span>
+<span class="sd">                - model_id: Model identifier for the provider</span>
+<span class="sd">                - max_tokens: Maximum tokens in response</span>
+<span class="sd">                - temperature: Sampling temperature (0.0-1.0)</span>
+<span class="sd">                - tools: List of supported tool names</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">model_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key_env&quot;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_key_env&quot;</span><span class="p">)</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">supported_tools</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_tokens&quot;</span><span class="p">,</span> <span class="mi">2048</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;temperature&quot;</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">provider</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_path&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">call_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_interactions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">provider</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ollama&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;API key missing: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;api_key_env&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;AgenticExecutor initialized: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">provider</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_complexity_score</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">llm_calls</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tool_calls</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">total_tokens</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate weighted complexity score for orchestration tax analysis.</span>
+
+<span class="sd">        LITERATURE BASIS:</span>
+<span class="sd">        -----------------</span>
+<span class="sd">        This metric is informed by established research in Green AI and</span>
+<span class="sd">        computer systems:</span>
+
+<span class="sd">        1. LLM calls (α factor):</span>
+<span class="sd">            Justification: Each model invocation incurs compute and energy cost</span>
+<span class="sd">            proportional to inference workload. Supported by:</span>
+<span class="sd">            - Schwartz et al., &quot;Green AI&quot; (2020) – energy ∝ computation</span>
+<span class="sd">            - Patterson et al., &quot;Carbon Emissions...&quot; (2021) – energy ∝ model runs</span>
+
+<span class="sd">        2. Tool calls (β factor):</span>
+<span class="sd">            Justification: External tool execution consumes CPU, memory, I/O.</span>
+<span class="sd">            Supported by:</span>
+<span class="sd">            - Hennessy &amp; Patterson, &quot;Computer Architecture&quot; – energy in systems</span>
+
+<span class="sd">        3. Token volume (γ factor):</span>
+<span class="sd">            Justification: Inference compute scales with token count.</span>
+<span class="sd">            Supported by:</span>
+<span class="sd">            - Kaplan et al., &quot;Scaling Laws for Neural Language Models&quot; (2020)</span>
+
+<span class="sd">        WEIGHT VALUES:</span>
+<span class="sd">        -------------</span>
+<span class="sd">        The weights (α=0.4, β=0.3, γ=0.3) are HEURISTIC coefficients</span>
+<span class="sd">        inspired by literature but represent our novel contribution –</span>
+<span class="sd">        the &quot;Orchestration Complexity Metric&quot; defined in this work.</span>
+
+<span class="sd">        NORMALIZATION:</span>
+<span class="sd">        -------------</span>
+<span class="sd">        All components are normalized to [0,1] range to ensure fair contribution</span>
+<span class="sd">        regardless of absolute scales. This follows best practices in</span>
+<span class="sd">        composite metric design (OECD, 2008).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with:</span>
+<span class="sd">                - raw_score: Weighted sum (0-1 range)</span>
+<span class="sd">                - normalized_score: Scaled to 1-10 for interpretation</span>
+<span class="sd">                - components: Individual normalized factors with citations</span>
+<span class="sd">                - weights: The heuristic weight values used</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Maximum expected values for normalization (based on pilot experiments)</span>
+        <span class="n">MAX_LLM_CALLS</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Upper bound: planning + up to 8 steps + synthesis</span>
+        <span class="n">MAX_TOOL_CALLS</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Upper bound: maximum tools in complex tasks</span>
+        <span class="n">TOKEN_THRESHOLD</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># Based on scaling laws (Kaplan et al. 2020)</span>
+
+        <span class="c1"># Normalize each component to [0, 1] range (OECD composite indicator guidelines)</span>
+        <span class="n">normalized_llm</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">llm_calls</span> <span class="o">/</span> <span class="n">MAX_LLM_CALLS</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">normalized_tools</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">tool_calls</span> <span class="o">/</span> <span class="n">MAX_TOOL_CALLS</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">normalized_tokens</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">total_tokens</span> <span class="o">/</span> <span class="n">TOKEN_THRESHOLD</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Heuristic weights (our novel contribution – not from literature)</span>
+        <span class="n">ALPHA</span> <span class="o">=</span> <span class="mf">0.4</span>  <span class="c1"># LLM calls weight – importance of model invocations</span>
+        <span class="n">BETA</span> <span class="o">=</span> <span class="mf">0.3</span>  <span class="c1"># Tool calls weight – importance of external operations</span>
+        <span class="n">GAMMA</span> <span class="o">=</span> <span class="mf">0.3</span>  <span class="c1"># Token volume weight – importance of computation scale</span>
+
+        <span class="c1"># Calculate weighted score</span>
+        <span class="n">raw_score</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ALPHA</span> <span class="o">*</span> <span class="n">normalized_llm</span> <span class="o">+</span> <span class="n">BETA</span> <span class="o">*</span> <span class="n">normalized_tools</span> <span class="o">+</span> <span class="n">GAMMA</span> <span class="o">*</span> <span class="n">normalized_tokens</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Scale to 1-10 for human interpretation</span>
+        <span class="n">normalized_score</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">raw_score</span> <span class="o">*</span> <span class="mi">9</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;raw_score&quot;</span><span class="p">:</span> <span class="n">raw_score</span><span class="p">,</span>
+            <span class="s2">&quot;normalized_score&quot;</span><span class="p">:</span> <span class="n">normalized_score</span><span class="p">,</span>
+            <span class="s2">&quot;components&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;llm_calls&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;raw&quot;</span><span class="p">:</span> <span class="n">llm_calls</span><span class="p">,</span>
+                    <span class="s2">&quot;normalized&quot;</span><span class="p">:</span> <span class="n">normalized_llm</span><span class="p">,</span>
+                    <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">ALPHA</span><span class="p">,</span>
+                    <span class="s2">&quot;citation&quot;</span><span class="p">:</span> <span class="s2">&quot;Schwartz et al. 2020; Patterson et al. 2021&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;tool_calls&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;raw&quot;</span><span class="p">:</span> <span class="n">tool_calls</span><span class="p">,</span>
+                    <span class="s2">&quot;normalized&quot;</span><span class="p">:</span> <span class="n">normalized_tools</span><span class="p">,</span>
+                    <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">BETA</span><span class="p">,</span>
+                    <span class="s2">&quot;citation&quot;</span><span class="p">:</span> <span class="s2">&quot;Hennessy &amp; Patterson, Computer Architecture&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;token_volume&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;raw&quot;</span><span class="p">:</span> <span class="n">total_tokens</span><span class="p">,</span>
+                    <span class="s2">&quot;normalized&quot;</span><span class="p">:</span> <span class="n">normalized_tokens</span><span class="p">,</span>
+                    <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">GAMMA</span><span class="p">,</span>
+                    <span class="s2">&quot;citation&quot;</span><span class="p">:</span> <span class="s2">&quot;Kaplan et al. 2020&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;weights&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="n">ALPHA</span><span class="p">,</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span> <span class="n">BETA</span><span class="p">,</span> <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="n">GAMMA</span><span class="p">},</span>
+            <span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;Heuristic weights – novel contribution of this work&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;literature&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;green_ai&quot;</span><span class="p">:</span> <span class="s2">&quot;Schwartz, R., Dodge, J., Smith, N. A., &amp; Etzioni, O. (2020). Green AI.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;carbon_emissions&quot;</span><span class="p">:</span> <span class="s2">&quot;Patterson, D., et al. (2021). Carbon Emissions and Large Neural Network Training.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;scaling_laws&quot;</span><span class="p">:</span> <span class="s2">&quot;Kaplan, J., et al. (2020). Scaling Laws for Neural Language Models.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;computer_architecture&quot;</span><span class="p">:</span> <span class="s2">&quot;Hennessy, J. L., &amp; Patterson, D. A. (2017). Computer Architecture: A Quantitative Approach.&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;composite_indicators&quot;</span><span class="p">:</span> <span class="s2">&quot;OECD (2008). Handbook on Constructing Composite Indicators.&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="AgenticExecutor.execute">
+<a class="viewcode-back" href="../../../core.execution.agentic.html#core.execution.AgenticExecutor.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">planning_temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute agentic workflow with phase-level timing.</span>
+
+<span class="sd">        Purpose:</span>
+<span class="sd">            This is the main entry point that runs the complete agentic pipeline:</span>
+<span class="sd">            1. Planning: LLM creates step-by-step plan (temperature=0 for reproducibility)</span>
+<span class="sd">            2. Execution: Each step runs (tool or LLM)</span>
+<span class="sd">            3. Synthesis: Combine all results into final answer</span>
+
+<span class="sd">        Why this exists:</span>
+<span class="sd">            - Measures energy consumption of agentic workflows (Req 3.6)</span>
+<span class="sd">            - Determines complexity based on tool count (Req 3.2)</span>
+<span class="sd">            - Phase timing reveals where orchestration tax is spent</span>
+<span class="sd">            - Results used to calculate overhead vs linear AI</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task: User query (e.g., &quot;What is 2+2?&quot;)</span>
+<span class="sd">            planning_temperature: Temperature for planning phase (default 0.0 for reproducibility)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with all metrics needed for energy analysis</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">experiment_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())[:</span><span class="mi">8</span><span class="p">]</span>
+        <span class="n">overall_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">total_prompt_chars</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">total_response_chars</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">call_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">step_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;#&#39;</span><span class="o">*</span><span class="mi">70</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🚀 AGENTIC EXECUTION [</span><span class="si">{</span><span class="n">experiment_id</span><span class="si">}</span><span class="s2">]: </span><span class="si">{</span><span class="n">task</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;#&#39;</span><span class="o">*</span><span class="mi">70</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Phase 1: Planning – LLM creates step-by-step plan (1 call)</span>
+        <span class="c1"># Temperature=0 for reproducibility – same task = same plan</span>
+        <span class="c1"># This is CRITICAL for experimental reproducibility</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">plan_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">call_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_plan</span><span class="p">(</span>
+            <span class="n">task</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">planning_temperature</span><span class="p">,</span> <span class="n">call_counter</span><span class="o">=</span><span class="n">call_counter</span>
+        <span class="p">)</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;steps&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">plan_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">planning_time_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">plan_end</span> <span class="o">-</span> <span class="n">plan_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+        <span class="c1"># Emit planning phase event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_emit_event</span><span class="p">(</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+            <span class="n">event_type</span><span class="o">=</span><span class="s2">&quot;planning&quot;</span><span class="p">,</span>
+            <span class="n">start_time</span><span class="o">=</span><span class="n">plan_start</span><span class="p">,</span>
+            <span class="n">end_time</span><span class="o">=</span><span class="n">plan_end</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span>
+                <span class="s2">&quot;task_preview&quot;</span><span class="p">:</span> <span class="n">task</span><span class="p">[:</span><span class="mi">100</span><span class="p">],</span>
+                <span class="s2">&quot;planning_temperature&quot;</span><span class="p">:</span> <span class="n">planning_temperature</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 Planning: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span><span class="si">}</span><span class="s2"> steps, </span><span class="si">{</span><span class="n">planning_time_ms</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Phase 2: Execution – Run each step (tool or LLM)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">exec_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">step_results</span><span class="p">,</span> <span class="n">tools_used</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;completion&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="n">total_llm_calls</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">step_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+            <span class="n">step_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">supported_tools</span><span class="p">:</span>
+                <span class="c1"># Tool execution – external computation, no LLM call</span>
+                <span class="n">tool_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_tool</span><span class="p">(</span>
+                    <span class="n">step</span><span class="p">[</span><span class="s2">&quot;tool&quot;</span><span class="p">],</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="p">{}),</span> <span class="n">step_counter</span>
+                <span class="p">)</span>
+                <span class="n">tool_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">step_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;tool&quot;</span><span class="p">:</span> <span class="n">step</span><span class="p">[</span><span class="s2">&quot;tool&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+                        <span class="s2">&quot;time_ms&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">tool_end</span> <span class="o">-</span> <span class="n">tool_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">step</span><span class="p">[</span><span class="s2">&quot;tool&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tools_used</span><span class="p">:</span>
+                    <span class="n">tools_used</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step</span><span class="p">[</span><span class="s2">&quot;tool&quot;</span><span class="p">])</span>
+                <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  🔧 Tool </span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;tool&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># LLM execution – another call to the model</span>
+                <span class="n">call_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">prompt</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt&quot;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
+                <span class="n">llm_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">llm_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_llm</span><span class="p">(</span>
+                    <span class="n">prompt</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">call_counter</span><span class="o">=</span><span class="n">call_counter</span>
+                <span class="p">)</span>
+                <span class="n">llm_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">step_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;llm&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">llm_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;time_ms&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">llm_end</span> <span class="o">-</span> <span class="n">llm_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+
+                <span class="c1"># ====================================================================</span>
+                <span class="c1"># FIXED: Handle token counting from API response (12 spaces indentation)</span>
+                <span class="c1"># ====================================================================</span>
+                <span class="k">if</span> <span class="s2">&quot;usage&quot;</span> <span class="ow">in</span> <span class="n">llm_result</span><span class="p">:</span>
+                    <span class="n">usage</span> <span class="o">=</span> <span class="n">llm_result</span><span class="p">[</span><span class="s2">&quot;usage&quot;</span><span class="p">]</span>
+                    <span class="n">tokens</span><span class="p">[</span><span class="s2">&quot;prompt&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">tokens</span><span class="p">[</span><span class="s2">&quot;completion&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">tokens</span><span class="p">[</span><span class="s2">&quot;total&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - added prompt:</span><span class="si">{</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;prompt_tokens&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, completion:</span><span class="si">{</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;completion_tokens&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, total:</span><span class="si">{</span><span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_tokens&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - now tokens: </span><span class="si">{</span><span class="n">tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="s2">&quot;tokens&quot;</span> <span class="ow">in</span> <span class="n">llm_result</span><span class="p">:</span>
+                    <span class="c1"># Fallback for any providers that use &#39;tokens&#39; format</span>
+                    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">llm_result</span><span class="p">[</span><span class="s2">&quot;tokens&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">tokens</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+=</span> <span class="n">v</span>
+                        <span class="nb">print</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - added </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">, now tokens[</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">] = </span><span class="si">{</span><span class="n">tokens</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;No token data in llm_result. Keys: </span><span class="si">{</span><span class="n">llm_result</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="n">total_llm_calls</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">total_prompt_chars</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+                <span class="n">total_response_chars</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">llm_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+                <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  🤖 LLM step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> complete&quot;</span><span class="p">)</span>
+
+        <span class="n">exec_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">execution_time_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">exec_end</span> <span class="o">-</span> <span class="n">exec_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - accumulated tokens: </span><span class="si">{</span><span class="n">tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - tokens keys: </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># print(&quot;🔍 DEBUG - llm_result keys:&quot;, llm_result.keys())</span>
+        <span class="c1"># print(&quot;🔍 DEBUG - llm_result full:&quot;, llm_result)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Phase 3: Synthesis – Combine all results (1 call)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">syn_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">call_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">synthesis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_synthesize</span><span class="p">(</span>
+            <span class="n">task</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">step_results</span><span class="p">,</span> <span class="n">call_counter</span><span class="o">=</span><span class="n">call_counter</span>
+        <span class="p">)</span>
+        <span class="n">syn_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">synthesis_time_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">syn_end</span> <span class="o">-</span> <span class="n">syn_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+        <span class="c1"># Emit synthesis phase event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_emit_event</span><span class="p">(</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;synthesis&quot;</span><span class="p">,</span>
+            <span class="n">event_type</span><span class="o">=</span><span class="s2">&quot;synthesis&quot;</span><span class="p">,</span>
+            <span class="n">start_time</span><span class="o">=</span><span class="n">syn_start</span><span class="p">,</span>
+            <span class="n">end_time</span><span class="o">=</span><span class="n">syn_end</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span> <span class="s2">&quot;has_content&quot;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">synthesis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">))},</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;tokens&quot;</span> <span class="ow">in</span> <span class="n">synthesis</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">synthesis</span><span class="p">[</span><span class="s2">&quot;tokens&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">tokens</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+=</span> <span class="n">v</span>
+        <span class="n">total_llm_calls</span> <span class="o">+=</span> <span class="mi">1</span>  <span class="c1"># Count synthesis call</span>
+        <span class="n">total_prompt_chars</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">synthesis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="n">total_response_chars</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">synthesis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Req 3.2: Determine complexity based on actual tool usage</span>
+        <span class="c1"># More tools = more complex = higher energy consumption</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">tool_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tools_used</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tool_count</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">complexity_level</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Simple: 0-1 tools (low orchestration tax)</span>
+        <span class="k">elif</span> <span class="n">tool_count</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">complexity_level</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># Moderate: 2-3 tools (medium tax)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">complexity_level</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># Complex: 4+ tools (high tax)</span>
+
+        <span class="n">total_time_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">overall_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+        <span class="c1"># Calculate final LLM calls: planning (1) + execution (N) + synthesis (1)</span>
+        <span class="n">final_llm_calls</span> <span class="o">=</span> <span class="n">total_llm_calls</span> <span class="o">+</span> <span class="mi">1</span>  <span class="c1"># +1 for planning call</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Calculate total effective throughput across all LLM calls</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">total_effective_kbps</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_effective_kbps_list&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_kbps_list</span><span class="p">:</span>
+            <span class="n">total_effective_kbps</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_effective_kbps_list</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_effective_kbps_list</span>
+            <span class="p">)</span>
+            <span class="c1"># Sum all effective_kbps values (you&#39;d need to track them)</span>
+            <span class="c1"># For now, let&#39;s calculate average</span>
+            <span class="n">dprint</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;📊 Average throughput: </span><span class="si">{</span><span class="n">total_effective_kbps</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kbps across </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_effective_kbps_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> calls&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;experiment_id&quot;</span><span class="p">:</span> <span class="n">experiment_id</span><span class="p">,</span>
+            <span class="s2">&quot;response&quot;</span><span class="p">:</span> <span class="n">synthesis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span>
+            <span class="s2">&quot;llm_calls&quot;</span><span class="p">:</span> <span class="n">final_llm_calls</span><span class="p">,</span>  <span class="c1"># CORRECT: planning + execution + synthesis</span>
+            <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span>
+            <span class="s2">&quot;tools_used&quot;</span><span class="p">:</span> <span class="n">tools_used</span><span class="p">,</span>
+            <span class="s2">&quot;tool_count&quot;</span><span class="p">:</span> <span class="n">tool_count</span><span class="p">,</span>
+            <span class="s2">&quot;pending_interactions&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;pending_interactions&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+            <span class="s2">&quot;complexity_level&quot;</span><span class="p">:</span> <span class="n">complexity_level</span><span class="p">,</span>  <span class="c1"># Req 3.2</span>
+            <span class="s2">&quot;complexity_score&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_complexity_score</span><span class="p">(</span>
+                <span class="n">final_llm_calls</span><span class="p">,</span> <span class="n">tool_count</span><span class="p">,</span> <span class="n">tokens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;phase_times&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;planning_ms&quot;</span><span class="p">:</span> <span class="n">planning_time_ms</span><span class="p">,</span>
+                <span class="s2">&quot;execution_ms&quot;</span><span class="p">:</span> <span class="n">execution_time_ms</span><span class="p">,</span>
+                <span class="s2">&quot;synthesis_ms&quot;</span><span class="p">:</span> <span class="n">synthesis_time_ms</span><span class="p">,</span>
+                <span class="s2">&quot;total_ms&quot;</span><span class="p">:</span> <span class="n">total_time_ms</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;phase_percentages&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;planning_pct&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">planning_time_ms</span> <span class="o">/</span> <span class="n">total_time_ms</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span> <span class="k">if</span> <span class="n">total_time_ms</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;execution_pct&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">execution_time_ms</span> <span class="o">/</span> <span class="n">total_time_ms</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+                    <span class="k">if</span> <span class="n">total_time_ms</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;synthesis_pct&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">synthesis_time_ms</span> <span class="o">/</span> <span class="n">total_time_ms</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+                    <span class="k">if</span> <span class="n">total_time_ms</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;timestamps&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;plan_start&quot;</span><span class="p">:</span> <span class="n">plan_start</span><span class="p">,</span>
+                <span class="s2">&quot;plan_end&quot;</span><span class="p">:</span> <span class="n">plan_end</span><span class="p">,</span>
+                <span class="s2">&quot;exec_start&quot;</span><span class="p">:</span> <span class="n">exec_start</span><span class="p">,</span>
+                <span class="s2">&quot;exec_end&quot;</span><span class="p">:</span> <span class="n">exec_end</span><span class="p">,</span>
+                <span class="s2">&quot;syn_start&quot;</span><span class="p">:</span> <span class="n">syn_start</span><span class="p">,</span>
+                <span class="s2">&quot;syn_end&quot;</span><span class="p">:</span> <span class="n">syn_end</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;total_time_ms&quot;</span><span class="p">:</span> <span class="n">total_time_ms</span><span class="p">,</span>  <span class="c1"># Req 3.6</span>
+            <span class="s2">&quot;prompt_chars&quot;</span><span class="p">:</span> <span class="n">total_prompt_chars</span><span class="p">,</span>
+            <span class="s2">&quot;response_chars&quot;</span><span class="p">:</span> <span class="n">total_response_chars</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_id&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+            <span class="s2">&quot;avg_effective_kbps&quot;</span><span class="p">:</span> <span class="n">total_effective_kbps</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Phase breakdown:&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Planning:  </span><span class="si">{</span><span class="n">planning_time_ms</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">ms (</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;phase_percentages&#39;</span><span class="p">][</span><span class="s1">&#39;planning_pct&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">%)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Execution: </span><span class="si">{</span><span class="n">execution_time_ms</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">ms (</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;phase_percentages&#39;</span><span class="p">][</span><span class="s1">&#39;execution_pct&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">%)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Synthesis: </span><span class="si">{</span><span class="n">synthesis_time_ms</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">ms (</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;phase_percentages&#39;</span><span class="p">][</span><span class="s1">&#39;synthesis_pct&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">%)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   TOTAL:     </span><span class="si">{</span><span class="n">total_time_ms</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;✅ Agentic complete: </span><span class="si">{</span><span class="n">total_time_ms</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">ms, </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2"> tokens&quot;</span>
+        <span class="p">)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Calculate API latency (total time spent waiting for network)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">total_api_latency_ms</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_api_latencies&quot;</span><span class="p">):</span>
+            <span class="n">total_api_latency_ms</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_latencies</span><span class="p">)</span>
+
+        <span class="c1"># Calculate phase ratios (normalized to 0-1 for ML)</span>
+        <span class="n">phase_ratios</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;planning_ratio&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">planning_time_ms</span> <span class="o">/</span> <span class="n">total_time_ms</span> <span class="k">if</span> <span class="n">total_time_ms</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;execution_ratio&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">execution_time_ms</span> <span class="o">/</span> <span class="n">total_time_ms</span> <span class="k">if</span> <span class="n">total_time_ms</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;synthesis_ratio&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">synthesis_time_ms</span> <span class="o">/</span> <span class="n">total_time_ms</span> <span class="k">if</span> <span class="n">total_time_ms</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Calculate waiting time (time between LLM calls)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">waiting_time_ms</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_api_latencies&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_latencies</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Waiting time = total time - sum of active phases</span>
+            <span class="c1"># Active phases = planning + execution + synthesis + tool time</span>
+            <span class="n">total_active</span> <span class="o">=</span> <span class="n">planning_time_ms</span> <span class="o">+</span> <span class="n">execution_time_ms</span> <span class="o">+</span> <span class="n">synthesis_time_ms</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_tool_latencies&quot;</span><span class="p">):</span>
+                <span class="n">total_active</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tool_latencies</span><span class="p">)</span>
+            <span class="n">waiting_time_ms</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_time_ms</span> <span class="o">-</span> <span class="n">total_active</span><span class="p">)</span>
+
+        <span class="c1"># Add to result</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">:</span> <span class="n">total_api_latency_ms</span><span class="p">,</span>
+                <span class="s2">&quot;compute_time_ms&quot;</span><span class="p">:</span> <span class="n">total_time_ms</span> <span class="o">-</span> <span class="n">total_api_latency_ms</span><span class="p">,</span>
+                <span class="s2">&quot;waiting_time_ms&quot;</span><span class="p">:</span> <span class="n">waiting_time_ms</span><span class="p">,</span>  <span class="c1"># M3-9</span>
+                <span class="s2">&quot;avg_step_time_ms&quot;</span><span class="p">:</span> <span class="n">execution_time_ms</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span> <span class="k">if</span> <span class="n">steps</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_events&quot;</span><span class="p">,</span> <span class="p">[]),</span>  <span class="c1"># M3-10</span>
+                <span class="s2">&quot;tool_latencies&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_tool_latencies&quot;</span><span class="p">,</span> <span class="p">[]),</span>  <span class="c1"># M3-11</span>
+                <span class="s2">&quot;avg_tool_latency_ms&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tool_latencies</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tool_latencies</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_tool_latencies&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tool_latencies</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_interactions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;✅ Agentic complete: </span><span class="si">{</span><span class="n">execution_time_ms</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">ms, </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2"> tokens&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="AgenticExecutor.execute_comparison">
+<a class="viewcode-back" href="../../../core.execution.agentic.html#core.execution.AgenticExecutor.execute_comparison">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_comparison</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute with standardized prompt for fair comparison with linear.</span>
+
+<span class="sd">        This ensures linear and agentic see semantically equivalent tasks,</span>
+<span class="sd">        removing bias from prompt engineering.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task: The task to solve</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Same as execute() but with standardized base prompt</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Same base prompt as linear</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">BASE_TASK_PROMPT</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># Additional instruction for agentic (planning)</span>
+        <span class="n">planning_prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="si">{</span><span class="n">base</span><span class="si">}</span>
+
+<span class="s2">To solve this effectively, break it down into steps.</span>
+<span class="s2">You can use tools like calculator or web search if needed.</span>
+<span class="s2">&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">planning_prompt</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_plan</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">call_counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ask LLM to create execution plan with deterministic temperature.</span>
+
+<span class="sd">        Purpose:</span>
+<span class="sd">            This is where agentic intelligence happens – the LLM analyzes</span>
+<span class="sd">            the task and decides what steps are needed. Linear AI skips this.</span>
+
+<span class="sd">        Why this exists:</span>
+<span class="sd">            - Planning consumes energy (Req 3.6)</span>
+<span class="sd">            - Determines how many tools will be used (Req 3.2)</span>
+<span class="sd">            - Temperature=0 ensures same task = same plan (reproducibility)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task: Original user query</span>
+<span class="sd">            temperature: 0.0 for reproducible planning</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with &#39;steps&#39; array containing the execution plan</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        Break this task into steps. Return JSON with &quot;steps&quot; array.</span>
+<span class="s2">        Each step: </span><span class="se">{{</span><span class="s2">&quot;description&quot;: str, &quot;type&quot;: &quot;tool/llm&quot;, </span>
+<span class="s2">                   &quot;tool&quot;: name if tool, &quot;args&quot;: </span><span class="se">{{}}</span><span class="s2"> if tool,</span>
+<span class="s2">                   &quot;prompt&quot;: str if llm</span><span class="se">}}</span>
+<span class="s2">        Task: </span><span class="si">{</span><span class="n">task</span><span class="si">}</span>
+<span class="s2">        Tools: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">supported_tools</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">        Example: </span><span class="se">{{</span><span class="s2">&quot;steps&quot;: [</span><span class="se">{{</span><span class="s2">&quot;description&quot;: &quot;Calculate&quot;, &quot;type&quot;: &quot;tool&quot;, </span>
+<span class="s2">                             &quot;tool&quot;: &quot;calculator&quot;, &quot;args&quot;: </span><span class="se">{{</span><span class="s2">&quot;expression&quot;: &quot;2+2&quot;</span><span class="se">}}}}</span><span class="s2">]</span><span class="se">}}</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_llm</span><span class="p">(</span>
+            <span class="n">prompt</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span> <span class="n">call_counter</span><span class="o">=</span><span class="n">call_counter</span>
+        <span class="p">)</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;```json&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;```json&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;```&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="c1"># Fallback for when LLM fails – still return something usable</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Answer&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;llm&quot;</span><span class="p">,</span> <span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="n">task</span><span class="p">}]}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_synthesize</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span> <span class="n">call_counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Combine step results into final answer.</span>
+
+<span class="sd">        Purpose:</span>
+<span class="sd">            Takes all the pieces from planning and execution and weaves them</span>
+<span class="sd">            into a coherent answer that addresses the original query.</span>
+
+<span class="sd">        Why this exists:</span>
+<span class="sd">            Without synthesis, agentic AI would just return raw tool outputs.</span>
+<span class="sd">            This step consumes energy and is part of the orchestration tax.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task: Original user query</span>
+<span class="sd">            steps: The plan steps</span>
+<span class="sd">            results: Results from executing each step</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with synthesis results (content and tokens)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Task: </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="se">\n</span><span class="s2">Results: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">steps</span><span class="p">,</span><span class="w"> </span><span class="n">results</span><span class="p">)))</span><span class="si">}</span><span class="se">\n</span><span class="s2">Final answer:&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_llm</span><span class="p">(</span>
+            <span class="n">prompt</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">call_counter</span><span class="o">=</span><span class="n">call_counter</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_tool</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">step_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute a specific tool.</span>
+
+<span class="sd">        Purpose:</span>
+<span class="sd">            Tools give agentic AI access to external capabilities that the</span>
+<span class="sd">            model alone doesn&#39;t have (real data, computation, etc.).</span>
+
+<span class="sd">        Why this exists:</span>
+<span class="sd">            Tool execution consumes energy (Req 3.6) and contributes to the</span>
+<span class="sd">            orchestration tax we want to measure. This function centralizes</span>
+<span class="sd">            all tool logic so it can be easily extended.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Tool name (&quot;calculator&quot;, &quot;web_search&quot;, etc.)</span>
+<span class="sd">            args: Tool-specific arguments (expression, query, etc.)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tool execution result (varies by tool)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tool_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔧 Executing tool: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> with args: </span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Emit tool start event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_emit_event</span><span class="p">(</span>
+            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;execution&quot;</span><span class="p">,</span>
+            <span class="n">event_type</span><span class="o">=</span><span class="s2">&quot;tool_call&quot;</span><span class="p">,</span>
+            <span class="n">start_time</span><span class="o">=</span><span class="n">tool_start</span><span class="p">,</span>
+            <span class="n">end_time</span><span class="o">=</span><span class="n">tool_start</span><span class="p">,</span>  <span class="c1"># Will be updated at end</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;tool&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span> <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step_index</span><span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;calculator&quot;</span><span class="p">:</span>
+            <span class="n">expr</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;expression&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">expr</span> <span class="o">==</span> <span class="s2">&quot;2+2&quot;</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="mi">4</span>
+            <span class="k">elif</span> <span class="n">expr</span> <span class="o">==</span> <span class="s2">&quot;3*4&quot;</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="mi">12</span>
+            <span class="k">elif</span> <span class="n">expr</span> <span class="o">==</span> <span class="s2">&quot;10/2&quot;</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="mi">5</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">allowed</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">math</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span>
+                    <span class="p">}</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;__builtins__&quot;</span><span class="p">:</span> <span class="p">{}},</span> <span class="n">allowed</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;web_search&quot;</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Search results for: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="n">tool_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">tool_latency_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">tool_end</span> <span class="o">-</span> <span class="n">tool_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+        <span class="c1"># Update the last event with end time</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_events&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;end_time_ns&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">tool_end</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;duration_ns&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">tool_end</span> <span class="o">-</span> <span class="n">tool_start</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;result&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">)[:</span><span class="mi">100</span><span class="p">]</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Tool complete: </span><span class="si">{</span><span class="n">tool_latency_ms</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Store tool latency for aggregation</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_tool_latencies&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tool_latencies</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tool_latencies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tool_latency_ms</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_call_llm</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">call_counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make actual API call to the LLM provider.</span>
+
+<span class="sd">        Purpose:</span>
+<span class="sd">            This is the core communication layer with the LLM API.</span>
+<span class="sd">            Handles both cloud (Groq) and local (Ollama) providers.</span>
+
+<span class="sd">        Why this exists:</span>
+<span class="sd">            - Counts LLM calls for energy analysis (Req 3.6)</span>
+<span class="sd">            - Tracks token usage for cost and energy estimation</span>
+<span class="sd">            - Centralizes error handling</span>
+<span class="sd">            - Supports different temperatures for planning vs execution</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            prompt: The prompt text to send to the LLM</span>
+<span class="sd">            temperature: 0.0 for planning (reproducible), 0.7 for execution</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with:</span>
+<span class="sd">                - &#39;content&#39;: The model&#39;s response text</span>
+<span class="sd">                - &#39;tokens&#39;: Dict with prompt/completion/total token counts</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Track calls for this execution</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_call_count&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_call_count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_api_latencies</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># ← NEW: track latencies</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_call_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">temperature</span> <span class="k">if</span> <span class="n">temperature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📨 LLM #</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_call_count</span><span class="si">}</span><span class="s2"> (temp=</span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span><span class="si">}</span><span class="s2"> chars)&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">provider</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ollama&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No API key available&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Error: No API key&quot;</span><span class="p">,</span> <span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+        <span class="c1"># Capture network before</span>
+        <span class="n">net_before</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_network_metrics</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">api_latency_ms</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">effective_kbps</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">tokens</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">response_bytes</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">prompt_bytes</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="n">api_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">prompt_bytes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prompt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;ollama&quot;</span><span class="p">:</span>
+                <span class="c1"># Local Ollama API (minimal network latency)</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;api_endpoint&quot;</span><span class="p">],</span>
+                    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                        <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;model_id&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}],</span>
+                        <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                        <span class="s2">&quot;options&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="n">temp</span><span class="p">,</span>
+                            <span class="s2">&quot;num_predict&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_tokens</span><span class="p">,</span>
+                        <span class="p">},</span>
+                    <span class="p">},</span>
+                    <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">][</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+                <span class="n">tokens</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">prompt</span><span class="o">.</span><span class="n">split</span><span class="p">()),</span>
+                    <span class="s2">&quot;completion&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">()),</span>
+                    <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">prompt</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">()),</span>
+                <span class="p">}</span>
+
+                <span class="n">api_latency_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">api_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+                <span class="n">response_bytes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+                <span class="n">total_bytes</span> <span class="o">=</span> <span class="n">prompt_bytes</span> <span class="o">+</span> <span class="n">response_bytes</span>
+                <span class="n">effective_kbps</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">total_bytes</span> <span class="o">*</span> <span class="mi">8</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">api_latency_ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000</span>
+                    <span class="k">if</span> <span class="n">api_latency_ms</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+            <span class="c1"># ====================================================================</span>
+            <span class="c1"># NEW: Local GGUF model using llama-cpp-python</span>
+            <span class="c1"># ====================================================================</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span>
+                <span class="n">api_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">prompt_bytes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prompt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">llama_cpp</span><span class="w"> </span><span class="kn">import</span> <span class="n">Llama</span>
+
+                    <span class="c1"># Load model (consider caching for performance)</span>
+                    <span class="n">llm</span> <span class="o">=</span> <span class="n">Llama</span><span class="p">(</span><span class="n">model_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">)</span>
+
+                    <span class="c1"># Run inference</span>
+                    <span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">(</span>
+                        <span class="n">prompt</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_tokens</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">temp</span><span class="p">,</span> <span class="n">echo</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">)</span>
+
+                    <span class="n">api_latency_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">api_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;text&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+                    <span class="c1"># Get token counts from response</span>
+                    <span class="n">tokens</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;usage&quot;</span><span class="p">][</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;completion&quot;</span><span class="p">:</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;usage&quot;</span><span class="p">][</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;usage&quot;</span><span class="p">][</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">],</span>
+                    <span class="p">}</span>
+                    <span class="c1"># ============================================================</span>
+                    <span class="c1"># ADD THIS - Store interaction data (16 spaces indentation)</span>
+                    <span class="c1"># ============================================================</span>
+
+                    <span class="c1"># Calculate bytes for throughput (optional)</span>
+                    <span class="n">response_bytes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+                    <span class="n">total_bytes</span> <span class="o">=</span> <span class="n">prompt_bytes</span> <span class="o">+</span> <span class="n">response_bytes</span>
+                    <span class="n">effective_kbps</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="p">(</span><span class="n">total_bytes</span> <span class="o">*</span> <span class="mi">8</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">api_latency_ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000</span>
+                        <span class="k">if</span> <span class="n">api_latency_ms</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                        <span class="k">else</span> <span class="mi">0</span>
+                    <span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Local model inference failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">raise</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Cloud APIs</span>
+                <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;model_id&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}],</span>
+                    <span class="s2">&quot;max_tokens&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_tokens</span><span class="p">,</span>
+                    <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="n">temp</span><span class="p">,</span>
+                <span class="p">}</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;api_endpoint&quot;</span><span class="p">],</span>
+                    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+                    <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="s2">&quot;choices&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;message&quot;</span><span class="p">][</span><span class="s2">&quot;content&quot;</span><span class="p">]</span>
+                    <span class="n">usage</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;usage&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                    <span class="n">tokens</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;completion&quot;</span><span class="p">:</span> <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="n">usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">}</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                    <span class="n">tokens</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected API response format&quot;</span><span class="p">)</span>
+
+            <span class="n">api_end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">api_latency_ms</span> <span class="o">=</span> <span class="p">(</span><span class="n">api_end</span> <span class="o">-</span> <span class="n">api_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_api_latencies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">api_latency_ms</span><span class="p">)</span>  <span class="c1"># ← NEW: store latency</span>
+            <span class="c1"># Emit LLM call event</span>
+            <span class="n">phase</span> <span class="o">=</span> <span class="s2">&quot;planning&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_count</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">&quot;execution&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_emit_event</span><span class="p">(</span>
+                <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span>
+                <span class="n">event_type</span><span class="o">=</span><span class="s2">&quot;llm_call&quot;</span><span class="p">,</span>
+                <span class="n">start_time</span><span class="o">=</span><span class="n">api_start</span><span class="p">,</span>
+                <span class="n">end_time</span><span class="o">=</span><span class="n">api_end</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;call_number&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_count</span><span class="p">,</span>
+                    <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="n">temp</span><span class="p">,</span>
+                    <span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span>
+                    <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_id&quot;</span><span class="p">),</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_effective_kbps_list&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_effective_kbps_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_effective_kbps_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">effective_kbps</span><span class="p">)</span>  <span class="c1"># effective kbps</span>
+
+            <span class="c1"># Capture network after</span>
+            <span class="n">net_after</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_network_metrics</span><span class="p">()</span>
+
+            <span class="c1"># Calculate network deltas</span>
+            <span class="n">bytes_sent</span> <span class="o">=</span> <span class="n">net_after</span><span class="p">[</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">net_before</span><span class="p">[</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">]</span>
+            <span class="n">bytes_recv</span> <span class="o">=</span> <span class="n">net_after</span><span class="p">[</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">net_before</span><span class="p">[</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">]</span>
+            <span class="n">tcp_retransmits</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">net_after</span><span class="p">[</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">net_before</span><span class="p">[</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="n">dprint</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;📬 Response: </span><span class="si">{</span><span class="n">content</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span><span class="si">}</span><span class="s2">... (API: </span><span class="si">{</span><span class="n">api_latency_ms</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms, Throughput: </span><span class="si">{</span><span class="n">effective_kbps</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kbps)&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Capture network after</span>
+            <span class="n">net_after</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_network_metrics</span><span class="p">()</span>
+
+            <span class="c1"># Calculate network deltas</span>
+            <span class="n">bytes_sent</span> <span class="o">=</span> <span class="n">net_after</span><span class="p">[</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">net_before</span><span class="p">[</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">]</span>
+            <span class="n">bytes_recv</span> <span class="o">=</span> <span class="n">net_after</span><span class="p">[</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">net_before</span><span class="p">[</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">]</span>
+            <span class="n">tcp_retransmits</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">net_after</span><span class="p">[</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">net_before</span><span class="p">[</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="c1"># ============================================================</span>
+            <span class="c1"># CREATE INTERACTION HERE (after all metrics are available)</span>
+            <span class="c1"># ============================================================</span>
+            <span class="n">interaction</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;step_index&quot;</span><span class="p">:</span> <span class="n">call_counter</span> <span class="k">if</span> <span class="n">call_counter</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_counter</span><span class="p">,</span>
+                <span class="s2">&quot;workflow_type&quot;</span><span class="p">:</span> <span class="s2">&quot;agentic&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">,</span>
+                <span class="s2">&quot;response&quot;</span><span class="p">:</span> <span class="n">content</span><span class="p">,</span>
+                <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_id&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+                <span class="s2">&quot;prompt_tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;completion_tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completion&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;total_tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">:</span> <span class="n">api_latency_ms</span><span class="p">,</span>
+                <span class="s2">&quot;throughput_kbps&quot;</span><span class="p">:</span> <span class="n">effective_kbps</span><span class="p">,</span>
+                <span class="s2">&quot;bytes_sent&quot;</span><span class="p">:</span> <span class="n">bytes_sent</span><span class="p">,</span>
+                <span class="s2">&quot;bytes_recv&quot;</span><span class="p">:</span> <span class="n">bytes_recv</span><span class="p">,</span>
+                <span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">:</span> <span class="n">tcp_retransmits</span><span class="p">,</span>
+                <span class="s2">&quot;compute_time_ms&quot;</span><span class="p">:</span> <span class="n">api_latency_ms</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="c1"># Store in pending list</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;pending_interactions&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pending_interactions</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Initialized pending_interactions&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">pending_interactions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interaction</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Added interaction, now has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pending_interactions</span><span class="p">)</span><span class="si">}</span><span class="s2"> items&quot;</span>
+            <span class="p">)</span>
+
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">content</span><span class="p">,</span>
+                <span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span>
+                <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">:</span> <span class="n">api_latency_ms</span><span class="p">,</span>  <span class="c1"># Already there</span>
+                <span class="s2">&quot;effective_kbps&quot;</span><span class="p">:</span> <span class="n">effective_kbps</span><span class="p">,</span>
+                <span class="s2">&quot;bytes_sent&quot;</span><span class="p">:</span> <span class="n">bytes_sent</span><span class="p">,</span>
+                <span class="s2">&quot;bytes_recv&quot;</span><span class="p">:</span> <span class="n">bytes_recv</span><span class="p">,</span>
+                <span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">:</span> <span class="n">tcp_retransmits</span><span class="p">,</span>
+                <span class="s2">&quot;pending_interactions&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_interactions</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM call failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;effective_kbps&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;bytes_sent&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;bytes_recv&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_network_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get network I/O metrics before/after API call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">net_io</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">net_io_counters</span><span class="p">()</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">net_io</span><span class="o">.</span><span class="n">bytes_sent</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">net_io</span><span class="o">.</span><span class="n">bytes_recv</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/net/snmp&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Tcp:&quot;</span><span class="p">):</span>
+                        <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="s2">&quot;RetransSegs&quot;</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">:</span>
+                            <span class="n">idx</span> <span class="o">=</span> <span class="n">parts</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;RetransSegs&quot;</span><span class="p">)</span>
+                            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+                        <span class="k">break</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not get network metrics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="n">metrics</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_emit_event</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">end_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Emit an orchestration event for tax attribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            phase: &#39;planning&#39;, &#39;execution&#39;, &#39;synthesis&#39;</span>
+<span class="sd">            event_type: &#39;llm_call&#39;, &#39;tool_call&#39;, &#39;waiting&#39;, etc.</span>
+<span class="sd">            start_time: Start timestamp</span>
+<span class="sd">            end_time: End timestamp</span>
+<span class="sd">            metadata: Additional event data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_events&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_events</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">event</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span>
+            <span class="s2">&quot;event_type&quot;</span><span class="p">:</span> <span class="n">event_type</span><span class="p">,</span>
+            <span class="s2">&quot;start_time_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_time</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">),</span>
+            <span class="s2">&quot;end_time_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">end_time</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">),</span>
+            <span class="s2">&quot;duration_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e9</span><span class="p">),</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">metadata</span> <span class="ow">or</span> <span class="p">{},</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📝 Event: </span><span class="si">{</span><span class="n">phase</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">event_type</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;duration_ns&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">ms)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔔 EVENT CREATED: </span><span class="si">{</span><span class="n">phase</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">event_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

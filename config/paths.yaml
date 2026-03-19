@@ -1,0 +1,49 @@
+# ============================================================================
+# A-LEMS Path Configuration
+# All paths are relative to project root
+# ============================================================================
+
+project:
+  name: A-LEMS
+  root: .  # relative to project root
+  repo_url: https://github.com/deepakpanigrahy03/a-lems 
+  author: Deepak Panigrahy  # ← ADD THIS
+  description: Agentic LLM Energy Measurement System
+
+# ============================================================================
+# Documentation Paths
+# ============================================================================
+docs:
+  # Manual guides (written by humans)
+  guides: docs/guides
+  
+  # Generated documentation
+  generated:
+    base: docs/generated
+    api: docs/generated/api
+    sphinx: docs/generated/sphinx
+    mkdocs: docs/generated/mkdocs
+  
+  # Assets (images, diagrams)
+  assets: docs/assets
+  diagrams: docs/assets/diagrams
+  mkdocs_diagrams: docs/generated/mkdocs/docs/assets/diagrams
+
+# ============================================================================
+# Documentation Sources
+# ============================================================================
+sources:
+  sphinx:
+    source: docs-src/sphinx/source
+    config: docs-src/sphinx/source/conf.py
+  
+  mkdocs:
+    source: docs-src/mkdocs/source
+    config: docs-src/mkdocs/mkdocs.yml
+
+# ============================================================================
+# Tool Outputs
+# ============================================================================
+tools:
+  diagrams: docs/assets/diagrams
+  reports: docs/generated/reports

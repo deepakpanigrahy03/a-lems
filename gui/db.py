@@ -3,6 +3,7 @@ gui/db.py
 Database access layer — connection, query helpers, cached data loaders.
 All other modules import from here; nothing else touches SQLite directly.
 """
+
 import sqlite3
 from contextlib import contextmanager
 

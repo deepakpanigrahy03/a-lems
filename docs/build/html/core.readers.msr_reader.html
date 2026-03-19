@@ -1,0 +1,485 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.readers.msr_reader module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.readers.perf_reader module" href="core.readers.perf_reader.html" />
+    <link rel="prev" title="core.readers package" href="core.readers.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.readers.html">core.readers package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.readers.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.readers.html#module-core.readers">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.readers.html">core.readers package</a></li>
+      <li class="breadcrumb-item active">core.readers.msr_reader module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.readers.msr_reader.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.readers.msr_reader">
+<span id="core-readers-msr-reader-module"></span><h1>core.readers.msr_reader module<a class="headerlink" href="#module-core.readers.msr_reader" title="Link to this heading"></a></h1>
+<section id="msr-reader-direct-msr-access-with-c-helper-and-tsc-conversion">
+<h2>MSR READER - Direct MSR Access with C Helper and TSC Conversion<a class="headerlink" href="#msr-reader-direct-msr-access-with-c-helper-and-tsc-conversion" title="Link to this heading"></a></h2>
+<p>Author: Deepak Panigrahy</p>
+<p>This module provides MSR access using a privileged C helper binary.
+The C binary has CAP_SYS_RAWIO set, so Python can run without sudo.</p>
+<p>Key Features:
+- Uses C helper binary (no sudo needed for Python)
+- Falls back to direct access if helper unavailable
+- Reads TSC frequency from hw_config.json for accurate C-state conversion
+- Converts C-state counters from TSC ticks to real time (seconds/microseconds)
+- CPU pinning for consistent measurements
+- Baseline loading (stable hardware properties)
+- Dynamic measurement methods for per‑run counters</p>
+<p>Requirements Covered:
+- Req 1.21: Ring Bus Frequency
+- Req 1.27: C-State Transition Counters (now properly converted to time)
+- Req 1.47: Wake-up Latency
+- Req 1.9: Thermal Throttling</p>
+</section>
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.readers.msr_reader.</span></span><span class="sig-name descname"><span class="pre">MSRReader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">require_baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>High-performance MSR reader using C helper binary with TSC conversion.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.BASELINE_PATH">
+<span class="sig-name descname"><span class="pre">BASELINE_PATH</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/home/dpani/mydrive/a-lems/data/msr_baseline.json')</span></span><a class="headerlink" href="#core.readers.msr_reader.MSRReader.BASELINE_PATH" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.HELPER_PATH">
+<span class="sig-name descname"><span class="pre">HELPER_PATH</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PosixPath('/home/dpani/mydrive/a-lems/core/msr_helper/msr_read')</span></span><a class="headerlink" href="#core.readers.msr_reader.MSRReader.HELPER_PATH" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.MSR_ADDRESSES">
+<span class="sig-name descname"><span class="pre">MSR_ADDRESSES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'MSR_IA32_APERF':</span> <span class="pre">232,</span> <span class="pre">'MSR_IA32_MPERF':</span> <span class="pre">231,</span> <span class="pre">'MSR_IA32_PACKAGE_THERM_STATUS':</span> <span class="pre">433,</span> <span class="pre">'MSR_IA32_THERM_STATUS':</span> <span class="pre">412,</span> <span class="pre">'MSR_PKG_C10_RESIDENCY':</span> <span class="pre">1586,</span> <span class="pre">'MSR_PKG_C2_RESIDENCY':</span> <span class="pre">1549,</span> <span class="pre">'MSR_PKG_C3_RESIDENCY':</span> <span class="pre">1016,</span> <span class="pre">'MSR_PKG_C6_RESIDENCY':</span> <span class="pre">1017,</span> <span class="pre">'MSR_PKG_C7_RESIDENCY':</span> <span class="pre">1018,</span> <span class="pre">'MSR_PKG_C8_RESIDENCY':</span> <span class="pre">1584,</span> <span class="pre">'MSR_PKG_C9_RESIDENCY':</span> <span class="pre">1585,</span> <span class="pre">'MSR_PLATFORM_INFO':</span> <span class="pre">206,</span> <span class="pre">'MSR_UNCORE_PERF_STATUS':</span> <span class="pre">1569}</span></span><a class="headerlink" href="#core.readers.msr_reader.MSRReader.MSR_ADDRESSES" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.average_cstate_counters">
+<span class="sig-name descname"><span class="pre">average_cstate_counters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">counters_per_cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.average_cstate_counters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.average_cstate_counters" title="Link to this definition"></a></dt>
+<dd><p>Compute average of each C-state counter across all CPUs.
+Returns dict with raw averages and converted values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.calculate_actual_frequency">
+<span class="sig-name descname"><span class="pre">calculate_actual_frequency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aperf1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aperf2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mperf1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mperf2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.calculate_actual_frequency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.calculate_actual_frequency" title="Link to this definition"></a></dt>
+<dd><p>Calculate actual CPU frequency from APERF/MPERF deltas.</p>
+<p>Formula: actual_freq = TSC_freq * (ΔAPERF / ΔMPERF)</p>
+<dl class="simple">
+<dt>SCIENTIFIC NOTES:</dt><dd><ul class="simple">
+<li><p>Ratio should be between 0 and 5 for valid CPU frequencies</p></li>
+<li><p>Handles 64-bit counter wrap-around</p></li>
+<li><p>Returns None if calculation is invalid</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>aperf1</strong> – APERF values at start and end</p></li>
+<li><p><strong>aperf2</strong> – APERF values at start and end</p></li>
+<li><p><strong>mperf1</strong> – MPERF values at start and end</p></li>
+<li><p><strong>mperf2</strong> – MPERF values at start and end</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Actual frequency in MHz, or None if invalid</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.calculate_wakeup_delta">
+<span class="sig-name descname"><span class="pre">calculate_wakeup_delta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_counters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_counters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.calculate_wakeup_delta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.calculate_wakeup_delta" title="Link to this definition"></a></dt>
+<dd><p>Calculate number of wakeups between two snapshots.</p>
+<p>Each time the CPU wakes from deep sleep (C6/C7), the counter increments.
+By comparing start and end values, we can count total wakeups during
+the experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_counters</strong> – C-state counters from start of experiment</p></li>
+<li><p><strong>end_counters</strong> – C-state counters from end of experiment</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Estimated number of wakeups during the experiment</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.debug_cstate_snapshots">
+<span class="sig-name descname"><span class="pre">debug_cstate_snapshots</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.debug_cstate_snapshots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.debug_cstate_snapshots" title="Link to this definition"></a></dt>
+<dd><p>Debug method to check C-state snapshot integrity.</p>
+<p>Call this when experiencing issues with C-state calculations to verify
+that snapshots contain expected data structures and no None values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.get_all_metrics">
+<span class="sig-name descname"><span class="pre">get_all_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.get_all_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.get_all_metrics" title="Link to this definition"></a></dt>
+<dd><p>Get complete MSR metrics including both baseline and dynamic measurements.
+Now includes properly converted C-state times.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.get_baseline_dict">
+<span class="sig-name descname"><span class="pre">get_baseline_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.get_baseline_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.get_baseline_dict" title="Link to this definition"></a></dt>
+<dd><p>Return a copy of the baseline dictionary.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.get_ring_bus_frequency">
+<span class="sig-name descname"><span class="pre">get_ring_bus_frequency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.get_ring_bus_frequency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.get_ring_bus_frequency" title="Link to this definition"></a></dt>
+<dd><p>Return cached ring bus frequency from baseline.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.get_ring_limits">
+<span class="sig-name descname"><span class="pre">get_ring_limits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.get_ring_limits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.get_ring_limits" title="Link to this definition"></a></dt>
+<dd><p>Extract min and max ring bus frequencies from MSR 0x621.
+Returns dict with ‘min_mhz’ and ‘max_mhz’ in MHz.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.get_wakeup_latency">
+<span class="sig-name descname"><span class="pre">get_wakeup_latency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.get_wakeup_latency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.get_wakeup_latency" title="Link to this definition"></a></dt>
+<dd><p>Return cached wake-up latency from baseline.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.measure_hardware_wakeup_latency">
+<span class="sig-name descname"><span class="pre">measure_hardware_wakeup_latency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.measure_hardware_wakeup_latency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.measure_hardware_wakeup_latency" title="Link to this definition"></a></dt>
+<dd><p>Measure wake-up latency using C-state counters (baseline only).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.measure_ring_bus_frequency">
+<span class="sig-name descname"><span class="pre">measure_ring_bus_frequency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.measure_ring_bus_frequency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.measure_ring_bus_frequency" title="Link to this definition"></a></dt>
+<dd><p>Measure current ring bus frequency using best available method:
+1. sysfs current_freq_khz (most accurate)
+2. Average of min/max from MSR (fallback)
+3. None if unavailable</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.pin_to_cpu">
+<span class="sig-name descname"><span class="pre">pin_to_cpu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.pin_to_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.pin_to_cpu" title="Link to this definition"></a></dt>
+<dd><p>Pin the current thread to a specific CPU core.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_core_thermal_status">
+<span class="sig-name descname"><span class="pre">read_core_thermal_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.read_core_thermal_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_core_thermal_status" title="Link to this definition"></a></dt>
+<dd><p>Read per-core thermal status from MSR_IA32_THERM_STATUS.</p>
+<p>Some throttling events are per-core and not visible in package status.
+Combine with package status using OR logic for complete picture.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_cstate_counters">
+<span class="sig-name descname"><span class="pre">read_cstate_counters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.read_cstate_counters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_cstate_counters" title="Link to this definition"></a></dt>
+<dd><p>Read C-state residency counters.
+Returns dict with both raw TSC ticks and converted times.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_cstate_counters_all_cpus">
+<span class="sig-name descname"><span class="pre">read_cstate_counters_all_cpus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.read_cstate_counters_all_cpus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_cstate_counters_all_cpus" title="Link to this definition"></a></dt>
+<dd><p>Read C-state counters for all CPUs.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_cstate_counters_for_wakeup">
+<span class="sig-name descname"><span class="pre">read_cstate_counters_for_wakeup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.read_cstate_counters_for_wakeup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_cstate_counters_for_wakeup" title="Link to this definition"></a></dt>
+<dd><p>Read C-state counters needed for wakeup calculation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary with C6 and C7 counter values</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_msr">
+<span class="sig-name descname"><span class="pre">read_msr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_msr" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_msr_all_cpus">
+<span class="sig-name descname"><span class="pre">read_msr_all_cpus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msr_addr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.read_msr_all_cpus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_msr_all_cpus" title="Link to this definition"></a></dt>
+<dd><p>Read an MSR from all CPUs.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.read_thermal_throttle_status">
+<span class="sig-name descname"><span class="pre">read_thermal_throttle_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.read_thermal_throttle_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.read_thermal_throttle_status" title="Link to this definition"></a></dt>
+<dd><p>Read complete thermal throttle status from MSR_IA32_PACKAGE_THERM_STATUS.</p>
+<dl class="simple">
+<dt>SCIENTIFIC NOTE:</dt><dd><p>Bit 0: thermal_now - Currently throttling (1) or not (0)
+Bit 1: thermal_log - Has throttled since last reset (sticky bit)</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><dl class="simple">
+<dt>thermal_now: Current throttling status</dt><dd><ul>
+<li><p>thermal_log: Historical throttling indicator (sticky)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Returns None if MSR read fails.</p>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.safe_get_counter">
+<span class="sig-name descname"><span class="pre">safe_get_counter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">counters_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.safe_get_counter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.safe_get_counter" title="Link to this definition"></a></dt>
+<dd><p>Safely extract a counter value, ensuring it’s a number.</p>
+<p>Use this method whenever accessing C-state counters to avoid NoneType errors.
+This provides a single point of defense against None values, missing keys,
+and type conversion issues.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>counters_dict</strong> – Dictionary possibly containing counter values</p></li>
+<li><p><strong>state</strong> – State name (‘c2’, ‘c3’, ‘c6’, ‘c7’)</p></li>
+<li><p><strong>default</strong> – Default value if not found or invalid</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Integer counter value (always a number, never None)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.set_end_snapshot">
+<span class="sig-name descname"><span class="pre">set_end_snapshot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">snapshot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.set_end_snapshot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.set_end_snapshot" title="Link to this definition"></a></dt>
+<dd><p>Store the end snapshot.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.set_performance_governor">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">set_performance_governor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.set_performance_governor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.set_performance_governor" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.set_start_snapshot">
+<span class="sig-name descname"><span class="pre">set_start_snapshot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">snapshot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.set_start_snapshot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.set_start_snapshot" title="Link to this definition"></a></dt>
+<dd><p>Store the start snapshot.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.snapshot_aperf_mperf">
+<span class="sig-name descname"><span class="pre">snapshot_aperf_mperf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.snapshot_aperf_mperf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.snapshot_aperf_mperf" title="Link to this definition"></a></dt>
+<dd><p>Take a snapshot of APERF/MPERF for before/after comparison.</p>
+<p>Use at START and END of experiment to calculate actual CPU frequency
+during the measurement period.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary with aperf, mperf values and timestamp</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.snapshot_cstate_counters">
+<span class="sig-name descname"><span class="pre">snapshot_cstate_counters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.snapshot_cstate_counters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.snapshot_cstate_counters" title="Link to this definition"></a></dt>
+<dd><p>Snapshot raw C-state residency MSR counters.</p>
+<p>Returns RAW counter values with timestamp. This is the SINGLE source of truth
+for C-state measurements. Unit conversion happens AFTER delta calculation
+using TSC frequency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cpu</strong> – CPU core to read from (default 0)</p></li>
+<li><p><strong>pin</strong> – Whether to pin thread to CPU</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with timestamp and counters (NEVER contains None values)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.snapshot_thermal_state">
+<span class="sig-name descname"><span class="pre">snapshot_thermal_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.snapshot_thermal_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.snapshot_thermal_state" title="Link to this definition"></a></dt>
+<dd><p>Take a complete thermal snapshot for before/after comparison.</p>
+<p>Combines both package and core thermal status for accurate throttling detection.</p>
+<dl class="simple">
+<dt>CRITICAL SCIENTIFIC NOTES:</dt><dd><ul class="simple">
+<li><p>If both MSR reads fail, returns None (skip this experiment)</p></li>
+<li><p>If one read fails, use defaults (0,0) for that domain</p></li>
+<li><p>Throttling detection must use OR logic across domains</p></li>
+</ul>
+</dd>
+</dl>
+<p>Use this at START and END of experiment to detect if throttling
+occurred DURING the experiment (end_log &gt; start_log).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary with package and core thermal status, or None if both fail</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.take_cstate_snapshot">
+<span class="sig-name descname"><span class="pre">take_cstate_snapshot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cpu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.take_cstate_snapshot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.take_cstate_snapshot" title="Link to this definition"></a></dt>
+<dd><p>Take a snapshot of C-state counters for wakeup calculation.
+Call this at start and end of experiment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.ticks_to_human">
+<span class="sig-name descname"><span class="pre">ticks_to_human</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.ticks_to_human"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.ticks_to_human" title="Link to this definition"></a></dt>
+<dd><p>Convert TSC ticks to human-readable string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.ticks_to_microseconds">
+<span class="sig-name descname"><span class="pre">ticks_to_microseconds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.ticks_to_microseconds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.ticks_to_microseconds" title="Link to this definition"></a></dt>
+<dd><p>Convert TSC ticks to microseconds.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.ticks_to_seconds">
+<span class="sig-name descname"><span class="pre">ticks_to_seconds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.ticks_to_seconds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.ticks_to_seconds" title="Link to this definition"></a></dt>
+<dd><p>Convert TSC ticks to seconds.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.readers.msr_reader.MSRReader.unpin">
+<span class="sig-name descname"><span class="pre">unpin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/readers/msr_reader.html#MSRReader.unpin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.readers.msr_reader.MSRReader.unpin" title="Link to this definition"></a></dt>
+<dd><p>Unpin (allow thread to run on any CPU).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.readers.html" class="btn btn-neutral float-left" title="core.readers package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.readers.perf_reader.html" class="btn btn-neutral float-right" title="core.readers.perf_reader module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

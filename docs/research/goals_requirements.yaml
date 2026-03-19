@@ -1,0 +1,121 @@
+goals:
+  - id: GOAL-1
+    name: LLM Context Generator
+    file: scripts/tools/llm_context.py
+    description: Generate context for LLM code changes
+    dependencies: [pydeps, gitpython]
+    status: implemented
+    features:
+      - Extracts database schema
+      - Finds related files
+      - Traces data flow
+      - Outputs formatted context
+
+  - id: GOAL-2
+    name: Sphinx Documentation
+    file: scripts/tools/sphinx_docs.py
+    description: Generate API docs from docstrings
+    dependencies: [sphinx, sphinx-rtd-theme]
+    status: implemented
+    features:
+      - Auto-generates from code
+      - HTML and PDF output
+      - Cross-referencing
+
+  - id: GOAL-2b
+    name: MkDocs Documentation
+    file: scripts/tools/mkdocs_docs.py
+    description: User-friendly guides
+    dependencies: [mkdocs, mkdocs-material]
+    status: implemented
+    features:
+      - Static site generation
+      - Live preview server
+      - GitHub Pages deployment
+
+  - id: GOAL-3
+    name: Code Quality Guardian
+    file: scripts/tools/quality_check.py
+    description: Run comprehensive quality checks
+    dependencies: [pylint, mypy, radon, bandit, vulture, black, isort]
+    status: implemented
+    features:
+      - Pylint code analysis
+      - Mypy type checking
+      - Radon complexity
+      - Bandit security
+      - Vulture dead code
+      - Black formatting
+      - Isort import sorting
+
+  - id: GOAL-4
+    name: Refactoring Advisor
+    file: scripts/tools/refactor_advisor.py
+    description: Suggest code improvements
+    dependencies: [radon, pydeps]
+    status: implemented
+    features:
+      - File size analysis
+      - Complexity detection
+      - Duplicate code finding
+      - Circular dependency detection
+
+  - id: GOAL-5
+    name: Team Dashboard
+    file: scripts/tools/team_dashboard.py
+    description: Team activity insights
+    dependencies: [gitpython, matplotlib, pandas]
+    status: implemented
+    features:
+      - Bus factor analysis
+      - Ownership mapping
+      - Activity hotspots
+      - Knowledge gap detection
+
+  - id: GOAL-6
+    name: Web Controller
+    file: scripts/tools/web_controller.py
+    description: UI for all developer tools
+    dependencies: [flask, bootstrap-flask]
+    status: implemented
+    features:
+      - One-click tool execution
+      - Real-time output
+      - Column flow tracer
+      - Integrated docs viewer
+
+  - id: GOAL-7
+    name: Requirements Verifier
+    file: scripts/tools/verify_requirements.py
+    description: Compare specs vs code
+    dependencies: [pyyaml, pandas, openpyxl]
+    status: implemented
+    features:
+      - Spec parsing
+      - Code analysis
+      - Gap detection
+      - Report generation
+
+  - id: GOAL-8
+    name: Column Flow Analyzer
+    file: scripts/tools/column_flow.py
+    description: Trace database column data flow
+    dependencies: [sqlite3, pyyaml]
+    status: implemented
+    features:
+      - Table discovery
+      - Column tracing
+      - INSERT location finding
+      - Data source detection
+
+  - id: GOAL-9
+    name: Diagram Generator
+    file: scripts/tools/generate_diagrams.py
+    description: Create architecture diagrams
+    dependencies: [pydeps, graphviz]
+    status: implemented
+    features:
+      - Dependency graphs
+      - Architecture diagrams
+      - Data flow diagrams
+      - Experiment lifecycle diagrams

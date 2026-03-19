@@ -1,0 +1,236 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.energy_engine module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gui package" href="gui.html" />
+    <link rel="prev" title="core.config_loader module" href="core.config_loader.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="core.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.config_loader.html">core.config_loader module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.energy_engine module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#energy-engine-main-orchestrator-for-module-1">ENERGY ENGINE – Main Orchestrator for Module 1</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.energy_engine.EnergyEngine"><code class="docutils literal notranslate"><span class="pre">EnergyEngine</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.energy_engine module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.energy_engine.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.energy_engine">
+<span id="core-energy-engine-module"></span><h1>core.energy_engine module<a class="headerlink" href="#module-core.energy_engine" title="Link to this heading"></a></h1>
+<section id="energy-engine-main-orchestrator-for-module-1">
+<h2>ENERGY ENGINE – Main Orchestrator for Module 1<a class="headerlink" href="#energy-engine-main-orchestrator-for-module-1" title="Link to this heading"></a></h2>
+<p>This module ties together all hardware readers and provides a clean interface
+for measuring energy consumption during AI workloads. It is designed to be used
+as a context manager or directly via start/stop methods.</p>
+<p>The EnergyEngine handles:
+- Initializing all readers (RAPL, perf, turbostat, sensors, MSR)
+- Core pinning for consistent measurements (Req 1.15)
+- Idle baseline measurement using research‑grade utility (Req 1.45)
+- High‑frequency sampling (Req 1.46)
+- Coordinated start/stop of all readers
+- Assembling a complete RawEnergyMeasurement object
+- Validation of measurement quality</p>
+<p>IMPORTANT: This engine returns RAW measurements only.
+Baseline correction happens in the analysis layer (EnergyAnalyzer).</p>
+<p>All paths and settings come from Module 0’s configuration (hw_config.json,
+app_settings.yaml). No hardcoding.</p>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.energy_engine.</span></span><span class="sig-name descname"><span class="pre">EnergyEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Main energy measurement engine orchestrating all readers.</p>
+<p>This is the primary interface for Modules 2 and 3. It provides:
+1. Context manager for easy measurement (<cite>with engine as m:</cite>)
+2. High‑frequency sampling (Req 1.46)
+3. Idle baseline measurement (Req 1.45) – stored separately, NOT applied
+4. Core pinning (Req 1.15)
+5. Measurement validation
+6. Multiple‑run statistics</p>
+<p>All readers are initialized from the configuration passed in.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine.measure_idle_baseline">
+<span class="sig-name descname"><span class="pre">measure_idle_baseline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pre_wait_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_remeasure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="core.models.baseline_measurement.html#core.models.baseline_measurement.BaselineMeasurement" title="core.models.baseline_measurement.BaselineMeasurement"><span class="pre">BaselineMeasurement</span></a></span></span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine.measure_idle_baseline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine.measure_idle_baseline" title="Link to this definition"></a></dt>
+<dd><p>Measure system idle energy baseline.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine.pin_cores">
+<span class="sig-name descname"><span class="pre">pin_cores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine.pin_cores"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine.pin_cores" title="Link to this definition"></a></dt>
+<dd><p>Pin the current process to specific CPU cores.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cores</strong> – List of core indices. If None, uses the configured default.</p>
+</dd>
+</dl>
+<p>Req 1.15: Physical Core Affinity – eliminates noise from thread migration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine.print_summary">
+<span class="sig-name descname"><span class="pre">print_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurement</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement" title="core.models.raw_energy_measurement.RawEnergyMeasurement"><span class="pre">RawEnergyMeasurement</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine.print_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine.print_summary" title="Link to this definition"></a></dt>
+<dd><p>Print a comprehensive summary of all collected data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine.run_multiple">
+<span class="sig-name descname"><span class="pre">run_multiple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cool_down</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine.run_multiple"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine.run_multiple" title="Link to this definition"></a></dt>
+<dd><p>Run a function multiple times, measuring each run and collecting statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> – The function to run (should contain the AI workload).</p></li>
+<li><p><strong>args</strong> – Positional arguments for the function.</p></li>
+<li><p><strong>kwargs</strong> – Keyword arguments for the function.</p></li>
+<li><p><strong>iterations</strong> – Number of runs.</p></li>
+<li><p><strong>cool_down</strong> – Seconds to wait between runs (default from config).</p></li>
+<li><p><strong>output_file</strong> – Optional JSON file to save results.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>‘all_runs’: list of RawEnergyMeasurement objects</p></li>
+<li><p>’summary’: statistical summary of key metrics</p></li>
+<li><p>’metadata’: run parameters</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary containing</p>
+</dd>
+</dl>
+<p>Req 3.4: Automated 10‑run iteration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine.start_measurement">
+<span class="sig-name descname"><span class="pre">start_measurement</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine.start_measurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine.start_measurement" title="Link to this definition"></a></dt>
+<dd><p>Start a new measurement session.</p>
+<p>This method:
+1. Captures snapshot values (RAPL, scheduler)
+2. Starts continuous readers (perf, turbostat)
+3. Starts high-frequency sampling</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.energy_engine.EnergyEngine.stop_measurement">
+<span class="sig-name descname"><span class="pre">stop_measurement</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement" title="core.models.raw_energy_measurement.RawEnergyMeasurement"><span class="pre">RawEnergyMeasurement</span></a></span></span><a class="reference internal" href="_modules/core/energy_engine.html#EnergyEngine.stop_measurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.energy_engine.EnergyEngine.stop_measurement" title="Link to this definition"></a></dt>
+<dd><p>Stop measurement and return raw results.</p>
+<p>This method:
+1. Stops continuous readers and collects their data
+2. Captures snapshot end values
+3. Computes deltas
+4. Assembles RawEnergyMeasurement</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.config_loader.html" class="btn btn-neutral float-left" title="core.config_loader module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="gui.html" class="btn btn-neutral float-right" title="gui package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -8,13 +8,14 @@ thermal_samples: 24,729 rows
 interrupt_samples: available
 ─────────────────────────────────────────────────────────────────────────────
 """
-import streamlit as st
+
 import pandas as pd
 import plotly.graph_objects as go
+import streamlit as st
 from plotly.subplots import make_subplots
 
-from gui.db     import q, q1
-from gui.config import PL, WF_COLORS, STATUS_COLORS
+from gui.config import PL, STATUS_COLORS, WF_COLORS
+from gui.db import q, q1
 
 ACCENT = "#3b82f6"
 
@@ -34,7 +35,8 @@ def render(ctx: dict) -> None:
         f"font-family:IBM Plex Mono,monospace;'>"
         f"energy · cpu · thermal · interrupts — unified time-series view</div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     # Build run list with metadata
     run_meta = q("""
@@ -56,18 +58,21 @@ def render(ctx: dict) -> None:
     col1, col2, col3 = st.columns(3)
     with col1:
         wf_opts = ["All"] + sorted(run_meta["workflow_type"].dropna().unique().tolist())
-        sel_wf  = st.selectbox("Workflow", wf_opts, key="rd_wf")
+        sel_wf = st.selectbox("Workflow", wf_opts, key="rd_wf")
     with col2:
         model_opts = ["All"] + sorted(run_meta["model_name"].dropna().unique().tolist())
-        sel_model  = st.selectbox("Model", model_opts, key="rd_model")
+        sel_model = st.selectbox("Model", model_opts, key="rd_model")
     with col3:
         task_opts = ["All"] + sorted(run_meta["task_name"].dropna().unique().tolist())
-        sel_task  = st.selectbox("Task", task_opts, key="rd_task")
+        sel_task = st.selectbox("Task", task_opts, key="rd_task")
 
     filtered = run_meta.copy()
-    if sel_wf    != "All": filtered = filtered[filtered["workflow_type"] == sel_wf]
-    if sel_model != "All": filtered = filtered[filtered["model_name"]    == sel_model]
-    if sel_task  != "All": filtered = filtered[filtered["task_name"]     == sel_task]
+    if sel_wf != "All":
+        filtered = filtered[filtered["workflow_type"] == sel_wf]
+    if sel_model != "All":
+        filtered = filtered[filtered["model_name"] == sel_model]
+    if sel_task != "All":
+        filtered = filtered[filtered["task_name"] == sel_task]
 
     if filtered.empty:
         st.info("No runs match filters.")
@@ -79,16 +84,17 @@ def render(ctx: dict) -> None:
         key="rd_run_sel",
         format_func=lambda x: (
             f"Run {x} · "
-            + str(filtered[filtered["run_id"]==x]["workflow_type"].values[0] or "")
+            + str(filtered[filtered["run_id"] == x]["workflow_type"].values[0] or "")
             + " · "
-            + str(filtered[filtered["run_id"]==x]["model_name"].values[0] or "")[:20]
+            + str(filtered[filtered["run_id"] == x]["model_name"].values[0] or "")[:20]
             + f" · {filtered[filtered['run_id']==x]['energy_j'].values[0]:.2f}J"
-        ))
+        ),
+    )
 
     run_row = filtered[filtered["run_id"] == sel_run].iloc[0]
 
     # ── Run summary card ──────────────────────────────────────────────────────
-    wf_clr = WF_COLORS.get(run_row.get("workflow_type",""), ACCENT)
+    wf_clr = WF_COLORS.get(run_row.get("workflow_type", ""), ACCENT)
     st.markdown(
         f"<div style='display:flex;gap:16px;padding:10px 14px;"
         f"background:#111827;border:1px solid {wf_clr}33;"
@@ -107,7 +113,8 @@ def render(ctx: dict) -> None:
         f"<div><span style='font-size:9px;color:#475569;'>Duration</span>"
         f"<div style='font-size:12px;color:#94a3b8;'>{run_row.get('duration_ms',0):.0f}ms</div></div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     run_id = int(sel_run)
 
@@ -146,20 +153,25 @@ def render(ctx: dict) -> None:
 
     # Normalise time to 0
     def norm_t(df):
-        if df.empty or "t" not in df.columns: return df
+        if df.empty or "t" not in df.columns:
+            return df
         df = df.copy()
         df["t"] -= df["t"].min()
         return df
 
-    energy_s   = norm_t(energy_s)
-    cpu_s      = norm_t(cpu_s)
-    thermal_s  = norm_t(thermal_s)
+    energy_s = norm_t(energy_s)
+    cpu_s = norm_t(cpu_s)
+    thermal_s = norm_t(thermal_s)
     interrupt_s = norm_t(interrupt_s)
 
-    streams_available = sum([
-        not energy_s.empty, not cpu_s.empty,
-        not thermal_s.empty, not interrupt_s.empty
-    ])
+    streams_available = sum(
+        [
+            not energy_s.empty,
+            not cpu_s.empty,
+            not thermal_s.empty,
+            not interrupt_s.empty,
+        ]
+    )
 
     if streams_available == 0:
         st.info("No time-series samples found for this run.")
@@ -172,30 +184,42 @@ def render(ctx: dict) -> None:
         f"cpu: {len(cpu_s):,} samples · "
         f"thermal: {len(thermal_s):,} samples · "
         f"interrupts: {len(interrupt_s):,} samples</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     # ── Energy time series ────────────────────────────────────────────────────
     if not energy_s.empty:
         st.markdown(
             f"<div style='font-size:11px;font-weight:600;color:#f59e0b;"
             f"text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;'>"
-            f"Energy — RAPL domains</div>", unsafe_allow_html=True)
+            f"Energy — RAPL domains</div>",
+            unsafe_allow_html=True,
+        )
         fig = go.Figure()
         for col_n, label, clr in [
-            ("pkg_j",    "Package", "#f59e0b"),
-            ("core_j",   "Core",    "#22c55e"),
-            ("uncore_j", "Uncore",  "#3b82f6"),
-            ("dram_j",   "DRAM",    "#a78bfa"),
+            ("pkg_j", "Package", "#f59e0b"),
+            ("core_j", "Core", "#22c55e"),
+            ("uncore_j", "Uncore", "#3b82f6"),
+            ("dram_j", "DRAM", "#a78bfa"),
         ]:
             sub = energy_s[energy_s[col_n].notna()]
-            if sub.empty: continue
-            fig.add_trace(go.Scatter(
-                x=sub["t"], y=sub[col_n],
-                mode="lines", name=label,
-                line=dict(width=1.5, color=clr)))
-        fig.update_layout(**PL, height=240,
-                          xaxis_title="Time (s)",
-                          yaxis_title="Cumulative energy (J)")
+            if sub.empty:
+                continue
+            fig.add_trace(
+                go.Scatter(
+                    x=sub["t"],
+                    y=sub[col_n],
+                    mode="lines",
+                    name=label,
+                    line=dict(width=1.5, color=clr),
+                )
+            )
+        fig.update_layout(
+            **PL,
+            height=240,
+            xaxis_title="Time (s)",
+            yaxis_title="Cumulative energy (J)",
+        )
         st.plotly_chart(fig, use_container_width=True, key=f"rd_energy_{run_id}")
 
     # ── CPU ───────────────────────────────────────────────────────────────────
@@ -205,73 +229,108 @@ def render(ctx: dict) -> None:
             st.markdown(
                 f"<div style='font-size:11px;font-weight:600;color:#22c55e;"
                 f"text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;'>"
-                f"CPU utilisation & frequency</div>", unsafe_allow_html=True)
+                f"CPU utilisation & frequency</div>",
+                unsafe_allow_html=True,
+            )
             fig2 = go.Figure()
             if "cpu_util_percent" in cpu_s.columns:
-                fig2.add_trace(go.Scatter(
-                    x=cpu_s["t"], y=cpu_s["cpu_util_percent"].fillna(0),
-                    mode="lines", name="CPU util %",
-                    line=dict(color="#22c55e", width=1.5)))
+                fig2.add_trace(
+                    go.Scatter(
+                        x=cpu_s["t"],
+                        y=cpu_s["cpu_util_percent"].fillna(0),
+                        mode="lines",
+                        name="CPU util %",
+                        line=dict(color="#22c55e", width=1.5),
+                    )
+                )
             if "cpu_busy_mhz" in cpu_s.columns:
-                fig2.add_trace(go.Scatter(
-                    x=cpu_s["t"], y=cpu_s["cpu_busy_mhz"].fillna(0),
-                    mode="lines", name="Busy MHz",
-                    yaxis="y2",
-                    line=dict(color="#60a5fa", width=1, dash="dot")))
+                fig2.add_trace(
+                    go.Scatter(
+                        x=cpu_s["t"],
+                        y=cpu_s["cpu_busy_mhz"].fillna(0),
+                        mode="lines",
+                        name="Busy MHz",
+                        yaxis="y2",
+                        line=dict(color="#60a5fa", width=1, dash="dot"),
+                    )
+                )
             fig2.update_layout(
-                **{**PL, "margin": dict(l=40,r=60,t=20,b=30)},
+                **{**PL, "margin": dict(l=40, r=60, t=20, b=30)},
                 height=220,
                 xaxis_title="Time (s)",
                 yaxis_title="CPU util %",
-                yaxis2=dict(title="MHz", overlaying="y", side="right",
-                            gridcolor="rgba(0,0,0,0)",
-                            tickfont=dict(size=9)))
-            st.plotly_chart(fig2, use_container_width=True,
-                            key=f"rd_cpu_{run_id}")
+                yaxis2=dict(
+                    title="MHz",
+                    overlaying="y",
+                    side="right",
+                    gridcolor="rgba(0,0,0,0)",
+                    tickfont=dict(size=9),
+                ),
+            )
+            st.plotly_chart(fig2, use_container_width=True, key=f"rd_cpu_{run_id}")
 
         with col2:
             st.markdown(
                 f"<div style='font-size:11px;font-weight:600;color:#a78bfa;"
                 f"text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;'>"
-                f"C-state residency</div>", unsafe_allow_html=True)
+                f"C-state residency</div>",
+                unsafe_allow_html=True,
+            )
             fig3 = go.Figure()
             for col_n, label, clr in [
                 ("c6_residency", "C6", "#a78bfa"),
                 ("c7_residency", "C7", "#ec4899"),
             ]:
-                if col_n not in cpu_s.columns: continue
+                if col_n not in cpu_s.columns:
+                    continue
                 sub = cpu_s[cpu_s[col_n].notna()]
-                if sub.empty: continue
-                fig3.add_trace(go.Scatter(
-                    x=sub["t"], y=sub[col_n],
-                    mode="lines", name=label,
-                    line=dict(width=1.5, color=clr)))
-            fig3.update_layout(**PL, height=220,
-                               xaxis_title="Time (s)",
-                               yaxis_title="C-state residency %")
-            st.plotly_chart(fig3, use_container_width=True,
-                            key=f"rd_cstate_{run_id}")
+                if sub.empty:
+                    continue
+                fig3.add_trace(
+                    go.Scatter(
+                        x=sub["t"],
+                        y=sub[col_n],
+                        mode="lines",
+                        name=label,
+                        line=dict(width=1.5, color=clr),
+                    )
+                )
+            fig3.update_layout(
+                **PL,
+                height=220,
+                xaxis_title="Time (s)",
+                yaxis_title="C-state residency %",
+            )
+            st.plotly_chart(fig3, use_container_width=True, key=f"rd_cstate_{run_id}")
 
     # ── Thermal ───────────────────────────────────────────────────────────────
     if not thermal_s.empty:
         st.markdown(
             f"<div style='font-size:11px;font-weight:600;color:#ef4444;"
             f"text-transform:uppercase;letter-spacing:.1em;margin:8px 0 8px;'>"
-            f"Thermal</div>", unsafe_allow_html=True)
+            f"Thermal</div>",
+            unsafe_allow_html=True,
+        )
         fig4 = go.Figure()
         for col_n, label, clr in [
-            ("cpu_temp",    "CPU",    "#ef4444"),
+            ("cpu_temp", "CPU", "#ef4444"),
             ("system_temp", "System", "#3b82f6"),
         ]:
             sub = thermal_s[thermal_s[col_n].notna() & (thermal_s[col_n] > -100)]
-            if sub.empty: continue
-            fig4.add_trace(go.Scatter(
-                x=sub["t"], y=sub[col_n],
-                mode="lines", name=label,
-                line=dict(width=1.5, color=clr)))
-        fig4.update_layout(**PL, height=200,
-                           xaxis_title="Time (s)",
-                           yaxis_title="Temperature (°C)")
+            if sub.empty:
+                continue
+            fig4.add_trace(
+                go.Scatter(
+                    x=sub["t"],
+                    y=sub[col_n],
+                    mode="lines",
+                    name=label,
+                    line=dict(width=1.5, color=clr),
+                )
+            )
+        fig4.update_layout(
+            **PL, height=200, xaxis_title="Time (s)", yaxis_title="Temperature (°C)"
+        )
         st.plotly_chart(fig4, use_container_width=True, key=f"rd_thermal_{run_id}")
 
     # ── Interrupts ────────────────────────────────────────────────────────────
@@ -279,16 +338,24 @@ def render(ctx: dict) -> None:
         st.markdown(
             f"<div style='font-size:11px;font-weight:600;color:#f59e0b;"
             f"text-transform:uppercase;letter-spacing:.1em;margin:8px 0 8px;'>"
-            f"Interrupt rate</div>", unsafe_allow_html=True)
-        fig5 = go.Figure(go.Scatter(
-            x=interrupt_s["t"],
-            y=interrupt_s["interrupts_per_sec"].fillna(0),
-            mode="lines",
-            line=dict(color="#f59e0b", width=1.5),
-            fill="tozeroy",
-            fillcolor="rgba(245,158,11,0.13)"))
-        fig5.update_layout(**PL, height=180,
-                           xaxis_title="Time (s)",
-                           yaxis_title="Interrupts/sec",
-                           showlegend=False)
+            f"Interrupt rate</div>",
+            unsafe_allow_html=True,
+        )
+        fig5 = go.Figure(
+            go.Scatter(
+                x=interrupt_s["t"],
+                y=interrupt_s["interrupts_per_sec"].fillna(0),
+                mode="lines",
+                line=dict(color="#f59e0b", width=1.5),
+                fill="tozeroy",
+                fillcolor="rgba(245,158,11,0.13)",
+            )
+        )
+        fig5.update_layout(
+            **PL,
+            height=180,
+            xaxis_title="Time (s)",
+            yaxis_title="Interrupts/sec",
+            showlegend=False,
+        )
         st.plotly_chart(fig5, use_container_width=True, key=f"rd_irq_{run_id}")

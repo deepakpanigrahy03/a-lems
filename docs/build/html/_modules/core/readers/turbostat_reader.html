@@ -1,0 +1,1024 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.readers.turbostat_reader &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.readers.turbostat_reader</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.readers.turbostat_reader</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">TURBOSTAT READER - Clean Implementation Using pandas</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+
+<span class="sd">This module provides a clean, robust reader for Intel turbostat output.</span>
+<span class="sd">turbostat reads CPU MSRs to provide detailed performance data including:</span>
+<span class="sd">- C-state residency percentages (time spent in idle states)</span>
+<span class="sd">- CPU frequency during execution</span>
+<span class="sd">- iGPU RC6 residency and frequency</span>
+<span class="sd">- Package temperature</span>
+<span class="sd">- Power estimates for package, cores, GPU, RAM</span>
+
+<span class="sd">Requirements Covered:</span>
+<span class="sd">Req 1.4 – DVFS Attribution (frequencies)</span>
+<span class="sd">Req 1.7 – C-State Residency (via turbostat)</span>
+<span class="sd">Req 1.8 – iGPU RC6 &amp; GT Freq</span>
+<span class="sd">Req 1.9 – Package Thermal Jitter (temperature)</span>
+<span class="sd">Req 1.41 – Deepest Core C-State (via residency columns)</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Fix Python path – ensures we can import sibling modules</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.energy_measurement</span><span class="w"> </span><span class="kn">import</span> <span class="n">PowerState</span>
+
+<span class="c1"># Set up logging for this module</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TurbostatReader">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TurbostatReader</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads Intel turbostat metrics using pandas for clean parsing.</span>
+
+<span class="sd">    This class handles:</span>
+<span class="sd">    - Starting continuous monitoring of turbostat</span>
+<span class="sd">    - Draining output in background thread to prevent pipe buffer full</span>
+<span class="sd">    - Stopping monitoring and collecting all samples</span>
+<span class="sd">    - Parsing tab-separated output into pandas DataFrame</span>
+<span class="sd">    - Computing summary statistics (mean, std, min, max, median)</span>
+<span class="sd">    - Mapping columns to our internal PowerState object</span>
+<span class="sd">    - Capturing CPU topology for hybrid processors (P-cores/E-cores)</span>
+<span class="sd">    - Recording turbostat version for reproducibility</span>
+
+<span class="sd">    The reader uses column mappings from hw_config.json, which are</span>
+<span class="sd">    detected automatically by Module 0&#39;s hardware detection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the TurbostatReader with configuration from Module 0.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: The full configuration dictionary loaded from</span>
+<span class="sd">                   hw_config.json (contains &#39;turbostat&#39; section)</span>
+
+<span class="sd">        What this does:</span>
+<span class="sd">        1. Extracts turbostat-specific configuration</span>
+<span class="sd">        2. Sets up column mappings (forward and reverse)</span>
+<span class="sd">        3. Locates the real turbostat binary</span>
+<span class="sd">        4. Records turbostat version for reproducibility</span>
+<span class="sd">        5. Captures CPU topology for hybrid processors</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get turbostat section from config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbostat&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;available&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Column mappings: our metric name -&gt; actual turbostat column name</span>
+        <span class="c1"># Example: {&#39;c6_residency&#39;: &#39;CPU%c6&#39;, &#39;package_temp&#39;: &#39;PkgTmp&#39;}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">column_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Reverse mapping: column name -&gt; metric name (useful during parsing)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reverse_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_map</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="c1"># Find the real turbostat binary (not the wrapper script)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">real_binary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;real_binary&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_binary</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">real_binary</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_binary</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using real turbostat binary: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">real_binary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_turbostat</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using turbostat from PATH: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Mark as unavailable if binary not found</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;turbostat not found&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">available</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Record turbostat version for reproducibility</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_version</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_turbostat_version</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_version</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Turbostat version: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">turbostat_version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Capture CPU topology for hybrid processors (P-cores/E-cores)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu_topology</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cpu_topology</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_hybrid&quot;</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Hybrid CPU detected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;p_cores&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2"> P-cores, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;e_cores&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2"> E-cores&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Continuous monitoring attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># FIX: Background thread and buffer for draining output</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_reader</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_turbostat</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Locate the real turbostat binary.</span>
+
+<span class="sd">        On Ubuntu, turbostat is often a wrapper that execs the real binary</span>
+<span class="sd">        from a kernel-versioned directory like:</span>
+<span class="sd">        /usr/lib/linux-tools/5.15.0/turbostat</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Path to turbostat binary or None if not found</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Try kernel-specific path first (most reliable)</span>
+        <span class="n">kernel_release</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="n">kernel_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/usr/lib/linux-tools/</span><span class="si">{</span><span class="n">kernel_release</span><span class="si">}</span><span class="s2">/turbostat&quot;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">kernel_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">kernel_path</span>
+
+        <span class="c1"># Fallback: try to find via &#39;which&#39; command</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;which&quot;</span><span class="p">,</span> <span class="s2">&quot;turbostat&quot;</span><span class="p">],</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">wrapper_path</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">wrapper_path</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_turbostat_version</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get turbostat version for reproducibility.</span>
+
+<span class="sd">        This is critical for publications – reviewers may ask</span>
+<span class="sd">        which version of tools were used.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Version string or None if unavailable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="p">,</span> <span class="s2">&quot;--version&quot;</span><span class="p">],</span>
+                <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_cpu_topology</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Capture CPU topology information for hybrid CPUs (P-cores/E-cores).</span>
+
+<span class="sd">        Modern Intel CPUs (Alder Lake, Raptor Lake) have:</span>
+<span class="sd">        - Performance cores (P-cores) - higher frequency, more power</span>
+<span class="sd">        - Efficiency cores (E-cores) - lower frequency, less power</span>
+
+<span class="sd">        This information is critical for accurate interpretation of turbostat data</span>
+<span class="sd">        because P-cores and E-cores have different C-state behaviors and frequencies.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with CPU topology information:</span>
+<span class="sd">            - has_hybrid: True if hybrid architecture detected</span>
+<span class="sd">            - p_cores: List of P-core IDs (if detectable)</span>
+<span class="sd">            - e_cores: List of E-core IDs (if detectable)</span>
+<span class="sd">            - raw_lscpu: Complete lscpu output for reference</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">topology</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;has_hybrid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;p_cores&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;e_cores&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;raw_lscpu&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Run lscpu to get CPU information</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;lscpu&quot;</span><span class="p">],</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">topology</span><span class="p">[</span><span class="s2">&quot;raw_lscpu&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span>
+
+                <span class="c1"># Check for hybrid flag</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="s2">&quot;Hybrid&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="n">topology</span><span class="p">[</span><span class="s2">&quot;has_hybrid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+                    <span class="c1"># Try to parse core type mappings if available</span>
+                    <span class="c1"># Format example: &quot;Core P-core:0-3 E-core:4-7&quot;</span>
+                    <span class="k">if</span> <span class="s2">&quot;Core&quot;</span> <span class="ow">in</span> <span class="n">line</span> <span class="ow">and</span> <span class="s2">&quot;:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">core_info</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                            <span class="k">if</span> <span class="s2">&quot;P-core&quot;</span> <span class="ow">in</span> <span class="n">core_info</span><span class="p">:</span>
+                                <span class="c1"># Parse P-core ranges</span>
+                                <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+                                <span class="n">p_ranges</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;P-core:([\d,-]+)&quot;</span><span class="p">,</span> <span class="n">core_info</span><span class="p">)</span>
+                                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">p_ranges</span><span class="p">:</span>
+                                    <span class="c1"># Expand ranges like &quot;0-3&quot; to [0,1,2,3]</span>
+                                    <span class="k">if</span> <span class="s2">&quot;-&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="p">:</span>
+                                        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">))</span>
+                                        <span class="n">topology</span><span class="p">[</span><span class="s2">&quot;p_cores&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                                            <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                                        <span class="p">)</span>
+                                    <span class="k">else</span><span class="p">:</span>
+                                        <span class="n">topology</span><span class="p">[</span><span class="s2">&quot;p_cores&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+
+                            <span class="k">if</span> <span class="s2">&quot;E-core&quot;</span> <span class="ow">in</span> <span class="n">core_info</span><span class="p">:</span>
+                                <span class="c1"># Parse E-core ranges</span>
+                                <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+                                <span class="n">e_ranges</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;E-core:([\d,-]+)&quot;</span><span class="p">,</span> <span class="n">core_info</span><span class="p">)</span>
+                                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">e_ranges</span><span class="p">:</span>
+                                    <span class="k">if</span> <span class="s2">&quot;-&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="p">:</span>
+                                        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">))</span>
+                                        <span class="n">topology</span><span class="p">[</span><span class="s2">&quot;e_cores&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                                            <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                                        <span class="p">)</span>
+                                    <span class="k">else</span><span class="p">:</span>
+                                        <span class="n">topology</span><span class="p">[</span><span class="s2">&quot;e_cores&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get CPU topology: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">topology</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_drain_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Background thread that continuously reads turbostat output.</span>
+<span class="sd">        Uses select() with timeout to prevent blocking.</span>
+<span class="sd">        Starts immediately to capture all output.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">select</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Turbostat output drainer thread started&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No turbostat process or stdout pipe&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Check if pipe is readable</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+        <span class="n">fd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Turbostat stdout pipe FD: </span><span class="si">{</span><span class="n">fd</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">lines_read</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_reader</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Check if data is available to read (with 100ms timeout)</span>
+                <span class="n">reads</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+                    <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">stdout</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="mf">0.1</span>
+                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">reads</span><span class="p">:</span>
+                    <span class="c1"># Data available, read it</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                        <span class="n">lines_read</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                        <span class="c1"># Log first few lines to verify data is flowing</span>
+                        <span class="k">if</span> <span class="n">lines_read</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;✅ Turbostat line </span><span class="si">{</span><span class="n">lines_read</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()[:</span><span class="mi">100</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                        <span class="k">elif</span> <span class="n">lines_read</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Turbostat drainer continuing to collect...&quot;</span><span class="p">)</span>
+
+                        <span class="c1"># Log progress occasionally</span>
+                        <span class="k">if</span> <span class="n">lines_read</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">buffer_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span><span class="p">))</span> <span class="o">//</span> <span class="mi">1024</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Turbostat drainer collected </span><span class="si">{</span><span class="n">lines_read</span><span class="si">}</span><span class="s2"> lines, buffer: </span><span class="si">{</span><span class="n">buffer_size</span><span class="si">}</span><span class="s2">KB&quot;</span>
+                            <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># EOF - process probably died</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;EOF reached on turbostat stdout&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># No data available - log occasionally to show thread is alive</span>
+                    <span class="k">if</span> <span class="n">lines_read</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># Every ~2 seconds</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Turbostat drainer waiting for data...&quot;</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in turbostat drainer thread: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="n">buffer_size</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span><span class="p">))</span> <span class="o">//</span> <span class="mi">1024</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Turbostat output drainer stopped, collected </span><span class="si">{</span><span class="n">lines_read</span><span class="si">}</span><span class="s2"> lines, buffer: </span><span class="si">{</span><span class="n">buffer_size</span><span class="si">}</span><span class="s2">KB&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="TurbostatReader.start_monitoring">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.start_monitoring">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start turbostat in continuous mode, collecting data every `interval_ms`.</span>
+<span class="sd">        The output is captured by the background drainer thread.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">available</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;turbostat not available, cannot start continuous monitoring&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_reader</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">interval</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">interval_ms</span> <span class="o">/</span> <span class="mf">1000.0</span><span class="p">)</span>  <span class="c1"># turbostat minimum is 0.1s</span>
+
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="p">,</span>
+            <span class="s2">&quot;--quiet&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--Summary&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--show&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_map</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+            <span class="s2">&quot;--interval&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">interval</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting turbostat: </span><span class="si">{</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+            <span class="n">cmd</span><span class="p">,</span>
+            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">universal_newlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Start the drainer thread to collect output as it arrives</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_drain_output</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;turbostat continuous monitoring started (interval=</span><span class="si">{</span><span class="n">interval_ms</span><span class="si">}</span><span class="s2">ms)&quot;</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurbostatReader.stop_monitoring">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.stop_monitoring">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop turbostat, collect all buffered output, parse into a DataFrame,</span>
+<span class="sd">        compute summary statistics, and return everything.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;stop_monitoring called but monitoring was not active&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;dataframe&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;num_samples&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_reader</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Gracefully terminate turbostat</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+        <span class="c1"># Wait for the drainer thread to finish</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reader_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Collect all output from the buffer</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_buffer</span><span class="p">)</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="c1"># Parse the continuous output into a DataFrame</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_continuous_output</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="n">num_samples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="c1"># Compute summary statistics (mean, std, min, max, etc.)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_summary</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;turbostat stopped: </span><span class="si">{</span><span class="n">num_samples</span><span class="si">}</span><span class="s2"> samples in </span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;dataframe&quot;</span><span class="p">:</span> <span class="n">df</span><span class="p">,</span>
+            <span class="s2">&quot;num_samples&quot;</span><span class="p">:</span> <span class="n">num_samples</span><span class="p">,</span>
+            <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span> <span class="n">duration</span><span class="p">,</span>
+            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="n">summary</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_continuous_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse continuous turbostat output.</span>
+
+<span class="sd">        Rules:</span>
+<span class="sd">        - Header: first non-numeric line (not ending with &quot;sec&quot;)</span>
+<span class="sd">        - Data rows: lines starting with a digit</span>
+<span class="sd">        - Column order: preserved exactly as turbostat outputs</span>
+<span class="sd">        - NO timestamp added here - Energy Engine handles timestamps</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Turbostat output too short or empty&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Debug: Show first few raw lines</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔍 RAW TURBOSTAT LINES (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="si">}</span><span class="s2"> total):&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">[:</span><span class="mi">10</span><span class="p">]):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Line </span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+
+            <span class="n">header_columns</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">data_lines</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Skip interval line (ends with &quot;sec&quot;)</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;sec&quot;</span><span class="p">):</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Safer header detection using regex</span>
+                <span class="c1"># Header is first line that doesn&#39;t start with a digit</span>
+                <span class="k">if</span> <span class="n">header_columns</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\d&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+                    <span class="n">header_columns</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 Header detected: </span><span class="si">{</span><span class="n">header_columns</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Data rows: lines starting with a digit</span>
+                <span class="k">if</span> <span class="n">header_columns</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\d&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+                    <span class="n">parts</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+
+                    <span class="c1"># Only take up to number of header columns</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">header_columns</span><span class="p">):</span>
+                        <span class="n">data_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">header_columns</span><span class="p">)]))</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">header_columns</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">data_lines</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ No turbostat data detected&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data_lines</span><span class="p">)</span><span class="si">}</span><span class="s2"> data rows&quot;</span><span class="p">)</span>
+
+            <span class="c1"># ====================================================================</span>
+            <span class="c1"># Parse with pandas using actual header columns</span>
+            <span class="c1"># ====================================================================</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
+
+            <span class="n">data_str</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_lines</span><span class="p">)</span>
+
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+                <span class="n">StringIO</span><span class="p">(</span><span class="n">data_str</span><span class="p">),</span> <span class="n">sep</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">header_columns</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;python&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Convert all columns to numeric</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Parsed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows with columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">df</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Turbostat parse error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="TurbostatReader.get_column_mapping">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.get_column_mapping">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_column_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get mapping from turbostat column names to internal metric names.</span>
+
+<span class="sd">        This uses the &#39;columns&#39; section from hw_config.json which maps</span>
+<span class="sd">        our internal names (like &#39;cpu_util_percent&#39;) to turbostat column names.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary: turbostat_column_name -&gt; internal_metric_name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The column_map is already stored as self.column_map</span>
+        <span class="c1"># But it&#39;s in the direction: internal_name -&gt; turbostat_column</span>
+        <span class="c1"># We need the reverse for lookup</span>
+
+        <span class="n">reverse_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">internal_name</span><span class="p">,</span> <span class="n">turbostat_col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">reverse_map</span><span class="p">[</span><span class="n">turbostat_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">internal_name</span>
+
+        <span class="k">return</span> <span class="n">reverse_map</span></div>
+
+
+<div class="viewcode-block" id="TurbostatReader.compute_summary">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.compute_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute summary statistics using reverse_map for canonical names.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">summary</span>
+
+        <span class="c1"># Use all rows (turbostat already gives package summary)</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="c1"># Map to internal canonical name if available</span>
+            <span class="n">internal_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reverse_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">numeric_values</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">numeric_values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># Store statistics with canonical names</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">internal_name</span><span class="si">}</span><span class="s2">_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">internal_name</span><span class="si">}</span><span class="s2">_std&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">internal_name</span><span class="si">}</span><span class="s2">_min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">internal_name</span><span class="si">}</span><span class="s2">_max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">internal_name</span><span class="si">}</span><span class="s2">_median&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+
+                    <span class="c1"># Special handling for frequencies (keep for backward compatibility)</span>
+                    <span class="k">if</span> <span class="n">col</span> <span class="o">==</span> <span class="s2">&quot;Bzy_MHz&quot;</span><span class="p">:</span>
+                        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;frequency_busy_mhz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;frequency_busy_min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;frequency_busy_max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+                    <span class="k">if</span> <span class="n">col</span> <span class="o">==</span> <span class="s2">&quot;Avg_MHz&quot;</span><span class="p">:</span>
+                        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;frequency_avg_mhz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;frequency_avg_min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                        <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;frequency_avg_max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numeric_values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not process column </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">summary</span></div>
+
+
+<div class="viewcode-block" id="TurbostatReader.save_raw_data">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.save_raw_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_raw_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">experiment_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save raw turbostat data to CSV for reviewer requests.</span>
+
+<span class="sd">        In top-tier publications, reviewers may ask to see raw data.</span>
+<span class="sd">        This method allows saving the full dataframe for later analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: DataFrame to save</span>
+<span class="sd">            experiment_id: Unique identifier for this experiment</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Path to saved file or None if save failed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No data to save&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Create data directory if it doesn&#39;t exist</span>
+        <span class="n">data_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;data/turbostat_raw&quot;</span><span class="p">)</span>
+        <span class="n">data_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Save with timestamp and experiment ID</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">data_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;turbostat_</span><span class="si">{</span><span class="n">experiment_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span><span class="si">}</span><span class="s2">.csv&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Raw turbostat data saved to </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save raw data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="TurbostatReader.read_metrics">
+<a class="viewcode-back" href="../../../core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.read_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PowerState</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run turbostat for a specified duration and return parsed metrics.</span>
+
+<span class="sd">        This is the original snapshot method kept for backward compatibility.</span>
+<span class="sd">        For new code, use continuous monitoring instead.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            duration_ms: Measurement duration in milliseconds</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            PowerState object with values from the first data row</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">power_state</span> <span class="o">=</span> <span class="n">PowerState</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">available</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">power_state</span>
+
+        <span class="c1"># Get columns to read</span>
+        <span class="n">columns_to_read</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_map</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">columns_to_read</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">power_state</span>
+
+        <span class="c1"># turbostat needs at least 100ms</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">duration_ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="c1"># Build command for snapshot measurement</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">turbostat_path</span><span class="p">,</span>
+            <span class="s2">&quot;--quiet&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--Summary&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--show&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">columns_to_read</span><span class="p">),</span>
+            <span class="s2">&quot;--interval&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">interval</span><span class="p">),</span>
+            <span class="s2">&quot;sleep&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">interval</span> <span class="o">+</span> <span class="mf">0.1</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Run turbostat and capture output</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="n">cmd</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">interval</span> <span class="o">+</span> <span class="mi">2</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">power_state</span>
+
+            <span class="c1"># Try stdout first, then stderr</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_turbostat_output</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_turbostat_output</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="c1"># Convert to numeric</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+                <span class="c1"># Get package-level row for snapshot</span>
+                <span class="k">if</span> <span class="s2">&quot;CPU&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">package_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;CPU&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;-&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">package_df</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">package_df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">row</span> <span class="o">=</span> <span class="n">package_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">row</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">row</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="c1"># Map columns to PowerState fields</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reverse_map</span><span class="p">:</span>
+                        <span class="n">metric</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reverse_map</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_set_metric</span><span class="p">(</span><span class="n">power_state</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;turbostat snapshot error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">power_state</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_turbostat_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse snapshot turbostat output (for backward compatibility).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output: Raw turbostat output</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with parsed data or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Find header line</span>
+            <span class="n">header_idx</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">col</span> <span class="ow">in</span> <span class="n">line</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Avg_MHz&quot;</span><span class="p">,</span> <span class="s2">&quot;Busy%&quot;</span><span class="p">,</span> <span class="s2">&quot;Bzy_MHz&quot;</span><span class="p">,</span> <span class="s2">&quot;Core&quot;</span><span class="p">]):</span>
+                    <span class="n">header_idx</span> <span class="o">=</span> <span class="n">i</span>
+                    <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">header_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="c1"># Parse data lines</span>
+            <span class="n">data_lines</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">header_idx</span><span class="p">:])</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+                <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">data_lines</span><span class="p">),</span>
+                <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">skipinitialspace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">df</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to parse turbostat output: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_metric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">power_state</span><span class="p">:</span> <span class="n">PowerState</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Map a parsed metric value to the appropriate field in PowerState.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            power_state: The object to update</span>
+<span class="sd">            metric: Our internal metric name (e.g., &#39;c1_residency&#39;)</span>
+<span class="sd">            value: The numeric value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Skip NaN values</span>
+            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                <span class="k">return</span>
+
+            <span class="c1"># C-state residencies (e.g., c1_residency, c6_residency)</span>
+            <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;residency&quot;</span> <span class="ow">in</span> <span class="n">metric</span><span class="p">:</span>
+                <span class="n">c_state</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">c_state_residencies</span><span class="p">[</span><span class="n">c_state</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="c1"># iGPU metrics</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;gfx_rc6&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">igpu_rc6_percent</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;gfx_freq&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">igpu_frequency_mhz</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="c1"># Temperature</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;package_temp&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">package_temperature_celsius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="c1"># Capture both frequency metrics</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;bzy_mhz&quot;</span><span class="p">:</span>
+                <span class="c1"># Frequency when CPU is busy</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">frequencies_mhz</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;avg_mhz&quot;</span><span class="p">:</span>
+                <span class="c1"># Average frequency including idle time</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">avg_frequency_mhz</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;tsc_mhz&quot;</span><span class="p">:</span>
+                <span class="c1"># Time Stamp Counter frequency (constant)</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">tsc_frequency_mhz</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="c1"># Power estimates</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;pkg_watts&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">package_power_watts</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;cor_watts&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">core_power_watts</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;gfx_watts&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">gpu_power_watts</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;ram_watts&quot;</span><span class="p">:</span>
+                <span class="n">power_state</span><span class="o">.</span><span class="n">ram_power_watts</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to set metric </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String representation for debugging.&quot;&quot;&quot;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;available&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">available</span> <span class="k">else</span> <span class="s2">&quot;unavailable&quot;</span>
+        <span class="n">hybrid</span> <span class="o">=</span> <span class="s2">&quot; (Hybrid)&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_hybrid&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;TurbostatReader(</span><span class="si">{</span><span class="n">status</span><span class="si">}{</span><span class="n">hybrid</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_map</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns)&quot;</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># USAGE EXAMPLE</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Example: Test turbostat reader with both snapshot and continuous modes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+    <span class="c1"># Set up logging</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TURBOSTAT READER TEST&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Load hardware configuration</span>
+    <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/hw_config.json&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Config file not found!&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Loaded config from </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Create reader instance</span>
+    <span class="n">reader</span> <span class="o">=</span> <span class="n">TurbostatReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 </span><span class="si">{</span><span class="n">reader</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Print turbostat version</span>
+    <span class="k">if</span> <span class="n">reader</span><span class="o">.</span><span class="n">turbostat_version</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📌 Turbostat version: </span><span class="si">{</span><span class="n">reader</span><span class="o">.</span><span class="n">turbostat_version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Print CPU topology</span>
+    <span class="k">if</span> <span class="n">reader</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_hybrid&quot;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔧 Hybrid CPU detected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;p_cores&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2"> P-cores, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">cpu_topology</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;e_cores&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2"> E-cores&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Test 1: Snapshot mode</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TEST 1: Snapshot Mode (500ms)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="n">power_state</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read_metrics</span><span class="p">(</span><span class="n">duration_ms</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">C-STATE RESIDENCIES:&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">power_state</span><span class="o">.</span><span class="n">c_state_residencies</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">power_state</span><span class="o">.</span><span class="n">c_state_residencies</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">FREQUENCY (Busy): </span><span class="si">{</span><span class="n">power_state</span><span class="o">.</span><span class="n">frequencies_mhz</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">power_state</span><span class="p">,</span> <span class="s2">&quot;avg_frequency_mhz&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">power_state</span><span class="o">.</span><span class="n">avg_frequency_mhz</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FREQUENCY (Average): </span><span class="si">{</span><span class="n">power_state</span><span class="o">.</span><span class="n">avg_frequency_mhz</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TEMPERATURE: </span><span class="si">{</span><span class="n">power_state</span><span class="o">.</span><span class="n">package_temperature_celsius</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Test 2: Continuous monitoring</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TEST 2: Continuous Monitoring (3 seconds)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Starting continuous monitoring...&quot;</span><span class="p">)</span>
+    <span class="n">reader</span><span class="o">.</span><span class="n">start_monitoring</span><span class="p">()</span>
+
+    <span class="c1"># Simulate workload</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Workload running... </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/3&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Stop and get data</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Stopping monitoring...&quot;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">stop_monitoring</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Collected </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;num_samples&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> samples over </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;duration_seconds&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Print summary statistics</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Summary Statistics (Package-Level Only):&quot;</span><span class="p">)</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Group by metric name for cleaner display</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">summary</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">stat</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;_&quot;</span> <span class="ow">in</span> <span class="n">key</span> <span class="k">else</span> <span class="s2">&quot;value&quot;</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="n">base</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">metrics</span><span class="p">[</span><span class="n">base</span><span class="p">][</span><span class="n">stat</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">metric</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">metric</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;mean&quot;</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Mean:   </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;median&quot;</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Median: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;median&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;std&quot;</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Std:    </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;std&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;min&quot;</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Min:    </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;max&quot;</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Max:    </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Optional: Save raw data</span>
+    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dataframe&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">save_raw_data</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;dataframe&quot;</span><span class="p">],</span> <span class="s2">&quot;test_run&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💾 Raw data saved to: </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Test complete!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

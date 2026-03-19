@@ -1,0 +1,459 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.query_analysis &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.query_analysis</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.query_analysis</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/query_analysis.py  —  ◑  Query Analysis</span>
+<span class="sd">Render function: render(ctx)</span>
+<span class="sd">ctx keys: ov, runs, tax, lin, age, avg_lin_j, avg_age_j, tax_mult,</span>
+<span class="sd">          plan_ms, exec_ms, synth_ms, plan_pct, exec_pct, synth_pct</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.express</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">px</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">plotly.subplots</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_subplots</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DB_PATH</span><span class="p">,</span> <span class="n">LIVE_API</span><span class="p">,</span> <span class="n">PL</span><span class="p">,</span> <span class="n">PROJECT_ROOT</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="n">q_safe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">_bar_gauge_html</span><span class="p">,</span> <span class="n">_gauge_html</span><span class="p">,</span> <span class="n">_human_carbon</span><span class="p">,</span>
+                         <span class="n">_human_energy</span><span class="p">,</span> <span class="n">_human_water</span><span class="p">,</span> <span class="n">fl</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">requests</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_req</span>
+
+    <span class="n">_REQUESTS_OK</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_REQUESTS_OK</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">_req</span><span class="p">:</span>
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;requests not installed&quot;</span><span class="p">)</span>
+
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_yaml</span>
+
+    <span class="n">_YAML_OK</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_YAML_OK</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.query_analysis.html#gui.pages.query_analysis.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">ov</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;ov&quot;</span><span class="p">]</span>
+    <span class="n">runs</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;runs&quot;</span><span class="p">]</span>
+    <span class="n">tax</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;tax&quot;</span><span class="p">]</span>
+    <span class="n">avg_lin_j</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;avg_lin_j&quot;</span><span class="p">]</span>
+    <span class="n">avg_age_j</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;avg_age_j&quot;</span><span class="p">]</span>
+    <span class="n">tax_mult</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;tax_mult&quot;</span><span class="p">]</span>
+    <span class="n">plan_ms</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;plan_ms&quot;</span><span class="p">]</span>
+    <span class="n">exec_ms</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;exec_ms&quot;</span><span class="p">]</span>
+    <span class="n">synth_ms</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;synth_ms&quot;</span><span class="p">]</span>
+    <span class="n">plan_pct</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;plan_pct&quot;</span><span class="p">]</span>
+    <span class="n">exec_pct</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;exec_pct&quot;</span><span class="p">]</span>
+    <span class="n">synth_pct</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;synth_pct&quot;</span><span class="p">]</span>
+    <span class="n">lin</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;lin&quot;</span><span class="p">]</span>
+    <span class="n">age</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;age&quot;</span><span class="p">]</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Query Type Analysis&quot;</span><span class="p">)</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span>
+        <span class="s2">&quot;Energy · latency · tokens · sustainability — grouped by category and workflow&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Level 1: category × workflow summary ──────────────────────────────────</span>
+    <span class="n">cat_df</span><span class="p">,</span> <span class="n">_e1</span> <span class="o">=</span> <span class="n">q_safe</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            COALESCE(tc.category, &#39;uncategorised&#39;)           AS category,</span>
+<span class="s2">            r.workflow_type,</span>
+<span class="s2">            COUNT(*)                                          AS runs,</span>
+<span class="s2">            ROUND(AVG(r.total_energy_uj)   / 1e6, 4)        AS avg_energy_j,</span>
+<span class="s2">            ROUND(AVG(r.dynamic_energy_uj) / 1e6, 4)        AS avg_dynamic_j,</span>
+<span class="s2">            ROUND(AVG(r.duration_ns)       / 1e9, 3)        AS avg_duration_s,</span>
+<span class="s2">            ROUND(AVG(r.total_tokens),            1)        AS avg_tokens,</span>
+<span class="s2">            ROUND(AVG(CASE WHEN r.total_tokens &gt; 0</span>
+<span class="s2">                THEN r.total_energy_uj / r.total_tokens END) / 1e3, 4) AS avg_mj_per_token,</span>
+<span class="s2">            ROUND(AVG(r.total_energy_uj / 1e6 /</span>
+<span class="s2">                NULLIF(r.duration_ns / 1e9, 0)),             4) AS avg_j_per_sec,</span>
+<span class="s2">            ROUND(AVG(r.planning_time_ms),        1)        AS avg_plan_ms,</span>
+<span class="s2">            ROUND(AVG(r.execution_time_ms),       1)        AS avg_exec_ms,</span>
+<span class="s2">            ROUND(AVG(r.synthesis_time_ms),       1)        AS avg_synth_ms,</span>
+<span class="s2">            ROUND(AVG(r.carbon_g) * 1000,         4)        AS avg_carbon_mg,</span>
+<span class="s2">            ROUND(AVG(r.water_ml),                4)        AS avg_water_ml,</span>
+<span class="s2">            ROUND(AVG(es_agg.core_j),             4)        AS avg_core_j,</span>
+<span class="s2">            ROUND(AVG(es_agg.uncore_j),           4)        AS avg_uncore_j,</span>
+<span class="s2">            ROUND(AVG(es_agg.dram_j),             4)        AS avg_dram_j</span>
+<span class="s2">        FROM runs r</span>
+<span class="s2">        JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">        LEFT JOIN task_categories tc ON e.task_name = tc.task_id</span>
+<span class="s2">        LEFT JOIN (</span>
+<span class="s2">            SELECT run_id,</span>
+<span class="s2">                   (MAX(core_energy_uj)   - MIN(core_energy_uj))   / 1e6 AS core_j,</span>
+<span class="s2">                   (MAX(uncore_energy_uj) - MIN(uncore_energy_uj)) / 1e6 AS uncore_j,</span>
+<span class="s2">                   (MAX(dram_energy_uj)   - MIN(dram_energy_uj))   / 1e6 AS dram_j</span>
+<span class="s2">            FROM energy_samples GROUP BY run_id</span>
+<span class="s2">        ) es_agg ON r.run_id = es_agg.run_id</span>
+<span class="s2">        GROUP BY COALESCE(tc.category,&#39;uncategorised&#39;), r.workflow_type</span>
+<span class="s2">        ORDER BY category, r.workflow_type</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">_e1</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Query error: </span><span class="si">{</span><span class="n">_e1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">cat_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;No data — run experiments and ensure task_categories table is populated.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># KPI row</span>
+        <span class="n">_lin_cat</span> <span class="o">=</span> <span class="n">cat_df</span><span class="p">[</span><span class="n">cat_df</span><span class="o">.</span><span class="n">workflow_type</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">]</span>
+        <span class="n">_age_cat</span> <span class="o">=</span> <span class="n">cat_df</span><span class="p">[</span><span class="n">cat_df</span><span class="o">.</span><span class="n">workflow_type</span> <span class="o">==</span> <span class="s2">&quot;agentic&quot;</span><span class="p">]</span>
+        <span class="n">k1</span><span class="p">,</span> <span class="n">k2</span><span class="p">,</span> <span class="n">k3</span><span class="p">,</span> <span class="n">k4</span><span class="p">,</span> <span class="n">k5</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">k1</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Categories&quot;</span><span class="p">,</span> <span class="n">cat_df</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+        <span class="n">k2</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Total runs&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">cat_df</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span>
+        <span class="n">k3</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span>
+            <span class="s2">&quot;Best mJ/token&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cat_df</span><span class="o">.</span><span class="n">avg_mj_per_token</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">if</span> <span class="n">cat_df</span><span class="o">.</span><span class="n">avg_mj_per_token</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+                <span class="k">else</span> <span class="s2">&quot;—&quot;</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">k4</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span>
+            <span class="s2">&quot;Avg linear J&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_lin_cat</span><span class="o">.</span><span class="n">avg_energy_j</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">J&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">_lin_cat</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="s2">&quot;—&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">k5</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span>
+            <span class="s2">&quot;Avg agentic J&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_age_cat</span><span class="o">.</span><span class="n">avg_energy_j</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">J&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">_age_cat</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="s2">&quot;—&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+        <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">c1</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;**Energy per query by category**&quot;</span><span class="p">)</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                <span class="n">cat_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">]),</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;category&quot;</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+                <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+                <span class="n">color_discrete_map</span><span class="o">=</span><span class="n">WF_COLORS</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">:</span> <span class="s2">&quot;Avg Energy (J)&quot;</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;Category&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">c2</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;**Energy per token (mJ)**&quot;</span><span class="p">)</span>
+            <span class="n">fig2</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                <span class="n">cat_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">]),</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;category&quot;</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+                <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+                <span class="n">color_discrete_map</span><span class="o">=</span><span class="n">WF_COLORS</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">:</span> <span class="s2">&quot;mJ / token&quot;</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;Category&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig2</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">c3</span><span class="p">,</span> <span class="n">c4</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">c3</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;**Phase time breakdown (agentic)**&quot;</span><span class="p">)</span>
+            <span class="n">_ap</span> <span class="o">=</span> <span class="n">cat_df</span><span class="p">[</span><span class="n">cat_df</span><span class="o">.</span><span class="n">workflow_type</span> <span class="o">==</span> <span class="s2">&quot;agentic&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_ap</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">_ph</span> <span class="o">=</span> <span class="n">_ap</span><span class="p">[</span>
+                    <span class="p">[</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_plan_ms&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_exec_ms&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_synth_ms&quot;</span><span class="p">]</span>
+                <span class="p">]</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">id_vars</span><span class="o">=</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;phase&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">)</span>
+                <span class="n">_ph</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_ph</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;avg_plan_ms&quot;</span><span class="p">:</span> <span class="s2">&quot;Planning&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;avg_exec_ms&quot;</span><span class="p">:</span> <span class="s2">&quot;Execution&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;avg_synth_ms&quot;</span><span class="p">:</span> <span class="s2">&quot;Synthesis&quot;</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="n">fig3</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                    <span class="n">_ph</span><span class="o">.</span><span class="n">dropna</span><span class="p">(),</span>
+                    <span class="n">x</span><span class="o">=</span><span class="s2">&quot;category&quot;</span><span class="p">,</span>
+                    <span class="n">y</span><span class="o">=</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;phase&quot;</span><span class="p">,</span>
+                    <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;stack&quot;</span><span class="p">,</span>
+                    <span class="n">color_discrete_map</span><span class="o">=</span><span class="p">{</span>
+                        <span class="s2">&quot;Planning&quot;</span><span class="p">:</span> <span class="s2">&quot;#f59e0b&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Execution&quot;</span><span class="p">:</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Synthesis&quot;</span><span class="p">:</span> <span class="s2">&quot;#a78bfa&quot;</span><span class="p">,</span>
+                    <span class="p">},</span>
+                    <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ms&quot;</span><span class="p">:</span> <span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;Category&quot;</span><span class="p">},</span>
+                <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig3</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No agentic data.&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">c4</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;**Hardware domain breakdown (linear)**&quot;</span><span class="p">)</span>
+            <span class="n">_hl</span> <span class="o">=</span> <span class="n">cat_df</span><span class="p">[</span><span class="n">cat_df</span><span class="o">.</span><span class="n">workflow_type</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_hl</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">_hm</span> <span class="o">=</span> <span class="n">_hl</span><span class="p">[</span>
+                    <span class="p">[</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_core_j&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_uncore_j&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_dram_j&quot;</span><span class="p">]</span>
+                <span class="p">]</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">id_vars</span><span class="o">=</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;domain&quot;</span><span class="p">,</span> <span class="n">value_name</span><span class="o">=</span><span class="s2">&quot;j&quot;</span><span class="p">)</span>
+                <span class="n">_hm</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_hm</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;avg_core_j&quot;</span><span class="p">:</span> <span class="s2">&quot;Core&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;avg_uncore_j&quot;</span><span class="p">:</span> <span class="s2">&quot;Uncore&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;avg_dram_j&quot;</span><span class="p">:</span> <span class="s2">&quot;DRAM&quot;</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="n">fig4</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                    <span class="n">_hm</span><span class="o">.</span><span class="n">dropna</span><span class="p">(),</span>
+                    <span class="n">x</span><span class="o">=</span><span class="s2">&quot;category&quot;</span><span class="p">,</span>
+                    <span class="n">y</span><span class="o">=</span><span class="s2">&quot;j&quot;</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;domain&quot;</span><span class="p">,</span>
+                    <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;stack&quot;</span><span class="p">,</span>
+                    <span class="n">color_discrete_map</span><span class="o">=</span><span class="p">{</span>
+                        <span class="s2">&quot;Core&quot;</span><span class="p">:</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Uncore&quot;</span><span class="p">:</span> <span class="s2">&quot;#38bdf8&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;DRAM&quot;</span><span class="p">:</span> <span class="s2">&quot;#a78bfa&quot;</span><span class="p">,</span>
+                    <span class="p">},</span>
+                    <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;j&quot;</span><span class="p">:</span> <span class="s2">&quot;Joules&quot;</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="s2">&quot;Category&quot;</span><span class="p">},</span>
+                <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig4</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No linear data.&quot;</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+        <span class="c1"># ── Level 2: per-task ─────────────────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;### Level 2 — Per-task detail&quot;</span><span class="p">)</span>
+        <span class="n">_sel_cat</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+            <span class="s2">&quot;Filter category&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cat_df</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()),</span>
+            <span class="n">key</span><span class="o">=</span><span class="s2">&quot;qa_cat&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">_cat_where</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;WHERE tc.category = &#39;</span><span class="si">{</span><span class="n">_sel_cat</span><span class="si">}</span><span class="s2">&#39;&quot;</span> <span class="k">if</span> <span class="n">_sel_cat</span> <span class="o">!=</span> <span class="s2">&quot;all&quot;</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">task_df</span><span class="p">,</span> <span class="n">_e2</span> <span class="o">=</span> <span class="n">q_safe</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT e.task_name,</span>
+<span class="s2">                   COALESCE(tc.category,&#39;uncategorised&#39;) AS category,</span>
+<span class="s2">                   r.workflow_type,</span>
+<span class="s2">                   COUNT(*) AS runs,</span>
+<span class="s2">                   ROUND(AVG(r.total_energy_uj)/1e6, 4)  AS avg_energy_j,</span>
+<span class="s2">                   ROUND(AVG(r.duration_ns)/1e9,    3)   AS avg_duration_s,</span>
+<span class="s2">                   ROUND(AVG(r.total_tokens),        1)  AS avg_tokens,</span>
+<span class="s2">                   ROUND(AVG(CASE WHEN r.total_tokens &gt; 0</span>
+<span class="s2">                       THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_per_token,</span>
+<span class="s2">                   ROUND(AVG(r.carbon_g)*1000,       4)  AS avg_carbon_mg,</span>
+<span class="s2">                   ROUND(AVG(r.water_ml),            4)  AS avg_water_ml,</span>
+<span class="s2">                   ROUND(AVG(r.llm_calls),           1)  AS avg_llm_calls,</span>
+<span class="s2">                   ROUND(AVG(r.tool_calls),          1)  AS avg_tool_calls</span>
+<span class="s2">            FROM runs r</span>
+<span class="s2">            JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">            LEFT JOIN task_categories tc ON e.task_name = tc.task_id</span>
+<span class="s2">            </span><span class="si">{</span><span class="n">_cat_where</span><span class="si">}</span>
+<span class="s2">            GROUP BY e.task_name, COALESCE(tc.category,&#39;uncategorised&#39;), r.workflow_type</span>
+<span class="s2">            ORDER BY avg_energy_j DESC</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_e2</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">_e2</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">task_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">fig5</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+                <span class="n">task_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">]),</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;task_name&quot;</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+                <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;group&quot;</span><span class="p">,</span>
+                <span class="n">color_discrete_map</span><span class="o">=</span><span class="n">WF_COLORS</span><span class="p">,</span>
+                <span class="n">hover_data</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_tokens&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">],</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;avg_energy_j&quot;</span><span class="p">:</span> <span class="s2">&quot;Avg Energy (J)&quot;</span><span class="p">,</span> <span class="s2">&quot;task_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Task&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">fig5</span><span class="o">.</span><span class="n">update_xaxes</span><span class="p">(</span><span class="n">tickangle</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fl</span><span class="p">(</span><span class="n">fig5</span><span class="p">),</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">_sc</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">c</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="s2">&quot;task_name&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;category&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;runs&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_energy_j&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_duration_s&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_tokens&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_mj_per_token&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_carbon_mg&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_water_ml&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_llm_calls&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;avg_tool_calls&quot;</span><span class="p">,</span>
+                <span class="p">]</span>
+                <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">task_df</span><span class="o">.</span><span class="n">columns</span>
+            <span class="p">]</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">dataframe</span><span class="p">(</span><span class="n">task_df</span><span class="p">[</span><span class="n">_sc</span><span class="p">],</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hide_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+        <span class="c1"># ── Level 3: human-scale insights ────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;### Level 3 — Human-scale energy insights&quot;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="s2">&quot;Translating joules into things you can feel&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">runs</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="s2">&quot;task_name&quot;</span> <span class="ow">in</span> <span class="n">runs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">_t_opts</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">runs</span><span class="o">.</span><span class="n">task_name</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+            <span class="n">_sel_t</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+                <span class="s2">&quot;Select task to interpret&quot;</span><span class="p">,</span> <span class="n">_t_opts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;qa_human_task&quot;</span>
+            <span class="p">)</span>
+            <span class="n">_tr</span> <span class="o">=</span> <span class="n">runs</span><span class="p">[</span><span class="n">runs</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="n">_sel_t</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">_wf</span><span class="p">,</span> <span class="n">_border</span> <span class="ow">in</span> <span class="p">[(</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;agentic&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">)]:</span>
+                <span class="n">_wr</span> <span class="o">=</span> <span class="n">_tr</span><span class="p">[</span><span class="n">_tr</span><span class="o">.</span><span class="n">workflow_type</span> <span class="o">==</span> <span class="n">_wf</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">_wr</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">_ej</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_wr</span><span class="o">.</span><span class="n">energy_j</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+                <span class="n">_wml</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">_wr</span><span class="o">.</span><span class="n">water_ml</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+                    <span class="k">if</span> <span class="s2">&quot;water_ml&quot;</span> <span class="ow">in</span> <span class="n">_wr</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">_wr</span><span class="o">.</span><span class="n">water_ml</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="n">_cmg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">_wr</span><span class="o">.</span><span class="n">carbon_g</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="s2">&quot;carbon_g&quot;</span> <span class="ow">in</span> <span class="n">_wr</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">_wr</span><span class="o">.</span><span class="n">carbon_g</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="n">_tok</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">_wr</span><span class="o">.</span><span class="n">total_tokens</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+                    <span class="k">if</span> <span class="s2">&quot;total_tokens&quot;</span> <span class="ow">in</span> <span class="n">_wr</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">_wr</span><span class="o">.</span><span class="n">total_tokens</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="n">_dur</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">_wr</span><span class="o">.</span><span class="n">duration_ms</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="s2">&quot;duration_ms&quot;</span> <span class="ow">in</span> <span class="n">_wr</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">_wr</span><span class="o">.</span><span class="n">duration_ms</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+                    <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+
+                <span class="n">_ins</span> <span class="o">=</span> <span class="n">_human_energy</span><span class="p">(</span><span class="n">_ej</span><span class="p">)</span>
+                <span class="n">_ins_html</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin:2px 0;font-size:10px;color:#b8c8d8;&#39;&gt;</span><span class="si">{</span><span class="n">ic</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                    <span class="k">for</span> <span class="n">ic</span><span class="p">,</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">_ins</span>
+                <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                &lt;div style=&quot;background:#0f1520;border:1px solid #1e2d45;border-radius:8px;</span>
+<span class="s2">                            padding:14px 18px;margin-bottom:8px;border-left:3px solid </span><span class="si">{</span><span class="n">_border</span><span class="si">}</span><span class="s2">;&quot;&gt;</span>
+<span class="s2">                  &lt;div style=&quot;font-size:12px;font-weight:600;color:#e8f0f8;margin-bottom:6px;&quot;&gt;</span>
+<span class="s2">                    </span><span class="si">{</span><span class="n">_wf</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">_sel_t</span><span class="si">}</span>
+<span class="s2">                    &lt;span style=&quot;font-family:monospace;color:</span><span class="si">{</span><span class="n">_border</span><span class="si">}</span><span class="s2">;margin-left:12px;&quot;&gt;</span>
+<span class="s2">                      </span><span class="si">{</span><span class="n">_ej</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">J&lt;/span&gt;</span>
+<span class="s2">                    </span><span class="si">{</span><span class="sa">f</span><span class="s1">&#39;&lt;span style=&quot;font-size:9px;color:#3d5570;margin-left:8px;&quot;&gt;</span><span class="si">{</span><span class="n">_tok</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> tokens · </span><span class="si">{</span><span class="n">_dur</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">s&lt;/span&gt;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">_tok</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span>
+<span class="s2">                  &lt;/div&gt;</span>
+<span class="s2">                  </span><span class="si">{</span><span class="n">_ins_html</span><span class="si">}</span>
+<span class="s2">                  &lt;div style=&quot;margin-top:8px;font-size:10px;color:#7090b0;border-top:1px solid #1e2d45;padding-top:6px;&quot;&gt;</span>
+<span class="s2">                    💧 </span><span class="si">{</span><span class="n">_human_water</span><span class="p">(</span><span class="n">_wml</span><span class="p">)</span><span class="si">}</span><span class="s2"> &amp;nbsp;·&amp;nbsp; 🌱 </span><span class="si">{</span><span class="n">_human_carbon</span><span class="p">(</span><span class="n">_cmg</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">                  &lt;/div&gt;</span>
+<span class="s2">                &lt;/div&gt;&quot;&quot;&quot;</span><span class="p">,</span>
+                    <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span></div>
+
+
+
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+<span class="c1"># PAGE: RUN REPLAY (formerly Live Monitor)</span>
+<span class="c1"># Renamed — &quot;live&quot; only makes sense during execution.</span>
+<span class="c1"># This page lets you inspect any completed run as an interactive timeline.</span>
+<span class="c1"># ══════════════════════════════════════════════════════════════════════════════</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

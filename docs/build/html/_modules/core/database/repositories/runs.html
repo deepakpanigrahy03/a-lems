@@ -1,0 +1,627 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.repositories.runs &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.database.repositories.runs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.database.repositories.runs</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">RUNS REPOSITORY – Handles insertion of run data and derived metrics</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">PURPOSE:</span>
+<span class="sd">    Contains all logic for inserting runs into the database, including:</span>
+<span class="sd">    - Extracting data from harness output</span>
+<span class="sd">    - Computing derived metrics (energy_per_instruction, thermal_delta, etc.)</span>
+<span class="sd">    - Computing cryptographic run state hash</span>
+<span class="sd">    - Inserting the main run record</span>
+
+<span class="sd">WHY THIS EXISTS:</span>
+<span class="sd">    - Separates run insertion logic from other database operations</span>
+<span class="sd">    - Makes the 80+ column insert manageable</span>
+<span class="sd">    - Centralizes derived metric calculations</span>
+<span class="sd">    - Part of splitting the god object manager.py</span>
+
+<span class="sd">AUTHOR: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseError</span><span class="p">,</span> <span class="n">DatabaseInterface</span>
+
+
+<div class="viewcode-block" id="RunsRepository">
+<a class="viewcode-back" href="../../../../core.database.repositories.runs.html#core.database.repositories.RunsRepository">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RunsRepository</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Repository for run-related database operations.</span>
+
+<span class="sd">    This class handles all insertions and queries related to runs,</span>
+<span class="sd">    including the complex 80+ column run table.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DatabaseInterface</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize with database adapter.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            db: DatabaseInterface instance (SQLiteAdapter, etc.)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">db</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_run_state_hash</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">hw_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">baseline_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute a cryptographic hash of the system state for reproducibility.</span>
+
+<span class="sd">        The hash includes:</span>
+<span class="sd">        - governor</span>
+<span class="sd">        - turbo_enabled</span>
+<span class="sd">        - hw_id (which encodes microcode, kernel, etc.)</span>
+<span class="sd">        - baseline_id</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_data: Dictionary containing run fields (ml_features)</span>
+<span class="sd">            hw_id: hardware_config primary key (or None)</span>
+<span class="sd">            baseline_id: idle_baselines primary key (or None)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            SHA‑256 hex digest string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state_str</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">run_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;governor&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">|&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">run_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;turbo_enabled&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">|&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2">|&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">state_str</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_from_ml_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ml</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extract and compute all fields from ml_features dictionary.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ml: ml_features dictionary from harness output</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with all fields ready for database insertion</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Energy values (convert J to µJ)</span>
+        <span class="n">total_energy_j</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;energy_j&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">total_energy_uj</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">total_energy_j</span> <span class="o">*</span> <span class="mi">1_000_000</span><span class="p">)</span>
+
+        <span class="c1"># Performance counters</span>
+        <span class="n">instructions</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;instructions&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">cycles</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cycles&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">total_tokens</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Derived metrics</span>
+        <span class="n">energy_per_instruction</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">total_energy_j</span> <span class="o">/</span> <span class="n">instructions</span><span class="p">)</span> <span class="k">if</span> <span class="n">instructions</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="n">energy_per_cycle</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_energy_j</span> <span class="o">/</span> <span class="n">cycles</span><span class="p">)</span> <span class="k">if</span> <span class="n">cycles</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">energy_per_token</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_energy_j</span> <span class="o">/</span> <span class="n">total_tokens</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_tokens</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">instructions_per_token</span> <span class="o">=</span> <span class="p">(</span><span class="n">instructions</span> <span class="o">/</span> <span class="n">total_tokens</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_tokens</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="c1"># Thermal delta</span>
+        <span class="n">start_temp</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_temp_c&quot;</span><span class="p">)</span>
+        <span class="n">max_temp</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_temp_c&quot;</span><span class="p">)</span>
+        <span class="n">thermal_delta</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">max_temp</span> <span class="o">-</span> <span class="n">start_temp</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">start_temp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">max_temp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="c1"># Core fields</span>
+            <span class="s2">&quot;run_number&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_number&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;duration_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;total_energy_j&quot;</span><span class="p">:</span> <span class="n">total_energy_j</span><span class="p">,</span>
+            <span class="s2">&quot;total_energy_uj&quot;</span><span class="p">:</span> <span class="n">total_energy_uj</span><span class="p">,</span>
+            <span class="s2">&quot;avg_power_watts&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_power_watts&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Performance counters</span>
+            <span class="s2">&quot;instructions&quot;</span><span class="p">:</span> <span class="n">instructions</span><span class="p">,</span>
+            <span class="s2">&quot;cycles&quot;</span><span class="p">:</span> <span class="n">cycles</span><span class="p">,</span>
+            <span class="s2">&quot;ipc&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ipc&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;cache_misses&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache_misses&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;cache_references&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache_references&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;page_faults&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;page_faults&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;major_page_faults&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;major_page_faults&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;minor_page_faults&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;minor_page_faults&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Scheduler</span>
+            <span class="s2">&quot;context_switches_voluntary&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;context_switches_voluntary&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;context_switches_involuntary&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;context_switches_involuntary&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;total_context_switches&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_context_switches&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;thread_migrations&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thread_migrations&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;run_queue_length&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_queue_length&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;kernel_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kernel_time_ms&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;user_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;user_time_ms&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Frequency</span>
+            <span class="s2">&quot;frequency_mhz&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;frequency_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;ring_bus_freq_mhz&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ring_bus_freq_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Thermal</span>
+            <span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;baseline_temp_celsius&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_temp_celsius&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;start_temp_c&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_temp_c&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="s2">&quot;max_temp_c&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_temp_c&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="s2">&quot;min_temp_c&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_temp_c&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="s2">&quot;thermal_delta_c&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_delta_c&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="s2">&quot;thermal_during_experiment&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_during_experiment&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;thermal_now_active&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_now_active&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;thermal_since_boot&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_since_boot&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;experiment_valid&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;experiment_valid&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="c1"># C-states</span>
+            <span class="s2">&quot;c2_time_seconds&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c2_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;c3_time_seconds&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c3_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;c6_time_seconds&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c6_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;c7_time_seconds&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c7_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># ... swap fields ...</span>
+            <span class="s2">&quot;swap_total_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_total_mb&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;swap_end_free_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_free_mb&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;swap_start_used_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_start_used_mb&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;swap_end_used_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_used_mb&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;swap_start_cached_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_start_cached_mb&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;swap_end_cached_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_cached_mb&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;swap_end_percent&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_percent&quot;</span><span class="p">),</span>
+            <span class="c1"># MSR</span>
+            <span class="s2">&quot;wakeup_latency_us&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;wakeup_latency_us&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;interrupt_rate&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;thermal_throttle_flag&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_throttle_flag&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Memory</span>
+            <span class="s2">&quot;rss_memory_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rss_memory_mb&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;vms_memory_mb&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vms_memory_mb&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Tokens</span>
+            <span class="s2">&quot;total_tokens&quot;</span><span class="p">:</span> <span class="n">total_tokens</span><span class="p">,</span>
+            <span class="s2">&quot;prompt_tokens&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;completion_tokens&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Network</span>
+            <span class="s2">&quot;dns_latency_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dns_latency_ms&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;api_latency_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_latency_ms&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;compute_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;compute_time_ms&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># System state</span>
+            <span class="s2">&quot;baseline_id&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;governor&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;governor&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;turbo_enabled&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbo_enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;is_cold_start&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_cold_start&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;background_cpu_percent&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;background_cpu_percent&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="s2">&quot;process_count&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;process_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="c1"># Agentic-specific</span>
+            <span class="s2">&quot;planning_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;planning_time_ms&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;execution_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;execution_time_ms&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;synthesis_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;synthesis_time_ms&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;phase_planning_ratio&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase_planning_ratio&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;phase_execution_ratio&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase_execution_ratio&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;phase_synthesis_ratio&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase_synthesis_ratio&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;llm_calls&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm_calls&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;tool_calls&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;tools_used&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tools_used&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;steps&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;avg_step_time_ms&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_step_time_ms&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;complexity_level&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;complexity_level&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;complexity_score&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;complexity_score&quot;</span><span class="p">),</span>
+            <span class="c1"># Derived metrics</span>
+            <span class="s2">&quot;energy_per_instruction&quot;</span><span class="p">:</span> <span class="n">energy_per_instruction</span><span class="p">,</span>
+            <span class="s2">&quot;energy_per_cycle&quot;</span><span class="p">:</span> <span class="n">energy_per_cycle</span><span class="p">,</span>
+            <span class="s2">&quot;energy_per_token&quot;</span><span class="p">:</span> <span class="n">energy_per_token</span><span class="p">,</span>
+            <span class="s2">&quot;instructions_per_token&quot;</span><span class="p">:</span> <span class="n">instructions_per_token</span><span class="p">,</span>
+            <span class="s2">&quot;interrupts_per_second&quot;</span><span class="p">:</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="RunsRepository.insert_run">
+<a class="viewcode-back" href="../../../../core.database.repositories.runs.html#core.database.repositories.RunsRepository.insert_run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_run</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">run_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a single run with all its metrics.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            exp_id: Foreign key to experiments table</span>
+<span class="sd">            hw_id: Foreign key to hardware_config (or None)</span>
+<span class="sd">            run_data: Dictionary containing all data for one run</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            run_id of the newly inserted run</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="s2">&quot;conn&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="c1"># Extract ml_features</span>
+        <span class="n">ml</span> <span class="o">=</span> <span class="n">run_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ml_features&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">sus</span> <span class="o">=</span> <span class="n">run_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sustainability&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="n">pkg_raw_uj</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">core_raw_uj</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_energy_uj&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">uncore_raw_uj</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">dram_raw_uj</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">baseline_energy_uj</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;idle_energy_uj&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 RUNS DEBUG - pkg_raw_uj: </span><span class="si">{</span><span class="n">pkg_raw_uj</span><span class="si">}</span><span class="s2">, baseline_energy_uj: </span><span class="si">{</span><span class="n">baseline_energy_uj</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 RUNS DEBUG - dynamic will be: </span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="n">pkg_raw_uj</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">baseline_energy_uj</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Extract and compute fields</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_from_ml_features</span><span class="p">(</span><span class="n">ml</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Get timestamps from ml_features (captured per run during execution)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">start_time_ns</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_time_ns&quot;</span><span class="p">)</span>
+        <span class="n">end_time_ns</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;end_time_ns&quot;</span><span class="p">)</span>
+        <span class="n">duration_ns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">1_000_000</span><span class="p">)</span>
+
+        <span class="c1"># Fallback to old method if per-run timestamps missing</span>
+        <span class="k">if</span> <span class="n">start_time_ns</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">end_time_ns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">harness_ts_str</span> <span class="o">=</span> <span class="n">run_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;harness_timestamp&quot;</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">dt</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">harness_ts_str</span><span class="p">)</span>
+                <span class="n">start_time_s</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">start_time_s</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span>
+            <span class="n">start_time_ns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_time_s</span> <span class="o">*</span> <span class="mi">1_000_000_000</span><span class="p">)</span>
+            <span class="n">end_time_ns</span> <span class="o">=</span> <span class="n">start_time_ns</span> <span class="o">+</span> <span class="n">duration_ns</span>
+
+        <span class="c1"># Sustainability metrics</span>
+        <span class="n">carbon_g</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">water_ml</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">methane_mg</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">sus</span><span class="p">:</span>
+            <span class="n">carbon_g</span> <span class="o">=</span> <span class="n">sus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;carbon&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;grams&quot;</span><span class="p">)</span>
+            <span class="n">water_ml</span> <span class="o">=</span> <span class="n">sus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;water&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;milliliters&quot;</span><span class="p">)</span>
+            <span class="n">methane_mg</span> <span class="o">=</span> <span class="n">sus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;methane&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;grams&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Run state hash</span>
+        <span class="n">baseline_id</span> <span class="o">=</span> <span class="n">run_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">baseline_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;ml_features&quot;</span> <span class="ow">in</span> <span class="n">run_data</span><span class="p">:</span>
+            <span class="n">baseline_id</span> <span class="o">=</span> <span class="n">run_data</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">)</span>
+        <span class="n">run_state_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_run_state_hash</span><span class="p">(</span><span class="n">ml</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">baseline_id</span><span class="p">)</span>
+
+        <span class="c1"># Insert the run</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            INSERT INTO runs (</span>
+<span class="s2">                exp_id, hw_id, baseline_id, run_number, workflow_type,</span>
+<span class="s2">                start_time_ns, end_time_ns, duration_ns,</span>
+<span class="s2">                total_energy_uj, dynamic_energy_uj, baseline_energy_uj, avg_power_watts,</span>
+<span class="s2">                pkg_energy_uj, core_energy_uj, uncore_energy_uj, dram_energy_uj,</span>
+<span class="s2">                instructions, cycles, ipc, cache_misses, cache_references, cache_miss_rate,</span>
+<span class="s2">                page_faults, major_page_faults, minor_page_faults,</span>
+<span class="s2">                context_switches_voluntary, context_switches_involuntary, total_context_switches,</span>
+<span class="s2">                thread_migrations, run_queue_length, kernel_time_ms, user_time_ms,</span>
+<span class="s2">                frequency_mhz, ring_bus_freq_mhz,</span>
+<span class="s2">                package_temp_celsius, baseline_temp_celsius, start_temp_c, max_temp_c, min_temp_c, thermal_delta_c,</span>
+<span class="s2">                thermal_during_experiment, thermal_now_active, thermal_since_boot, experiment_valid,</span>
+<span class="s2">                c2_time_seconds, c3_time_seconds, c6_time_seconds, c7_time_seconds,</span>
+<span class="s2">                swap_total_mb, swap_end_free_mb, swap_start_used_mb,</span>
+<span class="s2">                swap_end_used_mb, swap_start_cached_mb, swap_end_cached_mb, swap_end_percent,</span>
+<span class="s2">                wakeup_latency_us, interrupt_rate, thermal_throttle_flag,</span>
+<span class="s2">                rss_memory_mb, vms_memory_mb,</span>
+<span class="s2">                total_tokens, prompt_tokens, completion_tokens,</span>
+<span class="s2">                dns_latency_ms, api_latency_ms, compute_time_ms,</span>
+<span class="s2">                governor, turbo_enabled, is_cold_start, background_cpu_percent, process_count,</span>
+<span class="s2">                planning_time_ms, execution_time_ms, synthesis_time_ms,</span>
+<span class="s2">                phase_planning_ratio, phase_execution_ratio, phase_synthesis_ratio,</span>
+<span class="s2">                llm_calls, tool_calls, tools_used, steps, avg_step_time_ms,</span>
+<span class="s2">                complexity_level, complexity_score,</span>
+<span class="s2">                carbon_g, water_ml, methane_mg,</span>
+<span class="s2">                energy_per_instruction, energy_per_cycle, energy_per_token,</span>
+<span class="s2">                instructions_per_token, interrupts_per_second,bytes_sent, bytes_recv, tcp_retransmits,</span>
+<span class="s2">                run_state_hash</span>
+<span class="s2">            ) VALUES (</span>
+<span class="s2">                ?, ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, </span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?,</span>
+<span class="s2">                ?, ?, ?, ?,</span>
+<span class="s2">                ?, ?, </span>
+<span class="s2">                ?, ?, ?, </span>
+<span class="s2">                ?, ?, ?, </span>
+<span class="s2">                ?, ?, ?, ?, ?,</span>
+<span class="s2">                ? , ?</span>
+<span class="s2">            )</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">exp_id</span><span class="p">,</span>
+            <span class="n">hw_id</span><span class="p">,</span>
+            <span class="n">baseline_id</span><span class="p">,</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;run_number&quot;</span><span class="p">],</span>
+            <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+            <span class="n">start_time_ns</span><span class="p">,</span>
+            <span class="n">end_time_ns</span><span class="p">,</span>
+            <span class="n">duration_ns</span><span class="p">,</span>
+            <span class="n">pkg_raw_uj</span><span class="p">,</span>
+            <span class="nb">max</span><span class="p">(</span><span class="n">pkg_raw_uj</span> <span class="o">-</span> <span class="n">baseline_energy_uj</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">baseline_energy_uj</span><span class="p">,</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;avg_power_watts&quot;</span><span class="p">],</span>
+            <span class="n">pkg_raw_uj</span><span class="p">,</span>
+            <span class="n">core_raw_uj</span><span class="p">,</span>
+            <span class="n">uncore_raw_uj</span><span class="p">,</span>
+            <span class="n">dram_raw_uj</span><span class="p">,</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;instructions&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;cycles&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;ipc&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;cache_misses&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;cache_references&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;cache_miss_rate&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;page_faults&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;major_page_faults&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;minor_page_faults&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;context_switches_voluntary&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;context_switches_involuntary&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;total_context_switches&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;thread_migrations&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;run_queue_length&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;kernel_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;user_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;frequency_mhz&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;ring_bus_freq_mhz&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;baseline_temp_celsius&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;start_temp_c&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;max_temp_c&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;min_temp_c&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;thermal_delta_c&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;thermal_during_experiment&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;thermal_now_active&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;thermal_since_boot&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;experiment_valid&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;c2_time_seconds&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;c3_time_seconds&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;c6_time_seconds&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;c7_time_seconds&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_total_mb&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_free_mb&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_start_used_mb&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_used_mb&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_start_cached_mb&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_cached_mb&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;swap_end_percent&quot;</span><span class="p">),</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;wakeup_latency_us&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;thermal_throttle_flag&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;rss_memory_mb&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;vms_memory_mb&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;dns_latency_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;api_latency_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;compute_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;governor&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;turbo_enabled&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;is_cold_start&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;background_cpu_percent&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;process_count&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;planning_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;execution_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;synthesis_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;phase_planning_ratio&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;phase_execution_ratio&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;phase_synthesis_ratio&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;llm_calls&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;tools_used&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;steps&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;avg_step_time_ms&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;complexity_level&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;complexity_score&quot;</span><span class="p">],</span>
+            <span class="n">carbon_g</span><span class="p">,</span>
+            <span class="n">water_ml</span><span class="p">,</span>
+            <span class="n">methane_mg</span><span class="p">,</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;energy_per_instruction&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;energy_per_cycle&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;energy_per_token&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;instructions_per_token&quot;</span><span class="p">],</span>
+            <span class="n">fields</span><span class="p">[</span><span class="s2">&quot;interrupts_per_second&quot;</span><span class="p">],</span>
+            <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bytes_sent&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bytes_recv&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tcp_retransmits&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">run_state_hash</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Remove the transaction wrapper - let the caller control transactions</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">lastrowid</span>
+        <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">IntegrityError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># Print detailed debug info</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ FOREIGN KEY ERROR: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔍 Foreign key values:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   exp_id: </span><span class="si">{</span><span class="n">exp_id</span><span class="si">}</span><span class="s2"> (type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   hw_id: </span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2"> (type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">hw_id</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   baseline_id: </span><span class="si">{</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2"> (type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">baseline_id</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Verify each foreign key exists</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">exp_check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                    <span class="s2">&quot;SELECT COUNT(*) as count FROM experiments WHERE exp_id = ?&quot;</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">exp_id</span><span class="p">,),</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   experiments count for exp_id </span><span class="si">{</span><span class="n">exp_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exp_check</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ❌ Failed to check experiments: </span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hw_check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                    <span class="s2">&quot;SELECT COUNT(*) as count FROM hardware_config WHERE hw_id = ?&quot;</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">hw_id</span><span class="p">,),</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   hardware_config count for hw_id </span><span class="si">{</span><span class="n">hw_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">hw_check</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ❌ Failed to check hardware: </span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">baseline_id</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">bl_check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                        <span class="s2">&quot;SELECT COUNT(*) as count FROM idle_baselines WHERE baseline_id = ?&quot;</span><span class="p">,</span>
+                        <span class="p">(</span><span class="n">baseline_id</span><span class="p">,),</span>
+                    <span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;   idle_baselines count for baseline_id </span><span class="si">{</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">bl_check</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ❌ Failed to check baseline: </span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   baseline_id is None (allowed)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Re-raise the original error</span>
+            <span class="k">raise</span></div>
+
+
+<div class="viewcode-block" id="RunsRepository.update_run_stats">
+<a class="viewcode-back" href="../../../../core.database.repositories.runs.html#core.database.repositories.RunsRepository.update_run_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_run_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update run with aggregated statistics from samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            UPDATE runs SET</span>
+<span class="sd">                cpu_busy_mhz = ?,</span>
+<span class="sd">                cpu_avg_mhz = ?,</span>
+<span class="sd">                package_temp_celsius = ?,</span>
+<span class="sd">                max_temp_c = ?,</span>
+<span class="sd">                min_temp_c = ?,</span>
+<span class="sd">                interrupt_rate = ?</span>
+<span class="sd">            WHERE run_id = ?</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_temp_c&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_temp_c&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">run_id</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

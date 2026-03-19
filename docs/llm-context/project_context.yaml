@@ -1,0 +1,161 @@
+# docs/llm-context/project_context.yaml
+# A-LEMS Project Context for LLMs
+
+project:
+  name: "A-LEMS (Agent vs Linear AI Energy Measurement System)"
+  description: "Research-grade platform measuring energy difference between linear and agentic AI workflows"
+  
+  repository: "https://github.com/deepakpanigrahy03/a-lems"
+  language: "Python 3.13+"
+  
+architecture:
+  layers:
+    - name: "Layer 0 - Configuration"
+      location: "config/"
+      files:
+        - "app_settings.yaml": "Main app settings"
+        - "tasks.yaml": "Predefined experiment tasks"
+        - "models.json": "LLM model configurations"
+        - "hw_config.json": "Auto-detected hardware"
+        - "grid_intensity_2026.json": "Sustainability factors"
+    
+    - name: "Layer 1 - Hardware Readers"
+      location: "core/readers/"
+      readers:
+        - "rapl_reader.py": "Intel RAPL energy (package, core, uncore, dram)"
+        - "msr_reader.py": "MSR registers (C-states, ring bus)"
+        - "perf_reader.py": "Performance counters (instructions, cache)"
+        - "turbostat_reader.py": "CPU freq, C-state %, package temp"
+        - "sensor_reader.py": "Thermal zone temperatures"
+        - "scheduler_monitor.py": "Context switches, interrupts"
+    
+    - name: "Layer 2 - Energy Engine"
+      location: "core/energy_engine.py"
+      description: "Orchestrates all readers with 100Hz sampling"
+      key_methods:
+        - "start_measurement()": "Snapshots all counters"
+        - "_sampling_loop()": "100Hz sampling thread"
+        - "stop_measurement()": "Returns RawEnergyMeasurement"
+    
+    - name: "Layer 3 - AI Execution"
+      location: "core/execution/"
+      components:
+        - "harness.py": "Main experiment controller (2000+ lines)"
+        - "linear.py": "Single-pass LLM execution"
+        - "agentic.py": "Multi-step orchestration (plan → execute → synthesize)"
+        - "experiment_runner.py": "Shared test logic"
+    
+    - name: "Layer 4 - Database"
+      location: "core/database/"
+      pattern: "Adapter + Repository"
+      tables: 11
+      main_table: "runs (80+ columns)"
+
+data_model:
+  layers:
+    - name: "Layer 1 - Raw"
+      immutable: true
+      class: "RawEnergyMeasurement"
+      contains:
+        - "rapl_start_uj/rapl_end_uj"
+        - "samples (100Hz list)"
+        - "perf counters"
+        - "turbostat data"
+    
+    - name: "Layer 2 - Baseline"
+      class: "BaselineMeasurement"
+      purpose: "Idle power reference"
+      stored: "idle_baselines table"
+    
+    - name: "Layer 3 - Derived"
+      class: "DerivedEnergyMeasurement"
+      formulas:
+        - "workload = package - idle_package"
+        - "reasoning = core - idle_core"
+        - "orchestration_tax = workload - reasoning"
+        - "tax = uncore - idle_uncore (mathematical proof)"
+
+key_concepts:
+  - name: "Orchestration Tax"
+    definition: "Energy overhead of agentic vs linear execution"
+    formula: "tax_multiplier = agentic_energy / linear_energy"
+    
+  - name: "Perfect Synchronization"
+    definition: "Measurement starts exactly when execution starts, stops exactly when it ends"
+    
+  - name: "Per-Pair Insertion"
+    definition: "Each linear/agentic pair saved together with same run_number"
+    
+  - name: "3-Layer Immutability"
+    definition: "Raw data never modified, baseline stored separately, derived computed on-demand"
+
+database_schema:
+  main_tables:
+    - "experiments": "Experiment metadata"
+    - "hardware_config": "Hardware fingerprint (29 columns)"
+    - "environment_config": "Software environment (git commit, deps)"
+    - "runs": "Main table with 80+ columns"
+    - "energy_samples": "100Hz RAPL samples"
+    - "cpu_samples": "10Hz turbostat samples"
+    - "interrupt_samples": "10Hz interrupt samples"
+    - "thermal_samples": "1Hz temperature samples"
+    - "orchestration_events": "Step-by-step agent events"
+    - "llm_interactions": "Prompts, responses, tokens"
+    
+  runs_columns:
+    energy:
+      - "pkg_energy_uj": "Package energy (µJ)"
+      - "core_energy_uj": "Core energy (µJ)"
+      - "uncore_energy_uj": "Uncore energy (µJ)"
+      - "dram_energy_uj": "DRAM energy (µJ)"
+      - "dynamic_energy_uj": "workload - baseline"
+      
+    performance:
+      - "instructions": "Total instructions"
+      - "cycles": "CPU cycles"
+      - "ipc": "Instructions per cycle"
+      - "cache_misses": "Last-level cache misses"
+      - "cache_miss_rate": "misses/references"
+      
+    scheduler:
+      - "context_switches_voluntary"
+      - "context_switches_involuntary"
+      - "thread_migrations"
+      - "run_queue_length"
+      
+    power_states:
+      - "c2_time_seconds"
+      - "c3_time_seconds"
+      - "c6_time_seconds"
+      - "c7_time_seconds"
+      - "frequency_mhz"
+      
+    thermal:
+      - "package_temp_celsius"
+      - "thermal_delta_c"
+      - "thermal_throttle_flag"
+      
+    workload:
+      - "planning_time_ms"
+      - "execution_time_ms"
+      - "synthesis_time_ms"
+      - "llm_calls"
+      - "tool_calls"
+      
+    sustainability:
+      - "carbon_g"
+      - "water_ml"
+      - "methane_mg"
+
+tools_directory: "scripts/tools/"
+existing_tools:
+  - "llm_context.py": "Generate context for LLM code changes"
+  - "sphinx_docs.py": "Generate API documentation"
+  - "mkdocs_docs.py": "Generate user documentation"
+  - "quality_check.py": "Run code quality checks"
+  - "refactor_advisor.py": "Suggest code improvements"
+  - "team_dashboard.py": "Team activity insights"
+  - "web_controller.py": "UI for all tools (port 8888)"
+  - "verify_requirements.py": "Compare specs vs code"
+  - "column_flow.py": "Trace database column data flow"
+  - "generate_diagrams.py": "Create architecture diagrams"

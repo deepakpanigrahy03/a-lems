@@ -1,0 +1,255 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.repositories.samples &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.database.repositories.samples</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.database.repositories.samples</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">SAMPLES REPOSITORY – Handles high-frequency sample insertion</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">PURPOSE:</span>
+<span class="sd">    Contains logic for inserting high-frequency samples:</span>
+<span class="sd">    - Energy samples (RAPL)</span>
+<span class="sd">    - CPU samples (utilization, frequency)</span>
+<span class="sd">    - Interrupt samples</span>
+
+<span class="sd">WHY THIS EXISTS:</span>
+<span class="sd">    - Separates sample insertion from other database operations</span>
+<span class="sd">    - Handles large batch inserts efficiently</span>
+<span class="sd">    - Part of splitting the god object manager.py</span>
+
+<span class="sd">AUTHOR: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseInterface</span>
+
+
+<div class="viewcode-block" id="SamplesRepository">
+<a class="viewcode-back" href="../../../../core.database.repositories.samples.html#core.database.repositories.SamplesRepository">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SamplesRepository</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Repository for high-frequency samples.</span>
+
+<span class="sd">    Handles insertion of time-series data from various sensors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">DatabaseInterface</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize with database adapter.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            db: DatabaseInterface instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">db</span>
+
+<div class="viewcode-block" id="SamplesRepository.insert_energy_samples">
+<a class="viewcode-back" href="../../../../core.database.repositories.samples.html#core.database.repositories.SamplesRepository.insert_energy_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_energy_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert high-frequency RAPL samples.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: Foreign key to runs table</span>
+<span class="sd">            samples: List of sample dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            INSERT INTO energy_samples</span>
+<span class="s2">            (run_id, timestamp_ns, pkg_energy_uj, core_energy_uj, uncore_energy_uj, dram_energy_uj)</span>
+<span class="s2">            VALUES (?, ?, ?, ?, ?, ?)</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="n">query</span><span class="p">,</span>
+                <span class="p">(</span>
+                    <span class="n">run_id</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SamplesRepository.insert_cpu_samples">
+<a class="viewcode-back" href="../../../../core.database.repositories.samples.html#core.database.repositories.SamplesRepository.insert_cpu_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_cpu_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert CPU samples.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                INSERT INTO cpu_samples</span>
+<span class="sd">                (run_id, timestamp_ns, </span>
+<span class="sd">                 cpu_util_percent, cpu_busy_mhz, cpu_avg_mhz,</span>
+<span class="sd">                 c1_residency, c2_residency, c3_residency, c6_residency, c7_residency,</span>
+<span class="sd">                 pkg_c8_residency, pkg_c9_residency, pkg_c10_residency,</span>
+<span class="sd">                 package_power, dram_power,</span>
+<span class="sd">                 gpu_rc6,</span>
+<span class="sd">                 package_temp, ipc,</span>
+<span class="sd">                 extra_metrics_json)</span>
+<span class="sd">                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">            &quot;&quot;&quot;</span><span class="p">,</span>
+                <span class="p">(</span>
+                    <span class="n">run_id</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_util_percent&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c1_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c2_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c3_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c6_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c7_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_c8_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_c9_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_c10_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_power&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram_power&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_rc6&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ipc&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;extra_metrics_json&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SamplesRepository.insert_interrupt_samples">
+<a class="viewcode-back" href="../../../../core.database.repositories.samples.html#core.database.repositories.SamplesRepository.insert_interrupt_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_interrupt_samples</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert interrupt samples.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: Foreign key to runs table</span>
+<span class="sd">            samples: List of sample dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            INSERT INTO interrupt_samples</span>
+<span class="s2">            (run_id, timestamp_ns, interrupts_per_sec)</span>
+<span class="s2">            VALUES (?, ?, ?)</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="n">query</span><span class="p">,</span> <span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">))</span>
+            <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

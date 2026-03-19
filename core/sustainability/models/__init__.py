@@ -2,15 +2,15 @@
 Sustainability metrics data models.
 """
 
-from .carbon_metrics import CarbonMetrics, CarbonIntensityFactors
-from .water_metrics import WaterMetrics, WaterIntensityFactors
-from .methane_metrics import MethaneMetrics, MethaneLeakageFactors
+from .carbon_metrics import CarbonIntensityFactors, CarbonMetrics
+from .methane_metrics import MethaneLeakageFactors, MethaneMetrics
+from .water_metrics import WaterIntensityFactors, WaterMetrics
 
 __all__ = [
-    'CarbonMetrics',
-    'CarbonIntensityFactors',
-    'WaterMetrics',
-    'WaterIntensityFactors',
-    'MethaneMetrics',
-    'MethaneLeakageFactors',
+    "CarbonMetrics",
+    "CarbonIntensityFactors",
+    "WaterMetrics",
+    "WaterIntensityFactors",
+    "MethaneMetrics",
+    "MethaneLeakageFactors",
 ]

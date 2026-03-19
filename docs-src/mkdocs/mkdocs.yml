@@ -1,0 +1,72 @@
+# mkdocs.yml
+site_name: A-LEMS Documentation
+site_description: Agent vs Linear AI Energy Measurement Platform
+site_author: A-LEMS Team
+repo_url: https://github.com/deepakpanigrahy03/a-lems
+
+# Source files are in source/ directory
+docs_dir: source
+
+# Built site goes to docs/generated/mkdocs
+site_dir: ../../docs/generated/mkdocs
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  
+  - Getting Started:
+    - Installation: getting-started/01-installation.md
+    - Database Setup: getting-started/02-database-setup.md
+    - Model Configuration: getting-started/03-model-config.md
+    - Quick Start: getting-started/04-quick-start.md
+    - Troubleshooting: getting-started/05-troubleshooting.md
+  
+  - User Guide:
+    - Running Experiments: user-guide/01-running.md
+    - Understanding Metrics: user-guide/02-understanding-metrics.md
+    - Batch Experiments: user-guide/03-batch-experiments.md
+    - GUI Usage: user-guide/04-gui-usage.md
+    - Generating Reports: user-guide/05-generating-reports.md
+    - Troubleshooting: user-guide/06-troubleshooting.md
+  
+  - Developer Guide:
+    - Architecture: developer-guide/01-architecture.md
+    - Data Flow: developer-guide/02-data-flow.md
+    - Database Schema: developer-guide/03-database-schema.md
+    - GUI Design: developer-guide/04-gui-design.md
+    - Adding New Readers: developer-guide/05-adding-readers.md
+    - Adding New Tasks: developer-guide/06-adding-tasks.md
+    - Developer Tools: developer-guide/07-tools-overview.md
+    
+  - Research:
+    - Measurement Methodology: research/01-measurement-methodology.md
+    - Mathematical Derivations: research/02-mathematical-derivations.md
+    - Orchestration Tax: research/03-orchestration-tax.md
+    - Publications: research/04-publications.md
+  
+  - API Reference: api/reference.md
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.arithmatex:
+      generic: true
+
+
+extra_javascript:
+  - javascripts/mathjax.js  # ← ADD THIS
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  
+plugins:
+  - search

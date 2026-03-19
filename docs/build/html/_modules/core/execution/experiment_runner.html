@@ -1,0 +1,914 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.experiment_runner &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.experiment_runner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.experiment_runner</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">EXPERIMENT RUNNER – Shared logic for all experiment scripts</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This module contains ONLY the code that is duplicated between test_harness.py</span>
+<span class="sd">and run_experiment.py. All original features remain in each script.</span>
+
+<span class="sd">NEW FEATURES ADDED:</span>
+<span class="sd">- Session grouping (group_id)</span>
+<span class="sd">- Status tracking (running/completed/partial/failed)</span>
+<span class="sd">- Multi-provider support</span>
+<span class="sd">- Progress tracking (runs_completed/runs_total)</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="c1"># Add project root to path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.database.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.baseline_measurement</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaselineMeasurement</span>
+
+
+<div class="viewcode-block" id="ExperimentRunner">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExperimentRunner</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared experiment logic - ONLY duplicate code + new features&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_loader</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config_loader</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="n">config_loader</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;session_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># DUPLICATE CODE 1: Hardware info collection (identical in both scripts)</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="ExperimentRunner.get_hardware_info">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.get_hardware_info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_hardware_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get hardware info - loads from hw_config.json and flattens it&quot;&quot;&quot;</span>
+        <span class="n">hw_config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/hw_config.json&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hw_config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">hw_config_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+                <span class="c1"># Flatten nested structures using ONLY data from JSON</span>
+                <span class="n">flat_data</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;hardware_hash&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hardware_hash&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hostname&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_model&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_cores&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_cores&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_threads&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logical_cores&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_architecture&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;machine&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_vendor&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_details&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="s2">&quot;vendor&quot;</span>
+                    <span class="p">),</span>  <span class="c1"># If exists</span>
+                    <span class="s2">&quot;cpu_family&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_details&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;family&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_model_id&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_details&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;cpu_stepping&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_details&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stepping&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;has_avx2&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_flags&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx2&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;has_avx512&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_flags&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx512&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;has_vmx&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_flags&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_vmx&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;gpu_model&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_model&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;gpu_driver&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;driver&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;gpu_count&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;count&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;gpu_power_available&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;power_available&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;ram_gb&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ram_gb&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;kernel_version&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;release&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;microcode_version&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="s2">&quot;microcode&quot;</span>
+                    <span class="p">),</span>  <span class="c1"># If exists</span>
+                    <span class="s2">&quot;rapl_domains&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;available_domains&quot;</span><span class="p">)),</span>
+                    <span class="s2">&quot;rapl_has_dram&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_dram&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;rapl_has_uncore&quot;</span><span class="p">:</span> <span class="s2">&quot;uncore&quot;</span>
+                    <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;available_domains&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                    <span class="s2">&quot;system_manufacturer&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;manufacturer&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;system_product&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;product&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;system_type&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;virtualization_type&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;virtualization&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;detected_at&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detected_at&quot;</span><span class="p">),</span>
+                <span class="p">}</span>
+                <span class="k">return</span> <span class="n">flat_data</span></div>
+
+
+<div class="viewcode-block" id="ExperimentRunner.get_environment_info">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.get_environment_info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_environment_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get environment information for reproducibility tracking&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+
+        <span class="c1"># Get git info</span>
+        <span class="n">git_commit</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">git_branch</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">git_dirty</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">git_commit</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;rev-parse&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">],</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+            <span class="n">git_branch</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;rev-parse&quot;</span><span class="p">,</span> <span class="s2">&quot;--abbrev-ref&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">],</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">git_dirty</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span>
+                <span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span>
+                    <span class="p">[</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;--porcelain&quot;</span><span class="p">],</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="c1"># Get dependency versions</span>
+        <span class="n">numpy_version</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">torch_version</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">transformers_version</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span>
+
+            <span class="n">numpy_version</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">__version__</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+            <span class="n">torch_version</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">__version__</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">torch_version</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">transformers</span>
+
+            <span class="n">transformers_version</span> <span class="o">=</span> <span class="n">transformers</span><span class="o">.</span><span class="n">__version__</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">transformers_version</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Build environment info</span>
+        <span class="n">env_info</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;python_version&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">python_version</span><span class="p">(),</span>
+            <span class="s2">&quot;python_implementation&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">python_implementation</span><span class="p">(),</span>
+            <span class="s2">&quot;os_name&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">(),</span>
+            <span class="s2">&quot;os_version&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">version</span><span class="p">(),</span>
+            <span class="s2">&quot;kernel_version&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">release</span><span class="p">(),</span>
+            <span class="s2">&quot;git_commit&quot;</span><span class="p">:</span> <span class="n">git_commit</span><span class="p">,</span>
+            <span class="s2">&quot;git_branch&quot;</span><span class="p">:</span> <span class="n">git_branch</span><span class="p">,</span>
+            <span class="s2">&quot;git_dirty&quot;</span><span class="p">:</span> <span class="n">git_dirty</span><span class="p">,</span>
+            <span class="s2">&quot;numpy_version&quot;</span><span class="p">:</span> <span class="n">numpy_version</span><span class="p">,</span>
+            <span class="s2">&quot;torch_version&quot;</span><span class="p">:</span> <span class="n">torch_version</span><span class="p">,</span>
+            <span class="s2">&quot;transformers_version&quot;</span><span class="p">:</span> <span class="n">transformers_version</span><span class="p">,</span>
+            <span class="s2">&quot;llm_framework&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># From experiment config</span>
+            <span class="s2">&quot;framework_version&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># Can be filled from model config</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Generate env_hash</span>
+        <span class="n">hash_input</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;python_version&quot;</span><span class="p">:</span> <span class="n">env_info</span><span class="p">[</span><span class="s2">&quot;python_version&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;git_commit&quot;</span><span class="p">:</span> <span class="n">env_info</span><span class="p">[</span><span class="s2">&quot;git_commit&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;numpy_version&quot;</span><span class="p">:</span> <span class="n">env_info</span><span class="p">[</span><span class="s2">&quot;numpy_version&quot;</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">env_info</span><span class="p">[</span><span class="s2">&quot;env_hash&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">hash_input</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">env_info</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># DUPLICATE CODE 2: Baseline measurement (from test_harness, add to run_experiment)</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.ensure_baseline">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.ensure_baseline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">harness</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BaselineMeasurement</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Baseline measurement - add to run_experiment which currently lacks it&quot;&quot;&quot;</span>
+        <span class="n">baseline_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;experiment&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">force_remeasure</span> <span class="o">=</span> <span class="n">baseline_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;force_remeasure&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">force_remeasure</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📏 MEASURING IDLE POWER BASELINE&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+            <span class="n">duration</span> <span class="o">=</span> <span class="n">baseline_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;duration_seconds&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">baseline_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_samples&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="n">pre_wait</span> <span class="o">=</span> <span class="n">baseline_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pre_wait_seconds&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+            <span class="n">force</span> <span class="o">=</span> <span class="n">baseline_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;force_remeasure&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;   Duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span><span class="s2">s × </span><span class="si">{</span><span class="n">samples</span><span class="si">}</span><span class="s2"> samples = </span><span class="si">{</span><span class="n">duration</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">samples</span><span class="si">}</span><span class="s2">s total&quot;</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Force remeasure: </span><span class="si">{</span><span class="n">force</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Please don&#39;t use mouse/keyboard during this time.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span> <span class="o">=</span> <span class="n">harness</span><span class="o">.</span><span class="n">energy_engine</span><span class="o">.</span><span class="n">measure_idle_baseline</span><span class="p">(</span>
+                    <span class="n">duration_seconds</span><span class="o">=</span><span class="n">duration</span><span class="p">,</span>
+                    <span class="n">num_samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
+                    <span class="n">pre_wait_seconds</span><span class="o">=</span><span class="n">pre_wait</span><span class="p">,</span>
+                    <span class="n">force_remeasure</span><span class="o">=</span><span class="n">force</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">harness</span><span class="o">.</span><span class="n">baseline_mgr</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="p">)</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ✅ Baseline measured and saved!&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Baseline ID: </span><span class="si">{</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="o">.</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;      Package idle power: </span><span class="si">{</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="o">.</span><span class="n">power_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;package-0&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> W&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;      Core idle power:    </span><span class="si">{</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="o">.</span><span class="n">power_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;core&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> W&quot;</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ⚠️ Baseline measurement failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
+                <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Continuing without baseline&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📏 Using existing baseline: </span><span class="si">{</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="o">.</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span></div>
+
+
+<div class="viewcode-block" id="ExperimentRunner.aggregate_run_stats">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.aggregate_run_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_run_stats</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cpu_samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">],</span> <span class="n">interrupt_samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute aggregated statistics for a run from samples.</span>
+<span class="sd">        This will populate runs table with correct averages.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">run_id</span><span class="p">,</span>
+            <span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;max_temp_c&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;min_temp_c&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;interrupt_rate&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Aggregate CPU samples</span>
+        <span class="k">if</span> <span class="n">cpu_samples</span><span class="p">:</span>
+            <span class="n">busy_freqs</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">cpu_samples</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">avg_freqs</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">cpu_samples</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">temps</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">cpu_samples</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp&quot;</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">busy_freqs</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">busy_freqs</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">busy_freqs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">avg_freqs</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">avg_freqs</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">avg_freqs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">temps</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">temps</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">temps</span><span class="p">)</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;max_temp_c&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">temps</span><span class="p">)</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;min_temp_c&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">temps</span><span class="p">)</span>
+
+        <span class="c1"># Aggregate interrupt samples</span>
+        <span class="k">if</span> <span class="n">interrupt_samples</span><span class="p">:</span>
+            <span class="n">irq_rates</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">interrupt_samples</span>
+                <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="n">irq_rates</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">irq_rates</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">irq_rates</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">stats</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># DUPLICATE CODE 3: Database setup (similar in both scripts)</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">DatabaseManager</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Database setup - similar in both scripts&quot;&quot;&quot;</span>
+        <span class="n">db_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_db_config</span><span class="p">()</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="n">DatabaseManager</span><span class="p">(</span><span class="n">db_config</span><span class="p">)</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">create_tables</span><span class="p">()</span>
+        <span class="n">hw_id</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_hardware</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_hardware_info</span><span class="p">())</span>
+        <span class="n">env_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_environment</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">db</span><span class="p">,</span> <span class="n">hw_id</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># DUPLICATE CODE 4: Run data preparation (identical in both scripts)</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.prepare_run_data">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.prepare_run_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prepare_run_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">,</span> <span class="n">baseline_id</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract run data from ml_dataset - identical in both scripts&quot;&quot;&quot;</span>
+        <span class="n">all_runs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="s2">&quot;ml_dataset&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="c1"># Linear runs</span>
+            <span class="k">if</span> <span class="s2">&quot;linear_runs&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ml_dataset&quot;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">rd</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ml_dataset&quot;</span><span class="p">][</span><span class="s2">&quot;linear_runs&quot;</span><span class="p">]:</span>
+                    <span class="n">run_package</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;ml_features&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="p">,</span>
+                        <span class="s2">&quot;sustainability&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">&quot;carbon&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;grams&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;carbon_g&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)},</span>
+                            <span class="s2">&quot;water&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;milliliters&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;water_ml&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)},</span>
+                            <span class="s2">&quot;methane&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;grams&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;methane_mg&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)},</span>
+                        <span class="p">},</span>
+                        <span class="s2">&quot;baseline_id&quot;</span><span class="p">:</span> <span class="n">baseline_id</span><span class="p">,</span>
+                        <span class="s2">&quot;harness_timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                    <span class="p">}</span>
+                    <span class="n">all_runs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_package</span><span class="p">)</span>
+            <span class="c1"># Agentic runs</span>
+            <span class="k">if</span> <span class="s2">&quot;agentic_runs&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ml_dataset&quot;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">rd</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ml_dataset&quot;</span><span class="p">][</span><span class="s2">&quot;agentic_runs&quot;</span><span class="p">]:</span>
+                    <span class="n">run_package</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;ml_features&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="p">,</span>
+                        <span class="s2">&quot;sustainability&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s2">&quot;carbon&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;grams&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;carbon_g&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)},</span>
+                            <span class="s2">&quot;water&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;milliliters&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;water_ml&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)},</span>
+                            <span class="s2">&quot;methane&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;grams&quot;</span><span class="p">:</span> <span class="n">rd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;methane_mg&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)},</span>
+                        <span class="p">},</span>
+                        <span class="s2">&quot;baseline_id&quot;</span><span class="p">:</span> <span class="n">baseline_id</span><span class="p">,</span>
+                        <span class="s2">&quot;harness_timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                    <span class="p">}</span>
+                    <span class="n">all_runs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_package</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">all_runs</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># DUPLICATE CODE 5: Energy sample conversion (identical in both scripts)</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.convert_energy_samples">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.convert_energy_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">convert_energy_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert energy samples - identical in both scripts&quot;&quot;&quot;</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="s2">&quot;energy_samples&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;energy_samples&quot;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">timestamp</span><span class="p">,</span> <span class="n">energy_dict</span> <span class="o">=</span> <span class="n">sample</span>
+                    <span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">*</span> <span class="mi">1_000_000_000</span><span class="p">),</span>
+                            <span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                            <span class="s2">&quot;core_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                            <span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                            <span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="ExperimentRunner.setup_database">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.setup_database">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_database</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">DatabaseManager</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>  <span class="c1"># ← Returns 3 values now</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setup database connection and return db, hw_id, env_id&quot;&quot;&quot;</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="n">DatabaseManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_db_config</span><span class="p">())</span>
+
+        <span class="c1"># Create tables if needed</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">create_tables</span><span class="p">()</span>
+
+        <span class="c1"># Get or create hardware record</span>
+        <span class="n">hw_id</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_hardware</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_hardware_info</span><span class="p">())</span>
+
+        <span class="c1"># Get or create environment record  ← ADD THIS</span>
+        <span class="n">env_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_or_create_environment</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">db</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">env_id</span>  <span class="c1"># ← Return both IDs</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_or_create_environment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auto-detect if environment changed - insert if new, return existing if same&quot;&quot;&quot;</span>
+        <span class="n">env_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_environment_info</span><span class="p">()</span>
+        <span class="n">current_hash</span> <span class="o">=</span> <span class="n">env_info</span><span class="p">[</span><span class="s2">&quot;env_hash&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Check if this environment hash already exists</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT env_id FROM environment_config WHERE env_hash = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">current_hash</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+            <span class="n">existing_id</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;env_id&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;   ✅ Using existing environment: </span><span class="si">{</span><span class="n">existing_id</span><span class="si">}</span><span class="s2"> (hash: </span><span class="si">{</span><span class="n">current_hash</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">existing_id</span>
+
+        <span class="c1"># New environment - insert it</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   📦 New environment detected (hash: </span><span class="si">{</span><span class="n">current_hash</span><span class="si">}</span><span class="s2">) - inserting...&quot;</span><span class="p">)</span>
+        <span class="n">new_id</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_environment_config</span><span class="p">(</span><span class="n">env_info</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ✅ Created new environment: </span><span class="si">{</span><span class="n">new_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_id</span>
+
+<div class="viewcode-block" id="ExperimentRunner.setup_environment">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.setup_environment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_environment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get or create environment record&quot;&quot;&quot;</span>
+        <span class="n">env_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_environment_info</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_environment_config</span><span class="p">(</span><span class="n">env_info</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW FEATURE 1: Create experiment with group_id and status</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.create_experiment">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.create_experiment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_experiment</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">db</span><span class="p">,</span>
+        <span class="n">task_id</span><span class="p">,</span>
+        <span class="n">task_name</span><span class="p">,</span>
+        <span class="n">provider</span><span class="p">,</span>
+        <span class="n">linear_config</span><span class="p">,</span>
+        <span class="n">country_code</span><span class="p">,</span>
+        <span class="n">repetitions</span><span class="p">,</span>
+        <span class="n">hw_id</span><span class="p">,</span>
+        <span class="n">env_id</span><span class="p">,</span>
+        <span class="n">optimizer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create experiment with session tracking (NEW)&quot;&quot;&quot;</span>
+        <span class="n">experiment_meta</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Task: </span><span class="si">{</span><span class="n">task_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;workflow_type&quot;</span><span class="p">:</span> <span class="s2">&quot;comparison&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">linear_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="n">provider</span><span class="p">,</span>
+            <span class="s2">&quot;task_name&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
+            <span class="s2">&quot;country_code&quot;</span><span class="p">:</span> <span class="n">country_code</span><span class="p">,</span>
+            <span class="s2">&quot;group_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_id</span><span class="p">,</span>  <span class="c1"># NEW</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;running&quot;</span><span class="p">,</span>  <span class="c1"># NEW</span>
+            <span class="s2">&quot;started_at&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>  <span class="c1"># NEW</span>
+            <span class="s2">&quot;runs_total&quot;</span><span class="p">:</span> <span class="n">repetitions</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>  <span class="c1"># linear + agentic</span>
+            <span class="s2">&quot;optimization_enabled&quot;</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">optimizer</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;hw_id&quot;</span><span class="p">:</span> <span class="n">hw_id</span><span class="p">,</span>
+            <span class="s2">&quot;env_id&quot;</span><span class="p">:</span> <span class="n">env_id</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_experiment</span><span class="p">(</span><span class="n">experiment_meta</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW FEATURE 2: Update experiment status</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.update_status">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.update_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_status</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">db</span><span class="p">,</span>
+        <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">runs_completed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">error</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update experiment status (NEW)&quot;&quot;&quot;</span>
+        <span class="n">updates</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;partial&quot;</span><span class="p">]:</span>
+            <span class="n">updates</span><span class="p">[</span><span class="s2">&quot;completed_at&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">runs_completed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">updates</span><span class="p">[</span><span class="s2">&quot;runs_completed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">runs_completed</span>
+        <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+            <span class="n">updates</span><span class="p">[</span><span class="s2">&quot;error_message&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">error</span>
+
+        <span class="n">set_clause</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">=?&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">updates</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">updates</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="p">[</span><span class="n">exp_id</span><span class="p">]</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UPDATE experiments SET </span><span class="si">{</span><span class="n">set_clause</span><span class="si">}</span><span class="s2"> WHERE exp_id=?&quot;</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExperimentRunner.update_progress">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.update_progress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">runs_completed</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update progress of an experiment without changing status.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            db: Database connection</span>
+<span class="sd">            exp_id: Experiment ID</span>
+<span class="sd">            runs_completed: Number of runs completed so far</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;UPDATE experiments SET runs_completed = ? WHERE exp_id = ?&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">runs_completed</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   📊 Progress: </span><span class="si">{</span><span class="n">runs_completed</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_total_runs</span><span class="p">(</span><span class="n">db</span><span class="p">,</span><span class="w"> </span><span class="n">exp_id</span><span class="p">)</span><span class="si">}</span><span class="s2"> runs&quot;</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_total_runs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get total runs expected for experiment&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT runs_total FROM experiments WHERE exp_id = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">exp_id</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;runs_total&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">result</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># NEW FEATURE 3: Multi-provider helper</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.get_providers">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.get_providers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_providers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get list of providers from args (NEW)&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;providers&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">providers</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">providers</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;provider&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;cloud&quot;</span><span class="p">]</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># CPU SAMPLES - Identical in both scripts</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.get_cpu_samples">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.get_cpu_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get CPU samples - identical in test_harness and run_experiment&quot;&quot;&quot;</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="s2">&quot;cpu_samples&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;cpu_samples&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> CPU samples (ready for insertion)&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">samples</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   🔍 First CPU sample keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   🔍 First CPU sample values: </span><span class="si">{</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># INTERRUPT SAMPLES - Identical in both scripts</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="ExperimentRunner.get_interrupt_samples">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.get_interrupt_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_interrupt_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get interrupt samples - identical in test_harness and run_experiment&quot;&quot;&quot;</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="s2">&quot;interrupt_samples&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;interrupt_samples&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> interrupt samples (ready for insertion)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="ExperimentRunner.ensure_baseline_in_db">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.ensure_baseline_in_db">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_baseline_in_db</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">harness</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save baseline to database once per experiment session.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No baseline available - foreign key constraints may fail&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_baseline_saved&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Check if already in database</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT 1 FROM idle_baselines WHERE baseline_id = ?&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="o">.</span><span class="n">baseline_id</span><span class="p">,),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">fetchone</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;✅ Baseline </span><span class="si">{</span><span class="n">harness</span><span class="o">.</span><span class="n">baseline</span><span class="o">.</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2"> already exists in database&quot;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_saved</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="c1"># Save baseline</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">harness</span><span class="o">.</span><span class="n">baseline</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{}</span>
+
+            <span class="n">baseline_dict</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;baseline_id&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">baseline_id</span><span class="p">,</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+                <span class="s2">&quot;package_power_watts&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">power_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;core_power_watts&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">power_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;uncore_power_watts&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">power_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;dram_power_watts&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">power_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">duration_seconds</span><span class="p">,</span>
+                <span class="s2">&quot;sample_count&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">sample_count</span><span class="p">,</span>
+                <span class="s2">&quot;package_std&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">std_dev_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;core_std&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">std_dev_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;uncore_std&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">std_dev_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;dram_std&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">std_dev_watts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;governor&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;governor&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;turbo&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbo&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;background_cpu&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;background_cpu&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;process_count&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;process_count&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="n">db</span><span class="o">.</span><span class="n">insert_baseline</span><span class="p">(</span><span class="n">baseline_dict</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_saved</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Baseline </span><span class="si">{</span><span class="n">b</span><span class="o">.</span><span class="n">baseline_id</span><span class="si">}</span><span class="s2"> saved to database&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to save baseline: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="ExperimentRunner.save_pair">
+<a class="viewcode-back" href="../../../core.execution.experiment_runner.html#core.execution.experiment_runner.ExperimentRunner.save_pair">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_pair</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">,</span> <span class="n">rep_num</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save one pair of runs with all samples.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Set run_number</span>
+        <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;run_number&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rep_num</span>
+        <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">][</span><span class="s2">&quot;run_number&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rep_num</span>
+
+        <span class="n">linear_copy</span> <span class="o">=</span> <span class="n">linear_result</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">agentic_copy</span> <span class="o">=</span> <span class="n">agentic_result</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">linear_copy</span><span class="p">[</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">linear_copy</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">)</span>
+        <span class="n">agentic_copy</span><span class="p">[</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agentic_copy</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+            <span class="c1"># Insert linear run</span>
+            <span class="n">linear_id</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_run</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">)</span>
+
+            <span class="c1"># Linear energy samples</span>
+            <span class="k">if</span> <span class="s2">&quot;energy_samples&quot;</span> <span class="ow">in</span> <span class="n">linear_result</span><span class="p">:</span>
+                <span class="n">converted</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;energy_samples&quot;</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                        <span class="n">timestamp</span><span class="p">,</span> <span class="n">energy_dict</span> <span class="o">=</span> <span class="n">sample</span>
+                        <span class="n">converted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="p">{</span>
+                                <span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">*</span> <span class="mi">1_000_000_000</span><span class="p">),</span>
+                                <span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                <span class="s2">&quot;core_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                <span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                <span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="p">}</span>
+                        <span class="p">)</span>
+                <span class="k">if</span> <span class="n">converted</span><span class="p">:</span>
+                    <span class="n">db</span><span class="o">.</span><span class="n">insert_energy_samples</span><span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">converted</span><span class="p">)</span>
+
+            <span class="c1"># Linear CPU samples</span>
+            <span class="k">if</span> <span class="s2">&quot;cpu_samples&quot;</span> <span class="ow">in</span> <span class="n">linear_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_cpu_samples</span><span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;cpu_samples&quot;</span><span class="p">])</span>
+
+            <span class="c1"># Linear interrupt samples</span>
+            <span class="k">if</span> <span class="s2">&quot;interrupt_samples&quot;</span> <span class="ow">in</span> <span class="n">linear_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_interrupt_samples</span><span class="p">(</span>
+                    <span class="n">linear_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;interrupt_samples&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Save thermal samples</span>
+            <span class="k">if</span> <span class="s2">&quot;thermal_samples&quot;</span> <span class="ow">in</span> <span class="n">linear_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_thermal_samples</span><span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;thermal_samples&quot;</span><span class="p">])</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Saving </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">linear_result</span><span class="p">[</span><span class="s1">&#39;thermal_samples&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> thermal samples for run </span><span class="si">{</span><span class="n">linear_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+                <span class="c1"># After inserting samples, update runs with aggregated stats</span>
+                <span class="n">linear_agg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregate_run_stats</span><span class="p">(</span>
+                    <span class="n">linear_id</span><span class="p">,</span>
+                    <span class="n">linear_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_samples&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                    <span class="n">linear_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_samples&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                <span class="p">)</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">update_run_stats</span><span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">linear_agg</span><span class="p">)</span>
+
+            <span class="c1"># Insert agentic run</span>
+            <span class="n">agentic_id</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">insert_run</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">hw_id</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">)</span>
+
+            <span class="c1"># Agentic energy samples</span>
+            <span class="k">if</span> <span class="s2">&quot;energy_samples&quot;</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">:</span>
+                <span class="n">converted</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;energy_samples&quot;</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                        <span class="n">timestamp</span><span class="p">,</span> <span class="n">energy_dict</span> <span class="o">=</span> <span class="n">sample</span>
+                        <span class="n">converted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="p">{</span>
+                                <span class="s2">&quot;timestamp_ns&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">*</span> <span class="mi">1_000_000_000</span><span class="p">),</span>
+                                <span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                <span class="s2">&quot;core_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                <span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">:</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                <span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="p">}</span>
+                        <span class="p">)</span>
+                <span class="k">if</span> <span class="n">converted</span><span class="p">:</span>
+                    <span class="n">db</span><span class="o">.</span><span class="n">insert_energy_samples</span><span class="p">(</span><span class="n">agentic_id</span><span class="p">,</span> <span class="n">converted</span><span class="p">)</span>
+
+            <span class="c1"># Agentic CPU samples</span>
+            <span class="k">if</span> <span class="s2">&quot;cpu_samples&quot;</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_cpu_samples</span><span class="p">(</span><span class="n">agentic_id</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;cpu_samples&quot;</span><span class="p">])</span>
+
+            <span class="c1"># Agentic interrupt samples</span>
+            <span class="k">if</span> <span class="s2">&quot;interrupt_samples&quot;</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_interrupt_samples</span><span class="p">(</span>
+                    <span class="n">agentic_id</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;interrupt_samples&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="s2">&quot;thermal_samples&quot;</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_thermal_samples</span><span class="p">(</span><span class="n">agentic_id</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;thermal_samples&quot;</span><span class="p">])</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Saving </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agentic_result</span><span class="p">[</span><span class="s1">&#39;thermal_samples&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> thermal samples for run </span><span class="si">{</span><span class="n">agentic_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+                <span class="n">agentic_agg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aggregate_run_stats</span><span class="p">(</span>
+                    <span class="n">agentic_id</span><span class="p">,</span>
+                    <span class="n">agentic_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_samples&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                    <span class="n">agentic_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_samples&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                <span class="p">)</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">update_run_stats</span><span class="p">(</span><span class="n">agentic_id</span><span class="p">,</span> <span class="n">agentic_agg</span><span class="p">)</span>
+            <span class="c1"># Agentic orchestration events</span>
+            <span class="k">if</span> <span class="s2">&quot;orchestration_events&quot;</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">insert_orchestration_events</span><span class="p">(</span>
+                    <span class="n">agentic_id</span><span class="p">,</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;orchestration_events&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - linear pending_interactions count: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">linear_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pending_interactions&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - agentic pending_interactions count: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agentic_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pending_interactions&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[]))</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Save LLM interactions for linear run</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="s2">&quot;pending_interactions&quot;</span> <span class="ow">in</span> <span class="n">linear_result</span>
+                <span class="ow">and</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;pending_interactions&quot;</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   💾 Saving </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">linear_result</span><span class="p">[</span><span class="s1">&#39;pending_interactions&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> LLM interactions for linear run </span><span class="si">{</span><span class="n">linear_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">interaction</span> <span class="ow">in</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;pending_interactions&quot;</span><span class="p">]:</span>
+                    <span class="n">interaction</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">linear_id</span>
+                    <span class="n">db</span><span class="o">.</span><span class="n">insert_llm_interaction</span><span class="p">(</span><span class="n">interaction</span><span class="p">)</span>
+
+            <span class="c1"># Save LLM interactions for agentic run</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="s2">&quot;pending_interactions&quot;</span> <span class="ow">in</span> <span class="n">agentic_result</span>
+                <span class="ow">and</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;pending_interactions&quot;</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   💾 Saving </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">agentic_result</span><span class="p">[</span><span class="s1">&#39;pending_interactions&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> LLM interactions for agentic run </span><span class="si">{</span><span class="n">agentic_id</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">interaction</span> <span class="ow">in</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;pending_interactions&quot;</span><span class="p">]:</span>
+                    <span class="n">interaction</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agentic_id</span>
+                    <span class="n">db</span><span class="o">.</span><span class="n">insert_llm_interaction</span><span class="p">(</span><span class="n">interaction</span><span class="p">)</span>
+            <span class="c1"># Tax summary for this pair</span>
+            <span class="n">linear_uj</span> <span class="o">=</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">][</span><span class="s2">&quot;energy_uj&quot;</span><span class="p">][</span><span class="s2">&quot;workload&quot;</span><span class="p">]</span>
+            <span class="n">agentic_uj</span> <span class="o">=</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">][</span><span class="s2">&quot;energy_uj&quot;</span><span class="p">][</span><span class="s2">&quot;workload&quot;</span><span class="p">]</span>
+            <span class="n">linear_orchestration_uj</span> <span class="o">=</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;orchestration_tax_uj&quot;</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="n">agentic_orchestration_uj</span> <span class="o">=</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;orchestration_tax_uj&quot;</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - linear_orchestration_uj from ml_features: </span><span class="si">{</span><span class="n">linear_result</span><span class="p">[</span><span class="s1">&#39;ml_features&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;orchestration_tax_uj&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - agentic_orchestration_uj from ml_features: </span><span class="si">{</span><span class="n">agentic_result</span><span class="p">[</span><span class="s1">&#39;ml_features&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;orchestration_tax_uj&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="n">linear_orchestration_uj</span> <span class="o">=</span> <span class="n">linear_result</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">][</span><span class="s2">&quot;energy_uj&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;orchestration_tax&quot;</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="n">agentic_orchestration_uj</span> <span class="o">=</span> <span class="n">agentic_result</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">][</span>
+                <span class="s2">&quot;energy_uj&quot;</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;orchestration_tax&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - linear energy_uj keys: </span><span class="si">{</span><span class="n">linear_result</span><span class="p">[</span><span class="s1">&#39;layer3_derived&#39;</span><span class="p">][</span><span class="s1">&#39;energy_uj&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - agentic energy_uj keys: </span><span class="si">{</span><span class="n">agentic_result</span><span class="p">[</span><span class="s1">&#39;layer3_derived&#39;</span><span class="p">][</span><span class="s1">&#39;energy_uj&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - linear energy_uj content: </span><span class="si">{</span><span class="n">linear_result</span><span class="p">[</span><span class="s1">&#39;layer3_derived&#39;</span><span class="p">][</span><span class="s1">&#39;energy_uj&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - linear energy_uj content: </span><span class="si">{</span><span class="n">agentic_result</span><span class="p">[</span><span class="s1">&#39;layer3_derived&#39;</span><span class="p">][</span><span class="s1">&#39;energy_uj&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="n">db</span><span class="o">.</span><span class="n">create_tax_summary_for_pair</span><span class="p">(</span>
+                <span class="n">linear_id</span><span class="p">,</span>
+                <span class="n">agentic_id</span><span class="p">,</span>
+                <span class="n">linear_uj</span><span class="p">,</span>
+                <span class="n">agentic_uj</span><span class="p">,</span>
+                <span class="n">linear_orchestration_uj</span><span class="p">,</span>
+                <span class="n">agentic_orchestration_uj</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   ✅ Pair </span><span class="si">{</span><span class="n">rep_num</span><span class="si">}</span><span class="s2"> saved (linear: </span><span class="si">{</span><span class="n">linear_id</span><span class="si">}</span><span class="s2">, agentic: </span><span class="si">{</span><span class="n">agentic_id</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">linear_id</span><span class="p">,</span> <span class="n">agentic_id</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

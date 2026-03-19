@@ -1,0 +1,270 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.readers package &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.readers.msr_reader module" href="core.readers.msr_reader.html" />
+    <link rel="prev" title="core.models.raw_energy_measurement module" href="core.models.raw_energy_measurement.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.readers package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-core.readers">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.readers package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.readers.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-readers-package">
+<h1>core.readers package<a class="headerlink" href="#core-readers-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.msr_reader.html">core.readers.msr_reader module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.msr_reader.html#msr-reader-direct-msr-access-with-c-helper-and-tsc-conversion">MSR READER - Direct MSR Access with C Helper and TSC Conversion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader"><code class="docutils literal notranslate"><span class="pre">MSRReader</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.BASELINE_PATH"><code class="docutils literal notranslate"><span class="pre">MSRReader.BASELINE_PATH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.HELPER_PATH"><code class="docutils literal notranslate"><span class="pre">MSRReader.HELPER_PATH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.MSR_ADDRESSES"><code class="docutils literal notranslate"><span class="pre">MSRReader.MSR_ADDRESSES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.average_cstate_counters"><code class="docutils literal notranslate"><span class="pre">MSRReader.average_cstate_counters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.calculate_actual_frequency"><code class="docutils literal notranslate"><span class="pre">MSRReader.calculate_actual_frequency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.calculate_wakeup_delta"><code class="docutils literal notranslate"><span class="pre">MSRReader.calculate_wakeup_delta()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.debug_cstate_snapshots"><code class="docutils literal notranslate"><span class="pre">MSRReader.debug_cstate_snapshots()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.get_all_metrics"><code class="docutils literal notranslate"><span class="pre">MSRReader.get_all_metrics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.get_baseline_dict"><code class="docutils literal notranslate"><span class="pre">MSRReader.get_baseline_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.get_ring_bus_frequency"><code class="docutils literal notranslate"><span class="pre">MSRReader.get_ring_bus_frequency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.get_ring_limits"><code class="docutils literal notranslate"><span class="pre">MSRReader.get_ring_limits()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.get_wakeup_latency"><code class="docutils literal notranslate"><span class="pre">MSRReader.get_wakeup_latency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.measure_hardware_wakeup_latency"><code class="docutils literal notranslate"><span class="pre">MSRReader.measure_hardware_wakeup_latency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.measure_ring_bus_frequency"><code class="docutils literal notranslate"><span class="pre">MSRReader.measure_ring_bus_frequency()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.pin_to_cpu"><code class="docutils literal notranslate"><span class="pre">MSRReader.pin_to_cpu()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_core_thermal_status"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_core_thermal_status()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_cstate_counters"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_cstate_counters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_cstate_counters_all_cpus"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_cstate_counters_all_cpus()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_cstate_counters_for_wakeup"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_cstate_counters_for_wakeup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_msr"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_msr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_msr_all_cpus"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_msr_all_cpus()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.read_thermal_throttle_status"><code class="docutils literal notranslate"><span class="pre">MSRReader.read_thermal_throttle_status()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.safe_get_counter"><code class="docutils literal notranslate"><span class="pre">MSRReader.safe_get_counter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.set_end_snapshot"><code class="docutils literal notranslate"><span class="pre">MSRReader.set_end_snapshot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.set_performance_governor"><code class="docutils literal notranslate"><span class="pre">MSRReader.set_performance_governor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.set_start_snapshot"><code class="docutils literal notranslate"><span class="pre">MSRReader.set_start_snapshot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.snapshot_aperf_mperf"><code class="docutils literal notranslate"><span class="pre">MSRReader.snapshot_aperf_mperf()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.snapshot_cstate_counters"><code class="docutils literal notranslate"><span class="pre">MSRReader.snapshot_cstate_counters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.snapshot_thermal_state"><code class="docutils literal notranslate"><span class="pre">MSRReader.snapshot_thermal_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.take_cstate_snapshot"><code class="docutils literal notranslate"><span class="pre">MSRReader.take_cstate_snapshot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.ticks_to_human"><code class="docutils literal notranslate"><span class="pre">MSRReader.ticks_to_human()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.ticks_to_microseconds"><code class="docutils literal notranslate"><span class="pre">MSRReader.ticks_to_microseconds()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.ticks_to_seconds"><code class="docutils literal notranslate"><span class="pre">MSRReader.ticks_to_seconds()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.msr_reader.html#core.readers.msr_reader.MSRReader.unpin"><code class="docutils literal notranslate"><span class="pre">MSRReader.unpin()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.perf_reader.html">core.readers.perf_reader module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.perf_reader.html#performance-counter-reader-linux-perf-events-interface">PERFORMANCE COUNTER READER - Linux perf_events Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader"><code class="docutils literal notranslate"><span class="pre">PerfReader</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.DEFAULT_EVENTS"><code class="docutils literal notranslate"><span class="pre">PerfReader.DEFAULT_EVENTS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.PERF_LINE_PATTERN"><code class="docutils literal notranslate"><span class="pre">PerfReader.PERF_LINE_PATTERN</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.check_paranoid_setting"><code class="docutils literal notranslate"><span class="pre">PerfReader.check_paranoid_setting()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.read_counters"><code class="docutils literal notranslate"><span class="pre">PerfReader.read_counters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.read_interval_counters"><code class="docutils literal notranslate"><span class="pre">PerfReader.read_interval_counters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.start_process_measurement"><code class="docutils literal notranslate"><span class="pre">PerfReader.start_process_measurement()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.stop_process_measurement"><code class="docutils literal notranslate"><span class="pre">PerfReader.stop_process_measurement()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.rapl_reader.html">core.readers.rapl_reader module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.rapl_reader.html#rapl-energy-reader-intel-running-average-power-limit-interface">RAPL ENERGY READER - Intel Running Average Power Limit Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader"><code class="docutils literal notranslate"><span class="pre">RAPLReader</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.STANDARD_DOMAINS"><code class="docutils literal notranslate"><span class="pre">RAPLReader.STANDARD_DOMAINS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.get_available_domains"><code class="docutils literal notranslate"><span class="pre">RAPLReader.get_available_domains()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.get_core_path"><code class="docutils literal notranslate"><span class="pre">RAPLReader.get_core_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.get_energy_delta"><code class="docutils literal notranslate"><span class="pre">RAPLReader.get_energy_delta()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.get_package_path"><code class="docutils literal notranslate"><span class="pre">RAPLReader.get_package_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.has_dram"><code class="docutils literal notranslate"><span class="pre">RAPLReader.has_dram()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.read_energy"><code class="docutils literal notranslate"><span class="pre">RAPLReader.read_energy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.read_energy_safe"><code class="docutils literal notranslate"><span class="pre">RAPLReader.read_energy_safe()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.rapl_reader.html#core.readers.rapl_reader.RAPLReader.read_with_retry"><code class="docutils literal notranslate"><span class="pre">RAPLReader.read_with_retry()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.scheduler_monitor.html">core.readers.scheduler_monitor module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.scheduler_monitor.html#scheduler-monitor-reads-linux-scheduler-statistics-from-proc">SCHEDULER MONITOR – Reads Linux scheduler statistics from /proc</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.get_swap_metrics"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.get_swap_metrics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_all"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.read_all()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_context_switches"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.read_context_switches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_cpu_times"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.read_cpu_times()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.read_loadavg"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.read_loadavg()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.reset_interrupt_samples"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.reset_interrupt_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.sample_interrupts"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.sample_interrupts()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.start_interrupt_sampling"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.start_interrupt_sampling()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.scheduler_monitor.html#core.readers.scheduler_monitor.SchedulerMonitor.stop_interrupt_sampling"><code class="docutils literal notranslate"><span class="pre">SchedulerMonitor.stop_interrupt_sampling()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.sensor_reader.html">core.readers.sensor_reader module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.sensor_reader.html#sensor-reader-temperature-and-voltage-sensors-from-sysfs">SENSOR READER - Temperature and Voltage Sensors from Sysfs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader"><code class="docutils literal notranslate"><span class="pre">SensorReader</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.close"><code class="docutils literal notranslate"><span class="pre">SensorReader.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.initialize"><code class="docutils literal notranslate"><span class="pre">SensorReader.initialize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.is_throttling"><code class="docutils literal notranslate"><span class="pre">SensorReader.is_throttling()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.read_all_thermal"><code class="docutils literal notranslate"><span class="pre">SensorReader.read_all_thermal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.read_temperatures"><code class="docutils literal notranslate"><span class="pre">SensorReader.read_temperatures()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.read_throttle_events"><code class="docutils literal notranslate"><span class="pre">SensorReader.read_throttle_events()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.sensor_reader.html#core.readers.sensor_reader.SensorReader.read_voltages"><code class="docutils literal notranslate"><span class="pre">SensorReader.read_voltages()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.test.html">core.readers.test module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.test.html#core.readers.test.busy_work"><code class="docutils literal notranslate"><span class="pre">busy_work()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.readers.turbostat_reader.html">core.readers.turbostat_reader module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.turbostat_reader.html#turbostat-reader-clean-implementation-using-pandas">TURBOSTAT READER - Clean Implementation Using pandas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader"><code class="docutils literal notranslate"><span class="pre">TurbostatReader</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.compute_summary"><code class="docutils literal notranslate"><span class="pre">TurbostatReader.compute_summary()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.get_column_mapping"><code class="docutils literal notranslate"><span class="pre">TurbostatReader.get_column_mapping()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.read_metrics"><code class="docutils literal notranslate"><span class="pre">TurbostatReader.read_metrics()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.save_raw_data"><code class="docutils literal notranslate"><span class="pre">TurbostatReader.save_raw_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.start_monitoring"><code class="docutils literal notranslate"><span class="pre">TurbostatReader.start_monitoring()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.turbostat_reader.html#core.readers.turbostat_reader.TurbostatReader.stop_monitoring"><code class="docutils literal notranslate"><span class="pre">TurbostatReader.stop_monitoring()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-core.readers">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core.readers" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.models.raw_energy_measurement.html" class="btn btn-neutral float-left" title="core.models.raw_energy_measurement module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.readers.msr_reader.html" class="btn btn-neutral float-right" title="core.readers.msr_reader module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

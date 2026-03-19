@@ -1,0 +1,53 @@
+# scripts/tools/requirements-tools.txt
+# Development tools for A-LEMS (not needed for runtime)
+
+# Goal 1: LLM Context + Goal 4: Refactoring
+pydeps>=1.12.0
+gitpython>=3.1.0
+astor>=0.8.1              # ← Easier AST manipulation
+redbaron>=0.9.2           # ← Alternative AST refactoring
+
+# Goal 2: Sphinx Documentation
+sphinx>=7.0.0
+sphinx-rtd-theme>=2.0.0
+myst-parser>=2.0.0
+sphinx-autodoc-typehints>=2.0.0
+graphviz>=0.20.0
+
+# Goal 3: Quality Checks
+pylint>=3.0.0
+radon>=6.0.0
+mypy>=1.8.0
+pytest>=8.0.0
+pytest-cov>=5.0.0
+bandit>=1.7.0
+vulture>=2.10
+isort>=5.13.0             # ← Import sorting
+black>=24.0.0             # ← Auto-formatting
+
+# Goal 4: Refactoring Advisor (already covered above)
+# astor, redbaron already listed
+
+# Goal 5: Collaboration Dashboard
+matplotlib>=3.8.0
+seaborn>=0.13.0
+tabulate>=0.9.0
+
+# Goal 6: Web Controller
+# Option A: Flask (simpler)
+flask>=3.0.0
+bootstrap-flask>=2.3.0
+jinja2>=3.1.0
+
+# Option B: FastAPI (async capable) - uncomment if needed
+# fastapi>=0.110.0
+# uvicorn>=0.29.0
+
+# Goal 7 & 8: Requirements & Sync
+pyyaml>=6.0.0
+pandas>=2.2.0
+openpyxl>=3.1.0
+jsonschema>=4.20.0
+watchdog>=4.0.0
+types-PyYAML>=6.0.12
+types-requests>=2.31.0

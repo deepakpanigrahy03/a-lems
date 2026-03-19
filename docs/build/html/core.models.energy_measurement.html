@@ -1,0 +1,671 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.models.energy_measurement module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.models.performance_counters module" href="core.models.performance_counters.html" />
+    <link rel="prev" title="core.models.derived_energy_measurement module" href="core.models.derived_energy_measurement.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.models.html">core.models package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.models.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.models.html#module-core.models">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.models.html">core.models package</a></li>
+      <li class="breadcrumb-item active">core.models.energy_measurement module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.models.energy_measurement.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.models.energy_measurement">
+<span id="core-models-energy-measurement-module"></span><h1>core.models.energy_measurement module<a class="headerlink" href="#module-core.models.energy_measurement" title="Link to this heading"></a></h1>
+<section id="energy-measurement-data-models">
+<h2>ENERGY MEASUREMENT DATA MODELS<a class="headerlink" href="#energy-measurement-data-models" title="Link to this heading"></a></h2>
+<p>This module defines the data structures used throughout Module 1 to represent
+energy measurements, performance counters, and hardware state.</p>
+<p>All data classes are designed to be:
+- Self-documenting (field names explain their purpose)
+- Serializable (can be saved to JSON/database)
+- Type-safe (using dataclasses with type hints)</p>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.models.energy_measurement.</span></span><span class="sig-name descname"><span class="pre">EnergyMeasurement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurement_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">package_energy_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">core_energy_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dram_energy_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu_energy_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncore_waste_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idle_baseline_energy_uj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">performance_counters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#core.models.energy_measurement.PerformanceCounters" title="core.models.energy_measurement.PerformanceCounters"><span class="pre">PerformanceCounters</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#core.models.energy_measurement.ThermalReadings" title="core.models.energy_measurement.ThermalReadings"><span class="pre">ThermalReadings</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#core.models.energy_measurement.PowerState" title="core.models.energy_measurement.PowerState"><span class="pre">PowerState</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_queue_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_time_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_time_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measurement_valid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validation_issues</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_rapl_start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">|</span> <span class="pre">None</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_rapl_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">|</span> <span class="pre">None</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/models/energy_measurement.html#EnergyMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Complete energy measurement result from a single experiment run.</p>
+<p>This is the primary output of Module 1. It contains everything
+needed for sustainability calculations (Module 2) and orchestration
+tax analysis (Module 3).</p>
+<p>The object is designed to be:
+- Self-contained (all data in one place)
+- Serializable (can be saved to database)
+- Comparable (can compare linear vs agentic runs)</p>
+<p>Req 1.1 through 1.47 are all represented here.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.calculate_derived_metrics">
+<span class="sig-name descname"><span class="pre">calculate_derived_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/models/energy_measurement.html#EnergyMeasurement.calculate_derived_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.calculate_derived_metrics" title="Link to this definition"></a></dt>
+<dd><p>Calculate derived metrics from raw readings.</p>
+<p>This should be called after populating raw data.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.core_energy_uj">
+<span class="sig-name descname"><span class="pre">core_energy_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.core_energy_uj" title="Link to this definition"></a></dt>
+<dd><p>Core-only energy in microjoules.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.dram_energy_uj">
+<span class="sig-name descname"><span class="pre">dram_energy_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.dram_energy_uj" title="Link to this definition"></a></dt>
+<dd><p>DRAM energy in microjoules (may be None if unavailable).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.duration_seconds">
+<span class="sig-name descname"><span class="pre">duration_seconds</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.duration_seconds" title="Link to this definition"></a></dt>
+<dd><p>Total duration of measurement in seconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.end_time">
+<span class="sig-name descname"><span class="pre">end_time</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.end_time" title="Link to this definition"></a></dt>
+<dd><p>Unix timestamp when measurement ended.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.gpu_energy_uj">
+<span class="sig-name descname"><span class="pre">gpu_energy_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.gpu_energy_uj" title="Link to this definition"></a></dt>
+<dd><p>GPU energy in microjoules (may be None if unavailable).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.idle_baseline_energy_uj">
+<span class="sig-name descname"><span class="pre">idle_baseline_energy_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.idle_baseline_energy_uj" title="Link to this definition"></a></dt>
+<dd><p>Energy the system would consume if completely idle (subtracted).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.inference_ratio">
+<span class="sig-name descname"><span class="pre">inference_ratio</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#EnergyMeasurement.inference_ratio"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.inference_ratio" title="Link to this definition"></a></dt>
+<dd><p>Estimate ratio of energy used for actual inference vs. overhead.</p>
+<p>This is a heuristic based on uncore waste and core activity.</p>
+<p>Req 2.11: Reasoning-to-waste ratio</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Ratio between 0.0 and 1.0</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.kernel_time_ms">
+<span class="sig-name descname"><span class="pre">kernel_time_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.kernel_time_ms" title="Link to this definition"></a></dt>
+<dd><p>Time spent in kernel mode (milliseconds).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.measurement_id">
+<span class="sig-name descname"><span class="pre">measurement_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.measurement_id" title="Link to this definition"></a></dt>
+<dd><p>Unique identifier for this measurement (e.g., ‘meas_20260220_143022’).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.measurement_valid">
+<span class="sig-name descname"><span class="pre">measurement_valid</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.measurement_valid" title="Link to this definition"></a></dt>
+<dd><p>Whether the measurement passed validation checks.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.package_energy_uj">
+<span class="sig-name descname"><span class="pre">package_energy_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.package_energy_uj" title="Link to this definition"></a></dt>
+<dd><p>Total package energy in microjoules (PKG domain).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.performance_counters">
+<span class="sig-name descname"><span class="pre">performance_counters</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#core.models.energy_measurement.PerformanceCounters" title="core.models.energy_measurement.PerformanceCounters"><span class="pre">PerformanceCounters</span></a></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.performance_counters" title="Link to this definition"></a></dt>
+<dd><p>Hardware performance counter readings.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.power_state">
+<span class="sig-name descname"><span class="pre">power_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#core.models.energy_measurement.PowerState" title="core.models.energy_measurement.PowerState"><span class="pre">PowerState</span></a></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.power_state" title="Link to this definition"></a></dt>
+<dd><p>CPU power state information.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.raw_rapl_end">
+<span class="sig-name descname"><span class="pre">raw_rapl_end</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.raw_rapl_end" title="Link to this definition"></a></dt>
+<dd><p>Raw RAPL readings at end (for debugging).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.raw_rapl_start">
+<span class="sig-name descname"><span class="pre">raw_rapl_start</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.raw_rapl_start" title="Link to this definition"></a></dt>
+<dd><p>Raw RAPL readings at start (for debugging).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.run_queue_length">
+<span class="sig-name descname"><span class="pre">run_queue_length</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.run_queue_length" title="Link to this definition"></a></dt>
+<dd><p>Average number of processes in run queue (from /proc/loadavg).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.sample_count">
+<span class="sig-name descname"><span class="pre">sample_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.sample_count" title="Link to this definition"></a></dt>
+<dd><p>Number of RAPL samples taken during measurement.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.sampling_rate_hz">
+<span class="sig-name descname"><span class="pre">sampling_rate_hz</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.sampling_rate_hz" title="Link to this definition"></a></dt>
+<dd><p>Actual sampling rate achieved (samples / second).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.start_time">
+<span class="sig-name descname"><span class="pre">start_time</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.start_time" title="Link to this definition"></a></dt>
+<dd><p>Unix timestamp when measurement started.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.thermal">
+<span class="sig-name descname"><span class="pre">thermal</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#core.models.energy_measurement.ThermalReadings" title="core.models.energy_measurement.ThermalReadings"><span class="pre">ThermalReadings</span></a></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.thermal" title="Link to this definition"></a></dt>
+<dd><p>Temperature sensor readings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#EnergyMeasurement.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict ready for JSON serialization</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#EnergyMeasurement.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.to_json" title="Link to this definition"></a></dt>
+<dd><p>Convert to JSON string for saving to file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON string with pretty formatting</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.uncore_waste_uj">
+<span class="sig-name descname"><span class="pre">uncore_waste_uj</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.uncore_waste_uj" title="Link to this definition"></a></dt>
+<dd><p>Energy consumed by uncore (cache, memory controller, interconnect).
+Calculated as: package - core - dram - gpu</p>
+<p>Req 1.3: This is the energy attributed to orchestration overhead.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.user_time_ms">
+<span class="sig-name descname"><span class="pre">user_time_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.user_time_ms" title="Link to this definition"></a></dt>
+<dd><p>Time spent in user mode (milliseconds).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.EnergyMeasurement.validation_issues">
+<span class="sig-name descname"><span class="pre">validation_issues</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#core.models.energy_measurement.EnergyMeasurement.validation_issues" title="Link to this definition"></a></dt>
+<dd><p>List of issues found during validation (if any).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.models.energy_measurement.</span></span><span class="sig-name descname"><span class="pre">PerformanceCounters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instructions_retired</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cpu_cycles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_references</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_misses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">major_page_faults</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minor_page_faults</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_switches_voluntary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_switches_involuntary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thread_migrations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branches</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch_misses</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cpu_clock_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_clock_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PerformanceCounters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Hardware performance counter readings from perf_events.</p>
+<p>These counters provide insight into what the CPU was actually doing
+during the measurement interval. They help distinguish between:
+- Actual computation (instructions retired)
+- Memory bottlenecks (cache misses)
+- OS scheduler overhead (context switches)</p>
+<p>Req 1.5: Instruction density (IPC)
+Req 1.6: Cache behavior
+Req 1.10: Page faults
+Req 1.43: Thread migrations</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.branch_misses">
+<span class="sig-name descname"><span class="pre">branch_misses</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.branch_misses" title="Link to this definition"></a></dt>
+<dd><p>Mispredicted branches.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.branches">
+<span class="sig-name descname"><span class="pre">branches</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.branches" title="Link to this definition"></a></dt>
+<dd><p>Branch instructions executed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.cache_miss_rate">
+<span class="sig-name descname"><span class="pre">cache_miss_rate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PerformanceCounters.cache_miss_rate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.cache_miss_rate" title="Link to this definition"></a></dt>
+<dd><p>Calculate cache miss rate.</p>
+<p>Higher miss rates indicate memory bandwidth pressure,
+which can increase energy consumption significantly.</p>
+<p>Req 1.6: Cache behavior</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Miss rate between 0.0 and 1.0</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.cache_misses">
+<span class="sig-name descname"><span class="pre">cache_misses</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.cache_misses" title="Link to this definition"></a></dt>
+<dd><p>Number of cache misses (LLC misses).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.cache_references">
+<span class="sig-name descname"><span class="pre">cache_references</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.cache_references" title="Link to this definition"></a></dt>
+<dd><p>Number of cache references (LLC accesses).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.context_switches_involuntary">
+<span class="sig-name descname"><span class="pre">context_switches_involuntary</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.context_switches_involuntary" title="Link to this definition"></a></dt>
+<dd><p>Involuntary context switches (scheduler preempted).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.context_switches_voluntary">
+<span class="sig-name descname"><span class="pre">context_switches_voluntary</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.context_switches_voluntary" title="Link to this definition"></a></dt>
+<dd><p>Voluntary context switches (process yielded CPU).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.cpu_clock_ms">
+<span class="sig-name descname"><span class="pre">cpu_clock_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.cpu_clock_ms" title="Link to this definition"></a></dt>
+<dd><p>CPU time consumed in milliseconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.cpu_cycles">
+<span class="sig-name descname"><span class="pre">cpu_cycles</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.cpu_cycles" title="Link to this definition"></a></dt>
+<dd><p>Number of CPU cycles elapsed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.instructions_per_cycle">
+<span class="sig-name descname"><span class="pre">instructions_per_cycle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PerformanceCounters.instructions_per_cycle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.instructions_per_cycle" title="Link to this definition"></a></dt>
+<dd><p>Calculate Instructions Per Cycle (IPC).</p>
+<p>IPC tells us how efficiently the CPU was running:
+- High IPC (&gt;1) means CPU was doing useful work
+- Low IPC (&lt;0.5) suggests stalls (waiting for memory)</p>
+<p>Req 1.5: Instruction density</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Instructions per cycle, or 0.0 if no cycles</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.instructions_retired">
+<span class="sig-name descname"><span class="pre">instructions_retired</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.instructions_retired" title="Link to this definition"></a></dt>
+<dd><p>Number of instructions retired (actual work done).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.major_page_faults">
+<span class="sig-name descname"><span class="pre">major_page_faults</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.major_page_faults" title="Link to this definition"></a></dt>
+<dd><p>Major page faults (needed disk I/O).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.minor_page_faults">
+<span class="sig-name descname"><span class="pre">minor_page_faults</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.minor_page_faults" title="Link to this definition"></a></dt>
+<dd><p>Minor page faults (resolved in memory).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.task_clock_ms">
+<span class="sig-name descname"><span class="pre">task_clock_ms</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.task_clock_ms" title="Link to this definition"></a></dt>
+<dd><p>Task elapsed time in milliseconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.thread_migrations">
+<span class="sig-name descname"><span class="pre">thread_migrations</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.thread_migrations" title="Link to this definition"></a></dt>
+<dd><p>Thread migrations between CPU cores.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PerformanceCounters.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict with all fields and derived metrics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PerformanceCounters.total_context_switches">
+<span class="sig-name descname"><span class="pre">total_context_switches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PerformanceCounters.total_context_switches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PerformanceCounters.total_context_switches" title="Link to this definition"></a></dt>
+<dd><p>Total context switches (voluntary + involuntary).</p>
+<p>Req 1.12: Kernel context switches</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Total number of context switches</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.models.energy_measurement.</span></span><span class="sig-name descname"><span class="pre">PowerState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frequencies_mhz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tsc_frequency_mhz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_state_residencies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">igpu_rc6_percent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">igpu_frequency_mhz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">package_temperature_celsius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">package_power_watts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">core_power_watts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu_power_watts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ram_power_watts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PowerState"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PowerState" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>CPU power state information including frequencies and C-states.</p>
+<p>Modern CPUs save power by entering deeper sleep states (C-states)
+and lower frequencies (P-states). This data helps attribute energy
+to actual work vs. waiting.</p>
+<p>Req 1.4: DVFS attribution (frequency)
+Req 1.7: C-state residency
+Req 1.8: iGPU states
+Req 1.41: Core-specific C-states</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.c_state_residencies">
+<span class="sig-name descname"><span class="pre">c_state_residencies</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.c_state_residencies" title="Link to this definition"></a></dt>
+<dd><p>Time spent in each C-state as percentage.
+Keys: ‘C1’, ‘C1E’, ‘C3’, ‘C6’, ‘C7’, ‘C8’, ‘C9’, ‘C10’</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.core_power_watts">
+<span class="sig-name descname"><span class="pre">core_power_watts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.core_power_watts" title="Link to this definition"></a></dt>
+<dd><p>Core power estimate in watts.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.deepest_cstate">
+<span class="sig-name descname"><span class="pre">deepest_cstate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PowerState.deepest_cstate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PowerState.deepest_cstate" title="Link to this definition"></a></dt>
+<dd><p>Identify the deepest C-state entered.</p>
+<p>Req 1.41: Deepest core C-state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Name of deepest C-state (e.g., ‘C7’) or None</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.frequencies_mhz">
+<span class="sig-name descname"><span class="pre">frequencies_mhz</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.frequencies_mhz" title="Link to this definition"></a></dt>
+<dd><p>Current frequency per core in MHz.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.gpu_power_watts">
+<span class="sig-name descname"><span class="pre">gpu_power_watts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.gpu_power_watts" title="Link to this definition"></a></dt>
+<dd><p>GPU power estimate in watts.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.igpu_frequency_mhz">
+<span class="sig-name descname"><span class="pre">igpu_frequency_mhz</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.igpu_frequency_mhz" title="Link to this definition"></a></dt>
+<dd><p>Integrated GPU frequency in MHz.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.igpu_rc6_percent">
+<span class="sig-name descname"><span class="pre">igpu_rc6_percent</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.igpu_rc6_percent" title="Link to this definition"></a></dt>
+<dd><p>Render C6 state residency for iGPU (power saving).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.package_power_watts">
+<span class="sig-name descname"><span class="pre">package_power_watts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.package_power_watts" title="Link to this definition"></a></dt>
+<dd><p>Package power estimate in watts.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.package_temperature_celsius">
+<span class="sig-name descname"><span class="pre">package_temperature_celsius</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.package_temperature_celsius" title="Link to this definition"></a></dt>
+<dd><p>CPU package temperature in Celsius.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.ram_power_watts">
+<span class="sig-name descname"><span class="pre">ram_power_watts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.ram_power_watts" title="Link to this definition"></a></dt>
+<dd><p>DRAM power estimate in watts.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#PowerState.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.PowerState.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict with all power state data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.PowerState.tsc_frequency_mhz">
+<span class="sig-name descname"><span class="pre">tsc_frequency_mhz</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.PowerState.tsc_frequency_mhz" title="Link to this definition"></a></dt>
+<dd><p>Time Stamp Counter frequency in MHz (constant).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.models.energy_measurement.</span></span><span class="sig-name descname"><span class="pre">ThermalReadings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">package_temperature_celsius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">core_temperatures_celsius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu_temperature_celsius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pch_temperature_celsius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermal_throttle_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prochot_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/models/energy_measurement.html#ThermalReadings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Temperature sensor readings from various thermal zones.</p>
+<p>Temperature is critical for:
+- Detecting thermal throttling (Req 1.9)
+- Ensuring measurements aren’t skewed by overheating
+- Validating cooldown periods between runs</p>
+<p>Req 1.9: Package thermal jitter</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.core_temperatures_celsius">
+<span class="sig-name descname"><span class="pre">core_temperatures_celsius</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.core_temperatures_celsius" title="Link to this definition"></a></dt>
+<dd><p>Per-core temperatures (may vary significantly).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.gpu_temperature_celsius">
+<span class="sig-name descname"><span class="pre">gpu_temperature_celsius</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.gpu_temperature_celsius" title="Link to this definition"></a></dt>
+<dd><p>Integrated GPU temperature if available.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.is_throttling">
+<span class="sig-name descname"><span class="pre">is_throttling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">85.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#ThermalReadings.is_throttling"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.is_throttling" title="Link to this definition"></a></dt>
+<dd><p>Check if CPU is thermal throttling.</p>
+<p>Most CPUs throttle around 85-100°C. If we’re above threshold,
+measurements may be unreliable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>threshold</strong> – Temperature threshold in Celsius</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if temperature exceeds threshold</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.package_temperature_celsius">
+<span class="sig-name descname"><span class="pre">package_temperature_celsius</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.package_temperature_celsius" title="Link to this definition"></a></dt>
+<dd><p>CPU package temperature in Celsius.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.pch_temperature_celsius">
+<span class="sig-name descname"><span class="pre">pch_temperature_celsius</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.pch_temperature_celsius" title="Link to this definition"></a></dt>
+<dd><p>Platform Controller Hub temperature.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.prochot_events">
+<span class="sig-name descname"><span class="pre">prochot_events</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.prochot_events" title="Link to this definition"></a></dt>
+<dd><p>PROCHOT (processor hot) assertion count.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.thermal_throttle_count">
+<span class="sig-name descname"><span class="pre">thermal_throttle_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.thermal_throttle_count" title="Link to this definition"></a></dt>
+<dd><p>Number of thermal throttling events during measurement.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.models.energy_measurement.ThermalReadings.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/models/energy_measurement.html#ThermalReadings.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.models.energy_measurement.ThermalReadings.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict with all thermal data</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.models.derived_energy_measurement.html" class="btn btn-neutral float-left" title="core.models.derived_energy_measurement module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.models.performance_counters.html" class="btn btn-neutral float-right" title="core.models.performance_counters module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

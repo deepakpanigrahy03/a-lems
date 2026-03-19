@@ -1,0 +1,487 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.utils.idle_baseline &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../utils.html">core.utils</a></li>
+      <li class="breadcrumb-item active">core.utils.idle_baseline</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.utils.idle_baseline</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">IDLE BASELINE MEASUREMENT UTILITY – Research-Grade Idle Power Measurement</span>
+<span class="sd">with automatic caching and system state tracking</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># Add project root to Python path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>  <span class="c1"># NEW: For process and CPU monitoring</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.baseline_measurement</span><span class="w"> </span><span class="kn">import</span> \
+    <span class="n">BaselineMeasurement</span>  <span class="c1"># NEW: Use proper model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.rapl_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAPLReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.scheduler_monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerMonitor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.core_pinner</span><span class="w"> </span><span class="kn">import</span> <span class="n">CorePinner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># Default cache file location</span>
+<span class="n">DEFAULT_CACHE_FILE</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;idle_baseline.json&quot;</span>
+
+
+<div class="viewcode-block" id="get_system_state">
+<a class="viewcode-back" href="../../../core.utils.idle_baseline.html#core.utils.idle_baseline.get_system_state">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_system_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get current system state for reproducibility.</span>
+
+<span class="sd">    Captures:</span>
+<span class="sd">    - CPU governor (performance/powersave)</span>
+<span class="sd">    - Turbo boost status</span>
+<span class="sd">    - Number of running processes</span>
+<span class="sd">    - Background CPU usage</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with system state information</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Get CPU governor (affects idle power)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">state</span><span class="p">[</span><span class="s2">&quot;governor&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">state</span><span class="p">[</span><span class="s2">&quot;governor&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span>
+
+    <span class="c1"># Get turbo boost status (affects max frequency)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/sys/devices/system/cpu/intel_pstate/no_turbo&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">turbo_val</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">state</span><span class="p">[</span><span class="s2">&quot;turbo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;disabled&quot;</span> <span class="k">if</span> <span class="n">turbo_val</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span> <span class="k">else</span> <span class="s2">&quot;enabled&quot;</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">state</span><span class="p">[</span><span class="s2">&quot;turbo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span>
+
+    <span class="c1"># Get background process count (noise indicator)</span>
+    <span class="n">state</span><span class="p">[</span><span class="s2">&quot;processes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">psutil</span><span class="o">.</span><span class="n">pids</span><span class="p">())</span>
+
+    <span class="c1"># Get background CPU usage (noise indicator)</span>
+    <span class="n">state</span><span class="p">[</span><span class="s2">&quot;background_cpu&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">state</span></div>
+
+
+
+<div class="viewcode-block" id="measure_idle_baseline">
+<a class="viewcode-back" href="../../../core.utils.idle_baseline.html#core.utils.idle_baseline.measure_idle_baseline">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measure_idle_baseline</span><span class="p">(</span>
+    <span class="n">rapl_reader</span><span class="p">:</span> <span class="n">RAPLReader</span><span class="p">,</span>
+    <span class="n">core_pinner</span><span class="p">:</span> <span class="n">CorePinner</span><span class="p">,</span>
+    <span class="n">duration_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">pre_wait_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">pin_cores</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cache_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">force_remeasure</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaselineMeasurement</span><span class="p">:</span>  <span class="c1"># CHANGED: Returns BaselineMeasurement, not dict</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Measure system idle energy baseline using research-grade methodology.</span>
+<span class="sd">    Automatically caches the result and reuses it on subsequent calls.</span>
+
+<span class="sd">    NEW FEATURES:</span>
+<span class="sd">    - Tracks system state (governor, turbo, processes, background CPU)</span>
+<span class="sd">    - Returns proper BaselineMeasurement object with metadata</span>
+<span class="sd">    - Cache validation ensures state matches before reuse</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        rapl_reader: Initialized RAPLReader instance</span>
+<span class="sd">        core_pinner: CorePinner instance for CPU affinity</span>
+<span class="sd">        duration_seconds: How long each idle sample lasts</span>
+<span class="sd">        num_samples: Number of samples to take</span>
+<span class="sd">        pre_wait_seconds: Time to wait before starting</span>
+<span class="sd">        pin_cores: List of cores to pin to (None = use pinner&#39;s default)</span>
+<span class="sd">        cache_file: Path to cache file (default: data/idle_baseline.json)</span>
+<span class="sd">        force_remeasure: If True, ignore cache and force new measurement</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        BaselineMeasurement object with power values and metadata</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Use default cache if none provided</span>
+    <span class="k">if</span> <span class="n">cache_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cache_file</span> <span class="o">=</span> <span class="n">DEFAULT_CACHE_FILE</span>
+
+    <span class="c1"># Create cache directory if needed</span>
+    <span class="n">cache_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Get current system state</span>
+    <span class="n">current_state</span> <span class="o">=</span> <span class="n">get_system_state</span><span class="p">()</span>
+    <span class="n">dprint</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;System state: governor=</span><span class="si">{</span><span class="n">current_state</span><span class="p">[</span><span class="s1">&#39;governor&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;turbo=</span><span class="si">{</span><span class="n">current_state</span><span class="p">[</span><span class="s1">&#39;turbo&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;processes=</span><span class="si">{</span><span class="n">current_state</span><span class="p">[</span><span class="s1">&#39;processes&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background_cpu=</span><span class="si">{</span><span class="n">current_state</span><span class="p">[</span><span class="s1">&#39;background_cpu&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Try to load from cache unless forced to remeasure</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force_remeasure</span> <span class="ow">and</span> <span class="n">cache_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">cache_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">cache_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+            <span class="c1"># Verify cache matches current system state</span>
+            <span class="n">cached_state</span> <span class="o">=</span> <span class="n">cache_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">cached_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;governor&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;governor&quot;</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="n">cached_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbo&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;turbo&quot;</span><span class="p">]</span>
+            <span class="p">):</span>
+
+                <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Loaded idle baseline from </span><span class="si">{</span><span class="n">cache_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Convert cached dict back to BaselineMeasurement</span>
+                <span class="k">return</span> <span class="n">BaselineMeasurement</span><span class="p">(</span>
+                    <span class="n">baseline_id</span><span class="o">=</span><span class="n">cache_data</span><span class="p">[</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">],</span>
+                    <span class="n">timestamp</span><span class="o">=</span><span class="n">cache_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+                    <span class="n">power_watts</span><span class="o">=</span><span class="n">cache_data</span><span class="p">[</span><span class="s2">&quot;power_watts&quot;</span><span class="p">],</span>
+                    <span class="n">duration_seconds</span><span class="o">=</span><span class="n">cache_data</span><span class="p">[</span><span class="s2">&quot;duration_seconds&quot;</span><span class="p">],</span>
+                    <span class="n">sample_count</span><span class="o">=</span><span class="n">cache_data</span><span class="p">[</span><span class="s2">&quot;sample_count&quot;</span><span class="p">],</span>
+                    <span class="n">std_dev_watts</span><span class="o">=</span><span class="n">cache_data</span><span class="p">[</span><span class="s2">&quot;std_dev_watts&quot;</span><span class="p">],</span>
+                    <span class="n">cpu_temperature_c</span><span class="o">=</span><span class="n">cache_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_temperature_c&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">method</span><span class="o">=</span><span class="n">cache_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="s2">&quot;idle_measurement&quot;</span><span class="p">),</span>
+                    <span class="n">metadata</span><span class="o">=</span><span class="n">cache_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;⚠️ Cache invalid (system state changed), remeasuring...&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load cache, remeasuring: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">dprint</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;📝 Measuring idle baseline: </span><span class="si">{</span><span class="n">num_samples</span><span class="si">}</span><span class="s2"> samples of </span><span class="si">{</span><span class="n">duration_seconds</span><span class="si">}</span><span class="s2">s each&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Step 1: Pin to dedicated cores (Req 1.15)</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="k">if</span> <span class="n">pin_cores</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">core_pinner</span><span class="o">.</span><span class="n">pin_to_cores</span><span class="p">(</span><span class="n">pin_cores</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📌 Pinned to runtime-specified cores: </span><span class="si">{</span><span class="n">pin_cores</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">core_pinner</span><span class="o">.</span><span class="n">pin_to_cores</span><span class="p">()</span>  <span class="c1"># Use pinner&#39;s default</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📌 Pinned to default cores: </span><span class="si">{</span><span class="n">core_pinner</span><span class="o">.</span><span class="n">default_cores</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Step 2: Wait for system to enter deep idle states (Req 1.7)</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="n">dprint</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;⏳ Waiting </span><span class="si">{</span><span class="n">pre_wait_seconds</span><span class="si">}</span><span class="s2"> seconds for system to enter deep idle states...&quot;</span>
+    <span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">pre_wait_seconds</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Step 3: Collect multiple samples</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="n">sched_monitor</span> <span class="o">=</span> <span class="n">SchedulerMonitor</span><span class="p">({})</span>
+    <span class="n">all_samples</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_powers</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Store values per domain for statistics</span>
+    <span class="n">start_interrupts</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">sched_monitor</span><span class="o">.</span><span class="n">_read_total_interrupts</span><span class="p">()</span>
+    <span class="p">)</span>  <span class="c1"># You&#39;ll need to import this</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">sample_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_samples</span><span class="p">):</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 Sample </span><span class="si">{</span><span class="n">sample_idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_samples</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">start_rapl</span> <span class="o">=</span> <span class="n">rapl_reader</span><span class="o">.</span><span class="n">read_energy</span><span class="p">()</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">duration_seconds</span><span class="p">)</span>
+        <span class="n">end_rapl</span> <span class="o">=</span> <span class="n">rapl_reader</span><span class="o">.</span><span class="n">read_energy</span><span class="p">()</span>
+
+        <span class="n">sample_power</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">domain</span> <span class="ow">in</span> <span class="n">start_rapl</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">domain</span> <span class="ow">in</span> <span class="n">end_rapl</span><span class="p">:</span>
+                <span class="n">delta_uj</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end_rapl</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">-</span> <span class="n">start_rapl</span><span class="p">[</span><span class="n">domain</span><span class="p">])</span>
+                <span class="n">delta_joules</span> <span class="o">=</span> <span class="n">delta_uj</span> <span class="o">/</span> <span class="mi">1_000_000</span>
+                <span class="n">power_watts</span> <span class="o">=</span> <span class="n">delta_joules</span> <span class="o">/</span> <span class="n">duration_seconds</span>
+                <span class="n">sample_power</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="n">power_watts</span>
+
+                <span class="c1"># Store for statistics</span>
+                <span class="k">if</span> <span class="n">domain</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">all_powers</span><span class="p">:</span>
+                    <span class="n">all_powers</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">all_powers</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">power_watts</span><span class="p">)</span>
+
+        <span class="n">all_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_power</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Power: </span><span class="si">{</span><span class="n">sample_power</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Step 4: Compute statistics (mean and standard deviation)</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="n">avg_power</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">std_power</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">domain</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">all_powers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">avg_power</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="n">statistics</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">std_power</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">std_power</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Domain </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">: mean=</span><span class="si">{</span><span class="n">avg_power</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> W, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;std=</span><span class="si">{</span><span class="n">std_power</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> W&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Record end interrupts</span>
+    <span class="n">end_interrupts</span> <span class="o">=</span> <span class="n">sched_monitor</span><span class="o">.</span><span class="n">_read_total_interrupts</span><span class="p">()</span>
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="c1"># Calculate average interrupt rate during baseline</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+    <span class="n">avg_interrupt_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">end_interrupts</span> <span class="o">-</span> <span class="n">start_interrupts</span><span class="p">)</span> <span class="o">/</span> <span class="n">elapsed</span>
+
+    <span class="c1"># Add to current_state before it becomes metadata</span>
+    <span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_interrupt_rate</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Step 5: Create BaselineMeasurement object</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="n">BaselineMeasurement</span><span class="p">(</span>
+        <span class="n">baseline_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;baseline_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="n">power_watts</span><span class="o">=</span><span class="n">avg_power</span><span class="p">,</span>
+        <span class="n">duration_seconds</span><span class="o">=</span><span class="n">duration_seconds</span> <span class="o">*</span> <span class="n">num_samples</span><span class="p">,</span>
+        <span class="n">sample_count</span><span class="o">=</span><span class="n">num_samples</span><span class="p">,</span>
+        <span class="n">std_dev_watts</span><span class="o">=</span><span class="n">std_power</span><span class="p">,</span>
+        <span class="n">cpu_temperature_c</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># Add if you have temperature sensor</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;idle_measurement&quot;</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="n">current_state</span><span class="p">,</span>  <span class="c1"># Store system state for validation</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Step 6: Save to cache (with metadata for validation)</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">cache_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;baseline_id&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">baseline_id</span><span class="p">,</span>
+                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+                    <span class="s2">&quot;power_watts&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">power_watts</span><span class="p">,</span>
+                    <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">duration_seconds</span><span class="p">,</span>
+                    <span class="s2">&quot;sample_count&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">sample_count</span><span class="p">,</span>
+                    <span class="s2">&quot;std_dev_watts&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">std_dev_watts</span><span class="p">,</span>
+                    <span class="s2">&quot;cpu_temperature_c&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">cpu_temperature_c</span><span class="p">,</span>
+                    <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+                    <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">baseline</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">f</span><span class="p">,</span>
+                <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;💾 Saved idle baseline to </span><span class="si">{</span><span class="n">cache_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save baseline cache: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">dprint</span><span class="p">(</span>
+        <span class="s2">&quot;✅ Idle baseline complete:&quot;</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> W&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">avg_power</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">baseline</span></div>
+
+
+
+<div class="viewcode-block" id="apply_baseline_correction">
+<a class="viewcode-back" href="../../../core.utils.idle_baseline.html#core.utils.idle_baseline.apply_baseline_correction">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_baseline_correction</span><span class="p">(</span>
+    <span class="n">raw_energy_uj</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+    <span class="n">baseline_power_watts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="n">duration_seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply idle baseline correction to raw energy measurements.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        raw_energy_uj: Raw energy readings in microjoules</span>
+<span class="sd">        baseline_power_watts: Idle power in Watts per domain</span>
+<span class="sd">        duration_seconds: Duration of the measurement</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Corrected energy in microjoules (raw - idle)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">corrected</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">domain</span><span class="p">,</span> <span class="n">energy_uj</span> <span class="ow">in</span> <span class="n">raw_energy_uj</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">domain</span> <span class="ow">in</span> <span class="n">baseline_power_watts</span><span class="p">:</span>
+            <span class="n">idle_joules</span> <span class="o">=</span> <span class="n">baseline_power_watts</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">*</span> <span class="n">duration_seconds</span>
+            <span class="n">idle_uj</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">idle_joules</span> <span class="o">*</span> <span class="mi">1_000_000</span><span class="p">)</span>
+            <span class="n">corrected</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">energy_uj</span> <span class="o">-</span> <span class="n">idle_uj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">corrected</span><span class="p">[</span><span class="n">domain</span><span class="p">]</span> <span class="o">=</span> <span class="n">energy_uj</span>
+
+    <span class="k">return</span> <span class="n">corrected</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Example usage (standalone test)</span>
+<span class="c1"># ============================================================================</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+    <span class="c1"># Set up logging</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🔬 IDLE BASELINE MEASUREMENT TEST&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Load config</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span> <span class="o">/</span> <span class="s2">&quot;hw_config.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="c1"># Initialize readers</span>
+    <span class="n">rapl</span> <span class="o">=</span> <span class="n">RAPLReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">pinner</span> <span class="o">=</span> <span class="n">CorePinner</span><span class="p">(</span><span class="n">default_cores</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 </span><span class="si">{</span><span class="n">pinner</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># First call – should measure and save</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 First call (measuring, should save to cache)...&quot;</span><span class="p">)</span>
+    <span class="n">baseline1</span> <span class="o">=</span> <span class="n">measure_idle_baseline</span><span class="p">(</span>
+        <span class="n">rapl_reader</span><span class="o">=</span><span class="n">rapl</span><span class="p">,</span>
+        <span class="n">core_pinner</span><span class="o">=</span><span class="n">pinner</span><span class="p">,</span>
+        <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">pre_wait_seconds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Baseline: </span><span class="si">{</span><span class="n">baseline1</span><span class="o">.</span><span class="n">power_watts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   Interrupt Rate: </span><span class="si">{</span><span class="n">baseline1</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;interrupt_rate&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/sec&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Second call – should load from cache</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Second call (should load from cache)...&quot;</span><span class="p">)</span>
+    <span class="n">baseline2</span> <span class="o">=</span> <span class="n">measure_idle_baseline</span><span class="p">(</span><span class="n">rapl_reader</span><span class="o">=</span><span class="n">rapl</span><span class="p">,</span> <span class="n">core_pinner</span><span class="o">=</span><span class="n">pinner</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Baseline: </span><span class="si">{</span><span class="n">baseline2</span><span class="o">.</span><span class="n">power_watts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   Interrupt Rate: </span><span class="si">{</span><span class="n">baseline2</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;interrupt_rate&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/sec&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Force remeasure</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Force remeasure...&quot;</span><span class="p">)</span>
+    <span class="n">baseline3</span> <span class="o">=</span> <span class="n">measure_idle_baseline</span><span class="p">(</span>
+        <span class="n">rapl_reader</span><span class="o">=</span><span class="n">rapl</span><span class="p">,</span>
+        <span class="n">core_pinner</span><span class="o">=</span><span class="n">pinner</span><span class="p">,</span>
+        <span class="n">force_remeasure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Baseline: </span><span class="si">{</span><span class="n">baseline3</span><span class="o">.</span><span class="n">power_watts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;   Interrupt Rate: </span><span class="si">{</span><span class="n">baseline3</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;interrupt_rate&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/sec&quot;</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Test complete!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

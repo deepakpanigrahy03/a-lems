@@ -1,0 +1,406 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.sustainability.models.carbon_metrics &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.sustainability.models.carbon_metrics</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.sustainability.models.carbon_metrics</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">CARBON METRICS – Data classes for carbon footprint</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This module defines data structures for carbon emissions with:</span>
+<span class="sd">- Uncertainty quantification [Req 2.4]</span>
+<span class="sd">- Confidence intervals</span>
+<span class="sd">- Source attribution [Req 2.1]</span>
+<span class="sd">- Time-aware factors (future)</span>
+
+<span class="sd">Requirements Covered:</span>
+<span class="sd">    Req 2.1: Country-Specific Carbon Intensity</span>
+<span class="sd">    Req 2.4: Total Operational Carbon (CCI)</span>
+<span class="sd">    Req 2.9: Carbon Receipt Per Task</span>
+<span class="sd">    Req 2.16: Global Metadata Integrity</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+
+<div class="viewcode-block" id="CarbonMetrics">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonMetrics">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CarbonMetrics</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Carbon footprint metrics for a single measurement with uncertainty.</span>
+
+<span class="sd">    Scientific Notes:</span>
+<span class="sd">        - Carbon intensity varies by grid region and time of day</span>
+<span class="sd">        - Uncertainty reflects grid reporting accuracy (±5-15%)</span>
+<span class="sd">        - 95% confidence intervals are standard for GHG reporting</span>
+<span class="sd">        - Per-query metrics require query_count validation</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        kg: Carbon dioxide equivalent in kilograms [Req 2.4]</span>
+<span class="sd">        uncertainty_percent: Estimated uncertainty (±%) [Req 2.16]</span>
+<span class="sd">        confidence_level: Statistical confidence level (default 0.95)</span>
+<span class="sd">        per_query_mg: Carbon per query in milligrams [Req 2.9]</span>
+<span class="sd">        source: Source of grid carbon intensity data [Req 2.1]</span>
+<span class="sd">        source_url: Verifiable URL for data source [Req 2.16]</span>
+<span class="sd">        year: Data year</span>
+<span class="sd">        calculation_method: How this was derived</span>
+<span class="sd">        timestamp: When calculation was performed</span>
+<span class="sd">        metadata: Additional context (grid region, time of day)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Core metric [Req 2.4]</span>
+    <span class="n">kg</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="c1"># Uncertainty quantification [Req 2.16]</span>
+    <span class="n">uncertainty_percent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># Default ±10% for grid reporting</span>
+    <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>  <span class="c1"># 95% confidence interval</span>
+
+    <span class="c1"># Per-query metrics [Req 2.9]</span>
+    <span class="n">per_query_mg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">query_count_validated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Set True only after validation</span>
+
+    <span class="c1"># Source attribution [Req 2.1, 2.16]</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Ember 2026&quot;</span>
+    <span class="n">source_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;https://ember-energy.org/data/global-electricity-review-2026/&quot;</span>
+    <span class="p">)</span>
+    <span class="n">year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2026</span>
+
+    <span class="c1"># Calculation metadata</span>
+    <span class="n">calculation_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;energy_kwh × grid_carbon_intensity&quot;</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">())</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate values [Req 2.16].&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Carbon cannot be negative: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Uncertainty cannot be negative: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Confidence level must be between 0 and 1: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Confidence Intervals [Req 2.16]</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kg_lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lower bound of confidence interval.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kg_upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Upper bound of confidence interval.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">interval_width_percent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Width of confidence interval as percentage.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">kg_upper</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_lower</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Unit Conversions</span>
+    <span class="c1"># ========================================================================</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">grams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Carbon in grams (for human readability).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span> <span class="o">*</span> <span class="mi">1000</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">grams_lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lower bound in grams.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_lower</span> <span class="o">*</span> <span class="mi">1000</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">grams_upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Upper bound in grams.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_upper</span> <span class="o">*</span> <span class="mi">1000</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">milligrams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Carbon in milligrams (for per-query metrics).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span> <span class="o">*</span> <span class="mi">1_000_000</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">milligrams_lower</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lower bound in milligrams.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_lower</span> <span class="o">*</span> <span class="mi">1_000_000</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">milligrams_upper</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Upper bound in milligrams.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_upper</span> <span class="o">*</span> <span class="mi">1_000_000</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Validation Methods</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="CarbonMetrics.validate_query_count">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonMetrics.validate_query_count">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_query_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate that per-query metrics are meaningful.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query_count: Number of queries in measurement</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If query_count &lt;= 0</span>
+
+<span class="sd">        Scientific Note:</span>
+<span class="sd">            Per-query metrics assume energy measured corresponds exactly</span>
+<span class="sd">            to the number of queries specified.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">query_count</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;query_count must be positive (got </span><span class="si">{</span><span class="n">query_count</span><span class="si">}</span><span class="s2">). &quot;</span>
+                <span class="s2">&quot;Per-query metrics require valid query count.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query_count_validated</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># Serialization</span>
+    <span class="c1"># ========================================================================</span>
+<div class="viewcode-block" id="CarbonMetrics.to_dict">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonMetrics.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to dictionary for serialization [Req 2.16].&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;kg&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg</span><span class="p">,</span>
+            <span class="s2">&quot;kg_lower&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_lower</span><span class="p">,</span>
+            <span class="s2">&quot;kg_upper&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_upper</span><span class="p">,</span>
+            <span class="s2">&quot;uncertainty_percent&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span><span class="p">,</span>
+            <span class="s2">&quot;confidence_level&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span><span class="p">,</span>
+            <span class="s2">&quot;interval_width_percent&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval_width_percent</span><span class="p">,</span>
+            <span class="s2">&quot;grams&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">grams</span><span class="p">,</span>
+            <span class="s2">&quot;grams_lower&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">grams_lower</span><span class="p">,</span>
+            <span class="s2">&quot;grams_upper&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">grams_upper</span><span class="p">,</span>
+            <span class="s2">&quot;milligrams&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">milligrams</span><span class="p">,</span>
+            <span class="s2">&quot;milligrams_lower&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">milligrams_lower</span><span class="p">,</span>
+            <span class="s2">&quot;milligrams_upper&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">milligrams_upper</span><span class="p">,</span>
+            <span class="s2">&quot;per_query_mg&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">per_query_mg</span><span class="p">,</span>
+            <span class="s2">&quot;query_count_validated&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_count_validated</span><span class="p">,</span>
+            <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+            <span class="s2">&quot;source_url&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_url</span><span class="p">,</span>
+            <span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">year</span><span class="p">,</span>
+            <span class="s2">&quot;calculation_method&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculation_method</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp_iso&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="CarbonMetrics.to_json">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonMetrics.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize to JSON with pretty formatting.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CarbonMetrics.summary">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonMetrics.summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Human-readable summary with confidence intervals.&quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;Carbon Footprint:&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kg</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> kg CO₂e [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kg_lower</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kg_upper</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">] (95% CI)&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;  Uncertainty: ±</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">grams</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> g CO₂e [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">grams_lower</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">grams_upper</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">per_query_mg</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Per query: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">per_query_mg</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mg CO₂e&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;  Source: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">year</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;  Method: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">calculation_method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CarbonIntensityFactors">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonIntensityFactors">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CarbonIntensityFactors</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Grid carbon intensity factors for a country.</span>
+
+<span class="sd">    Scientific Notes:</span>
+<span class="sd">        - Values vary by country based on energy mix</span>
+<span class="sd">        - Data quality indicates confidence in reporting</span>
+<span class="sd">        - High quality: Official government statistics</span>
+<span class="sd">        - Medium quality: Industry reports</span>
+<span class="sd">        - Low quality: Estimates or interpolations</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        country_code: ISO 3166-1 alpha-2 code [Req 2.1]</span>
+<span class="sd">        kg_per_kwh: Carbon intensity in kg CO₂e/kWh [Req 2.1]</span>
+<span class="sd">        source: Data source name [Req 2.16]</span>
+<span class="sd">        source_url: Verifiable URL [Req 2.16]</span>
+<span class="sd">        year: Data year</span>
+<span class="sd">        data_quality: &quot;high&quot;, &quot;medium&quot;, &quot;low&quot; [Req 2.16]</span>
+<span class="sd">        uncertainty_percent: Reported uncertainty</span>
+<span class="sd">        metadata: Additional context</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">country_code</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">kg_per_kwh</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">source_url</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">year</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">data_quality</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;medium&quot;</span>
+    <span class="n">uncertainty_percent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate values.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_per_kwh</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Carbon intensity cannot be negative: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kg_per_kwh</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_quality</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid data quality: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data_quality</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">quality_score</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert quality to numeric score (0-1).&quot;&quot;&quot;</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">scores</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_quality</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CarbonIntensityFactors.to_dict">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonIntensityFactors.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to dictionary.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;country_code&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">country_code</span><span class="p">,</span>
+            <span class="s2">&quot;kg_per_kwh&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kg_per_kwh</span><span class="p">,</span>
+            <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+            <span class="s2">&quot;source_url&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_url</span><span class="p">,</span>
+            <span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">year</span><span class="p">,</span>
+            <span class="s2">&quot;data_quality&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_quality</span><span class="p">,</span>
+            <span class="s2">&quot;quality_score&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">quality_score</span><span class="p">,</span>
+            <span class="s2">&quot;uncertainty_percent&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncertainty_percent</span><span class="p">,</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="CarbonIntensityFactors.to_json">
+<a class="viewcode-back" href="../../../../core.sustainability.models.carbon_metrics.html#core.sustainability.models.CarbonIntensityFactors.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize to JSON.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

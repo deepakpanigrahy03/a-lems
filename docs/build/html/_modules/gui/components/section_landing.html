@@ -1,0 +1,305 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.components.section_landing &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.components.section_landing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.components.section_landing</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/components/section_landing.py</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Generic section landing page — renders the card grid for any section.</span>
+<span class="sd">Called by streamlit_app.py when nav_page is None.</span>
+
+<span class="sd">Features:</span>
+<span class="sd">  • Section hero: accent colour, icon, title, who, description</span>
+<span class="sd">  • Resume chip: &quot;↩ Resume: Energy Lab&quot; if last_page exists for this section</span>
+<span class="sd">  • Card grid: 3 columns, each card shows icon, label, desc, status badge</span>
+<span class="sd">  • Blocked cards: show data gap reason instead of clickable card</span>
+<span class="sd">  • Planned cards: shown greyed out, not clickable</span>
+<span class="sd">  • Clicking a card sets nav_page → st.rerun()</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">BLOCKED</span><span class="p">,</span> <span class="n">EXISTS</span><span class="p">,</span> <span class="n">NEW</span><span class="p">,</span> <span class="n">PLANNED</span><span class="p">,</span> <span class="n">SECTION_ACCENTS</span><span class="p">,</span>
+                        <span class="n">SECTION_PAGES</span><span class="p">)</span>
+
+<span class="c1"># ── Status badge config ───────────────────────────────────────────────────────</span>
+<span class="n">_BADGE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">EXISTS</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;LIVE&quot;</span><span class="p">,</span> <span class="s2">&quot;#052e1a&quot;</span><span class="p">,</span> <span class="s2">&quot;#4ade80&quot;</span><span class="p">),</span>
+    <span class="n">NEW</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;BUILD&quot;</span><span class="p">,</span> <span class="s2">&quot;#0c1f3a&quot;</span><span class="p">,</span> <span class="s2">&quot;#60a5fa&quot;</span><span class="p">),</span>
+    <span class="n">PLANNED</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;PLANNED&quot;</span><span class="p">,</span> <span class="s2">&quot;#1a1028&quot;</span><span class="p">,</span> <span class="s2">&quot;#c084fc&quot;</span><span class="p">),</span>
+    <span class="n">BLOCKED</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;BLOCKED&quot;</span><span class="p">,</span> <span class="s2">&quot;#2a0c0c&quot;</span><span class="p">,</span> <span class="s2">&quot;#f87171&quot;</span><span class="p">),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.components.section_landing.html#gui.components.section_landing.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">last_page</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Render the landing page for a section.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        section:   section name key from SECTION_PAGES</span>
+<span class="sd">        last_page: page_id of the last visited page in this section (for resume chip)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">section</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SECTION_PAGES</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown section: </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">SECTION_PAGES</span><span class="p">[</span><span class="n">section</span><span class="p">]</span>
+    <span class="n">accent</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;accent&quot;</span><span class="p">]</span>
+    <span class="n">pages</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;pages&quot;</span><span class="p">]</span>
+    <span class="n">dark</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;theme&quot;</span><span class="p">,</span> <span class="s2">&quot;dark&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;dark&quot;</span>
+    <span class="n">bg1</span> <span class="o">=</span> <span class="s2">&quot;#111827&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#ffffff&quot;</span>
+    <span class="n">bg2</span> <span class="o">=</span> <span class="s2">&quot;#1f2937&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#f9fafb&quot;</span>
+    <span class="n">bg3</span> <span class="o">=</span> <span class="s2">&quot;#374151&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#e5e7eb&quot;</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="s2">&quot;#f1f5f9&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#1f2937&quot;</span>
+    <span class="n">t2</span> <span class="o">=</span> <span class="s2">&quot;#94a3b8&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#4b5563&quot;</span>
+    <span class="n">t3</span> <span class="o">=</span> <span class="s2">&quot;#475569&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#6b7280&quot;</span>
+    <span class="n">brd</span> <span class="o">=</span> <span class="s2">&quot;#1f2937&quot;</span> <span class="k">if</span> <span class="n">dark</span> <span class="k">else</span> <span class="s2">&quot;#e5e7eb&quot;</span>
+
+    <span class="c1"># ── Hero header ───────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:24px 28px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">33;border-radius:14px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:12px;margin-bottom:8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:28px;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;icon&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:22px;font-weight:700;color:</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;letter-spacing:-.5px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:</span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;font-family:IBM Plex Mono,monospace;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.12em;margin-top:2px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;who&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:13px;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">;font-family:IBM Plex Mono,monospace;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;line-height:1.6;max-width:680px;&#39;&gt;</span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Resume chip ───────────────────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="n">last_page</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PAGE_META</span>
+
+        <span class="n">lp_meta</span> <span class="o">=</span> <span class="n">PAGE_META</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">last_page</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">lp_label</span> <span class="o">=</span> <span class="n">lp_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">last_page</span><span class="p">)</span>
+        <span class="n">lp_icon</span> <span class="o">=</span> <span class="n">lp_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;icon&quot;</span><span class="p">,</span> <span class="s2">&quot;▶&quot;</span><span class="p">)</span>
+        <span class="n">col_r</span><span class="p">,</span> <span class="n">col_spacer</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">])</span>
+        <span class="k">with</span> <span class="n">col_r</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;↩  Resume: </span><span class="si">{</span><span class="n">lp_icon</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">lp_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;resume_</span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_page&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">last_page</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;&lt;div style=&#39;margin-bottom:8px;&#39;&gt;&lt;/div&gt;&quot;</span><span class="p">,</span> <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># ── Card grid ─────────────────────────────────────────────────────────────</span>
+    <span class="c1"># Build list of renderable pages</span>
+    <span class="n">buildable</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pages</span> <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">BLOCKED</span><span class="p">]</span>
+    <span class="n">blocked</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pages</span> <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">BLOCKED</span><span class="p">]</span>
+
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">page</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">buildable</span><span class="p">):</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">cols</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="k">with</span> <span class="n">col</span><span class="p">:</span>
+            <span class="n">_render_card</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">accent</span><span class="p">,</span> <span class="n">dark</span><span class="p">,</span> <span class="n">bg2</span><span class="p">,</span> <span class="n">bg3</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">t3</span><span class="p">,</span> <span class="n">brd</span><span class="p">)</span>
+
+    <span class="c1"># Blocked pages in a separate row at the bottom</span>
+    <span class="k">if</span> <span class="n">blocked</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;margin-top:16px;margin-bottom:6px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-size:9px;font-weight:700;text-transform:uppercase;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;letter-spacing:.1em;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;&#39;&gt;Data gaps — blocked pages&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">bcols</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">page</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blocked</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">bcols</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="mi">3</span><span class="p">]:</span>
+                <span class="n">_render_blocked_card</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">dark</span><span class="p">,</span> <span class="n">bg2</span><span class="p">,</span> <span class="n">t3</span><span class="p">,</span> <span class="n">brd</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_card</span><span class="p">(</span>
+    <span class="n">page</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">accent</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">dark</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">bg2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">bg3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">t1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">t2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">t3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">brd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render a single clickable page card.&quot;&quot;&quot;</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span>
+    <span class="n">clickable</span> <span class="o">=</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="n">EXISTS</span><span class="p">,</span> <span class="n">NEW</span><span class="p">)</span>
+    <span class="n">disabled</span> <span class="o">=</span> <span class="n">status</span> <span class="o">==</span> <span class="n">PLANNED</span>
+
+    <span class="n">badge_txt</span><span class="p">,</span> <span class="n">badge_bg</span><span class="p">,</span> <span class="n">badge_fg</span> <span class="o">=</span> <span class="n">_BADGE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;#222&quot;</span><span class="p">,</span> <span class="s2">&quot;#888&quot;</span><span class="p">))</span>
+
+    <span class="c1"># Card container</span>
+    <span class="n">opacity</span> <span class="o">=</span> <span class="s2">&quot;1.0&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">disabled</span> <span class="k">else</span> <span class="s2">&quot;0.5&quot;</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="s2">&quot;pointer&quot;</span> <span class="k">if</span> <span class="n">clickable</span> <span class="k">else</span> <span class="s2">&quot;default&quot;</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;border:1px solid </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">33;border-radius:10px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">bg2</span><span class="si">}</span><span class="s2">;padding:16px;margin-bottom:4px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;opacity:</span><span class="si">{</span><span class="n">opacity</span><span class="si">}</span><span class="s2">;cursor:</span><span class="si">{</span><span class="n">cursor</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-top:3px solid </span><span class="si">{</span><span class="n">accent</span><span class="si">}</span><span class="s2">;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;justify-content:space-between;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;margin-bottom:8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:20px;&#39;&gt;</span><span class="si">{</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;icon&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:8px;padding:2px 6px;border-radius:3px;font-weight:700;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">badge_bg</span><span class="si">}</span><span class="s2">;color:</span><span class="si">{</span><span class="n">badge_fg</span><span class="si">}</span><span class="s2">;letter-spacing:.06em;&#39;&gt;</span><span class="si">{</span><span class="n">badge_txt</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:13px;font-weight:600;color:</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:5px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:</span><span class="si">{</span><span class="n">t2</span><span class="si">}</span><span class="s2">;font-family:IBM Plex Mono,monospace;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;line-height:1.5;&#39;&gt;</span><span class="si">{</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;desc&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">clickable</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;→&quot;</span><span class="p">,</span>
+            <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;card_</span><span class="si">{</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_page&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+            <span class="c1"># Remember last page for resume chip</span>
+            <span class="k">if</span> <span class="s2">&quot;nav_last&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_last&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">section</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;section&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">section</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;nav_last&quot;</span><span class="p">][</span><span class="n">section</span><span class="p">]</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_blocked_card</span><span class="p">(</span><span class="n">page</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">dark</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">bg2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">t3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">brd</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render a blocked page card with data gap explanation.&quot;&quot;&quot;</span>
+    <span class="n">badge_txt</span><span class="p">,</span> <span class="n">badge_bg</span><span class="p">,</span> <span class="n">badge_fg</span> <span class="o">=</span> <span class="n">_BADGE</span><span class="p">[</span><span class="n">BLOCKED</span><span class="p">]</span>
+    <span class="n">reason</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;blocked_reason&quot;</span><span class="p">,</span> <span class="s2">&quot;Data not yet available.&quot;</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;border:1px solid #2a0c0c;border-radius:10px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">bg2</span><span class="si">}</span><span class="s2">;padding:16px;margin-bottom:4px;opacity:0.6;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border-top:3px solid #ef4444;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;justify-content:space-between;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;margin-bottom:8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:20px;opacity:0.5;&#39;&gt;</span><span class="si">{</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;icon&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:8px;padding:2px 6px;border-radius:3px;font-weight:700;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">badge_bg</span><span class="si">}</span><span class="s2">;color:</span><span class="si">{</span><span class="n">badge_fg</span><span class="si">}</span><span class="s2">;letter-spacing:.06em;&#39;&gt;</span><span class="si">{</span><span class="n">badge_txt</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:13px;font-weight:600;color:</span><span class="si">{</span><span class="n">t3</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:5px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:#f87171;font-family:IBM Plex Mono,monospace;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;line-height:1.5;&#39;&gt;⚠ </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

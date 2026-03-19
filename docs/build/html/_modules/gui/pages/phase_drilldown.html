@@ -1,0 +1,393 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.phase_drilldown &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.phase_drilldown</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.phase_drilldown</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/phase_drilldown.py  —  ⬡  Phase Drilldown</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Per-step planning/execution/synthesis energy from orchestration_events.</span>
+<span class="sd">2,773 events available. Richest unused table in the schema.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span><span class="p">,</span> <span class="n">WF_COLORS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#ef4444&quot;</span>
+<span class="n">PH_COLORS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;planning&quot;</span><span class="p">:</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;execution&quot;</span><span class="p">:</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;synthesis&quot;</span><span class="p">:</span> <span class="s2">&quot;#a78bfa&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;waiting&quot;</span><span class="p">:</span> <span class="s2">&quot;#f59e0b&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.phase_drilldown.html#gui.pages.phase_drilldown.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">total_events</span> <span class="o">=</span> <span class="n">q1</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) AS n FROM orchestration_events&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">total_events</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No orchestration events yet. Run agentic experiments to populate.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Load events ───────────────────────────────────────────────────────────</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            oe.event_id, oe.run_id, oe.step_index, oe.phase,</span>
+<span class="s2">            oe.event_type,</span>
+<span class="s2">            oe.duration_ns / 1e6         AS duration_ms,</span>
+<span class="s2">            oe.power_watts,</span>
+<span class="s2">            oe.cpu_util_percent,</span>
+<span class="s2">            oe.interrupt_rate,</span>
+<span class="s2">            oe.event_energy_uj / 1e6     AS event_energy_j,</span>
+<span class="s2">            oe.tax_contribution_uj / 1e6 AS tax_j,</span>
+<span class="s2">            oe.tax_percent,</span>
+<span class="s2">            e.model_name, e.task_name, e.workflow_type</span>
+<span class="s2">        FROM orchestration_events oe</span>
+<span class="s2">        JOIN runs r ON oe.run_id = r.run_id</span>
+<span class="s2">        JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="s2">        ORDER BY oe.event_id DESC</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">events</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No orchestration event data.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── KPIs ──────────────────────────────────────────────────────────────────</span>
+    <span class="n">phase_counts</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+    <span class="n">total_tax_j</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="s2">&quot;tax_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">avg_step_ms</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;run_id&quot;</span><span class="p">)[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Phase Drilldown — </span><span class="si">{</span><span class="n">total_events</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> orchestration events&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;&#39;&gt;&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&lt;div style=&#39;font-size:16px;font-weight:700;color:</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#94a3b8;text-transform:uppercase;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-top:3px;&#39;&gt;</span><span class="si">{</span><span class="n">l</span><span class="si">}</span><span class="s2">&lt;/div&gt;&lt;/div&gt;&quot;</span>
+                <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phase_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;planning&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Planning events&quot;</span><span class="p">,</span>
+                        <span class="n">PH_COLORS</span><span class="p">[</span><span class="s2">&quot;planning&quot;</span><span class="p">],</span>
+                    <span class="p">),</span>
+                    <span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phase_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;execution&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Execution events&quot;</span><span class="p">,</span>
+                        <span class="n">PH_COLORS</span><span class="p">[</span><span class="s2">&quot;execution&quot;</span><span class="p">],</span>
+                    <span class="p">),</span>
+                    <span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phase_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;synthesis&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Synthesis events&quot;</span><span class="p">,</span>
+                        <span class="n">PH_COLORS</span><span class="p">[</span><span class="s2">&quot;synthesis&quot;</span><span class="p">],</span>
+                    <span class="p">),</span>
+                    <span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phase_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;waiting&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Waiting events&quot;</span><span class="p">,</span>
+                        <span class="n">PH_COLORS</span><span class="p">[</span><span class="s2">&quot;waiting&quot;</span><span class="p">],</span>
+                    <span class="p">),</span>
+                    <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">total_tax_j</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">J&quot;</span><span class="p">,</span> <span class="s2">&quot;Total tax energy&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">),</span>
+                <span class="p">]</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ── Phase energy breakdown ────────────────────────────────────────────────</span>
+    <span class="n">col1</span><span class="p">,</span> <span class="n">col2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col1</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Energy by phase&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">phase_e</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">events</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">)[</span><span class="s2">&quot;event_energy_j&quot;</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;count&quot;</span><span class="p">])</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">phase_e</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">phase_e</span><span class="p">[</span><span class="s2">&quot;sum&quot;</span><span class="p">],</span>
+                <span class="n">marker_color</span><span class="o">=</span><span class="p">[</span><span class="n">PH_COLORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s2">&quot;#94a3b8&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">phase_e</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]],</span>
+                <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">J&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">phase_e</span><span class="p">[</span><span class="s2">&quot;sum&quot;</span><span class="p">]],</span>
+                <span class="n">textposition</span><span class="o">=</span><span class="s2">&quot;outside&quot;</span><span class="p">,</span>
+                <span class="n">textfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">9</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Total energy (J)&quot;</span><span class="p">,</span> <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;pd_phase_energy&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">col2</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Avg duration by phase&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">phase_d</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">)[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">fig2</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">phase_d</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">phase_d</span><span class="p">[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">],</span>
+                <span class="n">marker_color</span><span class="o">=</span><span class="p">[</span><span class="n">PH_COLORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s2">&quot;#94a3b8&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">phase_d</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]],</span>
+                <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">fig2</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Avg duration (ms)&quot;</span><span class="p">,</span> <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig2</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;pd_phase_dur&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Tax contribution by phase ─────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Orchestration tax contribution by phase&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">tax_df</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">events</span><span class="p">[</span><span class="s2">&quot;tax_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">events</span><span class="p">[</span><span class="s2">&quot;tax_j&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tax_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">tax_phase</span> <span class="o">=</span> <span class="n">tax_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">)[</span><span class="s2">&quot;tax_j&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">fig3</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Pie</span><span class="p">(</span>
+                <span class="n">labels</span><span class="o">=</span><span class="n">tax_phase</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">],</span>
+                <span class="n">values</span><span class="o">=</span><span class="n">tax_phase</span><span class="p">[</span><span class="s2">&quot;tax_j&quot;</span><span class="p">],</span>
+                <span class="n">marker_colors</span><span class="o">=</span><span class="p">[</span><span class="n">PH_COLORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s2">&quot;#94a3b8&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">tax_phase</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]],</span>
+                <span class="n">hole</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">textinfo</span><span class="o">=</span><span class="s2">&quot;label+percent&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">fig3</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="p">{</span><span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="s2">&quot;margin&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">l</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">20</span><span class="p">)},</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig3</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;pd_tax_pie&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Per-run step timeline ─────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Step timeline — select run&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">run_ids</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">sel_run</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+        <span class="s2">&quot;Run&quot;</span><span class="p">,</span>
+        <span class="nb">sorted</span><span class="p">(</span><span class="n">run_ids</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:</span><span class="mi">50</span><span class="p">],</span>
+        <span class="n">key</span><span class="o">=</span><span class="s2">&quot;pd_run_sel&quot;</span><span class="p">,</span>
+        <span class="n">format_func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Run </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">run_events</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">events</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">sel_run</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;step_index&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">run_events</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">fig4</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">phase</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">PH_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">run_events</span><span class="p">[</span><span class="n">run_events</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">phase</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig4</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;step_index&quot;</span><span class="p">],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span>
+                    <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                    <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig4</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">260</span><span class="p">,</span>
+            <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;stack&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Step index&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Duration (ms)&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span>
+            <span class="n">fig4</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;pd_step_timeline_</span><span class="si">{</span><span class="n">sel_run</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Power per step</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:12px 0 8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Power per step — Run </span><span class="si">{</span><span class="n">sel_run</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fig5</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">phase</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">PH_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">run_events</span><span class="p">[</span><span class="n">run_events</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">phase</span><span class="p">]</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;power_watts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig5</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;step_index&quot;</span><span class="p">],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;power_watts&quot;</span><span class="p">],</span>
+                    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers+lines&quot;</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span>
+                    <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig5</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Step index&quot;</span><span class="p">,</span> <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Power (W)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig5</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;pd_power_</span><span class="si">{</span><span class="n">sel_run</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Phase stats by task ───────────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="s2">&quot;task_name&quot;</span> <span class="ow">in</span> <span class="n">events</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Planning ratio by task&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">task_phase</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">events</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;task_name&quot;</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">])[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">fig6</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">phase</span><span class="p">,</span> <span class="n">clr</span> <span class="ow">in</span> <span class="n">PH_COLORS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sub</span> <span class="o">=</span> <span class="n">task_phase</span><span class="p">[</span><span class="n">task_phase</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">phase</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig6</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;task_name&quot;</span><span class="p">],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">sub</span><span class="p">[</span><span class="s2">&quot;duration_ms&quot;</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">phase</span><span class="p">,</span>
+                    <span class="n">marker_color</span><span class="o">=</span><span class="n">clr</span><span class="p">,</span>
+                    <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig6</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
+            <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;stack&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Total duration (ms)&quot;</span><span class="p">,</span>
+            <span class="n">xaxis_tickangle</span><span class="o">=-</span><span class="mi">30</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig6</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;pd_task_phase&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

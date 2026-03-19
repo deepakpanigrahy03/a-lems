@@ -830,5 +830,3 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_interactions(run_id);
 CREATE INDEX IF NOT EXISTS idx_llm_workflow ON llm_interactions(workflow_type);
 """
-
-

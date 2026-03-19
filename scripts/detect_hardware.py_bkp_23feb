@@ -21,17 +21,17 @@ Usage:
     python scripts/detect_hardware.py --verbose
 """
 
-import os
-import sys
-import json
-import glob
-import platform
 import argparse
-import subprocess
+import glob
+import json
+import os
+import platform
 import shutil
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # ============================================================================
 # BACKUP FUNCTION WITH PERMISSION HANDLING

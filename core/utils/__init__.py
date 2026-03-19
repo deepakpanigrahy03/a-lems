@@ -12,9 +12,10 @@ Author: Deepak Panigrahy
 ================================================================================
 """
 
-import yaml
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 
 def load_tasks(config_path: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -44,10 +45,10 @@ def load_tasks(config_path: Optional[str] = None) -> List[Dict[str, Any]]:
         raise FileNotFoundError(f"Task config not found: {config_path}")
 
     # Load and parse YAML
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    return data.get('tasks', [])
+    return data.get("tasks", [])
 
 
 def get_task_by_id(task_id: str, tasks: Optional[List[Dict]] = None) -> Optional[Dict]:
@@ -63,9 +64,9 @@ def get_task_by_id(task_id: str, tasks: Optional[List[Dict]] = None) -> Optional
     """
     if tasks is None:
         tasks = load_tasks()
-    
+
     for task in tasks:
-        if task['id'] == task_id:
+        if task["id"] == task_id:
             return task
     return None
 
@@ -83,8 +84,8 @@ def get_tasks_by_level(level: int, tasks: Optional[List[Dict]] = None) -> List[D
     """
     if tasks is None:
         tasks = load_tasks()
-    
-    return [t for t in tasks if t['level'] == level]
+
+    return [t for t in tasks if t["level"] == level]
 
 
 def list_task_summary(tasks: Optional[List[Dict]] = None) -> None:
@@ -96,11 +97,13 @@ def list_task_summary(tasks: Optional[List[Dict]] = None) -> None:
     """
     if tasks is None:
         tasks = load_tasks()
-    
+
     print("\n📋 Available Tasks:")
     print("-" * 70)
     print(f"{'ID':<15} {'Name':<25} {'Level':<8} {'Tools':<8}")
     print("-" * 70)
     for t in tasks:
-        print(f"{t['id']:<15} {t['name'][:24]:<25} {t['level']:<8} {t['tool_calls']:<8}")
+        print(
+            f"{t['id']:<15} {t['name'][:24]:<25} {t['level']:<8} {t['tool_calls']:<8}"
+        )
     print("-" * 70)

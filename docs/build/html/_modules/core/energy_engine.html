@@ -1,0 +1,1333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.energy_engine &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.energy_engine</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.energy_engine</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">ENERGY ENGINE – Main Orchestrator for Module 1</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This module ties together all hardware readers and provides a clean interface</span>
+<span class="sd">for measuring energy consumption during AI workloads. It is designed to be used</span>
+<span class="sd">as a context manager or directly via start/stop methods.</span>
+
+<span class="sd">The EnergyEngine handles:</span>
+<span class="sd">- Initializing all readers (RAPL, perf, turbostat, sensors, MSR)</span>
+<span class="sd">- Core pinning for consistent measurements (Req 1.15)</span>
+<span class="sd">- Idle baseline measurement using research‑grade utility (Req 1.45)</span>
+<span class="sd">- High‑frequency sampling (Req 1.46)</span>
+<span class="sd">- Coordinated start/stop of all readers</span>
+<span class="sd">- Assembling a complete RawEnergyMeasurement object</span>
+<span class="sd">- Validation of measurement quality</span>
+
+<span class="sd">IMPORTANT: This engine returns RAW measurements only.</span>
+<span class="sd">Baseline correction happens in the analysis layer (EnergyAnalyzer).</span>
+
+<span class="sd">All paths and settings come from Module 0’s configuration (hw_config.json,</span>
+<span class="sd">app_settings.yaml). No hardcoding.</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">queue</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+
+<span class="c1"># ====================================================================</span>
+<span class="c1"># ADD THIS IMPORT</span>
+<span class="c1"># ====================================================================</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.baseline_measurement</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaselineMeasurement</span>
+<span class="c1"># Import the new raw measurement model (Layer 1)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.raw_energy_measurement</span><span class="w"> </span><span class="kn">import</span> <span class="n">RawEnergyMeasurement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.core_pinner</span><span class="w"> </span><span class="kn">import</span> <span class="n">CorePinner</span>
+<span class="c1"># Import utilities</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span><span class="p">,</span> <span class="n">init_debug_from_env</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.validators</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementValidator</span>
+
+<span class="c1"># ====================================================================</span>
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Fix Python path – ensure core modules are importable</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="c1"># Import the new raw measurement model (Layer 1)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.raw_energy_measurement</span><span class="w"> </span><span class="kn">import</span> <span class="n">RawEnergyMeasurement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.msr_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">MSRReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.perf_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerfReader</span>
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Import all readers and models</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.rapl_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAPLReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.scheduler_monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchedulerMonitor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.sensor_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">SensorReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.readers.turbostat_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">TurbostatReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.core_pinner</span><span class="w"> </span><span class="kn">import</span> <span class="n">CorePinner</span>
+<span class="c1"># Import utilities</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span><span class="p">,</span> <span class="n">init_debug_from_env</span>
+<span class="c1"># Import baseline utilities (will be used by analysis layer, not here)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.idle_baseline</span><span class="w"> </span><span class="kn">import</span> <span class="n">measure_idle_baseline</span> <span class="k">as</span> <span class="n">measure_baseline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.validators</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementValidator</span>
+
+<span class="c1"># Initialize debug system</span>
+<span class="n">init_debug_from_env</span><span class="p">()</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="EnergyEngine">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnergyEngine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Main energy measurement engine orchestrating all readers.</span>
+
+<span class="sd">    This is the primary interface for Modules 2 and 3. It provides:</span>
+<span class="sd">    1. Context manager for easy measurement (`with engine as m:`)</span>
+<span class="sd">    2. High‑frequency sampling (Req 1.46)</span>
+<span class="sd">    3. Idle baseline measurement (Req 1.45) – stored separately, NOT applied</span>
+<span class="sd">    4. Core pinning (Req 1.15)</span>
+<span class="sd">    5. Measurement validation</span>
+<span class="sd">    6. Multiple‑run statistics</span>
+
+<span class="sd">    All readers are initialized from the configuration passed in.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the energy engine with configuration from Module 0.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: The complete configuration dictionary, usually loaded from</span>
+<span class="sd">                    `hw_config.json` and merged with `app_settings.yaml`.</span>
+<span class="sd">                    Expected to contain sections for each reader and settings.</span>
+
+<span class="sd">        The constructor instantiates all readers and sets up logging.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;Initializing EnergyEngine&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;🔍 ENERGY ENGINE CONFIG DEBUG&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;rapl&#39; in config: </span><span class="si">{</span><span class="s1">&#39;rapl&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;rapl&quot;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rapl paths: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;rapl&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;paths&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{})</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;settings&#39; in config: </span><span class="si">{</span><span class="s1">&#39;settings&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;settings&quot;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;settings keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># interrupt initializations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collect_interrupt_samples</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interrupt_sample_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Store configuration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settings</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;settings&quot;</span><span class="p">,</span> <span class="p">{})</span>  <span class="c1"># app_settings.yaml content</span>
+
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Initialize all hardware readers</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span> <span class="o">=</span> <span class="n">RAPLReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">perf</span> <span class="o">=</span> <span class="n">PerfReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span> <span class="o">=</span> <span class="n">TurbostatReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span> <span class="o">=</span> <span class="n">SensorReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">msr</span> <span class="o">=</span> <span class="n">MSRReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span> <span class="o">=</span> <span class="n">SchedulerMonitor</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Load settings from config – handle both dict and object formats</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="n">experiment_settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;experiment&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">measurement_settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;measurement&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Convert to dictionary if they are objects</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">experiment_settings</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+            <span class="n">experiment_settings</span> <span class="o">=</span> <span class="n">experiment_settings</span><span class="o">.</span><span class="vm">__dict__</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">measurement_settings</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+            <span class="n">measurement_settings</span> <span class="o">=</span> <span class="n">measurement_settings</span><span class="o">.</span><span class="vm">__dict__</span>
+
+        <span class="c1"># Core pinning (Req 1.15)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pinned_cores</span> <span class="o">=</span> <span class="n">experiment_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pinned_cores&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Sampling rate (Req 1.46)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span> <span class="o">=</span> <span class="n">measurement_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sampling_rate_hz&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># Idle baseline duration (Req 1.45) – used as default for the utility</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">idle_baseline_seconds</span> <span class="o">=</span> <span class="n">measurement_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_seconds&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+
+        <span class="c1"># Cool‑down between runs (Req 3.5)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cool_down_seconds</span> <span class="o">=</span> <span class="n">experiment_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+
+        <span class="c1"># Create core pinner instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">core_pinner</span> <span class="o">=</span> <span class="n">CorePinner</span><span class="p">(</span><span class="n">default_cores</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pinned_cores</span><span class="p">)</span>
+
+        <span class="c1"># Idle baseline storage (joules per second per domain)</span>
+        <span class="c1"># This is stored as metadata only – NEVER applied to raw data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">idle_baseline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Measurement state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_readings</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_readings</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">RawEnergyMeasurement</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Sampling thread for high‑frequency data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="p">:</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">msr_available</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;helper_available&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">helper_available</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">rdmsr_available</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Thermal sampling (1Hz)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_rate_hz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sampling_rate_hz&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Web UI settings - multiple servers support</span>
+        <span class="n">webui_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;webui&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">webui_enabled</span> <span class="o">=</span> <span class="n">webui_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">webui_servers</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">webui_enabled</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">server</span> <span class="ow">in</span> <span class="n">webui_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;servers&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">if</span> <span class="n">server</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;active&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">webui_servers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="n">server</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">]</span>
+                            <span class="o">+</span> <span class="n">server</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_endpoint&quot;</span><span class="p">,</span> <span class="s2">&quot;/api/update&quot;</span><span class="p">),</span>
+                            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">server</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+                            <span class="s2">&quot;timeout&quot;</span><span class="p">:</span> <span class="n">webui_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timeout_ms&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000.0</span><span class="p">,</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_run_id</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">dprint</span><span class="p">(</span>
+            <span class="s2">&quot;EnergyEngine initialized&quot;</span><span class="p">,</span>
+            <span class="n">readers</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;rapl&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;perf&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="o">.</span><span class="n">perf_available</span><span class="p">,</span>
+                <span class="s2">&quot;turbostat&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">available</span><span class="p">,</span>
+                <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">available_sensors</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;msr&quot;</span><span class="p">:</span> <span class="n">msr_available</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_start_thermal_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start thermal sampling thread&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_thermal_sampling_loop</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_thermal_sampling_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Thermal sampling thread (1Hz default)&quot;&quot;&quot;</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_rate_hz</span>
+        <span class="n">next_sample</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_active</span><span class="p">:</span>
+            <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">now</span> <span class="o">&gt;=</span> <span class="n">next_sample</span><span class="p">:</span>
+                <span class="c1"># Read all thermal sensors</span>
+                <span class="n">readings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">read_all_thermal</span><span class="p">()</span>
+                <span class="n">throttle_detected</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="c1"># Check for throttling conditions</span>
+                <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">temp</span> <span class="ow">in</span> <span class="n">readings</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">temp</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="p">,</span> <span class="s2">&quot;throttle_thresholds&quot;</span><span class="p">):</span>
+                        <span class="n">threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">throttle_thresholds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">role</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">threshold</span> <span class="ow">and</span> <span class="n">temp</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
+                            <span class="n">throttle_detected</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">thermal_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">now</span><span class="p">,</span> <span class="n">readings</span><span class="p">,</span> <span class="n">throttle_detected</span><span class="p">))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 THERMAL DEBUG - Sample at </span><span class="si">{</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">readings</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">next_sample</span> <span class="o">=</span> <span class="n">now</span> <span class="o">+</span> <span class="n">interval</span>  <span class="c1"># Prevent drift</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">next_sample</span> <span class="o">-</span> <span class="n">now</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stop_thermal_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop thermal sampling and collect remaining samples&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thermal_sampling_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Collect any remaining samples</span>
+        <span class="n">thermal_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="n">thermal_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thermal_queue</span><span class="o">.</span><span class="n">get</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">thermal_samples</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Core pinning (Req 1.15)</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="EnergyEngine.pin_cores">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine.pin_cores">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pin_cores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cores</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Pin the current process to specific CPU cores.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cores: List of core indices. If None, uses the configured default.</span>
+
+<span class="sd">        Req 1.15: Physical Core Affinity – eliminates noise from thread migration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">cores</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinned_cores</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">core_pinner</span><span class="o">.</span><span class="n">pin_to_cores</span><span class="p">(</span><span class="n">cores</span><span class="p">)</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pinned to cores </span><span class="si">{</span><span class="n">cores</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Idle baseline measurement (Req 1.45) – uses research‑grade utility</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="EnergyEngine.measure_idle_baseline">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine.measure_idle_baseline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">measure_idle_baseline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">duration_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">pre_wait_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">force_remeasure</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaselineMeasurement</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Measure system idle energy baseline.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Measure baseline using utility (returns BaselineMeasurement object)</span>
+        <span class="n">baseline</span> <span class="o">=</span> <span class="n">measure_baseline</span><span class="p">(</span>
+            <span class="n">rapl_reader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rapl</span><span class="p">,</span>
+            <span class="n">core_pinner</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">core_pinner</span><span class="p">,</span>
+            <span class="n">duration_seconds</span><span class="o">=</span><span class="n">duration_seconds</span><span class="p">,</span>
+            <span class="n">num_samples</span><span class="o">=</span><span class="n">num_samples</span><span class="p">,</span>
+            <span class="n">pre_wait_seconds</span><span class="o">=</span><span class="n">pre_wait_seconds</span><span class="p">,</span>
+            <span class="n">pin_cores</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pinned_cores</span><span class="p">,</span>
+            <span class="n">force_remeasure</span><span class="o">=</span><span class="n">force_remeasure</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&gt;&gt;&gt; INPUT duration_seconds: </span><span class="si">{</span><span class="n">duration_seconds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&gt;&gt;&gt; INPUT num_samples: </span><span class="si">{</span><span class="n">num_samples</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&gt;&gt;&gt; INPUT pre_wait_seconds: </span><span class="si">{</span><span class="n">pre_wait_seconds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># DEBUG: Object ID after measure_baseline</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG1 - baseline object ID after measure_baseline: </span><span class="si">{</span><span class="nb">id</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG1 - baseline metadata after measure_baseline: </span><span class="si">{</span><span class="n">baseline</span><span class="o">.</span><span class="n">metadata</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Update baseline_id with PID to ensure uniqueness</span>
+        <span class="n">baseline</span><span class="o">.</span><span class="n">baseline_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;baseline_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">baseline</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># DEBUG: Object ID after updates</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG1 - baseline object ID after updates: </span><span class="si">{</span><span class="nb">id</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG1 - baseline metadata after updates: </span><span class="si">{</span><span class="n">baseline</span><span class="o">.</span><span class="n">metadata</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG1 - baseline.__dict__: </span><span class="si">{</span><span class="n">baseline</span><span class="o">.</span><span class="vm">__dict__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">idle_baseline</span> <span class="o">=</span> <span class="n">baseline</span>
+        <span class="k">return</span> <span class="n">baseline</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># High‑frequency sampling (Req 1.46)</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sampling_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Background thread that samples RAPL at the configured rate.</span>
+<span class="sd">        Samples are put into a queue for later retrieval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span>
+        <span class="n">next_sample</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">sample_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_active</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Take a sample</span>
+                <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">energy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span><span class="o">.</span><span class="n">read_energy_safe</span><span class="p">()</span>
+
+                <span class="c1"># Put in queue (non-blocking)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">((</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">energy</span><span class="p">))</span>
+                <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Full</span><span class="p">:</span>
+                    <span class="c1"># Queue full – remove oldest and add new</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">((</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">energy</span><span class="p">))</span>
+                    <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+                <span class="c1"># 🔴 NEW DEBUG LINE 1: Print every time counter is a multiple of 10</span>
+                <span class="k">if</span> <span class="n">sample_counter</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG: counter=</span><span class="si">{</span><span class="n">sample_counter</span><span class="si">}</span><span class="s2">, will check interrupt condition&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Sample interrupts every 10th iteration (10 Hz)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_interrupt_samples</span> <span class="ow">and</span> <span class="n">sample_counter</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG: ACTUALLY triggering interrupt at counter=</span><span class="si">{</span><span class="n">sample_counter</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">sample_interrupts</span><span class="p">()</span>
+                <span class="n">sample_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># Sample interrupts every 10th iteration (10 Hz)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_interrupt_samples</span> <span class="ow">and</span> <span class="n">sample_counter</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG: ACTUALLY triggering interrupt at counter=</span><span class="si">{</span><span class="n">sample_counter</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">sample_interrupts</span><span class="p">()</span>
+                <span class="n">sample_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># ========== ADD WEB UI CODE HERE ==========</span>
+                <span class="c1"># Send to all active Web UI servers (non-blocking)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">webui_enabled</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_run_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">webui_servers</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 WEBUI: Sending data for run </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">server</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">webui_servers</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   To server: </span><span class="si">{</span><span class="n">server</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="c1"># Get latest CPU data if available</span>
+                            <span class="n">cpu_data</span> <span class="o">=</span> <span class="p">{}</span>
+                            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;turbostat&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="p">:</span>
+                                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="p">,</span> <span class="s2">&quot;get_latest_sample&quot;</span><span class="p">):</span>
+                                    <span class="n">cpu_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">get_latest_sample</span><span class="p">()</span> <span class="ow">or</span> <span class="p">{}</span>
+
+                            <span class="c1"># Get interrupt rate</span>
+                            <span class="n">irq_rate</span> <span class="o">=</span> <span class="mi">0</span>
+                            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;scheduler&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="p">:</span>
+                                <span class="n">irq_rate</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="p">,</span>
+                                    <span class="s2">&quot;get_current_interrupt_rate&quot;</span><span class="p">,</span>
+                                    <span class="k">lambda</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                                <span class="p">)()</span>
+
+                            <span class="c1"># Push raw sample to this server</span>
+                            <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                                <span class="n">server</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">],</span>
+                                <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                                    <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_run_id</span><span class="p">,</span>
+                                    <span class="s2">&quot;server&quot;</span><span class="p">:</span> <span class="n">server</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+                                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                                    <span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">:</span> <span class="n">cpu_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Bzy_MHz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                    <span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">:</span> <span class="n">cpu_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Avg_MHz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                    <span class="s2">&quot;package_temp&quot;</span><span class="p">:</span> <span class="n">cpu_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PkgTmp&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                                    <span class="s2">&quot;pkg_power&quot;</span><span class="p">:</span> <span class="n">energy</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1_000_000</span><span class="p">,</span>
+                                    <span class="s2">&quot;interrupt_rate&quot;</span><span class="p">:</span> <span class="n">irq_rate</span><span class="p">,</span>
+                                <span class="p">},</span>
+                                <span class="n">timeout</span><span class="o">=</span><span class="n">server</span><span class="p">[</span><span class="s2">&quot;timeout&quot;</span><span class="p">],</span>
+                                <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Connection&quot;</span><span class="p">:</span> <span class="s2">&quot;close&quot;</span><span class="p">},</span>
+                            <span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                            <span class="k">pass</span>  <span class="c1"># Silent fail per server</span>
+                <span class="c1"># ========== END WEB UI CODE ==========</span>
+
+                <span class="c1"># Schedule next sample</span>
+                <span class="n">next_sample</span> <span class="o">+=</span> <span class="n">interval</span>
+                <span class="n">sleep_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">next_sample</span> <span class="o">-</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+                <span class="k">if</span> <span class="n">sleep_time</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">sleep_time</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Running behind – warn and continue</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;Sampling loop falling behind; increase interval or reduce load&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">next_sample</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sampling error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_start_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start the high‑frequency sampling thread.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_thermal_sampling</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Sampling already active&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_sampling_loop</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;EnergyEngine-Sampler&quot;</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">dprint</span><span class="p">(</span><span class="s2">&quot;Started high‑frequency sampling&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stop_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop sampling and retrieve all collected samples.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">())</span>
+            <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stopped sampling, collected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Measurement session management</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="EnergyEngine.start_measurement">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine.start_measurement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_measurement</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start a new measurement session.</span>
+
+<span class="sd">        This method:</span>
+<span class="sd">        1. Captures snapshot values (RAPL, scheduler)</span>
+<span class="sd">        2. Starts continuous readers (perf, turbostat)</span>
+<span class="sd">        3. Starts high-frequency sampling</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;meas_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Pin to dedicated cores first</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pin_cores</span><span class="p">()</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 1: Snapshot readers - capture START values</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">rapl_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span><span class="o">.</span><span class="n">read_energy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheduler_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_thermal_sampling</span><span class="p">()</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Capture MSR thermal snapshot at START</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">msr_thermal_start</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">msr_available</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;helper_available&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">helper_available</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">rdmsr_available</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;msr&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">msr_available</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msr_thermal_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">snapshot_thermal_state</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔥 THERMAL SNAPSHOT - START:&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Package: </span><span class="si">{</span><span class="n">msr_thermal_start</span><span class="p">[</span><span class="s1">&#39;package&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Core: </span><span class="si">{</span><span class="n">msr_thermal_start</span><span class="p">[</span><span class="s1">&#39;core&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MSR thermal start: </span><span class="si">{</span><span class="n">msr_thermal_start</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to capture start MSR thermal: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not capture start MSR thermal: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_readings</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;rapl&quot;</span><span class="p">:</span> <span class="n">rapl_start</span><span class="p">,</span>
+            <span class="s2">&quot;scheduler&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler_start</span><span class="p">,</span>
+            <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">read_temperatures</span><span class="p">(),</span>
+            <span class="s2">&quot;msr_thermal&quot;</span><span class="p">:</span> <span class="n">msr_thermal_start</span><span class="p">,</span>  <span class="c1"># Store start thermal state</span>
+        <span class="p">}</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Capture C-state counters at START</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;msr&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">snapshot_cstate_counters</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;C-state start: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_start</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 2: Start continuous readers</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># perf: continuous counter (attaches to process)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="o">.</span><span class="n">start_process_measurement</span><span class="p">()</span>
+
+        <span class="c1"># turbostat: continuous sampling at the same rate as RAPL</span>
+        <span class="c1"># &lt;-- NEW: Compute interval in milliseconds from sampling_rate_hz</span>
+        <span class="n">interval_ms</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="mi">1000</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">100</span>
+        <span class="p">)</span>
+        <span class="c1"># &lt;-- MODIFIED: Pass interval_ms to start_monitoring (new signature)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">start_monitoring</span><span class="p">(</span><span class="n">interval_ms</span><span class="o">=</span><span class="n">interval_ms</span><span class="p">)</span>
+
+        <span class="c1"># Start high-frequency sampling (RAPL samples)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_sampling</span><span class="p">()</span>
+
+        <span class="c1"># NEW: Start interrupt sampling</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_interrupt_samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">start_interrupt_sampling</span><span class="p">()</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Started measurement </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span></div>
+
+
+<div class="viewcode-block" id="EnergyEngine.stop_measurement">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine.stop_measurement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_measurement</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RawEnergyMeasurement</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop measurement and return raw results.</span>
+
+<span class="sd">        This method:</span>
+<span class="sd">        1. Stops continuous readers and collects their data</span>
+<span class="sd">        2. Captures snapshot end values</span>
+<span class="sd">        3. Computes deltas</span>
+<span class="sd">        4. Assembles RawEnergyMeasurement</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;No measurement in progress&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 1: Stop continuous readers FIRST</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Stop high-frequency sampling</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_sampling</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Number of samples: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - First sample type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - First sample length: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - First sample content: </span><span class="si">{</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - Second sample content: </span><span class="si">{</span><span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">interrupt_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;collect_interrupt_samples&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_interrupt_samples</span>
+        <span class="p">):</span>
+            <span class="n">interrupt_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">stop_interrupt_sampling</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Collected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">interrupt_samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> interrupt samples&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Store samples in instance for later access by harness</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_interrupt_samples</span> <span class="o">=</span> <span class="n">interrupt_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_samples</span> <span class="o">=</span> <span class="n">samples</span>
+        <span class="c1"># Optional: separate by type if samples have type field</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_energy_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_cpu_samples</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Try to categorize samples if they have a &#39;type&#39; field</span>
+        <span class="c1"># If we need to categorize, we need to know the tuple structure</span>
+        <span class="c1"># For example, if samples are (timestamp, type, value) tuples</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># This is a guess - adjust based on actual tuple structure</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>  <span class="c1"># If second element is a number</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">last_energy_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+                <span class="c1"># Add more logic based on actual formatif hasattr(self.energy_engine, &#39;samples&#39;):</span>
+        <span class="c1"># Stop perf and get accumulated counters</span>
+
+        <span class="n">perf_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="o">.</span><span class="n">stop_process_measurement</span><span class="p">()</span>
+
+        <span class="c1"># Stop turbostat and get continuous data</span>
+        <span class="n">turbostat_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">stop_monitoring</span><span class="p">()</span>
+        <span class="n">thermal_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_thermal_sampling</span><span class="p">()</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 2: Capture snapshot readers END values</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">rapl_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span><span class="o">.</span><span class="n">read_energy</span><span class="p">()</span>
+        <span class="n">scheduler_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 3: Capture MSR thermal snapshot at END (BEFORE timestamp)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">msr_thermal_end</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">msr_available</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;helper_available&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">helper_available</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">rdmsr_available</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;msr&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">msr_available</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msr_thermal_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">snapshot_thermal_state</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔥 THERMAL SNAPSHOT - END:&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Package: </span><span class="si">{</span><span class="n">msr_thermal_end</span><span class="p">[</span><span class="s1">&#39;package&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Core: </span><span class="si">{</span><span class="n">msr_thermal_end</span><span class="p">[</span><span class="s1">&#39;core&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MSR thermal end: </span><span class="si">{</span><span class="n">msr_thermal_end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to capture end MSR thermal: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not capture end MSR thermal: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Calculate C-state deltas (per-run, not cumulative)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">cstate_deltas</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">msr_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;msr&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;_cstate_start&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_start</span>
+        <span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">snapshot_cstate_counters</span><span class="p">()</span>
+
+                <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;c2&quot;</span><span class="p">,</span> <span class="s2">&quot;c3&quot;</span><span class="p">,</span> <span class="s2">&quot;c6&quot;</span><span class="p">,</span> <span class="s2">&quot;c7&quot;</span><span class="p">]:</span>
+                    <span class="n">start_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_start</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">end_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_end</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">delta</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end_val</span> <span class="o">-</span> <span class="n">start_val</span><span class="p">)</span>
+                    <span class="n">cstate_deltas</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">_time_seconds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;C-state deltas: </span><span class="si">{</span><span class="n">cstate_deltas</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Add to msr_metrics</span>
+                <span class="n">msr_metrics</span><span class="p">[</span><span class="s2">&quot;cstate_deltas&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cstate_deltas</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to calculate C-state deltas: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Set end time IMMEDIATELY after thermal snapshot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">duration_seconds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+
+        <span class="c1"># Capture sensor temps AFTER timestamp (less timing-critical)</span>
+        <span class="n">sensor_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">read_temperatures</span><span class="p">()</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 3: Compute deltas for snapshot readers</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">start_rapl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_readings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Scheduler delta</span>
+        <span class="n">scheduler_delta</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">start_sched</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_readings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scheduler&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">scheduler_end</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">start_sched</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scheduler_end</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+                    <span class="n">start_sched</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+                <span class="p">):</span>
+                    <span class="n">scheduler_delta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheduler_end</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">-</span> <span class="n">start_sched</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">scheduler_delta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheduler_end</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">scheduler_delta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheduler_end</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="c1"># ADD THIS DEBUG</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG scheduler_delta keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">scheduler_delta</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG run queue value: </span><span class="si">{</span><span class="n">scheduler_delta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;runnable&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NOT FOUND&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 4: Calculate actual sampling rate</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">actual_sampling_rate</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span> <span class="o">/</span> <span class="n">duration_seconds</span> <span class="k">if</span> <span class="n">duration_seconds</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 5: Validate perf data</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf_data</span><span class="p">,</span> <span class="s2">&quot;duration_seconds&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">perf_data</span><span class="o">.</span><span class="n">duration_seconds</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;perf duration invalid: </span><span class="si">{</span><span class="n">perf_data</span><span class="o">.</span><span class="n">duration_seconds</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Capture MSR metrics and calculate C-state deltas</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">msr_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">msr_available</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;helper_available&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">helper_available</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">rdmsr_available</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;msr&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">msr_available</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Get base MSR metrics (ring bus, thermal, etc.)</span>
+                <span class="n">msr_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">get_all_metrics</span><span class="p">()</span>
+
+                <span class="c1"># ========== NEW: Calculate C-state deltas if start exists ==========</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;_cstate_start&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_start</span><span class="p">:</span>
+                    <span class="c1"># Capture end snapshot</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">snapshot_cstate_counters</span><span class="p">()</span>
+
+                    <span class="n">start_counters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_start</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;counters&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                    <span class="n">end_counters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">_cstate_end</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;counters&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+                    <span class="n">cstate_deltas</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;c2&quot;</span><span class="p">,</span> <span class="s2">&quot;c3&quot;</span><span class="p">,</span> <span class="s2">&quot;c6&quot;</span><span class="p">,</span> <span class="s2">&quot;c7&quot;</span><span class="p">]:</span>
+                        <span class="n">start_val</span> <span class="o">=</span> <span class="n">start_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">end_val</span> <span class="o">=</span> <span class="n">end_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">delta_raw</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end_val</span> <span class="o">-</span> <span class="n">start_val</span><span class="p">)</span>
+
+                        <span class="c1"># Convert to seconds using TSC frequency</span>
+                        <span class="k">if</span> <span class="p">(</span>
+                            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="p">,</span> <span class="s2">&quot;tsc_frequency_hz&quot;</span><span class="p">)</span>
+                            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">tsc_frequency_hz</span>
+                        <span class="p">):</span>
+                            <span class="n">delta_sec</span> <span class="o">=</span> <span class="n">delta_raw</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">tsc_frequency_hz</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">delta_sec</span> <span class="o">=</span> <span class="n">delta_raw</span> <span class="o">/</span> <span class="mf">2.8e9</span>  <span class="c1"># Fallback</span>
+
+                        <span class="c1"># Add directly to msr_metrics top level (for DB)</span>
+                        <span class="n">msr_metrics</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">_time_seconds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta_sec</span>
+                        <span class="n">cstate_deltas</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">_delta_raw&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta_raw</span>
+
+                    <span class="n">msr_metrics</span><span class="p">[</span><span class="s2">&quot;cstate_deltas&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cstate_deltas</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;C-state deltas (sec): c2=</span><span class="si">{</span><span class="n">msr_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;c2_time_seconds&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Debug prints</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🟢 ENGINE_ID: </span><span class="si">{</span><span class="nb">id</span><span class="p">(</span><span class="n">msr_metrics</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;🟢 ENGINE_VALUE: c2=</span><span class="si">{</span><span class="n">msr_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;c2_time_seconds&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🟢 ENGINE_KEYS: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">msr_metrics</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MSR measurement failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Set end time and duration AFTER all readings are done</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">duration_seconds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 7: Calculate derived thermal metrics (BEFORE building measurement)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">thermal_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_readings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;msr_thermal&quot;</span><span class="p">)</span>
+        <span class="n">thermal_end</span> <span class="o">=</span> <span class="n">msr_thermal_end</span>
+
+        <span class="n">thermal_during_experiment</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">thermal_now_active</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">thermal_since_boot</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">thermal_start</span> <span class="ow">and</span> <span class="n">thermal_end</span><span class="p">:</span>
+            <span class="c1"># Get package and core log bits</span>
+            <span class="n">start_pkg_log</span> <span class="o">=</span> <span class="n">thermal_start</span><span class="p">[</span><span class="s2">&quot;package&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_log&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">start_core_log</span> <span class="o">=</span> <span class="n">thermal_start</span><span class="p">[</span><span class="s2">&quot;core&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_log&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">end_pkg_log</span> <span class="o">=</span> <span class="n">thermal_end</span><span class="p">[</span><span class="s2">&quot;package&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_log&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">end_core_log</span> <span class="o">=</span> <span class="n">thermal_end</span><span class="p">[</span><span class="s2">&quot;core&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_log&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># Get current throttling state at end</span>
+            <span class="n">end_pkg_now</span> <span class="o">=</span> <span class="n">thermal_end</span><span class="p">[</span><span class="s2">&quot;package&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_now&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">end_core_now</span> <span class="o">=</span> <span class="n">thermal_end</span><span class="p">[</span><span class="s2">&quot;core&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_now&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># Combined OR logic</span>
+            <span class="n">start_combined_log</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="p">(</span><span class="n">start_pkg_log</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">start_core_log</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">end_combined_log</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="p">(</span><span class="n">end_pkg_log</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">end_core_log</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+
+            <span class="c1"># Did throttling occur DURING experiment?</span>
+            <span class="n">thermal_during_experiment</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="mi">1</span> <span class="k">if</span> <span class="n">end_combined_log</span> <span class="o">&gt;</span> <span class="n">start_combined_log</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Is system throttling NOW at end?</span>
+            <span class="n">thermal_now_active</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="p">(</span><span class="n">end_pkg_now</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">end_core_now</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+
+            <span class="c1"># Has system ever throttled since boot?</span>
+            <span class="n">thermal_since_boot</span> <span class="o">=</span> <span class="n">end_combined_log</span>
+
+        <span class="c1"># Print derived metrics for verification (temporary)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔥 THERMAL DERIVED:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   during_experiment: </span><span class="si">{</span><span class="n">thermal_during_experiment</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   now_active: </span><span class="si">{</span><span class="n">thermal_now_active</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   since_boot: </span><span class="si">{</span><span class="n">thermal_since_boot</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># STEP 8: Build raw measurement object</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">measurement</span> <span class="o">=</span> <span class="n">RawEnergyMeasurement</span><span class="p">(</span>
+            <span class="n">measurement_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span><span class="p">,</span>
+            <span class="n">start_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+            <span class="n">end_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span>
+            <span class="n">duration_seconds</span><span class="o">=</span><span class="n">duration_seconds</span><span class="p">,</span>
+            <span class="c1"># RAPL (snapshot)</span>
+            <span class="n">rapl_start_uj</span><span class="o">=</span><span class="n">start_rapl</span><span class="p">,</span>
+            <span class="n">rapl_end_uj</span><span class="o">=</span><span class="n">rapl_end</span><span class="p">,</span>
+            <span class="c1"># perf (continuous) - store object directly</span>
+            <span class="n">perf</span><span class="o">=</span><span class="n">perf_data</span><span class="p">,</span>
+            <span class="c1"># turbostat (continuous) - store the full data dictionary</span>
+            <span class="n">turbostat</span><span class="o">=</span><span class="n">turbostat_data</span><span class="p">,</span>
+            <span class="c1"># thermal (sensor)</span>
+            <span class="n">thermal</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">sensor_end</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sensor_end</span><span class="p">,</span> <span class="s2">&quot;to_dict&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">sensor_end</span>
+            <span class="p">),</span>
+            <span class="n">thermal_samples</span><span class="o">=</span><span class="n">thermal_samples</span><span class="p">,</span>
+            <span class="c1"># Swap Start and end fileds</span>
+            <span class="n">scheduler_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scheduler_start</span><span class="p">,</span>
+            <span class="n">scheduler_end</span><span class="o">=</span><span class="n">scheduler_end</span><span class="p">,</span>
+            <span class="c1"># scheduler (snapshot with delta)</span>
+            <span class="n">scheduler_metrics</span><span class="o">=</span><span class="n">scheduler_delta</span><span class="p">,</span>
+            <span class="c1"># High-frequency samples</span>
+            <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
+            <span class="c1"># Actual sampling rate</span>
+            <span class="n">sampling_rate_hz</span><span class="o">=</span><span class="n">actual_sampling_rate</span><span class="p">,</span>
+            <span class="c1"># MSR metrics</span>
+            <span class="n">msr_metrics</span><span class="o">=</span><span class="n">msr_metrics</span><span class="p">,</span>
+            <span class="c1"># NEW: Pass derived thermal values</span>
+            <span class="n">thermal_during_experiment</span><span class="o">=</span><span class="n">thermal_during_experiment</span><span class="p">,</span>
+            <span class="n">thermal_now_active</span><span class="o">=</span><span class="n">thermal_now_active</span><span class="p">,</span>
+            <span class="n">thermal_since_boot</span><span class="o">=</span><span class="n">thermal_since_boot</span><span class="p">,</span>
+            <span class="c1"># Metadata with thermal calculations</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">node</span><span class="p">(),</span>
+                <span class="s2">&quot;python_version&quot;</span><span class="p">:</span> <span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="s2">&quot;cpu_affinity&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sched_getaffinity</span><span class="p">(</span><span class="mi">0</span><span class="p">)),</span>
+                <span class="s2">&quot;pinned_cores&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinned_cores</span><span class="p">,</span>
+                <span class="s2">&quot;turbostat_version&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">turbostat_version</span><span class="p">,</span>
+                <span class="s2">&quot;cpu_topology&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">cpu_topology</span><span class="p">,</span>
+                <span class="c1"># Raw thermal snapshots</span>
+                <span class="s2">&quot;thermal_start&quot;</span><span class="p">:</span> <span class="n">thermal_start</span><span class="p">,</span>
+                <span class="s2">&quot;thermal_end&quot;</span><span class="p">:</span> <span class="n">thermal_end</span><span class="p">,</span>
+                <span class="c1"># Derived thermal metrics</span>
+                <span class="s2">&quot;thermal_during_experiment&quot;</span><span class="p">:</span> <span class="n">thermal_during_experiment</span><span class="p">,</span>
+                <span class="s2">&quot;thermal_now_active&quot;</span><span class="p">:</span> <span class="n">thermal_now_active</span><span class="p">,</span>
+                <span class="s2">&quot;thermal_since_boot&quot;</span><span class="p">:</span> <span class="n">thermal_since_boot</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add baseline info if available</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">idle_baseline</span><span class="p">:</span>
+            <span class="n">measurement</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;baseline_available&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">measurement</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;baseline_power_watts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">idle_baseline</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement</span> <span class="o">=</span> <span class="n">measurement</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_summary</span><span class="p">(</span><span class="n">measurement</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">measurement</span></div>
+
+
+<div class="viewcode-block" id="EnergyEngine.print_summary">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine.print_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurement</span><span class="p">:</span> <span class="n">RawEnergyMeasurement</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Print a comprehensive summary of all collected data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 ENERGY ENGINE COMPLETE SUMMARY&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+        <span class="c1"># 1. Timing</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⏱️  Duration: </span><span class="si">{</span><span class="n">measurement</span><span class="o">.</span><span class="n">duration_seconds</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Start: </span><span class="si">{</span><span class="n">measurement</span><span class="o">.</span><span class="n">start_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, End: </span><span class="si">{</span><span class="n">measurement</span><span class="o">.</span><span class="n">end_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 2. RAPL Energy (snapshot deltas)</span>
+        <span class="n">rapl_start</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">rapl_start_uj</span>
+        <span class="n">rapl_end</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">rapl_end_uj</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⚡ RAPL Energy (µJ):&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">domain</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">rapl_start</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">rapl_end</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">start_val</span> <span class="o">=</span> <span class="n">rapl_start</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">end_val</span> <span class="o">=</span> <span class="n">rapl_end</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="n">end_val</span> <span class="o">-</span> <span class="n">start_val</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">delta</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2"> µJ (</span><span class="si">{</span><span class="n">delta</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> J)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 3. perf counters – using correct attribute names</span>
+        <span class="k">if</span> <span class="n">measurement</span><span class="o">.</span><span class="n">perf</span><span class="p">:</span>
+            <span class="n">perf</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">perf</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📈 Performance Counters:&quot;</span><span class="p">)</span>
+            <span class="c1"># Instructions</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;instructions_retired&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Instructions: </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">instructions_retired</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Cycles</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;cpu_cycles&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cycles:       </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">cpu_cycles</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># IPC (method)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;instructions_per_cycle&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   IPC:          </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">instructions_per_cycle</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Cache</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;cache_references&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cache Refs:   </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">cache_references</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;cache_misses&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cache Misses: </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">cache_misses</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">perf</span><span class="o">.</span><span class="n">cache_references</span><span class="p">:</span>
+                    <span class="n">miss_rate</span> <span class="o">=</span> <span class="n">perf</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">/</span> <span class="n">perf</span><span class="o">.</span><span class="n">cache_references</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Miss Rate:    </span><span class="si">{</span><span class="n">miss_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Page faults</span>
+            <span class="n">major</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;major_page_faults&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">minor</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;minor_page_faults&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">major</span> <span class="ow">or</span> <span class="n">minor</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Page Faults:  </span><span class="si">{</span><span class="n">major</span><span class="o">+</span><span class="n">minor</span><span class="si">}</span><span class="s2"> (major=</span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2">, minor=</span><span class="si">{</span><span class="n">minor</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="c1"># Context switches</span>
+            <span class="n">vol</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;context_switches_voluntary&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">invol</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;context_switches_involuntary&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">vol</span> <span class="ow">or</span> <span class="n">invol</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Ctx Switches: vol=</span><span class="si">{</span><span class="n">vol</span><span class="si">}</span><span class="s2">, invol=</span><span class="si">{</span><span class="n">invol</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Thread migrations</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;thread_migrations&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Migrations:   </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">thread_migrations</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 4. Turbostat continuous data</span>
+        <span class="k">if</span> <span class="n">measurement</span><span class="o">.</span><span class="n">turbostat</span> <span class="ow">and</span> <span class="n">measurement</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dataframe&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">turbostat</span><span class="p">[</span><span class="s2">&quot;dataframe&quot;</span><span class="p">]</span>
+            <span class="n">summary</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🌡️ Turbostat Summary (over </span><span class="si">{:.2f}</span><span class="s2">s, </span><span class="si">{}</span><span class="s2"> samples):&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">measurement</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;duration_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">measurement</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_samples&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># C‑states</span>
+            <span class="n">cstates</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">summary</span> <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_mean&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;C&quot;</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">cstates</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   C‑state residencies (%):&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cstates</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Frequency</span>
+            <span class="k">if</span> <span class="s2">&quot;frequency_mean&quot;</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   Frequency (MHz): mean=</span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;frequency_mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;min=</span><span class="si">{</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_min&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;max=</span><span class="si">{</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_max&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;std=</span><span class="si">{</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_stddev&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="c1"># Temperature</span>
+            <span class="k">if</span> <span class="s2">&quot;package_temp_mean&quot;</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Package Temp (°C): mean=</span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;package_temp_mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Print first few turbostat samples</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   First 3 turbostat samples:&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))):</span>
+                    <span class="n">row</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Sample </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 5. MSR metrics</span>
+        <span class="k">if</span> <span class="n">measurement</span><span class="o">.</span><span class="n">msr_metrics</span><span class="p">:</span>
+            <span class="n">msr</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">msr_metrics</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔧 MSR Metrics:&quot;</span><span class="p">)</span>
+            <span class="n">ring_bus</span> <span class="o">=</span> <span class="n">msr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ring_bus&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="n">ring_bus</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   Ring Bus Frequency: </span><span class="si">{</span><span class="n">ring_bus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;current_mhz&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MHz&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;wakeup_latency_us&quot;</span> <span class="ow">in</span> <span class="n">msr</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Wake‑up Latency: </span><span class="si">{</span><span class="n">msr</span><span class="p">[</span><span class="s1">&#39;wakeup_latency_us&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> µs&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;thermal_throttle&quot;</span> <span class="ow">in</span> <span class="n">msr</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Thermal Throttle Flag: </span><span class="si">{</span><span class="n">msr</span><span class="p">[</span><span class="s1">&#39;thermal_throttle&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 6. Scheduler metrics</span>
+        <span class="k">if</span> <span class="n">measurement</span><span class="o">.</span><span class="n">scheduler_metrics</span><span class="p">:</span>
+            <span class="n">sched</span> <span class="o">=</span> <span class="n">measurement</span><span class="o">.</span><span class="n">scheduler_metrics</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔄 Scheduler Metrics:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Voluntary Ctx Sw:   </span><span class="si">{</span><span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;voluntary_switches&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Involuntary Ctx Sw: </span><span class="si">{</span><span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;involuntary_switches&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Thread Migrations:  </span><span class="si">{</span><span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;thread_migrations&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Run Queue Length:    </span><span class="si">{</span><span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;runnable&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Kernel Time:         </span><span class="si">{</span><span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;system_time&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   User Time:           </span><span class="si">{</span><span class="n">sched</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;user_time&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 7. High‑frequency samples</span>
+        <span class="k">if</span> <span class="n">measurement</span><span class="o">.</span><span class="n">samples</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 High‑Frequency Samples: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">measurement</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> collected&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">measurement</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   First sample:&quot;</span><span class="p">,</span> <span class="n">measurement</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Context manager interface</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enter context: start measurement.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_measurement</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Exit context: stop measurement and store result in self.measurement.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_measurement</span><span class="p">()</span>
+
+    <span class="c1"># ------------------------------------------------------------------------</span>
+    <span class="c1"># Multiple‑run convenience</span>
+    <span class="c1"># ------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="EnergyEngine.run_multiple">
+<a class="viewcode-back" href="../../core.energy_engine.html#core.energy_engine.EnergyEngine.run_multiple">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_multiple</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">args</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(),</span>
+        <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">cool_down</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run a function multiple times, measuring each run and collecting statistics.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            func: The function to run (should contain the AI workload).</span>
+<span class="sd">            args: Positional arguments for the function.</span>
+<span class="sd">            kwargs: Keyword arguments for the function.</span>
+<span class="sd">            iterations: Number of runs.</span>
+<span class="sd">            cool_down: Seconds to wait between runs (default from config).</span>
+<span class="sd">            output_file: Optional JSON file to save results.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A dictionary containing:</span>
+<span class="sd">                - &#39;all_runs&#39;: list of RawEnergyMeasurement objects</span>
+<span class="sd">                - &#39;summary&#39;: statistical summary of key metrics</span>
+<span class="sd">                - &#39;metadata&#39;: run parameters</span>
+
+<span class="sd">        Req 3.4: Automated 10‑run iteration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">cool_down</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cool_down</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cool_down_seconds</span>
+
+        <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running </span><span class="si">{</span><span class="n">iterations</span><span class="si">}</span><span class="s2"> iterations with </span><span class="si">{</span><span class="n">cool_down</span><span class="si">}</span><span class="s2">s cool‑down&quot;</span><span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">):</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Run </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">iterations</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="bp">self</span> <span class="k">as</span> <span class="n">engine</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">cool_down</span><span class="p">)</span>
+
+        <span class="c1"># Compute summary statistics</span>
+        <span class="n">summaries</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">&quot;package_energy_uj&quot;</span><span class="p">,</span> <span class="s2">&quot;µJ&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;core_energy_uj&quot;</span><span class="p">,</span> <span class="s2">&quot;µJ&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;duration_seconds&quot;</span><span class="p">,</span> <span class="s2">&quot;s&quot;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">unit</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;package_energy_uj&quot;</span><span class="p">:</span>
+                        <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">package_energy_uj</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;core_energy_uj&quot;</span><span class="p">:</span>
+                        <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">core_energy_uj</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">metric</span> <span class="o">==</span> <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span>
+                        <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">duration_seconds</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">values</span><span class="p">:</span>
+                <span class="n">summaries</span><span class="p">[</span><span class="n">metric</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+                    <span class="s2">&quot;median&quot;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+                    <span class="s2">&quot;stdev&quot;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+                    <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+                    <span class="s2">&quot;unit&quot;</span><span class="p">:</span> <span class="n">unit</span><span class="p">,</span>
+                <span class="p">}</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">iterations</span><span class="p">,</span>
+                <span class="s2">&quot;cool_down_seconds&quot;</span><span class="p">:</span> <span class="n">cool_down</span><span class="p">,</span>
+                <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="s2">&quot;baseline_available&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">idle_baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;all_runs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span> <span class="k">else</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span>
+            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="n">summaries</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">output_file</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+            <span class="n">dprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved results to </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String representation of the energy engine.&quot;&quot;&quot;</span>
+        <span class="n">readers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span><span class="p">:</span>
+            <span class="n">readers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;rapl&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="o">.</span><span class="n">perf_available</span><span class="p">:</span>
+            <span class="n">readers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;perf&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="o">.</span><span class="n">available</span><span class="p">:</span>
+            <span class="n">readers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;turbostat&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor</span><span class="o">.</span><span class="n">available_sensors</span><span class="p">:</span>
+            <span class="n">readers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;sensor&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr</span><span class="o">.</span><span class="n">rdmsr_available</span><span class="p">:</span>
+            <span class="n">readers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;msr&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;EnergyEngine(readers=</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">readers</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Example usage (standalone test)</span>
+<span class="c1"># ============================================================================</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+
+    <span class="c1"># Set up logging</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ENERGY ENGINE TEST – RAW MEASUREMENTS ONLY&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Load configuration from Module 0</span>
+    <span class="n">config_loader</span> <span class="o">=</span> <span class="n">ConfigLoader</span><span class="p">()</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">config_loader</span><span class="o">.</span><span class="n">get_hardware_config</span><span class="p">()</span>  <span class="c1"># hw_config.json</span>
+
+    <span class="c1"># Merge with app settings</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">config_loader</span><span class="o">.</span><span class="n">get_settings</span><span class="p">()</span>
+
+    <span class="c1"># Handle settings (could be dict or object from config_loader)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;settings&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="vm">__dict__</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;settings&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settings</span>
+
+    <span class="c1"># Create engine</span>
+    <span class="n">engine</span> <span class="o">=</span> <span class="n">EnergyEngine</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 </span><span class="si">{</span><span class="n">engine</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Measure idle baseline (optional – stored as metadata)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Measuring idle baseline (2 samples of 2s each for quick test)...&quot;</span><span class="p">)</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">measure_idle_baseline</span><span class="p">(</span>
+        <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">pre_wait_seconds</span><span class="o">=</span><span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Idle baseline: </span><span class="si">{</span><span class="n">baseline</span><span class="si">}</span><span class="s2"> W&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   (This baseline is stored as metadata, NOT applied to raw data)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Simple workload for testing</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dummy_workload</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A dummy workload that just sleeps.&quot;&quot;&quot;</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;done&quot;</span>
+
+    <span class="c1"># Single measurement – returns RAW data only</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Running single measurement (RAW data)...&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">engine</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">dummy_workload</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Result: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Raw package energy: </span><span class="si">{</span><span class="n">engine</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">package_energy_uj</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Raw core energy: </span><span class="si">{</span><span class="n">engine</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">core_energy_uj</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">engine</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_available&quot;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Baseline available: </span><span class="si">{</span><span class="n">engine</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;baseline_power_watts&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> W&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   (Use EnergyAnalyzer to compute corrected values)&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Multiple runs</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Running 3 iterations with 2 second cool-down...&quot;</span><span class="p">)</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run_multiple</span><span class="p">(</span><span class="n">dummy_workload</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">cool_down</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 Summary Statistics (RAW values):&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">: mean=</span><span class="si">{</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;unit&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;stdev=</span><span class="si">{</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;stdev&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Test complete – Raw measurements only, baseline stored separately!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

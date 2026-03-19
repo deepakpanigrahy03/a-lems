@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.env_config &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.env_config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.env_config</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/env_config.py  —  ⚙  Environment Config</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">Python / framework / git version fingerprint per run.</span>
+<span class="sd">Shows environment drift — which runs used different code versions.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">PL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+
+<span class="n">ACCENT</span> <span class="o">=</span> <span class="s2">&quot;#94a3b8&quot;</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.env_config.html#gui.pages.env_config.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">envs</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        SELECT</span>
+<span class="s2">            ec.env_id,</span>
+<span class="s2">            ec.python_version,</span>
+<span class="s2">            ec.python_implementation,</span>
+<span class="s2">            ec.os_name,</span>
+<span class="s2">            ec.os_version,</span>
+<span class="s2">            ec.kernel_version,</span>
+<span class="s2">            ec.llm_framework,</span>
+<span class="s2">            ec.framework_version,</span>
+<span class="s2">            ec.git_commit,</span>
+<span class="s2">            ec.git_branch,</span>
+<span class="s2">            ec.git_dirty,</span>
+<span class="s2">            ec.numpy_version,</span>
+<span class="s2">            ec.torch_version,</span>
+<span class="s2">            ec.transformers_version,</span>
+<span class="s2">            ec.container_runtime,</span>
+<span class="s2">            ec.env_hash,</span>
+<span class="s2">            ec.created_at,</span>
+<span class="s2">            COUNT(r.run_id)          AS run_count,</span>
+<span class="s2">            COUNT(DISTINCT e.exp_id) AS exp_count,</span>
+<span class="s2">            MIN(r.start_time_ns)     AS first_run_ns,</span>
+<span class="s2">            MAX(r.start_time_ns)     AS last_run_ns</span>
+<span class="s2">        FROM environment_config ec</span>
+<span class="s2">        LEFT JOIN experiments e ON ec.env_id = e.env_id</span>
+<span class="s2">        LEFT JOIN runs r ON e.exp_id = r.exp_id</span>
+<span class="s2">        GROUP BY ec.env_id</span>
+<span class="s2">        ORDER BY ec.env_id DESC</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">envs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No environment records yet.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">total_envs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">envs</span><span class="p">)</span>
+    <span class="n">dirty_envs</span> <span class="o">=</span> <span class="n">envs</span><span class="p">[</span><span class="n">envs</span><span class="p">[</span><span class="s2">&quot;git_dirty&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">])]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">branches</span> <span class="o">=</span> <span class="n">envs</span><span class="p">[</span><span class="s2">&quot;git_branch&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">commits</span> <span class="o">=</span> <span class="n">envs</span><span class="p">[</span><span class="s2">&quot;git_commit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="c1"># ── Header ────────────────────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:14px 20px;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;background:linear-gradient(135deg,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">14,</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">06);&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">33;border-radius:12px;margin-bottom:20px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Environment Fingerprints — </span><span class="si">{</span><span class="n">total_envs</span><span class="si">}</span><span class="s2"> recorded&lt;/div&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;&#39;&gt;&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&lt;div style=&#39;font-size:18px;font-weight:700;color:</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;line-height:1;&#39;&gt;</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#94a3b8;text-transform:uppercase;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-top:3px;&#39;&gt;</span><span class="si">{</span><span class="n">l</span><span class="si">}</span><span class="s2">&lt;/div&gt;&lt;/div&gt;&quot;</span>
+                <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="p">(</span><span class="n">total_envs</span><span class="p">,</span> <span class="s2">&quot;Environments&quot;</span><span class="p">,</span> <span class="n">ACCENT</span><span class="p">),</span>
+                    <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">commits</span><span class="p">),</span> <span class="s2">&quot;Unique commits&quot;</span><span class="p">,</span> <span class="s2">&quot;#60a5fa&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">branches</span><span class="p">),</span> <span class="s2">&quot;Git branches&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">),</span>
+                    <span class="p">(</span>
+                        <span class="n">dirty_envs</span><span class="p">,</span>
+                        <span class="s2">&quot;Dirty builds&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;#f59e0b&quot;</span> <span class="k">if</span> <span class="n">dirty_envs</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">,</span>
+                    <span class="p">),</span>
+                <span class="p">]</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="o">+</span> <span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Dirty build warning</span>
+    <span class="k">if</span> <span class="n">dirty_envs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;padding:8px 14px;background:#2a1a0c;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-size:11px;color:#fcd34d;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;margin-bottom:12px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;⚠ </span><span class="si">{</span><span class="n">dirty_envs</span><span class="si">}</span><span class="s2"> environment</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">dirty_envs</span><span class="o">&gt;</span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;had uncommitted changes (git_dirty=1). &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Runs from dirty builds may not be fully reproducible.&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ── Environment cards ─────────────────────────────────────────────────────</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">envs</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">env_id</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env_id&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+        <span class="n">py_ver</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">py_impl</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_implementation&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">os_name</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;os_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kernel_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">framework</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;llm_framework&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">fw_ver</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;framework_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">commit</span> <span class="o">=</span> <span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_commit&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">8</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_branch&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">dirty</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_dirty&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+        <span class="n">numpy_v</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numpy_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;—&quot;</span>
+        <span class="n">torch_v</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;torch_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;—&quot;</span>
+        <span class="n">trans_v</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transformers_version&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;—&quot;</span>
+        <span class="n">runs_n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_count&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">exps_n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;exp_count&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">created</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
+        <span class="n">env_hash</span> <span class="o">=</span> <span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env_hash&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">12</span><span class="p">]</span>
+
+        <span class="n">dirty_badge</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;&lt;span style=&#39;background:#2a1a0c;color:#f59e0b;font-size:8px;&quot;</span>
+            <span class="s2">&quot;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:6px;&#39;&gt;DIRTY&lt;/span&gt;&quot;</span>
+            <span class="k">if</span> <span class="n">dirty</span>
+            <span class="k">else</span> <span class="s2">&quot;&lt;span style=&#39;background:#052e1a;color:#4ade80;font-size:8px;&quot;</span>
+            <span class="s2">&quot;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:6px;&#39;&gt;CLEAN&lt;/span&gt;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;border:1px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">22;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-left:3px solid </span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-radius:0 8px 8px 0;padding:12px 16px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:#111827;margin-bottom:8px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;font-family:IBM Plex Mono,monospace;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:10px;margin-bottom:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:13px;font-weight:700;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&#39;&gt;env_</span><span class="si">{</span><span class="n">env_id</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:11px;color:#f1f5f9;&#39;&gt;</span><span class="si">{</span><span class="n">branch</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:10px;color:#60a5fa;&#39;&gt;@</span><span class="si">{</span><span class="n">commit</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dirty_badge</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;margin-left:auto;font-size:9px;color:#475569;&#39;&gt;</span><span class="si">{</span><span class="n">created</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#475569;text-transform:uppercase;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-bottom:2px;&#39;&gt;Runtime&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#94a3b8;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">py_impl</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">py_ver</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">os_name</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">kernel</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#475569;text-transform:uppercase;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-bottom:2px;&#39;&gt;Libraries&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#94a3b8;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;numpy </span><span class="si">{</span><span class="n">numpy_v</span><span class="si">}</span><span class="s2"> · torch </span><span class="si">{</span><span class="n">torch_v</span><span class="si">}</span><span class="s2"> · transformers </span><span class="si">{</span><span class="n">trans_v</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:9px;color:#475569;text-transform:uppercase;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;letter-spacing:.08em;margin-bottom:2px;&#39;&gt;Runs&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;color:#94a3b8;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">runs_n</span><span class="si">}</span><span class="s2"> runs · </span><span class="si">{</span><span class="n">exps_n</span><span class="si">}</span><span class="s2"> exps · hash: </span><span class="si">{</span><span class="n">env_hash</span><span class="si">}</span><span class="s2">&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ── Runs per environment ───────────────────────────────────────────────────</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">envs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Runs per environment&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;env_</span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;env_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> @</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;git_commit&#39;</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)[:</span><span class="mi">6</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">envs</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+                <span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">envs</span><span class="p">[</span><span class="s2">&quot;run_count&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">marker_color</span><span class="o">=</span><span class="p">[</span>
+                    <span class="s2">&quot;#f59e0b&quot;</span> <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;git_dirty&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">ACCENT</span>
+                    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">envs</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+                <span class="p">],</span>
+                <span class="n">marker_line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">PL</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Environment&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot;Run count&quot;</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">plotly_chart</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;env_runs_bar&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Git commit timeline ───────────────────────────────────────────────────</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:11px;font-weight:600;color:</span><span class="si">{</span><span class="n">ACCENT</span><span class="si">}</span><span class="s2">;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;&#39;&gt;&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Environment drift — commit history&lt;/div&gt;&quot;</span><span class="p">,</span>
+        <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">env</span> <span class="ow">in</span> <span class="n">envs</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;env_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">commit</span> <span class="o">=</span> <span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_commit&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">12</span><span class="p">]</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_branch&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">created</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
+        <span class="n">runs_n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_count&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">dirty</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_dirty&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+        <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;#f59e0b&quot;</span> <span class="k">if</span> <span class="n">dirty</span> <span class="k">else</span> <span class="s2">&quot;#22c55e&quot;</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:10px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;padding:5px 10px;border-radius:6px;margin-bottom:3px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;width:8px;height:8px;border-radius:50%;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;background:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;flex-shrink:0;&#39;&gt;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;code style=&#39;font-size:11px;color:#60a5fa;&#39;&gt;</span><span class="si">{</span><span class="n">commit</span><span class="si">}</span><span class="s2">&lt;/code&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:11px;color:#94a3b8;&#39;&gt;</span><span class="si">{</span><span class="n">branch</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-size:10px;color:#475569;&#39;&gt;</span><span class="si">{</span><span class="n">created</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;margin-left:auto;font-size:10px;color:#475569;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">runs_n</span><span class="si">}</span><span class="s2"> runs&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,554 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.base module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.database.factory module" href="core.database.factory.html" />
+    <link rel="prev" title="core.database.repositories.thermal module" href="core.database.repositories.thermal.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="core.database.html">core.database package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.database.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.database.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.html#module-core.database">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.database.html">core.database package</a></li>
+      <li class="breadcrumb-item active">core.database.base module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.database.base.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.database.base">
+<span id="core-database-base-module"></span><h1>core.database.base module<a class="headerlink" href="#module-core.database.base" title="Link to this heading"></a></h1>
+<section id="database-interface-abstract-base-class-for-all-database-adapters">
+<h2>DATABASE INTERFACE – Abstract Base Class for All Database Adapters<a class="headerlink" href="#database-interface-abstract-base-class-for-all-database-adapters" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>PURPOSE:</dt><dd><p>Defines a common interface that all database adapters (SQLite, PostgreSQL)
+must implement. This allows switching databases by simply changing the
+config file, without modifying any application code.</p>
+</dd>
+<dt>WHY THIS EXISTS:</dt><dd><ul class="simple">
+<li><p>To support future migration from SQLite to PostgreSQL</p></li>
+<li><p>To keep database code modular and testable</p></li>
+<li><p>To enforce consistent method signatures across adapters</p></li>
+<li><p>To implement the adapter pattern for database flexibility</p></li>
+</ul>
+</dd>
+<dt>UNITS AND ASSUMPTIONS:</dt><dd><ul class="simple">
+<li><p>All time values are in nanoseconds</p></li>
+<li><p>All energy values are in microjoules</p></li>
+<li><p>All methods raise DatabaseError on failures</p></li>
+<li><p>Context manager support for transactions</p></li>
+</ul>
+</dd>
+</dl>
+<section id="author-deepak-panigrahy">
+<h3>AUTHOR: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py exception">
+<dt class="sig sig-object py" id="core.database.base.DatabaseError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.database.base.</span></span><span class="sig-name descname"><span class="pre">DatabaseError</span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>Base exception for all database operations.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.database.base.</span></span><span class="sig-name descname"><span class="pre">DatabaseInterface</span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for all database adapters.</p>
+<p>Any new database adapter (SQLite, PostgreSQL, MySQL) must implement
+all methods defined here. This ensures the rest of the application
+can interact with any database seamlessly.</p>
+<p>The interface is divided into sections:
+1. Connection management
+2. Transaction handling
+3. Table creation
+4. Core data insertion
+5. Query methods
+6. Context manager support</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.close">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.close" title="Link to this definition"></a></dt>
+<dd><p>Close database connection and release resources.</p>
+<p>This method should:
+- Close the connection gracefully
+- Release any connection pool resources
+- Be safe to call multiple times</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.commit">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">commit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.commit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.commit" title="Link to this definition"></a></dt>
+<dd><p>Commit the current transaction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.connect">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.connect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.connect" title="Link to this definition"></a></dt>
+<dd><p>Establish connection to the database.</p>
+<p>This method should:
+- Create the connection using config parameters
+- Set any necessary pragmas (for SQLite)
+- Configure connection pool (for PostgreSQL)
+- Raise DatabaseError if connection fails</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#core.database.base.DatabaseError" title="core.database.base.DatabaseError"><strong>DatabaseError</strong></a> – If connection fails</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.create_tables">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">create_tables</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.create_tables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.create_tables" title="Link to this definition"></a></dt>
+<dd><p>Create all necessary tables if they don’t exist.</p>
+<p>For SQLite, this runs CREATE TABLE IF NOT EXISTS statements.
+For PostgreSQL, this may use CREATE TABLE IF NOT EXISTS or migrations.</p>
+<p>Tables to create:
+- experiments
+- hardware_config
+- idle_baselines
+- runs
+- orchestration_events
+- orchestration_tax_summary
+- energy_samples
+- cpu_samples
+- interrupt_samples</p>
+<p>Also creates indexes and views (ml_features).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.create_tax_summaries">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">create_tax_summaries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.create_tax_summaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.create_tax_summaries" title="Link to this definition"></a></dt>
+<dd><p>Create tax summary entries for all agentic runs in an experiment.</p>
+<p>This method:
+1. Finds all runs in the experiment
+2. Pairs linear and agentic runs by run_number
+3. Computes tax = agentic_dynamic_uj - linear_dynamic_uj
+4. Stores results in orchestration_tax_summary table</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exp_id</strong> – Experiment ID</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.execute">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.execute" title="Link to this definition"></a></dt>
+<dd><p>Execute a raw SQL query and return results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – SQL query string with placeholders</p></li>
+<li><p><strong>params</strong> – Parameters for the query (tuple for positional, dict for named)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of dictionaries, each representing a row with column names as keys</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#core.database.base.DatabaseError" title="core.database.base.DatabaseError"><strong>DatabaseError</strong></a> – If query execution fails</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<dl class="simple">
+<dt>results = db.execute(</dt><dd><p>“SELECT * FROM runs WHERE exp_id = ?”,
+(exp_id,)</p>
+</dd>
+</dl>
+<p>)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.execute_many">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">execute_many</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.execute_many"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.execute_many" title="Link to this definition"></a></dt>
+<dd><p>Execute the same query with multiple parameter sets.</p>
+<p>Used for batch inserts where performance matters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – SQL query string</p></li>
+<li><p><strong>params_list</strong> – List of parameter sets, each a tuple or dict</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of rows affected</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#core.database.base.DatabaseError" title="core.database.base.DatabaseError"><strong>DatabaseError</strong></a> – If execution fails</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.get_ml_data">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_ml_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.get_ml_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.get_ml_data" title="Link to this definition"></a></dt>
+<dd><p>Retrieve flattened ML data from the ml_features view.</p>
+<p>This is the primary method for loading data into ML pipelines.
+The view contains all features and targets in a single row per run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>workflow</strong> – If provided, filter by ‘linear’ or ‘agentic’</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of dictionaries, each representing one run with all ML columns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.get_run">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.get_run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.get_run" title="Link to this definition"></a></dt>
+<dd><p>Retrieve a single run by its ID.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.get_runs_by_experiment">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_runs_by_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.get_runs_by_experiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.get_runs_by_experiment" title="Link to this definition"></a></dt>
+<dd><p>Retrieve all runs for an experiment, ordered by run_number.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.get_tax_summaries">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_tax_summaries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.get_tax_summaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.get_tax_summaries" title="Link to this definition"></a></dt>
+<dd><p>Retrieve tax summaries, optionally filtered by experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exp_id</strong> – If provided, only summaries for runs in that experiment</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of tax summary dictionaries</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_baseline">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_baseline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_baseline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_baseline" title="Link to this definition"></a></dt>
+<dd><p>Insert an idle baseline measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>baseline_data</strong> – Dictionary with keys:
+- baseline_id: str (optional, generated if not provided)
+- timestamp: float
+- package_power_watts: float
+- core_power_watts: float
+- uncore_power_watts: float (optional)
+- dram_power_watts: float (optional)
+- duration_seconds: int
+- sample_count: int
+- package_std: float (optional)
+- core_std: float (optional)
+- governor: str
+- turbo: str (‘enabled’/’disabled’)
+- background_cpu: float
+- process_count: int
+- method: str</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>baseline_id of the new baseline</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_cpu_samples">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_cpu_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_cpu_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_cpu_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert CPU samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>samples</strong> – List of sample dictionaries with keys:
+- timestamp_ns: int
+- cpu_util_percent: float
+- cpu_busy_mhz: float
+- cpu_avg_mhz: float
+- c1_residency: float
+- c2_residency: float
+- c3_residency: float
+- c6_residency: float
+- c7_residency: float
+- pkg_c8_residency: float
+- pkg_c9_residency: float
+- pkg_c10_residency: float
+- package_power: float
+- dram_power: float
+- gpu_rc6: float
+- package_temp: float
+- ipc: float
+- extra_metrics_json: str (optional)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_energy_samples">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_energy_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_energy_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_energy_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert high-frequency RAPL samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>samples</strong> – List of sample dictionaries with keys:
+- timestamp_ns: int
+- pkg_energy_uj: int (optional)
+- core_energy_uj: int (optional)
+- uncore_energy_uj: int (optional)
+- dram_energy_uj: int (optional)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_experiment">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_experiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_experiment" title="Link to this definition"></a></dt>
+<dd><p>Insert a new experiment record.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>experiment_data</strong> – Dictionary with keys:
+- name: str - Experiment name
+- description: str (optional) - Description
+- workflow_type: str - ‘linear’ or ‘agentic’
+- model_name: str - LLM model identifier
+- provider: str - ‘cloud’ or ‘local’
+- task_name: str - Task identifier
+- country_code: str - ISO country code</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>exp_id of the newly created experiment</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_hardware">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_hardware</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hardware_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_hardware"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_hardware" title="Link to this definition"></a></dt>
+<dd><p>Insert or retrieve hardware configuration.</p>
+<p>Should check for existing record (by hostname + kernel_version)
+and return existing hw_id if found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>hardware_data</strong> – Dictionary with keys:
+- hostname: str
+- cpu_model: str
+- cpu_cores: int
+- cpu_threads: int
+- ram_gb: int
+- kernel_version: str
+- microcode_version: str (optional)
+- rapl_domains: str (optional)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>hw_id of the hardware record (existing or new)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_interrupt_samples">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_interrupt_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_interrupt_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_interrupt_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert interrupt rate samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>samples</strong> – List of sample dictionaries with keys:
+- timestamp_ns: int
+- interrupts_per_sec: float</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_orchestration_events">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_orchestration_events</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_orchestration_events"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_orchestration_events" title="Link to this definition"></a></dt>
+<dd><p>Insert orchestration events for a run.</p>
+<p>Each event represents a phase (planning, execution, waiting, synthesis)
+or a specific action (LLM call, tool call).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>events</strong> – List of event dictionaries with keys:
+- step_index: int (optional)
+- phase: str (‘planning’/’execution’/’waiting’/’synthesis’)
+- event_type: str
+- start_time_ns: int
+- end_time_ns: int
+- duration_ns: int
+- power_watts: float (optional)
+- cpu_util_percent: float (optional)
+- interrupt_rate: float (optional)
+- event_energy_uj: int
+- tax_contribution_uj: int
+- tax_percent: float</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.insert_run">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">insert_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.insert_run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.insert_run" title="Link to this definition"></a></dt>
+<dd><p>Insert a single run with all its metrics.</p>
+<p>This is the main method for inserting experiment results.
+It should extract all fields from the harness output and
+compute derived metrics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>run_data</strong> – Complete run dictionary from harness containing:
+- ml_features: dict with 77+ fields
+- layer3_derived: dict (optional)
+- execution: dict (optional)
+- sustainability: dict (optional)
+- orchestration_events: list (optional)
+- energy_samples: list (optional)
+- cpu_samples: list (optional)
+- interrupt_samples: list (optional)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>run_id of the newly inserted run</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.rollback">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">rollback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.rollback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.rollback" title="Link to this definition"></a></dt>
+<dd><p>Rollback the current transaction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.base.DatabaseInterface.transaction">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">transaction</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#core.database.base.DatabaseInterface" title="core.database.base.DatabaseInterface"><span class="pre">DatabaseInterface</span></a></span></span><a class="reference internal" href="_modules/core/database/base.html#DatabaseInterface.transaction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.base.DatabaseInterface.transaction" title="Link to this definition"></a></dt>
+<dd><p>Begin a transaction. Returns self for context manager usage.</p>
+<dl class="simple">
+<dt>Usage:</dt><dd><dl class="simple">
+<dt>with db.transaction():</dt><dd><p>db.insert_run(data1)
+db.insert_run(data2)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>This ensures atomicity: both inserts succeed or both fail.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.database.repositories.thermal.html" class="btn btn-neutral float-left" title="core.database.repositories.thermal module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.database.factory.html" class="btn btn-neutral float-right" title="core.database.factory module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

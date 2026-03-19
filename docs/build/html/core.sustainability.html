@@ -1,0 +1,405 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.sustainability package &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.sustainability.models package" href="core.sustainability.models.html" />
+    <link rel="prev" title="core.readers.turbostat_reader module" href="core.readers.turbostat_reader.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.sustainability package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-core.sustainability">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.sustainability package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.sustainability.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-sustainability-package">
+<h1>core.sustainability package<a class="headerlink" href="#core-sustainability-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.sustainability.models.html">core.sustainability.models package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.models.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.carbon_metrics.html">core.sustainability.models.carbon_metrics module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.carbon_metrics.html#carbon-metrics-data-classes-for-carbon-footprint">CARBON METRICS – Data classes for carbon footprint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.carbon_metrics.html#core.sustainability.models.carbon_metrics.CarbonIntensityFactors"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.carbon_metrics.html#core.sustainability.models.carbon_metrics.CarbonMetrics"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.methane_metrics.html">core.sustainability.models.methane_metrics module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.methane_metrics.html#methane-metrics-data-classes-for-methane-emissions">METHANE METRICS – Data classes for methane emissions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.methane_metrics.html#core.sustainability.models.methane_metrics.MethaneLeakageFactors"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.methane_metrics.html#core.sustainability.models.methane_metrics.MethaneMetrics"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.water_metrics.html">core.sustainability.models.water_metrics module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.water_metrics.html#water-metrics-data-classes-for-water-consumption">WATER METRICS – Data classes for water consumption</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.water_metrics.html#core.sustainability.models.water_metrics.WaterIntensityFactors"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.water_metrics.html#core.sustainability.models.water_metrics.WaterMetrics"><code class="docutils literal notranslate"><span class="pre">WaterMetrics</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.models.html#module-core.sustainability.models">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.country_code"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.kg_per_kwh"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.kg_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.source"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.source_url"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.year"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.year</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.data_quality"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.uncertainty_percent"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.uncertainty_percent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.metadata"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id0"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id1"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id2"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.kg_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id3"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.quality_score"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.quality_score</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id4"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id5"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.to_dict"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonIntensityFactors.to_json"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id6"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.uncertainty_percent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id7"><code class="docutils literal notranslate"><span class="pre">CarbonIntensityFactors.year</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.kg"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.kg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.uncertainty_percent"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.uncertainty_percent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.confidence_level"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.confidence_level</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.per_query_mg"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.per_query_mg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.source"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.source_url"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.year"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.year</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.calculation_method"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.calculation_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.timestamp"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.metadata"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id8"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.calculation_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id9"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.confidence_level</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.grams"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.grams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.grams_lower"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.grams_lower</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.grams_upper"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.grams_upper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.interval_width_percent"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.interval_width_percent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id10"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.kg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.kg_lower"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.kg_lower</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.kg_upper"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.kg_upper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id11"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.milligrams"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.milligrams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.milligrams_lower"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.milligrams_lower</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.milligrams_upper"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.milligrams_upper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id12"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.per_query_mg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.query_count_validated"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.query_count_validated</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id13"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id14"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.summary"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id15"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.timestamp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.to_dict"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.to_json"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id16"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.uncertainty_percent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.CarbonMetrics.validate_query_count"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.validate_query_count()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id17"><code class="docutils literal notranslate"><span class="pre">CarbonMetrics.year</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.country_code"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.g_per_kwh"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.g_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.source"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.year"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.year</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.data_quality"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id18"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id19"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id20"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.g_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id21"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.source_url"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneLeakageFactors.to_dict"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id22"><code class="docutils literal notranslate"><span class="pre">MethaneLeakageFactors.year</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.kg"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.kg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.co2e_20yr"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.co2e_20yr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.co2e_100yr"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.co2e_100yr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.source"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.year"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.year</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.gwp_source"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.gwp_source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.calculation_method"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.calculation_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id23"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.calculation_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id24"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.co2e_100yr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id25"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.co2e_20yr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.grams"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.grams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id26"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.gwp_source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.gwp_source_url"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.gwp_source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id27"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.kg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.milligrams"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.milligrams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id28"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.source_url"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.to_dict"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.MethaneMetrics.to_json"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id29"><code class="docutils literal notranslate"><span class="pre">MethaneMetrics.year</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.country_code"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.liters_per_kwh"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.liters_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.source"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.year"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.year</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.data_quality"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id30"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id31"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id32"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.liters_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id33"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.source_url"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterIntensityFactors.to_dict"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id34"><code class="docutils literal notranslate"><span class="pre">WaterIntensityFactors.year</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics"><code class="docutils literal notranslate"><span class="pre">WaterMetrics</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.liters"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.liters</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.per_query_ml"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.per_query_ml</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.source"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.year"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.year</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.calculation_method"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.calculation_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id35"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.calculation_method</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id36"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.liters</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.milliliters"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.milliliters</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id37"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.per_query_ml</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id38"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.source</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.source_url"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.source_url</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.to_dict"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.to_dict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#core.sustainability.models.WaterMetrics.to_json"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.to_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.models.html#id39"><code class="docutils literal notranslate"><span class="pre">WaterMetrics.year</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.sustainability.utils.html">core.sustainability.utils package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.utils.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.conversions.html">core.sustainability.utils.conversions module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.conversions.html#sustainability-conversion-utilities">SUSTAINABILITY CONVERSION UTILITIES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.conversions.html#core.sustainability.utils.conversions.EnergyConverter"><code class="docutils literal notranslate"><span class="pre">EnergyConverter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.conversions.html#core.sustainability.utils.conversions.GWPCalculator"><code class="docutils literal notranslate"><span class="pre">GWPCalculator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.conversions.html#core.sustainability.utils.conversions.UnitConverter"><code class="docutils literal notranslate"><span class="pre">UnitConverter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.grid_factors.html">core.sustainability.utils.grid_factors module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.grid_factors.html#grid-factors-load-grid-intensity-data">GRID FACTORS – Load grid intensity data</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.grid_factors.html#core.sustainability.utils.grid_factors.GridFactorManager"><code class="docutils literal notranslate"><span class="pre">GridFactorManager</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.grid_factors.html#core.sustainability.utils.grid_factors.GridFactors"><code class="docutils literal notranslate"><span class="pre">GridFactors</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.time_aware_factors.html">core.sustainability.utils.time_aware_factors module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.time_aware_factors.html#core.sustainability.utils.time_aware_factors.TimeAwareGridFactors"><code class="docutils literal notranslate"><span class="pre">TimeAwareGridFactors</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.utils.html#module-core.sustainability.utils">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.EnergyConverter"><code class="docutils literal notranslate"><span class="pre">EnergyConverter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.EnergyConverter.JOULES_PER_KWH"><code class="docutils literal notranslate"><span class="pre">EnergyConverter.JOULES_PER_KWH</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.EnergyConverter.joules_to_kwh"><code class="docutils literal notranslate"><span class="pre">EnergyConverter.joules_to_kwh()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GWPCalculator"><code class="docutils literal notranslate"><span class="pre">GWPCalculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GWPCalculator.DEFAULT_GWP"><code class="docutils literal notranslate"><span class="pre">GWPCalculator.DEFAULT_GWP</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GWPCalculator.methane_to_co2e"><code class="docutils literal notranslate"><span class="pre">GWPCalculator.methane_to_co2e()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactorManager"><code class="docutils literal notranslate"><span class="pre">GridFactorManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactorManager.WORLD_AVERAGES"><code class="docutils literal notranslate"><span class="pre">GridFactorManager.WORLD_AVERAGES</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactorManager.get_factors"><code class="docutils literal notranslate"><span class="pre">GridFactorManager.get_factors()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactorManager.list_countries"><code class="docutils literal notranslate"><span class="pre">GridFactorManager.list_countries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors"><code class="docutils literal notranslate"><span class="pre">GridFactors</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors.carbon_kg_per_kwh"><code class="docutils literal notranslate"><span class="pre">GridFactors.carbon_kg_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors.country_code"><code class="docutils literal notranslate"><span class="pre">GridFactors.country_code</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors.data_quality"><code class="docutils literal notranslate"><span class="pre">GridFactors.data_quality</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors.methane_g_per_kwh"><code class="docutils literal notranslate"><span class="pre">GridFactors.methane_g_per_kwh</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors.sources"><code class="docutils literal notranslate"><span class="pre">GridFactors.sources</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.GridFactors.water_l_per_kwh"><code class="docutils literal notranslate"><span class="pre">GridFactors.water_l_per_kwh</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.UnitConverter"><code class="docutils literal notranslate"><span class="pre">UnitConverter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.UnitConverter.kg_to_mg"><code class="docutils literal notranslate"><span class="pre">UnitConverter.kg_to_mg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.utils.html#core.sustainability.utils.UnitConverter.liters_to_ml"><code class="docutils literal notranslate"><span class="pre">UnitConverter.liters_to_ml()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.sustainability.calculator.html">core.sustainability.calculator module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.calculator.html#sustainability-calculator-module-2-main-entry-point">SUSTAINABILITY CALCULATOR – Module 2 Main Entry Point</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#requirements-covered">Requirements Covered:</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.calculator.html#author-deepak-panigrahy">Author: Deepak Panigrahy</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityCalculator"><code class="docutils literal notranslate"><span class="pre">SustainabilityCalculator</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityCalculator.calculate_arbitrage"><code class="docutils literal notranslate"><span class="pre">SustainabilityCalculator.calculate_arbitrage()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityCalculator.calculate_from_derived"><code class="docutils literal notranslate"><span class="pre">SustainabilityCalculator.calculate_from_derived()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityCalculator.calculate_from_raw"><code class="docutils literal notranslate"><span class="pre">SustainabilityCalculator.calculate_from_raw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityCalculator.calculate_scarcity_index"><code class="docutils literal notranslate"><span class="pre">SustainabilityCalculator.calculate_scarcity_index()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityCalculator.list_countries"><code class="docutils literal notranslate"><span class="pre">SustainabilityCalculator.list_countries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.measurement_id"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.measurement_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.country_code"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.country_code</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.carbon"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.carbon</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.water"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.water</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.methane"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.methane</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.energy_j"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.energy_j</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.energy_kwh"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.energy_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.carbon_intensity_g_per_kwh"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.carbon_intensity_g_per_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.water_intensity_l_per_kwh"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.water_intensity_l_per_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.methane_intensity_g_per_kwh"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.methane_intensity_g_per_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.timestamp"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id0"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.carbon</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id1"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.carbon_intensity_g_per_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id2"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.country_code</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id3"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.energy_j</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id4"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.energy_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id5"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.measurement_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id6"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.methane</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id7"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.methane_intensity_g_per_kwh</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.summary"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.summary()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id8"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#core.sustainability.calculator.SustainabilityResult.to_dict"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.to_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id9"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.water</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.calculator.html#id10"><code class="docutils literal notranslate"><span class="pre">SustainabilityResult.water_intensity_l_per_kwh</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-core.sustainability">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core.sustainability" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.readers.turbostat_reader.html" class="btn btn-neutral float-left" title="core.readers.turbostat_reader module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.sustainability.models.html" class="btn btn-neutral float-right" title="core.sustainability.models package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

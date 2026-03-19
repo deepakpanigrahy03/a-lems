@@ -1,0 +1,577 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.display_formatter &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.execution.display_formatter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.execution.display_formatter</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span> <span class="k">as</span> <span class="n">scipy_stats</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.analysis.energy_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnergyAnalyzer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.database.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.energy_engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnergyEngine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.execution.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.sustainability.calculator</span><span class="w"> </span><span class="kn">import</span> <span class="n">SustainabilityCalculator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.baseline_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaselineManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.utils.debug</span><span class="w"> </span><span class="kn">import</span> <span class="n">dprint</span>
+
+
+<div class="viewcode-block" id="display_hardware">
+<a class="viewcode-back" href="../../../core.execution.display_formatter.html#core.execution.display_formatter.display_hardware">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_hardware</span><span class="p">(</span><span class="n">runs</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Display ALL hardware parameters from DerivedEnergyMeasurement (Layer 3).&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">run</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">runs</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> Run </span><span class="si">{</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Use layer3_derived – this contains all computed metrics</span>
+        <span class="n">derived</span> <span class="o">=</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">]</span>
+
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Req 1.1, 1.3: RAPL Energy Domains &amp; Uncore Waste</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="n">energy_uj</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;energy_uj&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   ⚡ RAPL Energy (Req 1.1):&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Package: </span><span class="si">{</span><span class="n">energy_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;package&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Core:    </span><span class="si">{</span><span class="n">energy_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;core&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+
+        <span class="n">uncore</span> <span class="o">=</span> <span class="n">energy_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">uncore</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;      Uncore:  </span><span class="si">{</span><span class="n">uncore</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> J (includes GPU if no separate GPU domain)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">dram</span> <span class="o">=</span> <span class="n">energy_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dram</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      DRAM:    </span><span class="si">{</span><span class="n">dram</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> J&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Req 1.5, 1.6, 1.10, 1.12, 1.43: Performance Counters &amp; Scheduler</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="n">perf</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;performance&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   📈 Performance Counters:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Instructions:      </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;instructions&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Cycles:            </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cycles&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      IPC:               </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ipc&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Cache References:  </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache_references&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Cache Misses:      </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache_misses&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">cache_refs</span> <span class="o">=</span> <span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache_references&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">miss_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache_misses&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">cache_refs</span><span class="p">)</span> <span class="k">if</span> <span class="n">cache_refs</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Cache Miss Rate:   </span><span class="si">{</span><span class="n">miss_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;      Page Faults:       </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;page_faults&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(major: </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;major_page_faults&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;minor: </span><span class="si">{</span><span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;minor_page_faults&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">scheduler</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scheduler&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="c1"># print(f&quot;      Voluntary Ctx Sw:  {scheduler.get(&#39;context_switches_voluntary&#39;, 0):,}&quot;)</span>
+        <span class="c1"># print(f&quot;      Involuntary Ctx Sw:{scheduler.get(&#39;context_switches_involuntary&#39;, 0):,}&quot;)</span>
+        <span class="c1"># print(f&quot;      Thread Migrations: {scheduler.get(&#39;thread_migrations&#39;, 0):,}&quot;)</span>
+
+        <span class="n">sched</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scheduler&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG scheduler keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">sched</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;power_states&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG power_states keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">power</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG frequency_mhz: </span><span class="si">{</span><span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_mhz&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;MISSING&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Req 1.9: Thermal + Derived Thermal Metrics</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="n">thermal</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   🌡️ Thermal (Req 1.9):&quot;</span><span class="p">)</span>
+
+        <span class="n">pkg_temp</span> <span class="o">=</span> <span class="n">thermal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp_celsius&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pkg_temp</span> <span class="ow">and</span> <span class="n">pkg_temp</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">100</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Package Temp: </span><span class="si">{</span><span class="n">pkg_temp</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Package Temp: N/A&quot;</span><span class="p">)</span>
+
+        <span class="n">core_temps</span> <span class="o">=</span> <span class="n">thermal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_temps_celsius&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">valid_temps</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">core_temps</span> <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">valid_temps</span><span class="p">:</span>
+            <span class="n">temps</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C&quot;</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">valid_temps</span><span class="p">])</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Core Temps:   [</span><span class="si">{</span><span class="n">temps</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># NEW: Display Heat Flux if available</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="k">if</span> <span class="s2">&quot;ml_features&quot;</span> <span class="ow">in</span> <span class="n">run</span><span class="p">:</span>
+            <span class="n">heat_flux</span> <span class="o">=</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;heat_flux&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">heat_flux</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Color code based on severity</span>
+                <span class="k">if</span> <span class="n">heat_flux</span> <span class="o">&gt;</span> <span class="mf">3.0</span><span class="p">:</span>
+                    <span class="n">flux_indicator</span> <span class="o">=</span> <span class="s2">&quot;🔴 HIGH&quot;</span>
+                <span class="k">elif</span> <span class="n">heat_flux</span> <span class="o">&gt;</span> <span class="mf">1.5</span><span class="p">:</span>
+                    <span class="n">flux_indicator</span> <span class="o">=</span> <span class="s2">&quot;🟡 MODERATE&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">flux_indicator</span> <span class="o">=</span> <span class="s2">&quot;🟢 LOW&quot;</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Heat Flux: </span><span class="si">{</span><span class="n">heat_flux</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">°C/s </span><span class="si">{</span><span class="n">flux_indicator</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Add interpretation</span>
+                <span class="k">if</span> <span class="n">heat_flux</span> <span class="o">&gt;</span> <span class="mf">3.0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         ⚠️  Rapid heating - thermal event risk&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">heat_flux</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         ❄️  System cooling down&quot;</span><span class="p">)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># NEW: Display derived thermal metrics from the &#39;thermal&#39; section</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># Check if we have the new thermal section in derived</span>
+        <span class="n">exp_start</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;exp_start_time&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">)</span>
+        <span class="n">exp_end</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;exp_end_time&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">)</span>
+        <span class="n">during</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_during_experiment&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">now_active</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_now_active&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">since_boot</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_since_boot&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Experiment validity: No throttling during experiment AND not throttling now</span>
+        <span class="n">experiment_valid</span> <span class="o">=</span> <span class="n">during</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">now_active</span> <span class="o">==</span> <span class="mi">0</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   📋 Experiment Timeline:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Start: </span><span class="si">{</span><span class="n">exp_start</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      End:   </span><span class="si">{</span><span class="n">exp_end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ✅ Thermal Summary:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Since Boot: </span><span class="si">{</span><span class="s1">&#39;YES&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">since_boot</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NO&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      During Experiment: </span><span class="si">{</span><span class="s1">&#39;YES&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">during</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NO&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Active at End: </span><span class="si">{</span><span class="s1">&#39;YES&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">now_active</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NO&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   🔬 Experiment Valid: </span><span class="si">{</span><span class="s1">&#39;YES&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">experiment_valid</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NO&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># NEW: System State Metrics (M3-1 through M3-6)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="k">if</span> <span class="s2">&quot;ml_features&quot;</span> <span class="ow">in</span> <span class="n">run</span><span class="p">:</span>
+            <span class="n">ml</span> <span class="o">=</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;ml_features&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   ⚙️ System State:&quot;</span><span class="p">)</span>
+
+            <span class="c1"># M3-1: Governor/Turbo</span>
+            <span class="n">governor</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;governor&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
+            <span class="n">turbo</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbo_enabled&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">turbo_status</span> <span class="o">=</span> <span class="s2">&quot;ENABLED&quot;</span> <span class="k">if</span> <span class="n">turbo</span> <span class="k">else</span> <span class="s2">&quot;DISABLED&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      CPU Governor: </span><span class="si">{</span><span class="n">governor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Turbo Boost: </span><span class="si">{</span><span class="n">turbo_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># M3-2: Interrupt Rate</span>
+            <span class="n">intr_rate</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">baseline_intr</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_interrupt_rate&quot;</span><span class="p">,</span> <span class="mi">2000</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">baseline_intr</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ratio</span> <span class="o">=</span> <span class="n">intr_rate</span> <span class="o">/</span> <span class="n">baseline_intr</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ratio</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="k">if</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mf">2.0</span><span class="p">:</span>
+                <span class="n">intr_indicator</span> <span class="o">=</span> <span class="s2">&quot;🔴 HIGH&quot;</span>
+            <span class="k">elif</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mf">1.2</span><span class="p">:</span>
+                <span class="n">intr_indicator</span> <span class="o">=</span> <span class="s2">&quot;🟡 MODERATE&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">intr_indicator</span> <span class="o">=</span> <span class="s2">&quot;🟢 LOW&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Interrupt Rate: </span><span class="si">{</span><span class="n">intr_rate</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">/sec </span><span class="si">{</span><span class="n">intr_indicator</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># M3-3: Temperature Tracking</span>
+            <span class="n">start_temp</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_temp_c&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">max_temp</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_temp_c&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">start_temp</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">max_temp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">temp_rise</span> <span class="o">=</span> <span class="n">max_temp</span> <span class="o">-</span> <span class="n">start_temp</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;      Temperature: </span><span class="si">{</span><span class="n">start_temp</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C → </span><span class="si">{</span><span class="n">max_temp</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°C (Δ</span><span class="si">{</span><span class="n">temp_rise</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2">°C)&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># M3-4: Cold Start Flag</span>
+            <span class="n">cold_start</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_cold_start&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cold_start</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Cold Start: YES (first run)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># M3-5: Background Noise</span>
+            <span class="n">bg_cpu</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;background_cpu_percent&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">proc_count</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;process_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bg_cpu</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">proc_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Background CPU: </span><span class="si">{</span><span class="n">bg_cpu</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Running Processes: </span><span class="si">{</span><span class="n">proc_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># M3-6: Memory Metrics</span>
+            <span class="n">rss</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rss_memory_mb&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">vms</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vms_memory_mb&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">rss</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">vms</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Process Memory:&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         RSS: </span><span class="si">{</span><span class="n">rss</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         VMS: </span><span class="si">{</span><span class="n">vms</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Heat Flux (already in your code)</span>
+            <span class="n">heat_flux</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;heat_flux&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">heat_flux</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">heat_flux</span> <span class="o">&gt;</span> <span class="mf">3.0</span><span class="p">:</span>
+                    <span class="n">flux_indicator</span> <span class="o">=</span> <span class="s2">&quot;🔴 HIGH&quot;</span>
+                <span class="k">elif</span> <span class="n">heat_flux</span> <span class="o">&gt;</span> <span class="mf">1.5</span><span class="p">:</span>
+                    <span class="n">flux_indicator</span> <span class="o">=</span> <span class="s2">&quot;🟡 MODERATE&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">flux_indicator</span> <span class="o">=</span> <span class="s2">&quot;🟢 LOW&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Heat Flux: </span><span class="si">{</span><span class="n">heat_flux</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">°C/s </span><span class="si">{</span><span class="n">flux_indicator</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Req 1.7, 1.41, 1.8, 1.4: Power States (C-states, frequencies, GPU)</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;power_states&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   💤 Power States (Req 1.7, 1.41, 1.8, 1.4):&quot;</span><span class="p">)</span>
+        <span class="n">cstates</span> <span class="o">=</span> <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c_state_residencies&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">cstates</span><span class="p">:</span>
+            <span class="c1"># Show only C‑states with positive residency</span>
+            <span class="n">states</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">cstates</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">states</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      C-state residency (per-core avg): </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">states</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;      (Note: Values can sum to &gt;100% as each core reports independently)&quot;</span>
+                <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      CPU Frequency:  </span><span class="si">{</span><span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_mhz&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+        <span class="n">gpu_freq</span> <span class="o">=</span> <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_frequency_mhz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gpu_freq</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      GPU Frequency:  </span><span class="si">{</span><span class="n">gpu_freq</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+        <span class="n">gpu_rc6</span> <span class="o">=</span> <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_rc6_percent&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gpu_rc6</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      GPU RC6:        </span><span class="si">{</span><span class="n">gpu_rc6</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="c1"># Req 1.23, 1.36: Scheduler Metrics (additional)</span>
+        <span class="c1"># --------------------------------------------------------------------</span>
+        <span class="n">scheduler</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scheduler&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   🔄 Scheduler Metrics:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;      Voluntary Ctx Sw:  </span><span class="si">{</span><span class="n">scheduler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;context_switches_voluntary&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;      Involuntary Ctx Sw: </span><span class="si">{</span><span class="n">scheduler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;context_switches_involuntary&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Thread Migrations: </span><span class="si">{</span><span class="n">scheduler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;thread_migrations&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Run Queue Length: </span><span class="si">{</span><span class="n">scheduler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;run_queue_length&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Kernel Time:      </span><span class="si">{</span><span class="n">scheduler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;kernel_time_ms&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      User Time:        </span><span class="si">{</span><span class="n">scheduler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;user_time_ms&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># DEBUG: See what&#39;s in derived</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># print(&quot;\n   🔍 DEBUG: derived keys =&quot;, list(derived.keys()))</span>
+        <span class="k">if</span> <span class="s2">&quot;msr&quot;</span> <span class="ow">in</span> <span class="n">derived</span><span class="p">:</span>
+            <span class="c1"># print(&quot;   🔍 DEBUG: msr keys =&quot;, list(derived[&#39;msr&#39;].keys()))</span>
+            <span class="k">if</span> <span class="n">derived</span><span class="p">[</span><span class="s2">&quot;msr&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">derived</span><span class="p">[</span><span class="s2">&quot;msr&quot;</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">msr_preview</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">derived</span><span class="p">[</span><span class="s2">&quot;msr&quot;</span><span class="p">])[:</span><span class="mi">200</span><span class="p">]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   🔍 DEBUG: msr content = </span><span class="si">{</span><span class="n">msr_preview</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># DEBUG: Print raw msr_data structure</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">msr_data</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;msr&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="c1"># if msr_data:</span>
+        <span class="c1"># dprint(&quot;\n 🔍 DEBUG: msr_data top-level keys =&quot;, list(msr_data.keys()))</span>
+        <span class="c1"># dprint(&quot;   🔍 DEBUG: wakeup_latency_us =&quot;, msr_data.get(&#39;wakeup_latency_us&#39;))</span>
+        <span class="c1"># dprint(&quot;   🔍 DEBUG: thermal_throttle =&quot;, msr_data.get(&#39;thermal_throttle&#39;))</span>
+        <span class="c1"># dprint(&quot;   🔍 DEBUG: baseline keys =&quot;, list(msr_data.get(&#39;baseline&#39;, {}).keys()))</span>
+        <span class="c1"># dprint(&quot;   🔍 DEBUG: dynamic keys =&quot;, list(msr_data.get(&#39;dynamic&#39;, {}).keys()))</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="c1"># MSR Metrics Display (Fixed for actual structure)</span>
+        <span class="c1"># ====================================================================</span>
+        <span class="n">msr_data</span> <span class="o">=</span> <span class="n">derived</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;msr&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">msr_data</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   🔧 MSR Metrics:&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Ring bus frequency</span>
+            <span class="n">ring_bus</span> <span class="o">=</span> <span class="n">msr_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ring_bus&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="n">ring_bus</span> <span class="ow">and</span> <span class="n">ring_bus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;current_mhz&quot;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Ring Bus Frequency: </span><span class="si">{</span><span class="n">ring_bus</span><span class="p">[</span><span class="s1">&#39;current_mhz&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Wake-up latency - directly from top level</span>
+            <span class="n">wake_lat</span> <span class="o">=</span> <span class="n">msr_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;wakeup_latency_us&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">wake_lat</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Wake-up Latency: </span><span class="si">{</span><span class="n">wake_lat</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> µs&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Thermal throttle - directly from top level</span>
+            <span class="n">throttle</span> <span class="o">=</span> <span class="n">msr_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thermal_throttle&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">throttle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;DETECTED&quot;</span> <span class="k">if</span> <span class="n">throttle</span> <span class="k">else</span> <span class="s2">&quot;NOT DETECTED&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Thermal Throttle Flag: </span><span class="si">{</span><span class="n">throttle</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># C-state times - from c_states</span>
+            <span class="n">c_states</span> <span class="o">=</span> <span class="n">msr_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c_states&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="n">c_states</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;      C-State Times (since boot):&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">state</span><span class="p">,</span> <span class="n">state_data</span> <span class="ow">in</span> <span class="n">c_states</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">seconds</span> <span class="o">=</span> <span class="n">state_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">seconds</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">seconds</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">:</span>
+                            <span class="n">time_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds&quot;</span>
+                        <span class="k">elif</span> <span class="n">seconds</span> <span class="o">&lt;</span> <span class="mi">3600</span><span class="p">:</span>
+                            <span class="n">time_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seconds</span><span class="o">/</span><span class="mi">60</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> minutes&quot;</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">time_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seconds</span><span class="o">/</span><span class="mi">3600</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> hours&quot;</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;         </span><span class="si">{</span><span class="n">state</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">time_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># TSC frequency for reference</span>
+            <span class="n">tsc_freq</span> <span class="o">=</span> <span class="n">msr_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tsc_frequency_hz&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tsc_freq</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      TSC Frequency: </span><span class="si">{</span><span class="n">tsc_freq</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MHz&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="display_ipc_analysis">
+<a class="viewcode-back" href="../../../core.execution.display_formatter.html#core.execution.display_formatter.display_ipc_analysis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_ipc_analysis</span><span class="p">(</span><span class="n">all_linear</span><span class="p">,</span> <span class="n">all_agentic</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Display IPC efficiency analysis comparing linear and agentic runs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        all_linear: List of linear run results</span>
+<span class="sd">        all_agentic: List of agentic run results</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ====================================================================</span>
+    <span class="c1"># IPC Efficiency Analysis</span>
+    <span class="c1"># ====================================================================</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_linear</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_agentic</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Get average IPC from each run</span>
+        <span class="n">linear_ipcs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">agentic_ipcs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">all_linear</span><span class="p">:</span>
+            <span class="n">perf</span> <span class="o">=</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;performance&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">ipc</span> <span class="o">=</span> <span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ipc&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ipc</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">linear_ipcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ipc</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">all_agentic</span><span class="p">:</span>
+            <span class="n">perf</span> <span class="o">=</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;layer3_derived&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;performance&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">ipc</span> <span class="o">=</span> <span class="n">perf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ipc&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ipc</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">agentic_ipcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ipc</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">linear_ipcs</span> <span class="ow">and</span> <span class="n">agentic_ipcs</span><span class="p">:</span>
+            <span class="n">avg_linear_ipc</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">linear_ipcs</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">linear_ipcs</span><span class="p">)</span>
+            <span class="n">avg_agentic_ipc</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">agentic_ipcs</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">agentic_ipcs</span><span class="p">)</span>
+            <span class="n">ipc_ratio</span> <span class="o">=</span> <span class="n">avg_agentic_ipc</span> <span class="o">/</span> <span class="n">avg_linear_ipc</span> <span class="k">if</span> <span class="n">avg_linear_ipc</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">70</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 IPC EFFICIENCY ANALYSIS&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Linear IPC:  </span><span class="si">{</span><span class="n">avg_linear_ipc</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Agentic IPC: </span><span class="si">{</span><span class="n">avg_agentic_ipc</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Efficiency Ratio: </span><span class="si">{</span><span class="n">ipc_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">ipc_ratio</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   → Agentic workflow keeps CPU </span><span class="si">{</span><span class="p">((</span><span class="n">ipc_ratio</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% busier&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   → Higher instruction density during orchestration&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">ipc_ratio</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;   → Agentic workflow is </span><span class="si">{</span><span class="p">((</span><span class="mi">1</span><span class="o">-</span><span class="n">ipc_ratio</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% less CPU efficient&quot;</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   → More pipeline stalls or cache misses&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   → No IPC difference between workflows&quot;</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="display_sustainability_header">
+<a class="viewcode-back" href="../../../core.execution.display_formatter.html#core.execution.display_formatter.display_sustainability_header">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_sustainability_header</span><span class="p">(</span><span class="n">all_linear</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Display grid information and sources.&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🌍 SUSTAINABILITY IMPACT&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">all_linear</span> <span class="ow">and</span> <span class="n">all_linear</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sustainability&quot;</span><span class="p">):</span>
+        <span class="n">sus</span> <span class="o">=</span> <span class="n">all_linear</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;sustainability&quot;</span><span class="p">]</span>
+        <span class="n">country</span> <span class="o">=</span> <span class="n">all_linear</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;country_code&quot;</span><span class="p">,</span> <span class="s2">&quot;US&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   📍 Grid Region: </span><span class="si">{</span><span class="n">country</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   &quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sus</span> <span class="ow">and</span> <span class="s2">&quot;carbon&quot;</span> <span class="ow">in</span> <span class="n">sus</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">sus</span><span class="p">[</span><span class="s2">&quot;carbon&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Carbon Intensity: </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Factor: </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;grams_per_kwh&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> g/kWh&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;      Uncertainty: ±</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;uncertainty_percent&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">% [Req 2.16]&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sus</span> <span class="ow">and</span> <span class="s2">&quot;water&quot;</span> <span class="ow">in</span> <span class="n">sus</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">sus</span><span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   Water Intensity: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sus</span> <span class="ow">and</span> <span class="s2">&quot;methane&quot;</span> <span class="ow">in</span> <span class="n">sus</span><span class="p">:</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">sus</span><span class="p">[</span><span class="s2">&quot;methane&quot;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   Methane Leakage: </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="display_workflow_comparison">
+<a class="viewcode-back" href="../../../core.execution.display_formatter.html#core.execution.display_formatter.display_workflow_comparison">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_workflow_comparison</span><span class="p">(</span><span class="n">linear_stats</span><span class="p">,</span> <span class="n">agentic_stats</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Display workflow comparison table.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">linear_stats</span> <span class="ow">and</span> <span class="n">agentic_stats</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   📊 WORKFLOW COMPARISON&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   &quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="s1">&#39;Metric&#39;</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;LINEAR&#39;</span><span class="si">:</span><span class="s2">&gt;15</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;AGENTIC&#39;</span><span class="si">:</span><span class="s2">&gt;15</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;RATIO&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   &quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+
+        <span class="c1"># Energy</span>
+        <span class="n">energy_ratio</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s2">&quot;energy&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;energy&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;energy&quot;</span><span class="p">]</span>
+            <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="s1">&#39;Energy (J)&#39;</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">linear_stats</span><span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">energy_ratio</span><span class="si">:</span><span class="s2">&gt;10.2f</span><span class="si">}</span><span class="s2">x&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Carbon</span>
+        <span class="n">carbon_ratio</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s2">&quot;carbon&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;carbon&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;carbon&quot;</span><span class="p">]</span>
+            <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="s1">&#39;Carbon (mg)&#39;</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">linear_stats</span><span class="p">[</span><span class="s1">&#39;carbon&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s1">&#39;carbon&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">carbon_ratio</span><span class="si">:</span><span class="s2">&gt;10.2f</span><span class="si">}</span><span class="s2">x&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Water</span>
+        <span class="n">water_ratio</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;water&quot;</span><span class="p">]</span>
+            <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="s1">&#39;Water (µl)&#39;</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">linear_stats</span><span class="p">[</span><span class="s1">&#39;water&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s1">&#39;water&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">water_ratio</span><span class="si">:</span><span class="s2">&gt;10.2f</span><span class="si">}</span><span class="s2">x&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Methane</span>
+        <span class="n">methane_ratio</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s2">&quot;methane&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;methane&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">linear_stats</span><span class="p">[</span><span class="s2">&quot;methane&quot;</span><span class="p">]</span>
+            <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="s1">&#39;Methane (mg)&#39;</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">linear_stats</span><span class="p">[</span><span class="s1">&#39;methane&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">agentic_stats</span><span class="p">[</span><span class="s1">&#39;methane&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">&gt;15.6f</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">methane_ratio</span><span class="si">:</span><span class="s2">&gt;10.2f</span><span class="si">}</span><span class="s2">x&quot;</span>
+        <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   &quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="display_pair_hardware">
+<a class="viewcode-back" href="../../../core.execution.display_formatter.html#core.execution.display_formatter.display_pair_hardware">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_pair_hardware</span><span class="p">(</span><span class="n">linear_results</span><span class="p">,</span> <span class="n">agentic_results</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Display hardware parameters for each pair.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">title</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔧 </span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">linear_results</span><span class="p">)):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;─&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 PAIR </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: Linear + Agentic&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;─&#39;</span><span class="o">*</span><span class="mi">50</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">display_hardware</span><span class="p">([</span><span class="n">linear_results</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span> <span class="sa">f</span><span class="s2">&quot;LINEAR Run </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">agentic_results</span><span class="p">):</span>
+            <span class="n">display_hardware</span><span class="p">([</span><span class="n">agentic_results</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span> <span class="sa">f</span><span class="s2">&quot;AGENTIC Run </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">display_ipc_analysis</span><span class="p">(</span><span class="n">linear_results</span><span class="p">,</span> <span class="n">agentic_results</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

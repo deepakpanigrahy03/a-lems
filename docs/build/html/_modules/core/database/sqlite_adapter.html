@@ -1,0 +1,985 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.sqlite_adapter &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.database.sqlite_adapter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.database.sqlite_adapter</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">SQLITE ADAPTER – SQLite implementation of DatabaseInterface</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">PURPOSE:</span>
+<span class="sd">    Implements the DatabaseInterface for SQLite. This adapter handles all</span>
+<span class="sd">    SQLite-specific connection details, query execution, and data insertion.</span>
+
+<span class="sd">WHY THIS EXISTS:</span>
+<span class="sd">    - Separates SQLite-specific code from the rest of the application</span>
+<span class="sd">    - Makes it easy to switch to PostgreSQL later</span>
+<span class="sd">    - Centralizes all SQLite pragmas and settings</span>
+<span class="sd">    - Implements the adapter pattern for database flexibility</span>
+
+<span class="sd">UNITS AND ASSUMPTIONS:</span>
+<span class="sd">    - All time values are in nanoseconds</span>
+<span class="sd">    - All energy values are in microjoules</span>
+<span class="sd">    - SQLite connection uses Row factory for dict-like access</span>
+<span class="sd">    - Foreign keys must be enabled for data integrity</span>
+<span class="sd">    - WAL journal mode for better concurrency</span>
+
+<span class="sd">AUTHOR: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseError</span><span class="p">,</span> <span class="n">DatabaseInterface</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">CREATE_CPU_SAMPLES</span><span class="p">,</span> <span class="n">CREATE_ENERGY_SAMPLES</span><span class="p">,</span>
+                     <span class="n">CREATE_ENVIRONMENT_CONFIG</span><span class="p">,</span> <span class="n">CREATE_EVENTS_INDEXES</span><span class="p">,</span>
+                     <span class="n">CREATE_EXPERIMENTS</span><span class="p">,</span> <span class="n">CREATE_HARDWARE_CONFIG</span><span class="p">,</span>
+                     <span class="n">CREATE_IDLE_BASELINES</span><span class="p">,</span> <span class="n">CREATE_INTERRUPT_SAMPLES</span><span class="p">,</span>
+                     <span class="n">CREATE_LLM_INTERACTIONS</span><span class="p">,</span> <span class="n">CREATE_ML_VIEW</span><span class="p">,</span>
+                     <span class="n">CREATE_ORCHESTRATION_ANALYSIS</span><span class="p">,</span>
+                     <span class="n">CREATE_ORCHESTRATION_EVENTS</span><span class="p">,</span> <span class="n">CREATE_RUNS</span><span class="p">,</span>
+                     <span class="n">CREATE_RUNS_INDEXES</span><span class="p">,</span> <span class="n">CREATE_TAX_INDEXES</span><span class="p">,</span>
+                     <span class="n">CREATE_TAX_SUMMARY</span><span class="p">,</span> <span class="n">TASK_CATEGORIES_SCHEMA</span><span class="p">,</span>
+                     <span class="n">THERMAL_SAMPLES_SCHEMA</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SQLiteAdapter">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SQLiteAdapter</span><span class="p">(</span><span class="n">DatabaseInterface</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SQLite implementation of the database interface.</span>
+
+<span class="sd">    This adapter handles all SQLite-specific operations including:</span>
+<span class="sd">    - Connection management with appropriate pragmas</span>
+<span class="sd">    - Transaction handling</span>
+<span class="sd">    - Data insertion with SQLite-specific methods (lastrowid)</span>
+<span class="sd">    - Batch inserts for performance</span>
+<span class="sd">    - Schema creation with IF NOT EXISTS</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize SQLite adapter with configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Dictionary with SQLite settings:</span>
+<span class="sd">                - path: Database file path</span>
+<span class="sd">                - journal_mode: &#39;WAL&#39;, &#39;DELETE&#39;, etc. (default: &#39;WAL&#39;)</span>
+<span class="sd">                - timeout: Connection timeout in seconds (default: 30)</span>
+<span class="sd">                - detect_types: Enable type detection (default: 1)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Set defaults</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="s2">&quot;data/experiments.db&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;journal_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;WAL&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;timeout&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;detect_types&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 1. CONNECTION MANAGEMENT</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="SQLiteAdapter.connect">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.connect">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Establish SQLite connection with proper settings.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">db_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">)</span>
+            <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timeout&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Ensure directory exists</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># Connect with timeout</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+                <span class="n">db_path</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                <span class="n">detect_types</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detect_types&quot;</span><span class="p">),</span>
+                <span class="n">isolation_level</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Use Row factory for dictionary-like access</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">row_factory</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Row</span>
+
+            <span class="c1"># Enable foreign key support (critical for data integrity)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA foreign_keys = ON&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Set journal mode for better concurrency</span>
+            <span class="n">journal_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;journal_mode&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PRAGMA journal_mode = </span><span class="si">{</span><span class="n">journal_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Set other performance pragmas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA synchronous = NORMAL&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;PRAGMA cache_size = -2000&quot;</span><span class="p">)</span>  <span class="c1"># 2MB cache</span>
+
+        <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DatabaseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to connect to SQLite: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.close">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close database connection.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.execute">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute a query and return results as dictionaries.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: SQL query string with placeholders</span>
+<span class="sd">            params: Parameters for the query</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of dictionaries, each representing a row</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+
+            <span class="c1"># Convert rows to dictionaries</span>
+            <span class="k">return</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()]</span>
+
+        <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DatabaseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Query execution failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s2">Query: </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.execute_many">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.execute_many">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute a query multiple times with different parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: SQL query string</span>
+<span class="sd">            params_list: List of parameter sets</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Number of rows affected</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DatabaseError</span><span class="p">(</span><span class="s2">&quot;Database not connected. Call connect() first.&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">params_list</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">rowcount</span>
+
+        <span class="k">except</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DatabaseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Batch execution failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 2. TRANSACTION HANDLING</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="SQLiteAdapter.transaction">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.transaction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SQLiteAdapter&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Begin a transaction. Legacy method - use context manager instead.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;BEGIN TRANSACTION&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.commit">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.commit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commit the current transaction.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.rollback">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.rollback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rollback the current transaction.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 3. CONTEXT MANAGER SUPPORT</span>
+    <span class="c1"># ========================================================================</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enter context manager - begin transaction.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;BEGIN&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Exit context manager - commit or rollback.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">exc_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># No exception - commit</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Exception occurred - rollback</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 4. TABLE CREATION</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="SQLiteAdapter.create_tables">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.create_tables">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create all tables if they don&#39;t exist.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="c1"># Execute each CREATE statement in order - NO transaction wrapper</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_EXPERIMENTS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_HARDWARE_CONFIG</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_IDLE_BASELINES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_RUNS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_RUNS_INDEXES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_ORCHESTRATION_EVENTS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_EVENTS_INDEXES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_TAX_SUMMARY</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_TAX_INDEXES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_ENERGY_SAMPLES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_CPU_SAMPLES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_INTERRUPT_SAMPLES</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">TASK_CATEGORIES_SCHEMA</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">THERMAL_SAMPLES_SCHEMA</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_ML_VIEW</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_ORCHESTRATION_ANALYSIS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">CREATE_ENVIRONMENT_CONFIG</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">executescript</span><span class="p">(</span><span class="n">CREATE_LLM_INTERACTIONS</span><span class="p">)</span>
+
+        <span class="c1"># Commit explicitly (DDL should be committed)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 5. CORE DATA INSERTION</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_experiment">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_experiment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a new experiment record with all fields including session tracking.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            INSERT INTO experiments (</span>
+<span class="sd">                name, description, workflow_type, model_name, provider,</span>
+<span class="sd">                task_name, country_code, group_id, status, started_at, runs_total,optimization_enabled,</span>
+<span class="sd">                hw_id, env_id                 </span>
+<span class="sd">            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unnamed&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_name&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;country_code&quot;</span><span class="p">,</span> <span class="s2">&quot;US&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;group_id&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;pending&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;started_at&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runs_total&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;optimization_enabled&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hw_id&quot;</span><span class="p">),</span>
+                <span class="n">experiment_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env_id&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">lastrowid</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_hardware">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_hardware">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_hardware</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hardware_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert hardware configuration or return existing ID.</span>
+<span class="sd">        Now supports hardware fingerprint fields and updates old records.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Get hardware hash (may be None for old data)</span>
+        <span class="n">hw_hash</span> <span class="o">=</span> <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hardware_hash&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ============================================================</span>
+        <span class="c1"># STEP 1: Try to find by hash (new method)</span>
+        <span class="c1"># ============================================================</span>
+        <span class="k">if</span> <span class="n">hw_hash</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT hw_id FROM hardware_config WHERE hardware_hash = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">hw_hash</span><span class="p">,)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+                <span class="n">old_hw_id</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]</span>
+
+        <span class="c1"># ============================================================</span>
+        <span class="c1"># STEP 2: Try to find by CPU model + cores (old record without hash)</span>
+        <span class="c1"># ============================================================</span>
+        <span class="n">cpu_model</span> <span class="o">=</span> <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model&quot;</span><span class="p">)</span>
+        <span class="n">cpu_cores</span> <span class="o">=</span> <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_cores&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cpu_model</span> <span class="ow">and</span> <span class="n">cpu_cores</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT hw_id FROM hardware_config WHERE cpu_model = ? AND cpu_cores = ?&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">cpu_model</span><span class="p">,</span> <span class="n">cpu_cores</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+                <span class="n">old_hw_id</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;hw_id&quot;</span><span class="p">]</span>
+
+                <span class="c1"># UPDATE the old record with new columns</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                    UPDATE hardware_config SET</span>
+<span class="sd">                        hardware_hash = ?,</span>
+<span class="sd">                        hostname = ?,</span>
+<span class="sd">                        cpu_model = ?,</span>
+<span class="sd">                        cpu_cores = ?,</span>
+<span class="sd">                        cpu_threads = ?,</span>
+<span class="sd">                        cpu_architecture = ?,</span>
+<span class="sd">                        cpu_vendor = ?,</span>
+<span class="sd">                        cpu_family = ?,</span>
+<span class="sd">                        cpu_model_id = ?,</span>
+<span class="sd">                        cpu_stepping = ?,</span>
+<span class="sd">                        has_avx2 = ?,</span>
+<span class="sd">                        has_avx512 = ?,</span>
+<span class="sd">                        has_vmx = ?,</span>
+<span class="sd">                        gpu_model = ?,</span>
+<span class="sd">                        gpu_driver = ?,</span>
+<span class="sd">                        gpu_count = ?,</span>
+<span class="sd">                        gpu_power_available = ?,</span>
+<span class="sd">                        ram_gb = ?,</span>
+<span class="sd">                        kernel_version = ?,</span>
+<span class="sd">                        microcode_version = ?,</span>
+<span class="sd">                        rapl_domains = ?,</span>
+<span class="sd">                        rapl_has_dram = ?,</span>
+<span class="sd">                        rapl_has_uncore = ?,</span>
+<span class="sd">                        system_manufacturer = ?,</span>
+<span class="sd">                        system_product = ?,</span>
+<span class="sd">                        system_type = ?,</span>
+<span class="sd">                        virtualization_type = ?,</span>
+<span class="sd">                        detected_at = ?</span>
+<span class="sd">                    WHERE hw_id = ?</span>
+<span class="sd">                &quot;&quot;&quot;</span><span class="p">,</span>
+                    <span class="p">(</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hardware_hash&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hostname&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_cores&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_threads&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_architecture&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_vendor&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_family&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model_id&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_stepping&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx2&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx512&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_vmx&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_model&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_driver&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_count&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_power_available&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ram_gb&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kernel_version&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;microcode_version&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_domains&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_has_dram&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_has_uncore&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_manufacturer&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_product&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_type&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;virtualization_type&quot;</span><span class="p">),</span>
+                        <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detected_at&quot;</span><span class="p">),</span>
+                        <span class="n">old_hw_id</span><span class="p">,</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">old_hw_id</span>
+
+        <span class="c1"># ============================================================</span>
+        <span class="c1"># STEP 3: No match found - insert new record</span>
+        <span class="c1"># ============================================================</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            INSERT INTO hardware_config (</span>
+<span class="sd">                hardware_hash, hostname, cpu_model, cpu_cores, cpu_threads,</span>
+<span class="sd">                cpu_architecture, cpu_vendor, cpu_family, cpu_model_id, cpu_stepping,</span>
+<span class="sd">                has_avx2, has_avx512, has_vmx,</span>
+<span class="sd">                gpu_model, gpu_driver, gpu_count, gpu_power_available,</span>
+<span class="sd">                ram_gb, kernel_version, microcode_version,</span>
+<span class="sd">                rapl_domains, rapl_has_dram, rapl_has_uncore,</span>
+<span class="sd">                system_manufacturer, system_product, system_type, virtualization_type,</span>
+<span class="sd">                detected_at</span>
+<span class="sd">            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hardware_hash&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hostname&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_cores&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_threads&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_architecture&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_vendor&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_family&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_model_id&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_stepping&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx2&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_avx512&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;has_vmx&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_model&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_driver&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_count&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_power_available&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ram_gb&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kernel_version&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;microcode_version&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_domains&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_has_dram&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rapl_has_uncore&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_manufacturer&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_product&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system_type&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;virtualization_type&quot;</span><span class="p">),</span>
+                <span class="n">hardware_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detected_at&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">lastrowid</span></div>
+
+
+    <span class="c1"># ============================================================</span>
+    <span class="c1"># NEW METHOD - ENVIRONMENT CONFIG (4 spaces indentation)</span>
+    <span class="c1"># ============================================================</span>
+<div class="viewcode-block" id="SQLiteAdapter.insert_environment_config">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_environment_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_environment_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert environment configuration or return existing ID.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env_data: Dictionary with environment fields:</span>
+<span class="sd">                - env_hash: Unique environment fingerprint</span>
+<span class="sd">                - python_version, python_implementation</span>
+<span class="sd">                - os_name, os_version, kernel_version</span>
+<span class="sd">                - git_commit, git_branch, git_dirty</span>
+<span class="sd">                - numpy_version, torch_version, transformers_version</span>
+<span class="sd">                - container_runtime, container_image</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            env_id: Primary key of existing or new record</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">env_hash</span> <span class="o">=</span> <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env_hash&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check if exists</span>
+        <span class="k">if</span> <span class="n">env_hash</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT env_id FROM environment_config WHERE env_hash = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">env_hash</span><span class="p">,)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;env_id&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Insert new</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            INSERT INTO environment_config (</span>
+<span class="sd">                env_hash, python_version, python_implementation,</span>
+<span class="sd">                os_name, os_version, kernel_version,</span>
+<span class="sd">                git_commit, git_branch, git_dirty,</span>
+<span class="sd">                numpy_version, torch_version, transformers_version,</span>
+<span class="sd">                container_runtime, container_image</span>
+<span class="sd">            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;env_hash&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_version&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_implementation&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;os_name&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;os_version&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kernel_version&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_commit&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_branch&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;git_dirty&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numpy_version&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;torch_version&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transformers_version&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_runtime&quot;</span><span class="p">),</span>
+                <span class="n">env_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;container_image&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">lastrowid</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_baseline">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_baseline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert an idle baseline measurement.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - insert_baseline received: </span><span class="si">{</span><span class="n">baseline_data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG - power_watts: </span><span class="si">{</span><span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;power_watts&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+        <span class="n">baseline_id</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;baseline_id&quot;</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;baseline_</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Extract nested dictionaries</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;power_watts&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">std_dev</span> <span class="o">=</span> <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;std_dev_watts&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="c1"># ========== ADD THESE DEBUG LINES ==========</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG sqladapter- metadata in insert_baseline: </span><span class="si">{</span><span class="n">metadata</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔍 DEBUG sqladapter- governor from metadata: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;governor&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 DEBUG sqladapter- turbo from metadata: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;turbo&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># ===========================================</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            INSERT INTO idle_baselines</span>
+<span class="sd">            (baseline_id, timestamp, package_power_watts, core_power_watts,</span>
+<span class="sd">             uncore_power_watts, dram_power_watts, duration_seconds, sample_count,</span>
+<span class="sd">             package_std, core_std, uncore_std, dram_std,</span>
+<span class="sd">             governor, turbo, background_cpu, process_count, method)</span>
+<span class="sd">            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">baseline_id</span><span class="p">,</span>
+                <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">),</span>
+                <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">),</span>
+                <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">),</span>
+                <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">),</span>
+                <span class="n">power</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;duration_seconds&quot;</span><span class="p">),</span>
+                <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sample_count&quot;</span><span class="p">),</span>
+                <span class="n">std_dev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">),</span>
+                <span class="n">std_dev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">),</span>
+                <span class="n">std_dev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore&quot;</span><span class="p">),</span>
+                <span class="n">std_dev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;governor&quot;</span><span class="p">),</span>
+                <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;turbo&quot;</span><span class="p">),</span>
+                <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;background_cpu&quot;</span><span class="p">),</span>
+                <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;processes&quot;</span><span class="p">),</span>
+                <span class="n">baseline_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="s2">&quot;idle_measurement&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">baseline_id</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_run">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a single run with all its metrics.</span>
+
+<span class="sd">        This is a simplified version - the full 80-column insert</span>
+<span class="sd">        will be implemented in the repositories split.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># This is a placeholder - full implementation will be in repositories/runs.py</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Full run insertion will be in repositories/runs.py&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_orchestration_events">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_orchestration_events">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_orchestration_events</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert orchestration events for a run.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">events</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                INSERT INTO orchestration_events</span>
+<span class="sd">                (run_id, step_index, phase, event_type, start_time_ns, end_time_ns,</span>
+<span class="sd">                 duration_ns, power_watts, cpu_util_percent, interrupt_rate,</span>
+<span class="sd">                 event_energy_uj, tax_contribution_uj, tax_percent)</span>
+<span class="sd">                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">            &quot;&quot;&quot;</span><span class="p">,</span>
+                <span class="p">(</span>
+                    <span class="n">run_id</span><span class="p">,</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_index&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;event_type&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_time_ns&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;end_time_ns&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;duration_ns&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;power_watts&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_util_percent&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupt_rate&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;event_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tax_contribution_uj&quot;</span><span class="p">),</span>
+                    <span class="n">ev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tax_percent&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_energy_samples">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_energy_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_energy_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert high-frequency RAPL samples.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                INSERT INTO energy_samples</span>
+<span class="sd">                (run_id, timestamp_ns, pkg_energy_uj, core_energy_uj, uncore_energy_uj, dram_energy_uj)</span>
+<span class="sd">                VALUES (?, ?, ?, ?, ?, ?)</span>
+<span class="sd">            &quot;&quot;&quot;</span><span class="p">,</span>
+                <span class="p">(</span>
+                    <span class="n">run_id</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;uncore_energy_uj&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_cpu_samples">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_cpu_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_cpu_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert CPU samples from turbostat.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                INSERT INTO cpu_samples</span>
+<span class="sd">                (run_id, timestamp_ns, </span>
+<span class="sd">                 cpu_util_percent, cpu_busy_mhz, cpu_avg_mhz,</span>
+<span class="sd">                 c1_residency, c2_residency, c3_residency, c6_residency, c7_residency,</span>
+<span class="sd">                 pkg_c8_residency, pkg_c9_residency, pkg_c10_residency,</span>
+<span class="sd">                 package_power, dram_power,</span>
+<span class="sd">                 gpu_rc6,</span>
+<span class="sd">                 package_temp, ipc,</span>
+<span class="sd">                 extra_metrics_json)</span>
+<span class="sd">                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">            &quot;&quot;&quot;</span><span class="p">,</span>
+                <span class="p">(</span>
+                    <span class="n">run_id</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_util_percent&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_busy_mhz&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_avg_mhz&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c1_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c2_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c3_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c6_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;c7_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_c8_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_c9_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pkg_c10_residency&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_power&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dram_power&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gpu_rc6&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package_temp&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ipc&quot;</span><span class="p">),</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;extra_metrics_json&quot;</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_interrupt_samples">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_interrupt_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_interrupt_samples</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert interrupt samples.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                INSERT INTO interrupt_samples</span>
+<span class="sd">                (run_id, timestamp_ns, interrupts_per_sec)</span>
+<span class="sd">                VALUES (?, ?, ?)</span>
+<span class="sd">            &quot;&quot;&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp_ns&quot;</span><span class="p">),</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interrupts_per_sec&quot;</span><span class="p">)),</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.create_tax_summaries">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.create_tax_summaries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create tax summary entries for all agentic runs in an experiment.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get all runs with their run_number and workflow_type</span>
+        <span class="n">runs_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            SELECT r.run_id, r.run_number, e.workflow_type</span>
+<span class="sd">            FROM runs r</span>
+<span class="sd">            JOIN experiments e ON r.exp_id = e.exp_id</span>
+<span class="sd">            WHERE r.exp_id = ?</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">exp_id</span><span class="p">,),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Build mapping: run_number -&gt; {linear: run_id, agentic: run_id}</span>
+        <span class="n">pairs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">runs_info</span><span class="p">:</span>
+            <span class="n">num</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;run_number&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">num</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+                <span class="n">pairs</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">pairs</span><span class="p">[</span><span class="n">num</span><span class="p">][</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]</span>
+
+        <span class="c1"># For each pair that has both linear and agentic, compute tax</span>
+        <span class="c1"># No transaction wrapper - caller manages transactions</span>
+        <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">pairs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">linear_id</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+            <span class="n">agentic_id</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agentic&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">linear_id</span> <span class="ow">and</span> <span class="n">agentic_id</span><span class="p">:</span>
+                <span class="c1"># Get dynamic energies</span>
+                <span class="n">energies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                    <span class="s2">&quot;SELECT run_id, dynamic_energy_uj FROM runs WHERE run_id IN (?, ?)&quot;</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">agentic_id</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">energy_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">]:</span> <span class="n">e</span><span class="p">[</span><span class="s2">&quot;dynamic_energy_uj&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">energies</span><span class="p">}</span>
+
+                <span class="n">linear_uj</span> <span class="o">=</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">agentic_uj</span> <span class="o">=</span> <span class="n">energy_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agentic_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">tax_uj</span> <span class="o">=</span> <span class="n">agentic_uj</span> <span class="o">-</span> <span class="n">linear_uj</span>
+                <span class="n">tax_percent</span> <span class="o">=</span> <span class="p">(</span><span class="n">tax_uj</span> <span class="o">/</span> <span class="n">agentic_uj</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">agentic_uj</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                    INSERT INTO orchestration_tax_summary</span>
+<span class="sd">                    (linear_run_id, agentic_run_id, linear_dynamic_uj, agentic_dynamic_uj,</span>
+<span class="sd">                     orchestration_tax_uj, tax_percent)</span>
+<span class="sd">                    VALUES (?, ?, ?, ?, ?, ?)</span>
+<span class="sd">                &quot;&quot;&quot;</span><span class="p">,</span>
+                    <span class="p">(</span><span class="n">linear_id</span><span class="p">,</span> <span class="n">agentic_id</span><span class="p">,</span> <span class="n">linear_uj</span><span class="p">,</span> <span class="n">agentic_uj</span><span class="p">,</span> <span class="n">tax_uj</span><span class="p">,</span> <span class="n">tax_percent</span><span class="p">),</span>
+                <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.insert_llm_interaction">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.insert_llm_interaction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_llm_interaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interaction_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert an LLM interaction record&quot;&quot;&quot;</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            INSERT INTO llm_interactions (</span>
+<span class="sd">                run_id, step_index, workflow_type,</span>
+<span class="sd">                prompt, response,</span>
+<span class="sd">                model_name, provider,</span>
+<span class="sd">                prompt_tokens, completion_tokens, total_tokens,</span>
+<span class="sd">                api_latency_ms, throughput_kbps, compute_time_ms</span>
+<span class="sd">            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_id&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_index&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workflow_type&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;prompt_tokens&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completion_tokens&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_tokens&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api_latency_ms&quot;</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;throughput_kbps&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="n">interaction_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;compute_time_ms&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="n">lastrowid</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 6. QUERY METHODS</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="SQLiteAdapter.get_run">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve a single run by ID.&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM runs WHERE run_id = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">run_id</span><span class="p">,))</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">result</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.get_runs_by_experiment">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_runs_by_experiment">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_runs_by_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve all runs for an experiment.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>  <span class="c1"># Auto-reconnect if needed</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT * FROM runs WHERE exp_id = ? ORDER BY run_number&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">exp_id</span><span class="p">,)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.get_tax_summaries">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_tax_summaries">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve tax summaries, optionally filtered by experiment.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">exp_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM orchestration_tax_summary&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            SELECT ots.* FROM orchestration_tax_summary ots</span>
+<span class="sd">            JOIN runs r ON ots.linear_run_id = r.run_id</span>
+<span class="sd">            WHERE r.exp_id = ?</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">exp_id</span><span class="p">,),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SQLiteAdapter.get_ml_data">
+<a class="viewcode-back" href="../../../core.database.sqlite_adapter.html#core.database.sqlite_adapter.SQLiteAdapter.get_ml_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ml_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve flattened ML data from the ml_features view.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT * FROM ml_features WHERE workflow_type = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">workflow</span><span class="p">,)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM ml_features&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

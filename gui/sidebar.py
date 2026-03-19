@@ -19,12 +19,14 @@ Session state written here:
 render_sidebar() returns None (dispatcher reads session state directly).
 ─────────────────────────────────────────────────────────────────────────────
 """
+
 import streamlit as st
 
-from gui.config     import SECTIONS, SECTION_PAGES, SECTION_ACCENTS, DB_PATH, STATUS_COLORS
-from gui.db         import q1
-from gui.connection import get_conn, verify_connection, disconnect
-from gui.theme      import _tokens
+from gui.config import (DB_PATH, SECTION_ACCENTS, SECTION_PAGES, SECTIONS,
+                        STATUS_COLORS)
+from gui.connection import disconnect, get_conn, verify_connection
+from gui.db import q1
+from gui.theme import _tokens
 
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
@@ -125,6 +127,7 @@ def _css(t: dict) -> str:
 def _read_live_url() -> dict:
     import json as _j
     from pathlib import Path as _P
+
     for p in [_P(__file__).parent.parent / "live_url.json", _P("live_url.json")]:
         if p.exists():
             try:
@@ -137,12 +140,13 @@ def _read_live_url() -> dict:
 def _divider(t: dict):
     st.markdown(
         f"<div style='height:0.5px;background:{t['brd']};margin:6px 0;'></div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
 
 # ── Brand panel ───────────────────────────────────────────────────────────────
 def _brand(t: dict, online: bool):
-    dot_clr  = "#22c55e" if online else t["t3"]
+    dot_clr = "#22c55e" if online else t["t3"]
     dot_glow = "box-shadow:0 0 0 3px #22c55e22;" if online else ""
 
     # Logo click → go to overview (clear section)
@@ -178,12 +182,13 @@ def _brand(t: dict, online: bool):
         f"<div style='font-size:8px;color:{t['t3']};text-transform:uppercase;letter-spacing:.13em;'>"
         f"AI Energy Measurement</div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     # Logo → overview
     if st.button("⌂  Home · Overview", key="nav_home", use_container_width=True):
         st.session_state["nav_section"] = None
-        st.session_state["nav_page"]    = None
+        st.session_state["nav_page"] = None
         st.rerun()
 
 
@@ -204,24 +209,24 @@ def _session_banner(t: dict):
         """)
         if not row or not row.get("group_id"):
             return
-        total  = int(row.get("total_exps", 0))
-        done   = int(row.get("done",       0))
-        run_   = int(row.get("running",    0))
-        fail_  = int(row.get("failed",     0))
-        runs_d = int(row.get("runs_done",  0) or 0)
+        total = int(row.get("total_exps", 0))
+        done = int(row.get("done", 0))
+        run_ = int(row.get("running", 0))
+        fail_ = int(row.get("failed", 0))
+        runs_d = int(row.get("runs_done", 0) or 0)
         runs_t = int(row.get("runs_total", 1) or 1)
 
         if run_:
-            status, clr = "RUNNING",   STATUS_COLORS["running"]
+            status, clr = "RUNNING", STATUS_COLORS["running"]
         elif fail_:
-            status, clr = "FAILED",    STATUS_COLORS["failed"]
+            status, clr = "FAILED", STATUS_COLORS["failed"]
         elif done == total:
             status, clr = "COMPLETED", STATUS_COLORS["completed"]
         else:
-            status, clr = "PENDING",   STATUS_COLORS["pending"]
+            status, clr = "PENDING", STATUS_COLORS["pending"]
 
         short = row["group_id"].replace("session_", "").replace("_", " ", 1)[:18]
-        pct   = int(runs_d / max(runs_t, 1) * 100)
+        pct = int(runs_d / max(runs_t, 1) * 100)
 
         st.markdown(
             f"<div style='margin:8px 6px 4px;padding:9px 11px;"
@@ -241,22 +246,26 @@ def _session_banner(t: dict):
             f"<div style='background:linear-gradient(90deg,{clr}99,{clr});"
             f"width:{pct}%;height:100%;border-radius:2px;'></div></div>"
             f"</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
     except Exception:
         pass
 
 
 # ── Live Lab panel ────────────────────────────────────────────────────────────
 def _live_lab(t: dict):
-    conn     = get_conn()
-    online   = conn.get("verified", False)
-    _live    = _read_live_url()
+    conn = get_conn()
+    online = conn.get("verified", False)
+    _live = _read_live_url()
     lab_live = _live.get("online", False)
-    clr      = STATUS_COLORS["running"] if online else t["accent"]
-    sub      = ("Connected · " + conn["url"].replace("https://", "")[:26]
-                if online else
-                ("🟢 Lab online — click Connect" if lab_live
-                 else "Offline · analysis mode"))
+    clr = STATUS_COLORS["running"] if online else t["accent"]
+    sub = (
+        "Connected · " + conn["url"].replace("https://", "")[:26]
+        if online
+        else (
+            "🟢 Lab online — click Connect" if lab_live else "Offline · analysis mode"
+        )
+    )
 
     st.markdown(
         f"<div style='margin:4px 6px;padding:7px 11px;"
@@ -267,48 +276,81 @@ def _live_lab(t: dict):
         f"{'🟢' if online else '🔌'}  Live Lab</div>"
         f"<div style='font-size:8px;color:{t['t3']};'>{sub}</div>"
         f"</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
 
     if online:
-        hclr = STATUS_COLORS["running"] if conn.get("harness") else STATUS_COLORS["pending"]
+        hclr = (
+            STATUS_COLORS["running"]
+            if conn.get("harness")
+            else STATUS_COLORS["pending"]
+        )
         st.markdown(
             f"<div style='font-size:8px;color:{hclr};padding:1px 10px 3px;'>"
             f"● {'Harness ready' if conn.get('harness') else 'Harness unavailable'}</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
         if st.button("⏏  Disconnect", key="nav_disconnect", use_container_width=True):
             disconnect()
             st.rerun()
     else:
         if "show_connect" not in st.session_state:
             st.session_state["show_connect"] = False
-        if st.button("⚡  Connect to Live Lab", key="toggle_connect", use_container_width=True):
+        if st.button(
+            "⚡  Connect to Live Lab", key="toggle_connect", use_container_width=True
+        ):
             st.session_state["show_connect"] = not st.session_state["show_connect"]
         if st.session_state["show_connect"]:
             st.markdown(
                 f"<div style='font-size:8px;color:{t['t3']};line-height:1.6;margin-bottom:6px;'>"
                 f"Run <code style='color:{t['accent']};'>tunnel_agent.py</code> on your lab machine.<br>"
                 f"<b style='color:{t['t2']};'>URL changes each session.</b></div>",
-                unsafe_allow_html=True)
-            _au = _live.get("url",   "") if lab_live else ""
+                unsafe_allow_html=True,
+            )
+            _au = _live.get("url", "") if lab_live else ""
             _at = _live.get("token", "") if lab_live else ""
             if lab_live and _au:
                 st.markdown(
                     f"<div style='font-size:8px;color:{STATUS_COLORS['running']};padding:0 0 4px;'>"
-                    f"🟢 Auto-detected!</div>", unsafe_allow_html=True)
-            _url = st.text_input("Lab URL",      value=_au, placeholder="https://xxxx.trycloudflare.com", key="conn_url")
-            _tok = st.text_input("Access token", value=_at, placeholder="alems-xxxxxxxxxxxxxxxx", type="password", key="conn_tok")
-            if st.button("🔗  Connect",  key="nav_connect", use_container_width=True):
-                if not _url:   st.error("Enter the lab URL")
-                elif not _tok: st.error("Enter the access token")
+                    f"🟢 Auto-detected!</div>",
+                    unsafe_allow_html=True,
+                )
+            _url = st.text_input(
+                "Lab URL",
+                value=_au,
+                placeholder="https://xxxx.trycloudflare.com",
+                key="conn_url",
+            )
+            _tok = st.text_input(
+                "Access token",
+                value=_at,
+                placeholder="alems-xxxxxxxxxxxxxxxx",
+                type="password",
+                key="conn_tok",
+            )
+            if st.button("🔗  Connect", key="nav_connect", use_container_width=True):
+                if not _url:
+                    st.error("Enter the lab URL")
+                elif not _tok:
+                    st.error("Enter the access token")
                 else:
                     with st.spinner("Connecting..."):
                         ok, msg, harness = verify_connection(_url, _tok)
                     if ok:
-                        conn.update({"url": _url.rstrip("/"), "token": _tok,
-                                     "verified": True, "harness": harness,
-                                     "mode": "online", "error": ""})
+                        conn.update(
+                            {
+                                "url": _url.rstrip("/"),
+                                "token": _tok,
+                                "verified": True,
+                                "harness": harness,
+                                "mode": "online",
+                                "error": "",
+                            }
+                        )
                         st.session_state["conn"] = conn
-                        st.success(f"Connected · harness {'ready' if harness else 'unavailable'}")
+                        st.success(
+                            f"Connected · harness {'ready' if harness else 'unavailable'}"
+                        )
                         st.rerun()
                     else:
                         conn["error"] = msg
@@ -324,9 +366,9 @@ def _nav(t: dict):
     active_section = st.session_state.get("nav_section")
 
     for section in SECTIONS:
-        data   = SECTION_PAGES[section]
+        data = SECTION_PAGES[section]
         accent = data["accent"]
-        active = (section == active_section)
+        active = section == active_section
 
         # Wrap active item for CSS
         if active:
@@ -334,11 +376,11 @@ def _nav(t: dict):
 
         # Button label: coloured dot + section name
         # We can't put HTML in button labels — use unicode bullet styled via CSS
-        label = f"  {section}"   # spaces reserved for ::before dot
-        #_icons = {"COMMAND CENTRE":":material/terminal:","ENERGY & SILICON":":material/bolt:","AGENTIC INTELLIGENCE":":material/psychology:","DATA MOVEMENT":":material/swap_horiz:","SESSIONS & RUNS":":material/history:","RESEARCH & INSIGHTS":":material/biotech:","ENVIRONMENT":":material/eco:","DATA QUALITY":":material/fact_check:","SILICON LAB":":material/memory:","DEVELOPER TOOLS":":material/code:","SETTINGS":":material/settings:"}
+        label = f"  {section}"  # spaces reserved for ::before dot
+        # _icons = {"COMMAND CENTRE":":material/terminal:","ENERGY & SILICON":":material/bolt:","AGENTIC INTELLIGENCE":":material/psychology:","DATA MOVEMENT":":material/swap_horiz:","SESSIONS & RUNS":":material/history:","RESEARCH & INSIGHTS":":material/biotech:","ENVIRONMENT":":material/eco:","DATA QUALITY":":material/fact_check:","SILICON LAB":":material/memory:","DEVELOPER TOOLS":":material/code:","SETTINGS":":material/settings:"}
         if st.button(label, key=f"sec_{section}", use_container_width=True):
             st.session_state["nav_section"] = section
-            st.session_state["nav_page"]    = None   # always show landing first
+            st.session_state["nav_page"] = None  # always show landing first
             st.rerun()
 
         if active:
@@ -348,7 +390,7 @@ def _nav(t: dict):
     dot_css = ""
     for section in SECTIONS:
         accent = SECTION_PAGES[section]["accent"]
-        safe   = section.replace("'", "\\'").replace("&", "\\&")
+        safe = section.replace("'", "\\'").replace("&", "\\&")
         dot_css += f"""
 [data-testid="stSidebar"] button[aria-label="  {safe}"] p {{
     color: {accent}cc !important;
@@ -387,15 +429,18 @@ def _nav(t: dict):
     text-align: left !important;
 }
 """
-    
+
     st.markdown(f"<style>{dot_css}</style>", unsafe_allow_html=True)
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 def _settings(t: dict):
     dark = st.session_state.get("theme", "dark") == "dark"
-    if st.button("☀  Light mode" if dark else "☾  Dark mode",
-                 key="sidebar_theme_toggle", use_container_width=True):
+    if st.button(
+        "☀  Light mode" if dark else "☾  Dark mode",
+        key="sidebar_theme_toggle",
+        use_container_width=True,
+    ):
         st.session_state["theme"] = "light" if dark else "dark"
         st.rerun()
 
@@ -403,17 +448,52 @@ def _settings(t: dict):
 # ── Footer ────────────────────────────────────────────────────────────────────
 def _footer(t: dict):
     _divider(t)
-    _h = [6,8,10,7,12,9,11,8,14,10,13,9,11,8,10,12,9,7,11,13,10,8,12,9,11,10,8,13]
-    _c = [SECTION_ACCENTS["ENERGY & SILICON"], SECTION_ACCENTS["COMMAND CENTRE"],
-          SECTION_ACCENTS["AGENTIC INTELLIGENCE"], SECTION_ACCENTS["DATA MOVEMENT"]]
+    _h = [
+        6,
+        8,
+        10,
+        7,
+        12,
+        9,
+        11,
+        8,
+        14,
+        10,
+        13,
+        9,
+        11,
+        8,
+        10,
+        12,
+        9,
+        7,
+        11,
+        13,
+        10,
+        8,
+        12,
+        9,
+        11,
+        10,
+        8,
+        13,
+    ]
+    _c = [
+        SECTION_ACCENTS["ENERGY & SILICON"],
+        SECTION_ACCENTS["COMMAND CENTRE"],
+        SECTION_ACCENTS["AGENTIC INTELLIGENCE"],
+        SECTION_ACCENTS["DATA MOVEMENT"],
+    ]
     bars = "".join(
         f"<div style='flex:1;height:{h}px;background:{_c[i%4]};"
         f"border-radius:1px 1px 0 0;opacity:0.65;min-width:3px;'></div>"
-        for i, h in enumerate(_h))
+        for i, h in enumerate(_h)
+    )
     st.markdown(
         f"<div style='display:flex;align-items:flex-end;gap:1px;"
         f"height:16px;margin:0 6px 6px;'>{bars}</div>",
-        unsafe_allow_html=True)
+        unsafe_allow_html=True,
+    )
     try:
         nr = q1("SELECT COUNT(*) AS n FROM runs").get("n", "—")
         ne = q1("SELECT COUNT(*) AS n FROM experiments").get("n", "—")
@@ -426,10 +506,12 @@ def _footer(t: dict):
                 f"<div style='font-size:8px;text-transform:uppercase;"
                 f"letter-spacing:.09em;color:{t['t3']};margin-top:1px;'>{l}</div></div>"
                 for v, l in [(nr, "Runs"), (ne, "Exps"), (ns, "Sessions")]
-            ) + "</div>"
+            )
+            + "</div>"
             f"<div style='font-size:8px;color:{t['t3']};padding:0 8px 6px;'>"
             f"{DB_PATH.name} · RAPL · perf · psutil</div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
     except Exception:
         pass
     if st.button("⟳  Refresh", key="nav_refresh", use_container_width=True):
@@ -441,7 +523,7 @@ def _footer(t: dict):
 def render_sidebar() -> None:
     """Render sidebar. Sets nav_section + nav_page in session_state."""
     dark = st.session_state.get("theme", "dark") == "dark"
-    t    = _tokens(dark)
+    t = _tokens(dark)
 
     # Initialise state on first load
     if "nav_section" not in st.session_state:
@@ -454,7 +536,7 @@ def render_sidebar() -> None:
     with st.sidebar:
         st.markdown(_css(t), unsafe_allow_html=True)
 
-        conn   = get_conn()
+        conn = get_conn()
         online = conn.get("verified", False)
 
         _brand(t, online)
@@ -463,13 +545,15 @@ def render_sidebar() -> None:
 
         st.markdown(
             f"<div style='height:0.5px;background:{t['brd']};margin:8px 0 4px;'></div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
 
         _nav(t)
 
         st.markdown(
             f"<div style='height:0.5px;background:{t['brd']};margin:4px 0 6px;'></div>",
-            unsafe_allow_html=True)
+            unsafe_allow_html=True,
+        )
 
         _settings(t)
         _footer(t)

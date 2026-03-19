@@ -1,0 +1,274 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.config_loader module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.energy_engine module" href="core.energy_engine.html" />
+    <link rel="prev" title="core.utils.validators module" href="core.utils.validators.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="core.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">core.config_loader module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#core.config_loader.ConfigDict"><code class="docutils literal notranslate"><span class="pre">ConfigDict</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.config_loader.ConfigLoader"><code class="docutils literal notranslate"><span class="pre">ConfigLoader</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.energy_engine.html">core.energy_engine module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+      <li class="breadcrumb-item active">core.config_loader module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.config_loader.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.config_loader">
+<span id="core-config-loader-module"></span><h1>core.config_loader module<a class="headerlink" href="#module-core.config_loader" title="Link to this heading"></a></h1>
+<p>Simple ConfigLoader for testing</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.config_loader.ConfigDict">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.config_loader.</span></span><span class="sig-name descname"><span class="pre">ConfigDict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/config_loader.html#ConfigDict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigDict" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></p>
+<p>A dictionary that also allows attribute access.</p>
+<dl class="simple">
+<dt>This class enables both:</dt><dd><p>dict-style: config[‘database’][‘path’]
+object-style: config.database.path</p>
+</dd>
+</dl>
+<p>All nested dictionaries are automatically converted to ConfigDict.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.config_loader.</span></span><span class="sig-name descname"><span class="pre">ConfigLoader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Simple config loader for testing LLM setup.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_country_grid_factors">
+<span class="sig-name descname"><span class="pre">get_country_grid_factors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_country_grid_factors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_country_grid_factors" title="Link to this definition"></a></dt>
+<dd><p>Get grid factors for a specific country.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>country_code</strong> – ISO country code (e.g., “US”, “IN”, “FR”)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with grid factors for the country, or None if not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_country_metrics">
+<span class="sig-name descname"><span class="pre">get_country_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_country_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_country_metrics" title="Link to this definition"></a></dt>
+<dd><p>Get country metrics (population, GDP, household energy) for a specific country.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>country_code</strong> – ISO country code (e.g., “US”, “IN”, “FR”)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with country metrics or None if not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_db_config">
+<span class="sig-name descname"><span class="pre">get_db_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_db_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_db_config" title="Link to this definition"></a></dt>
+<dd><p>Get database configuration from app_settings.yaml.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>engine: ‘sqlite’ or ‘postgresql’</p></li>
+<li><p>engine-specific config under ‘sqlite’ or ‘postgresql’ keys</p></li>
+<li><p>Common settings (backup_enabled, etc.)</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with database configuration including</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_grid_intensity_data">
+<span class="sig-name descname"><span class="pre">get_grid_intensity_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_grid_intensity_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_grid_intensity_data" title="Link to this definition"></a></dt>
+<dd><p>Load grid intensity data from JSON file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary with country codes as keys and grid factors as values,
+or empty dict if not available.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_hardware_config">
+<span class="sig-name descname"><span class="pre">get_hardware_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_hardware_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_hardware_config" title="Link to this definition"></a></dt>
+<dd><p>Get the hardware configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>rapl: RAPL paths and domains</p></li>
+<li><p>thermal: Thermal zone paths</p></li>
+<li><p>msr: MSR device information</p></li>
+<li><p>cpufreq: CPU frequency paths</p></li>
+<li><p>cpu: CPU core information</p></li>
+<li><p>turbostat: Turbostat column mappings</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary containing hardware configuration with keys</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_model_config">
+<span class="sig-name descname"><span class="pre">get_model_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_model_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_model_config" title="Link to this definition"></a></dt>
+<dd><p>Get model configuration for a specific mode and workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> – “local” or “cloud”</p></li>
+<li><p><strong>workflow</strong> – “linear” or “agentic”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with model config or None if not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.get_settings">
+<span class="sig-name descname"><span class="pre">get_settings</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#core.config_loader.ConfigDict" title="core.config_loader.ConfigDict"><span class="pre">ConfigDict</span></a></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.get_settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.get_settings" title="Link to this definition"></a></dt>
+<dd><p>Load settings from app_settings.yaml.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>Dict-style: settings[‘database’][‘path’]</p></li>
+<li><p>Object-style: settings.database.path</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ConfigDict that works with both</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.list_available_countries">
+<span class="sig-name descname"><span class="pre">list_available_countries</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.list_available_countries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.list_available_countries" title="Link to this definition"></a></dt>
+<dd><p>Get list of all country codes available in grid intensity data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.config_loader.ConfigLoader.sync_task_categories">
+<span class="sig-name descname"><span class="pre">sync_task_categories</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_connection</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/config_loader.html#ConfigLoader.sync_task_categories"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.config_loader.ConfigLoader.sync_task_categories" title="Link to this definition"></a></dt>
+<dd><p>Sync task categories from YAML to database using TaskLoader</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.utils.validators.html" class="btn btn-neutral float-left" title="core.utils.validators module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.energy_engine.html" class="btn btn-neutral float-right" title="core.energy_engine module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.execution.harness module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.execution.linear module" href="core.execution.linear.html" />
+    <link rel="prev" title="core.execution.hardware_collector module" href="core.execution.hardware_collector.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.execution.html">core.execution package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.execution.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.execution.html#module-core.execution">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.execution.html">core.execution package</a></li>
+      <li class="breadcrumb-item active">core.execution.harness module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.execution.harness.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.execution.harness">
+<span id="core-execution-harness-module"></span><h1>core.execution.harness module<a class="headerlink" href="#module-core.execution.harness" title="Link to this heading"></a></h1>
+<section id="experiment-harness-wraps-ai-execution-with-energy-measurement">
+<h2>EXPERIMENT HARNESS – Wraps AI execution with energy measurement<a class="headerlink" href="#experiment-harness-wraps-ai-execution-with-energy-measurement" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>Purpose:</dt><dd><p>This is the CRITICAL synchronization layer between energy measurement
+(Module 1) and AI execution (Module 3). It ensures perfect alignment
+between RAPL counters and code execution.</p>
+</dd>
+<dt>SCIENTIFIC NOTES:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>Uses Module 1’s 3‑layer architecture correctly:</dt><dd><p>Layer 1: RawEnergyMeasurement (from EnergyEngine)
+Layer 2: BaselineMeasurement (idle power)
+Layer 3: DerivedEnergyMeasurement (computed metrics for analysis)</p>
+</dd>
+</dl>
+</li>
+<li><p>ALL THREE LAYERS are returned in results for complete transparency</p></li>
+<li><p>Energy measurement wraps ENTIRE execution (not just API calls)</p></li>
+<li><p>Warmup runs discard first execution to eliminate cache/initialization effects</p></li>
+<li><p>Multiple repetitions (n&gt;=30) for statistical power</p></li>
+<li><p>Cool‑down period between linear and agentic ensures fair comparison</p></li>
+<li><p>Network latency tracked separately for cloud models</p></li>
+<li><p>CPU metrics come from Layer 3’s performance counters</p></li>
+</ul>
+</dd>
+<dt>Why this exists:</dt><dd><ul class="simple">
+<li><p>Timestamps inside executors can drift from hardware counters</p></li>
+<li><p>Even 50ms misalignment corrupts orchestration tax measurements</p></li>
+<li><p>This harness guarantees perfect synchronization</p></li>
+</ul>
+</dd>
+<dt>Requirements:</dt><dd><p>Req 3.6: Device Handoff Latency – precise timing alignment
+Req 1.46: High‑frequency sampling – must capture short agent steps
+Req 3.5: Cool‑down period between runs</p>
+</dd>
+</dl>
+<section id="author-deepak-panigrahy">
+<h3>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.execution.harness.ExperimentHarness">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.execution.harness.</span></span><span class="sig-name descname"><span class="pre">ExperimentHarness</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_loader</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/harness.html#ExperimentHarness"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.harness.ExperimentHarness" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Wraps AI execution with energy measurement for perfect synchronization.</p>
+<dl class="simple">
+<dt>Critical design:</dt><dd><p>energy_start()  ← RAPL starts recording
+executor.execute()  ← AI code runs
+energy_stop()   ← RAPL stops recording</p>
+</dd>
+</dl>
+<p>This ensures hardware counters align exactly with software execution.</p>
+<p>For cloud models, network latency is tracked separately to distinguish
+orchestration overhead from network delays.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.harness.ExperimentHarness.run_agentic">
+<span class="sig-name descname"><span class="pre">run_agentic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">executor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_cloud</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/harness.html#ExperimentHarness.run_agentic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.harness.ExperimentHarness.run_agentic" title="Link to this definition"></a></dt>
+<dd><p>Run agentic executor with synchronized energy measurement.</p>
+<p>Same critical alignment as linear:
+Energy measurement wraps ENTIRE agentic pipeline.</p>
+<p>This captures ALL orchestration tax in one synchronized window:
+- Planning
+- Tool execution
+- Synthesis
+- Inter-step delays</p>
+<p>Uses the same 3‑layer architecture and returns ALL THREE LAYERS.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.harness.ExperimentHarness.run_comparison">
+<span class="sig-name descname"><span class="pre">run_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">linear_executor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agentic_executor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cool_down</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_repetitions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_warmup</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hardware_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_to_db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/harness.html#ExperimentHarness.run_comparison"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.harness.ExperimentHarness.run_comparison" title="Link to this definition"></a></dt>
+<dd><p>Run multiple comparisons with warmup and statistical analysis.</p>
+<p>This is the publishable experimental protocol:
+1. Warmup run (discarded) to stabilize system
+2. N repetitions of (linear + cool‑down + agentic)
+3. Statistical analysis of all runs</p>
+<p>Returns results with ALL THREE LAYERS for each run.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.harness.ExperimentHarness.run_linear">
+<span class="sig-name descname"><span class="pre">run_linear</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">executor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_cloud</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/execution/harness.html#ExperimentHarness.run_linear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.harness.ExperimentHarness.run_linear" title="Link to this definition"></a></dt>
+<dd><p>Run linear executor with synchronized energy measurement.</p>
+<dl class="simple">
+<dt>This uses the 3‑layer architecture correctly and returns ALL THREE LAYERS:</dt><dd><ol class="arabic simple">
+<li><p>RawEnergyMeasurement from EnergyEngine (Layer 1)</p></li>
+<li><p>Baseline from BaselineManager (Layer 2)</p></li>
+<li><p>DerivedEnergyMeasurement from EnergyAnalyzer (Layer 3) ← USED FOR METRICS</p></li>
+</ol>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.execution.harness.ExperimentHarness.save_to_database">
+<span class="sig-name descname"><span class="pre">save_to_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hardware_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/execution/harness.html#ExperimentHarness.save_to_database"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.harness.ExperimentHarness.save_to_database" title="Link to this definition"></a></dt>
+<dd><p>Save experiment results to database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>results</strong> – Results from run_comparison</p></li>
+<li><p><strong>experiment_meta</strong> – Experiment metadata</p></li>
+<li><p><strong>hardware_info</strong> – Hardware configuration (optional)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>exp_id if successful, None otherwise</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core.execution.harness.get_workflow_order">
+<span class="sig-prename descclassname"><span class="pre">core.execution.harness.</span></span><span class="sig-name descname"><span class="pre">get_workflow_order</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rep_num</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/execution/harness.html#get_workflow_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.execution.harness.get_workflow_order" title="Link to this definition"></a></dt>
+<dd><p>Return (first, second) workflow order for repetition (1-based).</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.execution.hardware_collector.html" class="btn btn-neutral float-left" title="core.execution.hardware_collector module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.execution.linear.html" class="btn btn-neutral float-right" title="core.execution.linear module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

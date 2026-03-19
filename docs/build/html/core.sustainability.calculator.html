@@ -1,0 +1,446 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.sustainability.calculator module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.utils package" href="core.utils.html" />
+    <link rel="prev" title="core.sustainability.utils.time_aware_factors module" href="core.sustainability.utils.time_aware_factors.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="core.database.html">core.database package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.sustainability.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.sustainability.html#module-core.sustainability">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.sustainability.html">core.sustainability package</a></li>
+      <li class="breadcrumb-item active">core.sustainability.calculator module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.sustainability.calculator.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.sustainability.calculator">
+<span id="core-sustainability-calculator-module"></span><h1>core.sustainability.calculator module<a class="headerlink" href="#module-core.sustainability.calculator" title="Link to this heading"></a></h1>
+<section id="sustainability-calculator-module-2-main-entry-point">
+<h2>SUSTAINABILITY CALCULATOR – Module 2 Main Entry Point<a class="headerlink" href="#sustainability-calculator-module-2-main-entry-point" title="Link to this heading"></a></h2>
+<section id="requirements-covered">
+<h3>Requirements Covered:<a class="headerlink" href="#requirements-covered" title="Link to this heading"></a></h3>
+<p>Req 2.1: Country-Specific Carbon Intensity
+Req 2.2: Country-Specific Water Intensity
+Req 2.3: Methane Leakage Factor
+Req 2.4: Total Operational Carbon (CCI)
+Req 2.5: Total Water Consumption (WCI)
+Req 2.6: Methane Emission Impact (MCI)
+Req 2.7: Energy Per Query (EPQ)
+Req 2.8: Wait-Tax Per Query (TPQ)
+Req 2.9: Carbon Receipt Per Task
+Req 2.10: Water Receipt Per Task
+Req 2.12: Geographic Arbitrage Potential
+Req 2.13: Energy Scarcity Index (ESI)
+Req 2.16: Global Metadata Integrity</p>
+<section id="author-deepak-panigrahy">
+<h4>Author: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h4>
+</section>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityCalculator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.sustainability.calculator.</span></span><span class="sig-name descname"><span class="pre">SustainabilityCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_loader</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityCalculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityCalculator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Main sustainability calculator.</p>
+<p>Transforms energy measurements into environmental impacts using
+country-specific grid factors from Module 0.</p>
+<dl class="simple">
+<dt>Requirements:</dt><dd><p>Req 2.1-2.3: Grid intensity factors
+Req 2.4-2.6: Environmental impacts
+Req 2.7-2.10: Per-query metrics
+Req 2.12-2.13: Geographic context
+Req 2.16: Data integrity</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityCalculator.calculate_arbitrage">
+<span class="sig-name descname"><span class="pre">calculate_arbitrage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_country</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityCalculator.calculate_arbitrage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityCalculator.calculate_arbitrage" title="Link to this definition"></a></dt>
+<dd><p>Calculate potential savings by running in different grid regions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>energy_kwh</strong> – Energy consumption in kWh</p></li>
+<li><p><strong>current_country</strong> – Current grid region</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary with best country and potential savings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityCalculator.calculate_from_derived">
+<span class="sig-name descname"><span class="pre">calculate_from_derived</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">derived</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.models.derived_energy_measurement.html#core.models.derived_energy_measurement.DerivedEnergyMeasurement" title="core.models.derived_energy_measurement.DerivedEnergyMeasurement"><span class="pre">DerivedEnergyMeasurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#core.sustainability.calculator.SustainabilityResult" title="core.sustainability.calculator.SustainabilityResult"><span class="pre">SustainabilityResult</span></a></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityCalculator.calculate_from_derived"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityCalculator.calculate_from_derived" title="Link to this definition"></a></dt>
+<dd><p>Calculate sustainability from derived measurement.</p>
+<p>This uses workload energy instead of total package energy,
+giving a more accurate picture of the environmental impact
+of the actual workload.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>derived</strong> – DerivedEnergyMeasurement from Module 1 analyzer</p></li>
+<li><p><strong>country_code</strong> – ISO country code for grid factors [Req 2.1-2.3]</p></li>
+<li><p><strong>query_count</strong> – Number of queries for per-query normalization [Req 2.7-2.10]</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>SustainabilityResult object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityCalculator.calculate_from_raw">
+<span class="sig-name descname"><span class="pre">calculate_from_raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement" title="core.models.raw_energy_measurement.RawEnergyMeasurement"><span class="pre">RawEnergyMeasurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#core.sustainability.calculator.SustainabilityResult" title="core.sustainability.calculator.SustainabilityResult"><span class="pre">SustainabilityResult</span></a></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityCalculator.calculate_from_raw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityCalculator.calculate_from_raw" title="Link to this definition"></a></dt>
+<dd><p>Calculate sustainability from raw measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>raw</strong> – RawEnergyMeasurement from Module 1</p></li>
+<li><p><strong>country_code</strong> – ISO country code for grid factors [Req 2.1-2.3]</p></li>
+<li><p><strong>query_count</strong> – Number of queries for per-query normalization [Req 2.7-2.10]</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>SustainabilityResult object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityCalculator.calculate_scarcity_index">
+<span class="sig-name descname"><span class="pre">calculate_scarcity_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'US'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityCalculator.calculate_scarcity_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityCalculator.calculate_scarcity_index" title="Link to this definition"></a></dt>
+<dd><p>Calculate Energy Scarcity Index (ESI).</p>
+<p>ESI = energy_kwh / household_daily_kwh</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>energy_kwh</strong> – Energy consumption in kWh</p></li>
+<li><p><strong>country_code</strong> – ISO country code</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ESI value (ratio of experiment energy to household daily)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityCalculator.list_countries">
+<span class="sig-name descname"><span class="pre">list_countries</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityCalculator.list_countries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityCalculator.list_countries" title="Link to this definition"></a></dt>
+<dd><p>Get list of available countries.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.sustainability.calculator.</span></span><span class="sig-name descname"><span class="pre">SustainabilityResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurement_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carbon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.sustainability.models.carbon_metrics.html#core.sustainability.models.carbon_metrics.CarbonMetrics" title="core.sustainability.models.carbon_metrics.CarbonMetrics"><span class="pre">CarbonMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">water</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.sustainability.models.water_metrics.html#core.sustainability.models.water_metrics.WaterMetrics" title="core.sustainability.models.water_metrics.WaterMetrics"><span class="pre">WaterMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">methane</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.sustainability.models.methane_metrics.html#core.sustainability.models.methane_metrics.MethaneMetrics" title="core.sustainability.models.methane_metrics.MethaneMetrics"><span class="pre">MethaneMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_j</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carbon_intensity_g_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">water_intensity_l_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methane_intensity_g_per_kwh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Complete sustainability results for a measurement.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.measurement_id">
+<span class="sig-name descname"><span class="pre">measurement_id</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.measurement_id" title="Link to this definition"></a></dt>
+<dd><p>Reference to raw measurement</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.country_code">
+<span class="sig-name descname"><span class="pre">country_code</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.country_code" title="Link to this definition"></a></dt>
+<dd><p>Grid region used</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.carbon">
+<span class="sig-name descname"><span class="pre">carbon</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.carbon" title="Link to this definition"></a></dt>
+<dd><p>CarbonMetrics object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="core.sustainability.models.carbon_metrics.html#core.sustainability.models.carbon_metrics.CarbonMetrics" title="core.sustainability.models.carbon_metrics.CarbonMetrics">core.sustainability.models.carbon_metrics.CarbonMetrics</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.water">
+<span class="sig-name descname"><span class="pre">water</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.water" title="Link to this definition"></a></dt>
+<dd><p>WaterMetrics object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="core.sustainability.models.water_metrics.html#core.sustainability.models.water_metrics.WaterMetrics" title="core.sustainability.models.water_metrics.WaterMetrics">core.sustainability.models.water_metrics.WaterMetrics</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.methane">
+<span class="sig-name descname"><span class="pre">methane</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.methane" title="Link to this definition"></a></dt>
+<dd><p>MethaneMetrics object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="core.sustainability.models.methane_metrics.html#core.sustainability.models.methane_metrics.MethaneMetrics" title="core.sustainability.models.methane_metrics.MethaneMetrics">core.sustainability.models.methane_metrics.MethaneMetrics</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.energy_j">
+<span class="sig-name descname"><span class="pre">energy_j</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.energy_j" title="Link to this definition"></a></dt>
+<dd><p>Total energy in joules (NEW)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.energy_kwh">
+<span class="sig-name descname"><span class="pre">energy_kwh</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.energy_kwh" title="Link to this definition"></a></dt>
+<dd><p>Total energy in kilowatt-hours</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.carbon_intensity_g_per_kwh">
+<span class="sig-name descname"><span class="pre">carbon_intensity_g_per_kwh</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.carbon_intensity_g_per_kwh" title="Link to this definition"></a></dt>
+<dd><p>Grid carbon intensity used (NEW)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.water_intensity_l_per_kwh">
+<span class="sig-name descname"><span class="pre">water_intensity_l_per_kwh</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.water_intensity_l_per_kwh" title="Link to this definition"></a></dt>
+<dd><p>Grid water intensity used (NEW)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.methane_intensity_g_per_kwh">
+<span class="sig-name descname"><span class="pre">methane_intensity_g_per_kwh</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.methane_intensity_g_per_kwh" title="Link to this definition"></a></dt>
+<dd><p>Grid methane intensity used (NEW)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.timestamp" title="Link to this definition"></a></dt>
+<dd><p>When calculation was performed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">carbon</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="core.sustainability.models.carbon_metrics.html#core.sustainability.models.carbon_metrics.CarbonMetrics" title="core.sustainability.models.carbon_metrics.CarbonMetrics"><span class="pre">CarbonMetrics</span></a></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">carbon_intensity_g_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">country_code</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">energy_j</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">energy_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">measurement_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">methane</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="core.sustainability.models.methane_metrics.html#core.sustainability.models.methane_metrics.MethaneMetrics" title="core.sustainability.models.methane_metrics.MethaneMetrics"><span class="pre">MethaneMetrics</span></a></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">methane_intensity_g_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityResult.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.summary" title="Link to this definition"></a></dt>
+<dd><p>Human-readable summary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.sustainability.calculator.SustainabilityResult.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/sustainability/calculator.html#SustainabilityResult.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.sustainability.calculator.SustainabilityResult.to_dict" title="Link to this definition"></a></dt>
+<dd><p>Convert to dictionary for serialization.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">water</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="core.sustainability.models.water_metrics.html#core.sustainability.models.water_metrics.WaterMetrics" title="core.sustainability.models.water_metrics.WaterMetrics"><span class="pre">WaterMetrics</span></a></span><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">water_intensity_l_per_kwh</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></span><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.sustainability.utils.time_aware_factors.html" class="btn btn-neutral float-left" title="core.sustainability.utils.time_aware_factors module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.utils.html" class="btn btn-neutral float-right" title="core.utils package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

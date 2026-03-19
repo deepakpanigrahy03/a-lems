@@ -1,0 +1,296 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.repositories package &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.database.repositories.events module" href="core.database.repositories.events.html" />
+    <link rel="prev" title="core.database package" href="core.database.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="core.database.html">core.database package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="core.database.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.html#module-core.database">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.database.html">core.database package</a></li>
+      <li class="breadcrumb-item active">core.database.repositories package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.database.repositories.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-database-repositories-package">
+<h1>core.database.repositories package<a class="headerlink" href="#core-database-repositories-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.database.repositories.events.html">core.database.repositories.events module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.events.html#events-repository-handles-orchestration-events-insertion">EVENTS REPOSITORY – Handles orchestration events insertion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.events.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.events.html#core.database.repositories.events.EventsRepository"><code class="docutils literal notranslate"><span class="pre">EventsRepository</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.events.html#core.database.repositories.events.EventsRepository.insert_events"><code class="docutils literal notranslate"><span class="pre">EventsRepository.insert_events()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.repositories.runs.html">core.database.repositories.runs module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.runs.html#runs-repository-handles-insertion-of-run-data-and-derived-metrics">RUNS REPOSITORY – Handles insertion of run data and derived metrics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.runs.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.runs.html#core.database.repositories.runs.RunsRepository"><code class="docutils literal notranslate"><span class="pre">RunsRepository</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.runs.html#core.database.repositories.runs.RunsRepository.insert_run"><code class="docutils literal notranslate"><span class="pre">RunsRepository.insert_run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.runs.html#core.database.repositories.runs.RunsRepository.update_run_stats"><code class="docutils literal notranslate"><span class="pre">RunsRepository.update_run_stats()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.repositories.samples.html">core.database.repositories.samples module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.samples.html#samples-repository-handles-high-frequency-sample-insertion">SAMPLES REPOSITORY – Handles high-frequency sample insertion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.samples.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.samples.html#core.database.repositories.samples.SamplesRepository"><code class="docutils literal notranslate"><span class="pre">SamplesRepository</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.samples.html#core.database.repositories.samples.SamplesRepository.insert_cpu_samples"><code class="docutils literal notranslate"><span class="pre">SamplesRepository.insert_cpu_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.samples.html#core.database.repositories.samples.SamplesRepository.insert_energy_samples"><code class="docutils literal notranslate"><span class="pre">SamplesRepository.insert_energy_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.samples.html#core.database.repositories.samples.SamplesRepository.insert_interrupt_samples"><code class="docutils literal notranslate"><span class="pre">SamplesRepository.insert_interrupt_samples()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.repositories.tax.html">core.database.repositories.tax module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.tax.html#tax-repository-handles-orchestration-tax-computation-and-storage">TAX REPOSITORY – Handles orchestration tax computation and storage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.tax.html#author-deepak-panigrahy">AUTHOR: Deepak Panigrahy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository"><code class="docutils literal notranslate"><span class="pre">TaxRepository</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository.create_tax_summaries"><code class="docutils literal notranslate"><span class="pre">TaxRepository.create_tax_summaries()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.tax.html#core.database.repositories.tax.TaxRepository.create_tax_summary_for_pair"><code class="docutils literal notranslate"><span class="pre">TaxRepository.create_tax_summary_for_pair()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="core.database.repositories.thermal.html">core.database.repositories.thermal module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.database.repositories.thermal.html#core.database.repositories.thermal.ThermalRepository"><code class="docutils literal notranslate"><span class="pre">ThermalRepository</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="core.database.repositories.thermal.html#core.database.repositories.thermal.ThermalRepository.insert_thermal_samples"><code class="docutils literal notranslate"><span class="pre">ThermalRepository.insert_thermal_samples()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-core.database.repositories">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-core.database.repositories" title="Link to this heading"></a></h2>
+<p>Repositories for database operations.
+Each repository handles a specific domain of data.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.database.repositories.EventsRepository">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.database.repositories.</span></span><span class="sig-name descname"><span class="pre">EventsRepository</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface" title="core.database.base.DatabaseInterface"><span class="pre">DatabaseInterface</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/database/repositories/events.html#EventsRepository"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.EventsRepository" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Repository for orchestration events.</p>
+<p>Handles insertion of phase-level events for agentic runs.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.repositories.EventsRepository.insert_events">
+<span class="sig-name descname"><span class="pre">insert_events</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/repositories/events.html#EventsRepository.insert_events"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.EventsRepository.insert_events" title="Link to this definition"></a></dt>
+<dd><p>Insert orchestration events for a run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>events</strong> – List of event dictionaries</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.database.repositories.RunsRepository">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.database.repositories.</span></span><span class="sig-name descname"><span class="pre">RunsRepository</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface" title="core.database.base.DatabaseInterface"><span class="pre">DatabaseInterface</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/database/repositories/runs.html#RunsRepository"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.RunsRepository" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Repository for run-related database operations.</p>
+<p>This class handles all insertions and queries related to runs,
+including the complex 80+ column run table.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.repositories.RunsRepository.insert_run">
+<span class="sig-name descname"><span class="pre">insert_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hw_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/repositories/runs.html#RunsRepository.insert_run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.RunsRepository.insert_run" title="Link to this definition"></a></dt>
+<dd><p>Insert a single run with all its metrics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exp_id</strong> – Foreign key to experiments table</p></li>
+<li><p><strong>hw_id</strong> – Foreign key to hardware_config (or None)</p></li>
+<li><p><strong>run_data</strong> – Dictionary containing all data for one run</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>run_id of the newly inserted run</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.repositories.RunsRepository.update_run_stats">
+<span class="sig-name descname"><span class="pre">update_run_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/repositories/runs.html#RunsRepository.update_run_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.RunsRepository.update_run_stats" title="Link to this definition"></a></dt>
+<dd><p>Update run with aggregated statistics from samples.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.database.repositories.SamplesRepository">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.database.repositories.</span></span><span class="sig-name descname"><span class="pre">SamplesRepository</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface" title="core.database.base.DatabaseInterface"><span class="pre">DatabaseInterface</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/database/repositories/samples.html#SamplesRepository"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.SamplesRepository" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Repository for high-frequency samples.</p>
+<p>Handles insertion of time-series data from various sensors.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.repositories.SamplesRepository.insert_cpu_samples">
+<span class="sig-name descname"><span class="pre">insert_cpu_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/repositories/samples.html#SamplesRepository.insert_cpu_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.SamplesRepository.insert_cpu_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert CPU samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.repositories.SamplesRepository.insert_energy_samples">
+<span class="sig-name descname"><span class="pre">insert_energy_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/repositories/samples.html#SamplesRepository.insert_energy_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.SamplesRepository.insert_energy_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert high-frequency RAPL samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>samples</strong> – List of sample dictionaries</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.repositories.SamplesRepository.insert_interrupt_samples">
+<span class="sig-name descname"><span class="pre">insert_interrupt_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/repositories/samples.html#SamplesRepository.insert_interrupt_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.repositories.SamplesRepository.insert_interrupt_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert interrupt samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – Foreign key to runs table</p></li>
+<li><p><strong>samples</strong> – List of sample dictionaries</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.database.html" class="btn btn-neutral float-left" title="core.database package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.database.repositories.events.html" class="btn btn-neutral float-right" title="core.database.repositories.events module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

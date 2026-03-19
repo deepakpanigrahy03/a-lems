@@ -8,19 +8,25 @@ SSH tunnel:     ssh -L 8765:localhost:8765 user@host  then  http://localhost:876
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
-import sqlite3, json, asyncio, sys, os, time
+import asyncio
+import json
+import os
+import sqlite3
+import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
-from contextlib import contextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from fastapi import (BackgroundTasks, FastAPI, HTTPException, WebSocket,
+                     WebSocketDisconnect)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
-DB   = BASE / "data" / "experiments.db"
+DB = BASE / "data" / "experiments.db"
 HTML = BASE / "dashboard.html"
 
 # ── Try importing A-LEMS harness (only works on measurement machine) ─────────
@@ -28,29 +34,31 @@ HARNESS_OK = False
 try:
     sys.path.insert(0, str(BASE))
     from core.config_loader import ConfigLoader
+    from core.execution.agentic import AgenticExecutor
     from core.execution.harness import ExperimentHarness
     from core.execution.linear import LinearExecutor
-    from core.execution.agentic import AgenticExecutor
+
     HARNESS_OK = True
     print("✅  A-LEMS harness loaded — live execution enabled")
 except Exception as e:
     print(f"⚠️   Harness unavailable ({e}) — read-only / remote mode")
 
 app = FastAPI(title="A-LEMS API", version="2.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"],
-                   allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+)
 
 # ── Token auth — named per-researcher tokens ──────────────────────────────────
 # ALEMS_TOKENS_JSON = {"supervisor": "alems-xxx", "colleague": "alems-yyy", ...}
-_TOKENS_RAW  = os.environ.get("ALEMS_TOKENS_JSON", "")
-_TOKEN_MAP: dict = {}   # token_value → researcher_name
+_TOKENS_RAW = os.environ.get("ALEMS_TOKENS_JSON", "")
+_TOKEN_MAP: dict = {}  # token_value → researcher_name
 
 try:
     if _TOKENS_RAW:
         _parsed = json.loads(_TOKENS_RAW)
         # Support both {name: token} and flat string formats
         if isinstance(_parsed, dict):
-            _TOKEN_MAP = {v: k for k, v in _parsed.items()}   # invert: token→name
+            _TOKEN_MAP = {v: k for k, v in _parsed.items()}  # invert: token→name
         elif isinstance(_parsed, str):
             _TOKEN_MAP = {_parsed: "researcher"}
 except Exception:
@@ -74,18 +82,21 @@ def _check_token(token: str = "") -> str:
     Returns "" if no tokens configured (local/open mode).
     """
     if not _TOKEN_MAP:
-        return "local"   # No tokens configured → open access
+        return "local"  # No tokens configured → open access
     if token in _TOKEN_MAP:
-        return _TOKEN_MAP[token]   # Return researcher name
+        return _TOKEN_MAP[token]  # Return researcher name
     raise HTTPException(403, "Invalid token. Contact the lab owner for your token.")
 
+
 # Active run sessions: session_id -> dict
-_runs: dict = {}   # sid → {status, log, progress, done, result}
+_runs: dict = {}  # sid → {status, log, progress, done, result}
 
 # ── Session persistence — survives server restarts ────────────────────────────
 import json as _json
+
 _SESSIONS_DIR = BASE / "logs" / "sessions"
 _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def _save_session(sid: str):
     try:
@@ -94,6 +105,7 @@ def _save_session(sid: str):
         (_SESSIONS_DIR / f"{sid}.json").write_text(_json.dumps(s))
     except Exception:
         pass
+
 
 def _load_session(sid: str) -> dict:
     p = _SESSIONS_DIR / f"{sid}.json"
@@ -116,14 +128,17 @@ def db():
     finally:
         con.close()
 
+
 def q(sql, p=[]):
     with db() as c:
         return [dict(r) for r in c.execute(sql, p).fetchall()]
+
 
 def q1(sql, p=[]):
     with db() as c:
         r = c.execute(sql, p).fetchone()
         return dict(r) if r else None
+
 
 def _ts():
     return time.strftime("%H:%M:%S")
@@ -132,6 +147,7 @@ def _ts():
 # ══════════════════════════════════════════════════════════════════════════════
 # EXPERIMENTS
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.get("/api/experiments")
 def get_experiments():
@@ -159,7 +175,8 @@ def get_experiment(exp_id: int):
     if not exp:
         raise HTTPException(404, "Experiment not found")
 
-    exp["runs"] = q("""
+    exp["runs"] = q(
+        """
         SELECT r.run_id, r.workflow_type, r.run_number,
             ROUND(r.total_energy_uj/1e6,4)   AS energy_j,
             ROUND(r.pkg_energy_uj/1e6,4)     AS pkg_j,
@@ -198,9 +215,12 @@ def get_experiment(exp_id: int):
         LEFT JOIN orchestration_analysis oa ON r.run_id = oa.run_id
         WHERE r.exp_id=?
         ORDER BY r.run_number, r.workflow_type
-    """, [exp_id])
+    """,
+        [exp_id],
+    )
 
-    exp["tax"] = q("""
+    exp["tax"] = q(
+        """
         SELECT ots.comparison_id,
             ROUND(ots.linear_dynamic_uj/1e6,4)    AS linear_j,
             ROUND(ots.agentic_dynamic_uj/1e6,4)   AS agentic_j,
@@ -210,7 +230,9 @@ def get_experiment(exp_id: int):
         FROM orchestration_tax_summary ots
         JOIN runs r ON ots.agentic_run_id = r.run_id
         WHERE r.exp_id=?
-    """, [exp_id])
+    """,
+        [exp_id],
+    )
 
     return exp
 
@@ -219,9 +241,11 @@ def get_experiment(exp_id: int):
 # RUNS
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @app.get("/api/runs")
 def get_runs(limit: int = 500):
-    return q("""
+    return q(
+        """
         SELECT mf.*,
             e.name AS exp_name, e.task_name, e.status,
             oa.pkg_energy_j, oa.core_energy_j, oa.uncore_energy_j, oa.dram_energy_j,
@@ -233,12 +257,15 @@ def get_runs(limit: int = 500):
         JOIN experiments e ON mf.run_id IN (SELECT run_id FROM runs WHERE exp_id = e.exp_id)
         LEFT JOIN orchestration_analysis oa ON mf.run_id = oa.run_id
         LIMIT ?
-    """, [limit])
+    """,
+        [limit],
+    )
 
 
 @app.get("/api/runs/{run_id}")
 def get_run(run_id: int):
-    row = q1("""
+    row = q1(
+        """
         SELECT r.*, e.name AS exp_name, e.task_name, e.provider, e.country_code,
             oa.workload_energy_j, oa.reasoning_energy_j,
             oa.orchestration_tax_j AS oa_tax_j,
@@ -248,7 +275,9 @@ def get_run(run_id: int):
         JOIN experiments e ON r.exp_id = e.exp_id
         LEFT JOIN orchestration_analysis oa ON r.run_id = oa.run_id
         WHERE r.run_id=?
-    """, [run_id])
+    """,
+        [run_id],
+    )
     if not row:
         raise HTTPException(404, "Run not found")
     return row
@@ -256,7 +285,8 @@ def get_run(run_id: int):
 
 @app.get("/api/runs/{run_id}/samples/energy")
 def get_energy_samples(run_id: int, downsample: int = 1):
-    rows = q("""
+    rows = q(
+        """
         SELECT sample_id,
             ROUND((timestamp_ns -
                 (SELECT MIN(timestamp_ns) FROM energy_samples WHERE run_id=?)
@@ -268,7 +298,9 @@ def get_energy_samples(run_id: int, downsample: int = 1):
         FROM energy_samples
         WHERE run_id=?
         ORDER BY timestamp_ns
-    """, [run_id, run_id])
+    """,
+        [run_id, run_id],
+    )
 
     if downsample > 1:
         rows = [r for i, r in enumerate(rows) if i % downsample == 0]
@@ -276,21 +308,30 @@ def get_energy_samples(run_id: int, downsample: int = 1):
     # Compute instantaneous power (W = delta_J / delta_s)
     power = []
     for i in range(1, len(rows)):
-        dt = (rows[i]["elapsed_ms"] - rows[i-1]["elapsed_ms"]) / 1000.0
+        dt = (rows[i]["elapsed_ms"] - rows[i - 1]["elapsed_ms"]) / 1000.0
         if dt > 0:
-            power.append({
-                "elapsed_ms": rows[i]["elapsed_ms"],
-                "pkg_w":    round((rows[i]["pkg_j"]    - rows[i-1]["pkg_j"])    / dt, 3),
-                "core_w":   round((rows[i]["core_j"]   - rows[i-1]["core_j"])   / dt, 3),
-                "uncore_w": round((rows[i]["uncore_j"] - rows[i-1]["uncore_j"]) / dt, 3),
-                "dram_w":   round((rows[i]["dram_j"]   - rows[i-1]["dram_j"])   / dt, 3),
-            })
+            power.append(
+                {
+                    "elapsed_ms": rows[i]["elapsed_ms"],
+                    "pkg_w": round((rows[i]["pkg_j"] - rows[i - 1]["pkg_j"]) / dt, 3),
+                    "core_w": round(
+                        (rows[i]["core_j"] - rows[i - 1]["core_j"]) / dt, 3
+                    ),
+                    "uncore_w": round(
+                        (rows[i]["uncore_j"] - rows[i - 1]["uncore_j"]) / dt, 3
+                    ),
+                    "dram_w": round(
+                        (rows[i]["dram_j"] - rows[i - 1]["dram_j"]) / dt, 3
+                    ),
+                }
+            )
     return {"raw": rows, "power": power, "count": len(rows)}
 
 
 @app.get("/api/runs/{run_id}/samples/cpu")
 def get_cpu_samples(run_id: int):
-    return q("""
+    return q(
+        """
         SELECT sample_id,
             ROUND((timestamp_ns -
                 (SELECT MIN(timestamp_ns) FROM cpu_samples WHERE run_id=?)
@@ -304,12 +345,15 @@ def get_cpu_samples(run_id: int):
         FROM cpu_samples
         WHERE run_id=?
         ORDER BY timestamp_ns
-    """, [run_id, run_id])
+    """,
+        [run_id, run_id],
+    )
 
 
 @app.get("/api/runs/{run_id}/samples/interrupts")
 def get_interrupt_samples(run_id: int):
-    return q("""
+    return q(
+        """
         SELECT ROUND((timestamp_ns -
             (SELECT MIN(timestamp_ns) FROM interrupt_samples WHERE run_id=?)
         )/1e6, 1) AS elapsed_ms,
@@ -317,12 +361,15 @@ def get_interrupt_samples(run_id: int):
         FROM interrupt_samples
         WHERE run_id=?
         ORDER BY timestamp_ns
-    """, [run_id, run_id])
+    """,
+        [run_id, run_id],
+    )
 
 
 @app.get("/api/runs/{run_id}/events")
 def get_events(run_id: int):
-    return q("""
+    return q(
+        """
         SELECT event_id, step_index, phase, event_type,
             ROUND((start_time_ns -
                 (SELECT MIN(start_time_ns) FROM orchestration_events WHERE run_id=?)
@@ -336,12 +383,15 @@ def get_events(run_id: int):
         FROM orchestration_events
         WHERE run_id=?
         ORDER BY start_time_ns
-    """, [run_id, run_id])
+    """,
+        [run_id, run_id],
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ANALYTICS
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.get("/api/analytics/stats")
 def get_stats():
@@ -519,6 +569,7 @@ def get_anomalies():
 # SYSTEM STATUS
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @app.get("/api/system/status")
 def system_status():
     counts = q1("""
@@ -543,6 +594,7 @@ def system_status():
 # EXECUTE — trigger real benchmark (same machine or SSH tunnel)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @app.post("/api/run/start")
 async def start_run(payload: dict, background_tasks: BackgroundTasks):
     _researcher = _check_token(payload.get("token", ""))
@@ -556,17 +608,24 @@ async def start_run(payload: dict, background_tasks: BackgroundTasks):
         raise HTTPException(503, "Harness not available on this machine.")
 
     sid = f"ses_{int(time.time()*1000)}"
-    _runs[sid] = {"status": "starting", "log": [], "progress": 0.0,
-                  "done": False, "result": None,
-                  "researcher": _researcher}
+    _runs[sid] = {
+        "status": "starting",
+        "log": [],
+        "progress": 0.0,
+        "done": False,
+        "result": None,
+        "researcher": _researcher,
+    }
 
     def _run():
-        import subprocess as _sp, sys as _sys
+        import subprocess as _sp
+        import sys as _sys
+
         try:
-            task_id  = payload.get("task_id", "simple")
-            country  = payload.get("country_code", "US")
-            reps     = int(payload.get("repetitions", 3))
-            cool     = int(payload.get("cool_down", 5))
+            task_id = payload.get("task_id", "simple")
+            country = payload.get("country_code", "US")
+            reps = int(payload.get("repetitions", 3))
+            cool = int(payload.get("cool_down", 5))
             provider = payload.get("provider", "cloud")
             if provider not in ("cloud", "local"):
                 provider = "cloud"
@@ -581,39 +640,54 @@ async def start_run(payload: dict, background_tasks: BackgroundTasks):
             # Choose module based on payload
             # batch mode → run_experiment, single → test_harness
             tasks_list = payload.get("tasks", [])
-            is_batch   = (len(tasks_list) > 1 or task_id == "batch")
+            is_batch = len(tasks_list) > 1 or task_id == "batch"
 
             if is_batch:
                 prov_arg = ",".join(payload.get("providers", [provider]))
                 tasks_arg = ",".join(tasks_list) if tasks_list else task_id
                 cmd = [
-                    _sys.executable, "-m",
+                    _sys.executable,
+                    "-m",
                     "core.execution.tests.run_experiment",
-                    "--tasks",       tasks_arg,
-                    "--providers",   prov_arg,
-                    "--repetitions", str(reps),
-                    "--country",     country,
-                    "--cool-down",   str(cool),
+                    "--tasks",
+                    tasks_arg,
+                    "--providers",
+                    prov_arg,
+                    "--repetitions",
+                    str(reps),
+                    "--country",
+                    country,
+                    "--cool-down",
+                    str(cool),
                     "--save-db",
                 ]
             else:
                 cmd = [
-                    _sys.executable, "-m",
+                    _sys.executable,
+                    "-m",
                     "core.execution.tests.test_harness",
-                    "--task-id",     task_id,
-                    "--provider",    provider,
-                    "--repetitions", str(reps),
-                    "--country",     country,
-                    "--cool-down",   str(cool),
+                    "--task-id",
+                    task_id,
+                    "--provider",
+                    provider,
+                    "--repetitions",
+                    str(reps),
+                    "--country",
+                    country,
+                    "--cool-down",
+                    str(cool),
                     "--save-db",
                 ]
             _log(sid, f"CMD: {' '.join(cmd)}")
             _runs[sid]["status"] = "running"
 
             proc = _sp.Popen(
-                cmd, cwd=str(BASE),
-                stdout=_sp.PIPE, stderr=_sp.STDOUT,
-                text=True, bufsize=1,
+                cmd,
+                cwd=str(BASE),
+                stdout=_sp.PIPE,
+                stderr=_sp.STDOUT,
+                text=True,
+                bufsize=1,
             )
 
             rep_count = 0
@@ -630,17 +704,18 @@ async def start_run(payload: dict, background_tasks: BackgroundTasks):
             proc.wait()
             if proc.returncode == 0:
                 _runs[sid]["status"] = "complete"
-                _runs[sid]["done"]   = True
+                _runs[sid]["done"] = True
                 _log(sid, f"✅ Complete — {reps} pairs saved to DB")
             else:
                 _runs[sid]["status"] = "error"
-                _runs[sid]["done"]   = True
+                _runs[sid]["done"] = True
                 _log(sid, f"❌ Process exited with code {proc.returncode}")
 
         except Exception as ex:
             import traceback
+
             _runs[sid]["status"] = "error"
-            _runs[sid]["done"]   = True
+            _runs[sid]["done"] = True
             _log(sid, f"❌ Error: {ex}")
             _log(sid, traceback.format_exc().splitlines()[-1])
 
@@ -659,11 +734,11 @@ def run_status(sid: str):
         s = _runs[sid]
     return {
         "session_id": sid,
-        "status":   s["status"],
-        "done":     s["done"],
+        "status": s["status"],
+        "done": s["done"],
         "progress": s["progress"],
-        "log":      s["log"],
-        "summary":  _summarise(s["result"]) if s["done"] else None,
+        "log": s["log"],
+        "summary": _summarise(s["result"]) if s["done"] else None,
     }
 
 
@@ -671,15 +746,19 @@ def _log(sid, msg):
     _runs[sid]["log"].append(f"[{_ts()}] {msg}")
     _save_session(sid)
 
+
 def _summarise(r):
-    if not r: return None
+    if not r:
+        return None
     try:
         return {
-            "avg_linear_j":  round(r["linear"].get("avg_workload_energy_j", 0) or 0, 4),
-            "avg_agentic_j": round(r["agentic"].get("avg_workload_energy_j", 0) or 0, 4),
-            "avg_tax_j":     round(r["agentic"].get("avg_orchestration_tax_j", 0) or 0, 4),
-            "avg_tax_pct":   round(r["agentic"].get("avg_tax_percent", 0) or 0, 2),
-            "repetitions":   r.get("repetitions", 0),
+            "avg_linear_j": round(r["linear"].get("avg_workload_energy_j", 0) or 0, 4),
+            "avg_agentic_j": round(
+                r["agentic"].get("avg_workload_energy_j", 0) or 0, 4
+            ),
+            "avg_tax_j": round(r["agentic"].get("avg_orchestration_tax_j", 0) or 0, 4),
+            "avg_tax_pct": round(r["agentic"].get("avg_tax_percent", 0) or 0, 2),
+            "repetitions": r.get("repetitions", 0),
         }
     except:
         return None
@@ -688,6 +767,7 @@ def _summarise(r):
 # ══════════════════════════════════════════════════════════════════════════════
 # WEBSOCKET — stream new DB samples during an active run (~10Hz poll)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.websocket("/ws/samples")
 async def ws_samples(websocket: WebSocket):
@@ -699,10 +779,10 @@ async def ws_samples(websocket: WebSocket):
     """
     await websocket.accept()
     try:
-        msg    = await asyncio.wait_for(websocket.receive_json(), timeout=10)
+        msg = await asyncio.wait_for(websocket.receive_json(), timeout=10)
         run_id = msg.get("run_id")
         if msg.get("latest") or not run_id:
-            row    = q1("SELECT MAX(run_id) AS rid FROM runs")
+            row = q1("SELECT MAX(run_id) AS rid FROM runs")
             run_id = row["rid"] if row else None
 
         if not run_id:
@@ -711,10 +791,11 @@ async def ws_samples(websocket: WebSocket):
 
         await websocket.send_json({"type": "init", "run_id": run_id})
         last_e = last_c = last_i = 0
-        idle   = 0
+        idle = 0
 
         while True:
-            e_rows = q("""
+            e_rows = q(
+                """
                 SELECT sample_id,
                     ROUND((timestamp_ns -
                         (SELECT MIN(timestamp_ns) FROM energy_samples WHERE run_id=?)
@@ -726,9 +807,12 @@ async def ws_samples(websocket: WebSocket):
                 FROM energy_samples
                 WHERE run_id=? AND sample_id > ?
                 ORDER BY sample_id LIMIT 20
-            """, [run_id, run_id, last_e])
+            """,
+                [run_id, run_id, last_e],
+            )
 
-            c_rows = q("""
+            c_rows = q(
+                """
                 SELECT sample_id,
                     ROUND((timestamp_ns -
                         (SELECT MIN(timestamp_ns) FROM cpu_samples WHERE run_id=?)
@@ -738,9 +822,12 @@ async def ws_samples(websocket: WebSocket):
                 FROM cpu_samples
                 WHERE run_id=? AND sample_id > ?
                 ORDER BY sample_id LIMIT 20
-            """, [run_id, run_id, last_c])
+            """,
+                [run_id, run_id, last_c],
+            )
 
-            i_rows = q("""
+            i_rows = q(
+                """
                 SELECT sample_id,
                     ROUND((timestamp_ns -
                         (SELECT MIN(timestamp_ns) FROM interrupt_samples WHERE run_id=?)
@@ -749,7 +836,9 @@ async def ws_samples(websocket: WebSocket):
                 FROM interrupt_samples
                 WHERE run_id=? AND sample_id > ?
                 ORDER BY sample_id LIMIT 20
-            """, [run_id, run_id, last_i])
+            """,
+                [run_id, run_id, last_i],
+            )
 
             if e_rows:
                 last_e = e_rows[-1]["sample_id"]
@@ -766,7 +855,7 @@ async def ws_samples(websocket: WebSocket):
 
             if not e_rows and not c_rows and not i_rows:
                 idle += 1
-                if idle > 30:   # 3 seconds of silence = run done
+                if idle > 30:  # 3 seconds of silence = run done
                     rr = q1("SELECT end_time_ns FROM runs WHERE run_id=?", [run_id])
                     if rr and rr.get("end_time_ns"):
                         await websocket.send_json({"type": "done", "run_id": run_id})
@@ -793,19 +882,22 @@ async def ws_run_log(websocket: WebSocket, sid: str):
             if sid not in _runs:
                 await websocket.send_json({"type": "error", "msg": "session not found"})
                 break
-            s       = _runs[sid]
-            new     = s["log"][last:]
+            s = _runs[sid]
+            new = s["log"][last:]
             if new:
                 for line in new:
-                    await websocket.send_json({"type": "log", "msg": line,
-                                               "progress": s["progress"]})
+                    await websocket.send_json(
+                        {"type": "log", "msg": line, "progress": s["progress"]}
+                    )
                 last += len(new)
             if s["done"]:
-                await websocket.send_json({
-                    "type":    "complete",
-                    "status":  s["status"],
-                    "summary": _summarise(s["result"]),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "complete",
+                        "status": s["status"],
+                        "summary": _summarise(s["result"]),
+                    }
+                )
                 break
             await asyncio.sleep(0.2)
     except WebSocketDisconnect:
@@ -815,6 +907,7 @@ async def ws_run_log(websocket: WebSocket, sid: str):
 # ══════════════════════════════════════════════════════════════════════════════
 # SERVE DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.get("/")
 def root():
@@ -832,12 +925,13 @@ def root():
 def online_status():
     """Public endpoint — no auth. Tells the hosted dashboard if live mode is available."""
     return {
-        "online":        True,
-        "harness":       HARNESS_OK,
-        "version":       "2.0",
+        "online": True,
+        "harness": HARNESS_OK,
+        "version": "2.0",
         "auth_required": bool(_TOKEN_MAP),
-        "researchers":   list(_TOKEN_MAP.values()),   # names only, never tokens
+        "researchers": list(_TOKEN_MAP.values()),  # names only, never tokens
     }
+
 
 @app.get("/health")
 def health():
@@ -847,9 +941,10 @@ def health():
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import argparse
+
     p = argparse.ArgumentParser(description="A-LEMS Dashboard Server")
-    p.add_argument("--host",   default="0.0.0.0")
-    p.add_argument("--port",   type=int, default=8765)
+    p.add_argument("--host", default="0.0.0.0")
+    p.add_argument("--port", type=int, default=8765)
     p.add_argument("--reload", action="store_true")
     args = p.parse_args()
 

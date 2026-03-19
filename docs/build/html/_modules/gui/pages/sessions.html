@@ -1,0 +1,431 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>gui.pages.sessions &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">gui.pages.sessions</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for gui.pages.sessions</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">gui/pages/sessions.py</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">FIXES in this version:</span>
+<span class="sd">  Issue 4: Sessions tab replaced from all-boxes grid → clean collapsible list</span>
+<span class="sd">           Each session is an expander with metadata visible at a glance.</span>
+<span class="sd">           Clicking opens full details inline — no navigation away.</span>
+<span class="sd">           Scrollable because it&#39;s a normal vertical list, not a box grid.</span>
+<span class="sd">─────────────────────────────────────────────────────────────────────────────</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">q</span><span class="p">,</span> <span class="n">q1</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gui.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">fl</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_dt</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">val</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Z&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fmt_dur</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">seconds</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">seconds</span> <span class="o">&gt;</span> <span class="mi">86400</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;—&quot;</span>
+    <span class="k">if</span> <span class="n">seconds</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span>
+    <span class="k">if</span> <span class="n">seconds</span> <span class="o">&lt;</span> <span class="mi">3600</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seconds</span><span class="o">/</span><span class="mi">60</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">m&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">seconds</span><span class="o">/</span><span class="mi">3600</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_session_row</span><span class="p">(</span>
+    <span class="n">group_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">n_exps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_runs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_done</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_fail</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_running</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">latest</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render one session as a collapsible expander row.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Status pill</span>
+    <span class="k">if</span> <span class="n">n_running</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="s2">&quot;#22c55e&quot;</span>
+    <span class="k">elif</span> <span class="n">n_fail</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;partial&quot;</span><span class="p">,</span> <span class="s2">&quot;#f59e0b&quot;</span>
+    <span class="k">elif</span> <span class="n">n_done</span> <span class="o">==</span> <span class="n">n_exps</span> <span class="ow">and</span> <span class="n">n_exps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;#3b82f6&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">status</span><span class="p">,</span> <span class="n">clr</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span> <span class="s2">&quot;#4b5563&quot;</span>
+
+    <span class="c1"># Format timestamp</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">latest</span><span class="p">))</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">  %H:%M&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">latest</span>
+            <span class="k">else</span> <span class="s2">&quot;—&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">latest</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span> <span class="k">if</span> <span class="n">latest</span> <span class="k">else</span> <span class="s2">&quot;—&quot;</span>
+
+    <span class="n">header</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">  ·  </span><span class="si">{</span><span class="n">group_id</span><span class="si">}</span><span class="s2">  ·  &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_exps</span><span class="si">}</span><span class="s2"> exp</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">n_exps</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">  ·  &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_runs</span><span class="si">}</span><span class="s2"> run</span><span class="si">{</span><span class="s1">&#39;s&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">n_runs</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">  ·  </span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">expander</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">expanded</span><span class="o">=</span><span class="p">(</span><span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)):</span>
+        <span class="c1"># ── Session summary banner ──────────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;background:#050810;border:1px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">44;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;border-left:4px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;border-radius:6px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;padding:10px 14px;margin-bottom:10px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;font-family:monospace;font-size:11px;color:#e8f0f8;font-weight:700;&#39;&gt;</span><span class="si">{</span><span class="n">group_id</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;background:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">22;border:1px solid </span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">55;border-radius:4px;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;padding:1px 8px;font-size:9px;color:</span><span class="si">{</span><span class="n">clr</span><span class="si">}</span><span class="s2">;font-weight:700;&#39;&gt;</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;div style=&#39;font-size:10px;color:#5a7090;display:flex;gap:20px;flex-wrap:wrap;&#39;&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span&gt;🔬 &lt;b style=&#39;color:#7090b0&#39;&gt;</span><span class="si">{</span><span class="n">n_exps</span><span class="si">}</span><span class="s2">&lt;/b&gt; experiments&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span&gt;▶ &lt;b style=&#39;color:#7090b0&#39;&gt;</span><span class="si">{</span><span class="n">n_runs</span><span class="si">}</span><span class="s2">&lt;/b&gt; runs&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span&gt;✅ &lt;b style=&#39;color:#3b82f6&#39;&gt;</span><span class="si">{</span><span class="n">n_done</span><span class="si">}</span><span class="s2">&lt;/b&gt; done&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&lt;span&gt;🟢 &lt;b style=</span><span class="se">\&quot;</span><span class="s1">color:#22c55e</span><span class="se">\&quot;</span><span class="s1">&gt;&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">n_running</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;&lt;/b&gt; running&lt;/span&gt;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">n_running</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&lt;span&gt;🔴 &lt;b style=</span><span class="se">\&quot;</span><span class="s1">color:#ef4444</span><span class="se">\&quot;</span><span class="s1">&gt;&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">n_fail</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;&lt;/b&gt; failed&lt;/span&gt;&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">n_fail</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;span&gt;🕐 </span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2">&lt;/span&gt;&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ── Experiments table ───────────────────────────────────────────────</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">exps</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                SELECT exp_id, task_name, provider, status,</span>
+<span class="s2">                       started_at, completed_at</span>
+<span class="s2">                FROM experiments</span>
+<span class="s2">                WHERE group_id = &#39;</span><span class="si">{</span><span class="n">group_id</span><span class="si">}</span><span class="s2">&#39;</span>
+<span class="s2">                ORDER BY exp_id</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">exps</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Issue 2: get real run counts from runs table</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># FIX Issue 2: COUNT(DISTINCT run_number) = rep pairs done</span>
+            <span class="c1"># Each rep writes one linear + one agentic run with the same run_number</span>
+            <span class="c1"># So DISTINCT run_number = number of completed pairs (what X/4 should show)</span>
+            <span class="n">run_counts</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                SELECT exp_id,</span>
+<span class="s2">                       COUNT(DISTINCT run_number) AS pairs_done</span>
+<span class="s2">                FROM runs</span>
+<span class="s2">                WHERE exp_id IN (</span>
+<span class="s2">                    SELECT exp_id FROM experiments WHERE group_id = &#39;</span><span class="si">{</span><span class="n">group_id</span><span class="si">}</span><span class="s2">&#39;</span>
+<span class="s2">                )</span>
+<span class="s2">                GROUP BY exp_id</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="n">rc_map</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">run_counts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">run_counts</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">rc_map</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">exp_id</span><span class="p">):</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">pairs_done</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">run_counts</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+                <span class="p">}</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">rc_map</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">exps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">exps</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">rows_html</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">exps</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                <span class="n">eid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">exp_id</span><span class="p">)</span>
+                <span class="n">est</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="n">s_clr</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;completed&quot;</span><span class="p">:</span> <span class="s2">&quot;#3b82f6&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="s2">&quot;#22c55e&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;failed&quot;</span><span class="p">:</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;#ef4444&quot;</span><span class="p">,</span>
+                <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">est</span><span class="p">,</span> <span class="s2">&quot;#4b5563&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Duration</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="n">_parse_dt</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;started_at&quot;</span><span class="p">))</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="n">_parse_dt</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;completed_at&quot;</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">s</span> <span class="ow">and</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">dur</span> <span class="o">=</span> <span class="n">_fmt_dur</span><span class="p">((</span><span class="n">e</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span>
+                <span class="k">elif</span> <span class="n">s</span><span class="p">:</span>
+                    <span class="n">dur</span> <span class="o">=</span> <span class="n">_fmt_dur</span><span class="p">((</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot; ⏳&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dur</span> <span class="o">=</span> <span class="s2">&quot;—&quot;</span>
+
+                <span class="n">pairs_done</span> <span class="o">=</span> <span class="n">rc_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">eid</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+                <span class="n">rows_html</span> <span class="o">+=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;tr style=&#39;border-bottom:1px solid #0f1520;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;td style=&#39;padding:6px 8px;font-size:10px;color:#5a7090;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;font-family:monospace;&#39;&gt;exp_</span><span class="si">{</span><span class="n">eid</span><span class="si">}</span><span class="s2">&lt;/td&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;td style=&#39;padding:6px 8px;font-size:10px;color:#c8d8e8;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;task_name&#39;</span><span class="p">,</span><span class="s1">&#39;?&#39;</span><span class="p">))[:</span><span class="mi">28</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/td&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;td style=&#39;padding:6px 8px;font-size:10px;color:#3b82f6;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;provider&#39;</span><span class="p">,</span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;/td&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;td style=&#39;padding:6px 8px;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;span style=&#39;background:</span><span class="si">{</span><span class="n">s_clr</span><span class="si">}</span><span class="s2">22;border:1px solid </span><span class="si">{</span><span class="n">s_clr</span><span class="si">}</span><span class="s2">55;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;border-radius:3px;padding:1px 6px;font-size:9px;color:</span><span class="si">{</span><span class="n">s_clr</span><span class="si">}</span><span class="s2">;&#39;&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">est</span><span class="si">}</span><span class="s2">&lt;/span&gt;&lt;/td&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;td style=&#39;padding:6px 8px;font-size:10px;color:#7090b0;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;font-family:monospace;&#39;&gt;</span><span class="si">{</span><span class="n">pairs_done</span><span class="si">}</span><span class="s2"> pairs&lt;/td&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;td style=&#39;padding:6px 8px;font-size:9px;color:#4b6080;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;font-family:monospace;&#39;&gt;</span><span class="si">{</span><span class="n">dur</span><span class="si">}</span><span class="s2">&lt;/td&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&lt;/tr&gt;&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+                <span class="s2">&quot;&lt;div style=&#39;background:#07090f;border:1px solid #1e2d45;&quot;</span>
+                <span class="s2">&quot;border-radius:6px;overflow:hidden;&#39;&gt;&quot;</span>
+                <span class="s2">&quot;&lt;table style=&#39;width:100%;border-collapse:collapse;&#39;&gt;&quot;</span>
+                <span class="s2">&quot;&lt;thead&gt;&lt;tr style=&#39;background:#0a0e1a;border-bottom:1px solid #1e2d45;&#39;&gt;&quot;</span>
+                <span class="s2">&quot;&lt;th style=&#39;padding:6px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;&#39;&gt;Exp&lt;/th&gt;&quot;</span>
+                <span class="s2">&quot;&lt;th style=&#39;padding:6px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;&#39;&gt;Task&lt;/th&gt;&quot;</span>
+                <span class="s2">&quot;&lt;th style=&#39;padding:6px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;&#39;&gt;Provider&lt;/th&gt;&quot;</span>
+                <span class="s2">&quot;&lt;th style=&#39;padding:6px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;&#39;&gt;Status&lt;/th&gt;&quot;</span>
+                <span class="s2">&quot;&lt;th style=&#39;padding:6px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;&#39;&gt;Runs&lt;/th&gt;&quot;</span>
+                <span class="s2">&quot;&lt;th style=&#39;padding:6px 8px;font-size:9px;color:#3d5570;text-align:left;text-transform:uppercase;&#39;&gt;Duration&lt;/th&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;</span><span class="si">{</span><span class="n">rows_html</span><span class="si">}</span><span class="s2">&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+                <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">caption</span><span class="p">(</span><span class="s2">&quot;No experiments found for this session.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ── Quick actions ───────────────────────────────────────────────────</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">c1</span><span class="o">.</span><span class="n">button</span><span class="p">(</span>
+            <span class="s2">&quot;📊 Full Analysis&quot;</span><span class="p">,</span>
+            <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;sess_ana_</span><span class="si">{</span><span class="n">group_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">use_container_width</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;sessions_open_gid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">group_id</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="render">
+<a class="viewcode-back" href="../../../gui.pages.sessions.html#gui.pages.sessions.render">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sessions page — clean collapsible list, no box grid.</span>
+<span class="sd">    Each row = one expander. Scrollable. Click to open inline.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Sessions&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── If a session was clicked for full analysis, show it ─────────────────</span>
+    <span class="n">open_gid</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sessions_open_gid&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">open_gid</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;← Back to sessions list&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sess_back&quot;</span><span class="p">):</span>
+            <span class="k">del</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="p">[</span><span class="s2">&quot;sessions_open_gid&quot;</span><span class="p">]</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">gui.pages.session_analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">render_session_analysis</span>
+
+                <span class="n">render_session_analysis</span><span class="p">(</span><span class="n">open_gid</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+    <span class="c1"># ── Filters ──────────────────────────────────────────────────────────────</span>
+    <span class="n">col_f1</span><span class="p">,</span> <span class="n">col_f2</span><span class="p">,</span> <span class="n">col_f3</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="k">with</span> <span class="n">col_f1</span><span class="p">:</span>
+        <span class="n">search</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">text_input</span><span class="p">(</span>
+            <span class="s2">&quot;🔍 Filter by session ID or task&quot;</span><span class="p">,</span>
+            <span class="n">placeholder</span><span class="o">=</span><span class="s2">&quot;group_id or task name…&quot;</span><span class="p">,</span>
+            <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sess_search&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">with</span> <span class="n">col_f2</span><span class="p">:</span>
+        <span class="n">status_filter</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span>
+            <span class="s2">&quot;Status&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;All&quot;</span><span class="p">,</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="s2">&quot;partial&quot;</span><span class="p">,</span> <span class="s2">&quot;pending&quot;</span><span class="p">],</span>
+            <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sess_status_filt&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">with</span> <span class="n">col_f3</span><span class="p">:</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">number_input</span><span class="p">(</span><span class="s2">&quot;Max sessions&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s2">&quot;sess_limit&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ── Load sessions ─────────────────────────────────────────────────────────</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sessions</span> <span class="o">=</span> <span class="n">q</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            SELECT</span>
+<span class="s2">                e.group_id,</span>
+<span class="s2">                COUNT(DISTINCT e.exp_id)                                    AS n_exps,</span>
+<span class="s2">                COUNT(DISTINCT r.run_number || &#39;_&#39; || CAST(e.exp_id AS TEXT)) AS n_runs,</span>
+<span class="s2">                SUM(CASE WHEN e.status=&#39;completed&#39; THEN 1 ELSE 0 END)      AS n_done,</span>
+<span class="s2">                SUM(CASE WHEN e.status IN (&#39;failed&#39;,&#39;error&#39;) THEN 1 ELSE 0 END) AS n_fail,</span>
+<span class="s2">                SUM(CASE WHEN e.status=&#39;running&#39; THEN 1 ELSE 0 END)        AS n_running,</span>
+<span class="s2">                MAX(e.created_at)                                           AS latest</span>
+<span class="s2">            FROM experiments e</span>
+<span class="s2">            LEFT JOIN runs r ON r.exp_id = e.exp_id</span>
+<span class="s2">            GROUP BY e.group_id</span>
+<span class="s2">            ORDER BY MAX(e.exp_id) DESC</span>
+<span class="s2">            LIMIT </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span><span class="si">}</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load sessions: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">sessions</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sessions</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span>
+            <span class="s2">&quot;&lt;div style=&#39;text-align:center;padding:60px 0;&#39;&gt;&quot;</span>
+            <span class="s2">&quot;&lt;div style=&#39;font-size:48px;margin-bottom:16px;&#39;&gt;📭&lt;/div&gt;&quot;</span>
+            <span class="s2">&quot;&lt;div style=&#39;font-size:16px;color:#4b6080;font-weight:600;&#39;&gt;No sessions yet&lt;/div&gt;&quot;</span>
+            <span class="s2">&quot;&lt;div style=&#39;font-size:12px;color:#3d5570;margin-top:6px;&#39;&gt;&quot;</span>
+            <span class="s2">&quot;Run an experiment to see sessions here&lt;/div&gt;&lt;/div&gt;&quot;</span><span class="p">,</span>
+            <span class="n">unsafe_allow_html</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># Apply filters</span>
+    <span class="k">if</span> <span class="n">search</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">sessions</span><span class="o">.</span><span class="n">group_id</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">search</span><span class="p">,</span> <span class="n">case</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">na</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">sessions</span> <span class="o">=</span> <span class="n">sessions</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">status_filter</span> <span class="o">!=</span> <span class="s2">&quot;All&quot;</span><span class="p">:</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_row_status</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">n_running</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;running&quot;</span>
+            <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">n_fail</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;partial&quot;</span>
+            <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">n_done</span> <span class="o">==</span> <span class="n">row</span><span class="o">.</span><span class="n">n_exps</span> <span class="ow">and</span> <span class="n">row</span><span class="o">.</span><span class="n">n_exps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;completed&quot;</span>
+            <span class="k">return</span> <span class="s2">&quot;pending&quot;</span>
+
+        <span class="n">sessions</span> <span class="o">=</span> <span class="n">sessions</span><span class="p">[</span><span class="n">sessions</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_row_status</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="n">status_filter</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">sessions</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No sessions match the current filter.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># ── Summary metrics row ───────────────────────────────────────────────────</span>
+    <span class="n">total_sessions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sessions</span><span class="p">)</span>
+    <span class="n">total_runs</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sessions</span><span class="o">.</span><span class="n">n_runs</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">running_now</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">sessions</span><span class="o">.</span><span class="n">n_running</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+    <span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">m3</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">columns</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">m1</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Sessions&quot;</span><span class="p">,</span> <span class="n">total_sessions</span><span class="p">)</span>
+    <span class="n">m2</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span><span class="s2">&quot;Total Runs&quot;</span><span class="p">,</span> <span class="n">total_runs</span><span class="p">)</span>
+    <span class="n">m3</span><span class="o">.</span><span class="n">metric</span><span class="p">(</span>
+        <span class="s2">&quot;Currently Running&quot;</span><span class="p">,</span> <span class="n">running_now</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="s2">&quot;active&quot;</span> <span class="k">if</span> <span class="n">running_now</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">divider</span><span class="p">()</span>
+
+    <span class="c1"># ── Session list — collapsible rows (Issue 4 fix) ─────────────────────────</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sessions</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">_session_row</span><span class="p">(</span>
+            <span class="n">group_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">group_id</span><span class="p">),</span>
+            <span class="n">n_exps</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">n_exps</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">n_runs</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">n_runs</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">n_done</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">n_done</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">n_fail</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">n_fail</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">n_running</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">n_running</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">latest</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">latest</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">idx</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

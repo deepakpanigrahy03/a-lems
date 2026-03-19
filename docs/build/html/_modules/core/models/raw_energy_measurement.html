@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.models.raw_energy_measurement &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.models.raw_energy_measurement</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.models.raw_energy_measurement</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">RAW ENERGY MEASUREMENT – Layer 1: Ground Truth</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This class represents pure raw measurement data from hardware counters.</span>
+<span class="sd">NEVER modified after creation. Contains only raw readings, no corrections.</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+
+<div class="viewcode-block" id="RawEnergyMeasurement">
+<a class="viewcode-back" href="../../../core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RawEnergyMeasurement</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Layer 1 – Raw measurement data. NEVER modified.</span>
+
+<span class="sd">    This is your primary evidence. All fields are stored as read from hardware.</span>
+<span class="sd">    No baseline correction, no derived values – just raw truth.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        measurement_id: Unique identifier for this measurement</span>
+<span class="sd">        start_time: Unix timestamp when measurement started</span>
+<span class="sd">        end_time: Unix timestamp when measurement ended</span>
+<span class="sd">        duration_seconds: Total duration in seconds</span>
+
+<span class="sd">        rapl_start_uj: Raw RAPL readings at start (microjoules)</span>
+<span class="sd">        rapl_end_uj: Raw RAPL readings at end (microjoules)</span>
+
+<span class="sd">        perf: Performance counter readings (PerformanceCounters object)</span>
+<span class="sd">        turbostat: Turbostat continuous monitoring data (dictionary with dataframe, summary)</span>
+<span class="sd">        thermal: Temperature readings</span>
+<span class="sd">        power_state: CPU power state data</span>
+<span class="sd">        scheduler_metrics: Scheduler metrics with deltas</span>
+
+<span class="sd">        samples: List of high-frequency samples (timestamp, energy)</span>
+<span class="sd">        sampling_rate_hz: Actual sampling rate achieved</span>
+
+<span class="sd">        metadata: Additional context (hostname, kernel, cpu_affinity, etc.)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Metadata</span>
+    <span class="n">measurement_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">end_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">duration_seconds</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="c1"># Raw RAPL readings (microjoules)</span>
+    <span class="n">rapl_start_uj</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="n">rapl_end_uj</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+
+    <span class="c1"># Other hardware readings</span>
+    <span class="n">perf</span><span class="p">:</span> <span class="n">Any</span>  <span class="c1"># PerformanceCounters object</span>
+    <span class="n">turbostat</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>  <span class="c1"># ADD THIS LINE</span>
+    <span class="n">thermal</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">power_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="c1">##to capture schedular swap memory start and end snapshot</span>
+    <span class="n">scheduler_start</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">scheduler_end</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">scheduler_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">msr_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="c1"># ====================================================================</span>
+    <span class="c1"># NEW: Thermal derived fields (from EnergyEngine calculations)</span>
+    <span class="c1"># ====================================================================</span>
+
+    <span class="n">thermal_during_experiment</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="kc">None</span>  <span class="c1"># 1 if throttling occurred during experiment</span>
+    <span class="p">)</span>
+    <span class="n">thermal_now_active</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># 1 if throttling active at end</span>
+    <span class="n">thermal_since_boot</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="kc">None</span>  <span class="c1"># 1 if system has ever throttled since boot</span>
+    <span class="p">)</span>
+    <span class="c1"># Sampling data</span>
+    <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">sampling_rate_hz</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Thermal samples (1Hz)</span>
+    <span class="n">thermal_samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="c1"># Additional context</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate raw data (but NEVER modify it).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">duration_seconds</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duration must be positive: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">duration_seconds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># ========== ADD THESE LINES ==========</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;msr_metrics&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr_metrics</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🟡 RAW_ID: </span><span class="si">{</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr_metrics</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🟡 RAW_VALUE: c2=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">msr_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;c2_time_seconds&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🟡 RAW_KEYS: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">msr_metrics</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># =====================================</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">package_energy_uj</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute raw package energy delta in microjoules.&quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_start_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_end_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;package-0&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">core_energy_uj</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute raw core energy delta in microjoules.&quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_start_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_end_uj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dram_energy_uj</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute raw DRAM energy delta if available.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;dram&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_start_uj</span> <span class="ow">and</span> <span class="s2">&quot;dram&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_end_uj</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_start_uj</span><span class="p">[</span><span class="s2">&quot;dram&quot;</span><span class="p">]</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_end_uj</span><span class="p">[</span><span class="s2">&quot;dram&quot;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">package_energy_j</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Package energy in joules (for convenience).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">package_energy_uj</span> <span class="o">/</span> <span class="mi">1_000_000</span>
+
+<div class="viewcode-block" id="RawEnergyMeasurement.to_dict">
+<a class="viewcode-back" href="../../../core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to dictionary for serialization.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;measurement_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurement_id</span><span class="p">,</span>
+            <span class="s2">&quot;timing&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span>
+                <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">duration_seconds</span><span class="p">,</span>
+                <span class="s2">&quot;start_iso&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="s2">&quot;end_iso&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;rapl_start_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_start_uj</span><span class="p">,</span>
+            <span class="s2">&quot;rapl_end_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl_end_uj</span><span class="p">,</span>
+            <span class="s2">&quot;perf&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="p">,</span> <span class="s2">&quot;to_dict&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf</span><span class="p">,</span>
+            <span class="s2">&quot;turbostat&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">turbostat</span><span class="p">,</span>  <span class="c1"># ADD THIS LINE</span>
+            <span class="s2">&quot;thermal&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal</span><span class="p">,</span>
+            <span class="s2">&quot;power_state&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_state</span><span class="p">,</span>
+            <span class="s2">&quot;scheduler_metrics&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler_metrics</span><span class="p">,</span>
+            <span class="s2">&quot;msr_metrics&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">msr_metrics</span><span class="p">,</span>
+            <span class="c1"># NEW: Thermal derived fields</span>
+            <span class="s2">&quot;thermal_during_experiment&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_during_experiment</span><span class="p">,</span>
+            <span class="s2">&quot;thermal_now_active&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_now_active</span><span class="p">,</span>
+            <span class="s2">&quot;thermal_since_boot&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_since_boot</span><span class="p">,</span>
+            <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span>
+            <span class="s2">&quot;sampling_rate_hz&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span><span class="p">,</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+            <span class="s2">&quot;derived&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;package_energy_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">package_energy_uj</span><span class="p">,</span>
+                <span class="s2">&quot;core_energy_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">core_energy_uj</span><span class="p">,</span>
+                <span class="s2">&quot;dram_energy_uj&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dram_energy_uj</span><span class="p">,</span>
+                <span class="s2">&quot;package_energy_j&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">package_energy_j</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="RawEnergyMeasurement.to_json">
+<a class="viewcode-back" href="../../../core.models.raw_energy_measurement.html#core.models.raw_energy_measurement.RawEnergyMeasurement.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize to JSON for permanent storage.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

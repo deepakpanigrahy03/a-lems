@@ -1,0 +1,790 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.readers.perf_reader &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.readers.perf_reader</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.readers.perf_reader</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">PERFORMANCE COUNTER READER - Linux perf_events Interface</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">This module provides access to hardware performance counters via the Linux</span>
+<span class="sd">perf_events interface. perf_events allows reading CPU performance monitoring</span>
+<span class="sd">unit (PMU) counters, which provide detailed insight into what the CPU is</span>
+<span class="sd">actually doing.</span>
+
+<span class="sd">Why perf_events matters for AI energy research:</span>
+<span class="sd">- Instructions/cycle tells us if CPU is doing useful work or stalled</span>
+<span class="sd">- Cache misses indicate memory bandwidth pressure from large models</span>
+<span class="sd">- Context switches reveal OS scheduler overhead (orchestration tax)</span>
+<span class="sd">- Page faults show when models don&#39;t fit in RAM</span>
+
+<span class="sd">Reference: perf_event_open(2) man page, Linux kernel documentation</span>
+
+<span class="sd">Author: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">select</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># FIX PYTHON PATH - Add project root to sys.path</span>
+<span class="c1"># ============================================================================</span>
+<span class="c1"># This ensures the &#39;core&#39; module is found whether running as script or module.</span>
+<span class="c1"># When running as: python core/readers/perf_reader.py, the project root isn&#39;t</span>
+<span class="c1"># in Python&#39;s path. This hack adds it dynamically.</span>
+<span class="c1">#</span>
+<span class="c1"># Why this is needed:</span>
+<span class="c1"># - Python imports are relative to the current working directory or PYTHONPATH</span>
+<span class="c1"># - Our module structure (core.readers, core.models) expects project root in path</span>
+<span class="c1"># - This fix works both when run as script or as module with -m</span>
+<span class="c1">#</span>
+<span class="c1"># Req: None (infrastructure requirement)</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Added </span><span class="si">{</span><span class="n">project_root</span><span class="si">}</span><span class="s2"> to Python path for module imports&quot;</span><span class="p">)</span>
+
+<span class="c1"># Now import works regardless of how script is run</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.models.performance_counters</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceCounters</span>
+
+<span class="c1"># Configure module logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># PERF READER CLASS</span>
+<span class="c1"># ============================================================================</span>
+
+
+<div class="viewcode-block" id="PerfReader">
+<a class="viewcode-back" href="../../../core.readers.perf_reader.html#core.readers.perf_reader.PerfReader">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PerfReader</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads hardware performance counters using Linux perf_events.</span>
+
+<span class="sd">    This class provides access to CPU performance counters via the &#39;perf stat&#39;</span>
+<span class="sd">    command. It parses the output and returns structured PerformanceCounters</span>
+<span class="sd">    objects.</span>
+
+<span class="sd">    The reader handles:</span>
+<span class="sd">    - Checking perf availability and permissions</span>
+<span class="sd">    - Running perf stat for specified durations</span>
+<span class="sd">    - Parsing perf output reliably</span>
+<span class="sd">    - Graceful degradation if perf is not available</span>
+
+<span class="sd">    Req 1.5: Instructions, cycles, IPC</span>
+<span class="sd">    Req 1.6: Cache references and misses</span>
+<span class="sd">    Req 1.10: Page faults</span>
+<span class="sd">    Req 1.43: Thread migrations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Default perf events to monitor</span>
+    <span class="c1"># These cover the requirements from the MLSys paper</span>
+    <span class="n">DEFAULT_EVENTS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;instructions&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.5 - Instructions retired</span>
+        <span class="s2">&quot;cycles&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.5 - CPU cycles</span>
+        <span class="s2">&quot;cache-references&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.6 - Last level cache references</span>
+        <span class="s2">&quot;cache-misses&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.6 - Last level cache misses</span>
+        <span class="s2">&quot;context-switches&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.12 - Context switches (both types)</span>
+        <span class="s2">&quot;migrations&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.43 - Thread migrations</span>
+        <span class="s2">&quot;page-faults&quot;</span><span class="p">,</span>  <span class="c1"># Req 1.10 - Page faults (major+minor)</span>
+        <span class="s2">&quot;branches&quot;</span><span class="p">,</span>  <span class="c1"># Branch instructions</span>
+        <span class="s2">&quot;branch-misses&quot;</span><span class="p">,</span>  <span class="c1"># Mispredicted branches</span>
+        <span class="s2">&quot;cpu-clock&quot;</span><span class="p">,</span>  <span class="c1"># CPU time used</span>
+        <span class="s2">&quot;task-clock&quot;</span><span class="p">,</span>  <span class="c1"># Task elapsed time</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Regex patterns for parsing perf output</span>
+    <span class="c1"># perf stat output format: &quot;value unit event&quot;</span>
+    <span class="n">PERF_LINE_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\s*([0-9,]+)\s+([a-zA-Z%/]+)\s+([a-zA-Z0-9_-]+)$&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize perf reader with configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Hardware configuration from Module 0.</span>
+<span class="sd">                   May contain &#39;perf_events&#39; list to override defaults.</span>
+
+<span class="sd">        The constructor checks if perf is available and logs the status.</span>
+<span class="sd">        If perf is not available, the reader will return empty counters</span>
+<span class="sd">        but won&#39;t crash – experiments can still run with simulated data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get perf events from config or use defaults</span>
+        <span class="n">hw_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hardware&quot;</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>  <span class="c1"># Handle different config structures</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span> <span class="o">=</span> <span class="n">hw_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;perf_events&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_EVENTS</span><span class="p">)</span>
+
+        <span class="c1"># Check if perf is available</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">perf_available</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_perf_availability</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">perf_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_perf_path</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_available</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;PerfReader initialized with </span><span class="si">%d</span><span class="s2"> events: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[:</span><span class="mi">5</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Full event list: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Perf not available - performance counters disabled&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;To enable perf: ensure kernel.perf_event_paranoid &lt;= 1&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_perf_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the path to the perf executable.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Path to perf or None if not found</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;which&quot;</span><span class="p">,</span> <span class="s2">&quot;perf&quot;</span><span class="p">],</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_perf_availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if perf command is available and has necessary permissions.</span>
+
+<span class="sd">        This checks:</span>
+<span class="sd">        1. Whether the perf command exists</span>
+<span class="sd">        2. Whether we can run a simple perf stat command</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if perf can be used, False otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># First check if command exists</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_perf_path</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;perf command not found&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Try to run a simple perf stat command</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s2">&quot;perf&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;stat&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;-e&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;instructions&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;--field-separator=,&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;--no-big-num&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;--timeout&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;10&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;sleep&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;0.01&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># perf writes to stderr, so check if we got any output</span>
+            <span class="c1"># Return code 0 means success, but even with error we might get data</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span> <span class="ne">FileNotFoundError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;perf check failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;perf check error: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="PerfReader.start_process_measurement">
+<a class="viewcode-back" href="../../../core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.start_process_measurement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_process_measurement</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start perf monitoring - just record start time.</span>
+<span class="sd">        Actual measurement happens in stop().</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_measurement_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Perf measurement started&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PerfReader.stop_process_measurement">
+<a class="viewcode-back" href="../../../core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.stop_process_measurement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_process_measurement</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PerformanceCounters</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop perf monitoring by running a timed measurement.</span>
+<span class="sd">        Uses the same reliable method as the test.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_measurement_start&quot;</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No measurement start time found&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">PerformanceCounters</span><span class="p">()</span>
+
+        <span class="n">duration_ms</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measurement_start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Measuring perf for </span><span class="si">{</span><span class="n">duration_ms</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Use the working test method</span>
+        <span class="n">counters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_counters</span><span class="p">(</span><span class="n">duration_ms</span><span class="o">=</span><span class="n">duration_ms</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Perf collected: </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">instructions_retired</span><span class="si">}</span><span class="s2"> instructions&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">counters</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_drain_perf_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Background thread that continuously reads perf output.</span>
+<span class="sd">        Uses select() with timeout to prevent blocking.</span>
+<span class="sd">        Starts immediately to capture all output.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">select</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Perf output drainer thread started&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_process</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_process</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No perf process or stderr pipe&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Check if pipe is readable</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+        <span class="n">fd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_process</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Perf stderr pipe FD: </span><span class="si">{</span><span class="n">fd</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">lines_read</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_perf_reader</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Check if data is available to read (with 100ms timeout)</span>
+                <span class="n">reads</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">perf_process</span><span class="o">.</span><span class="n">stderr</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="mf">0.1</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">reads</span><span class="p">:</span>
+                    <span class="c1"># Data available, read it</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_process</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_perf_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                        <span class="n">lines_read</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                        <span class="c1"># Log first few lines to verify data is flowing</span>
+                        <span class="k">if</span> <span class="n">lines_read</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Perf line </span><span class="si">{</span><span class="n">lines_read</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="n">lines_read</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Perf drainer continuing to collect...&quot;</span><span class="p">)</span>
+
+                        <span class="c1"># Log progress occasionally</span>
+                        <span class="k">if</span> <span class="n">lines_read</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">buffer_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_perf_buffer</span><span class="p">))</span> <span class="o">//</span> <span class="mi">1024</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Perf drainer collected </span><span class="si">{</span><span class="n">lines_read</span><span class="si">}</span><span class="s2"> lines, buffer: </span><span class="si">{</span><span class="n">buffer_size</span><span class="si">}</span><span class="s2">KB&quot;</span>
+                            <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># EOF - process probably died</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;EOF reached on perf stderr&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># No data available - log occasionally to show thread is alive</span>
+                    <span class="k">if</span> <span class="n">lines_read</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># Every ~2 seconds</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Perf drainer waiting for data...&quot;</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in perf drainer thread: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="n">buffer_size</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_perf_buffer</span><span class="p">))</span> <span class="o">//</span> <span class="mi">1024</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_perf_buffer</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Perf output drainer stopped, collected </span><span class="si">{</span><span class="n">lines_read</span><span class="si">}</span><span class="s2"> lines, buffer: </span><span class="si">{</span><span class="n">buffer_size</span><span class="si">}</span><span class="s2">KB&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="PerfReader.read_counters">
+<a class="viewcode-back" href="../../../core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.read_counters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_counters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PerformanceCounters</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read performance counters for specified duration.</span>
+
+<span class="sd">        This runs &#39;perf stat&#39; for the specified duration and parses</span>
+<span class="sd">        the output into a PerformanceCounters object.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            duration_ms: How long to sample (milliseconds)</span>
+<span class="sd">                        Shorter durations give higher resolution but more noise.</span>
+<span class="sd">                        100ms is a good balance for AI workloads.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            PerformanceCounters object with all counter values.</span>
+<span class="sd">            Returns empty counters (all zeros) if perf is not available.</span>
+
+<span class="sd">        Req 1.5: Instructions, cycles, IPC</span>
+<span class="sd">        Req 1.6: Cache references and misses</span>
+<span class="sd">        Req 1.10: Page faults</span>
+<span class="sd">        Req 1.43: Thread migrations</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; reader = PerfReader(config)</span>
+<span class="sd">            &gt;&gt;&gt; counters = reader.read_counters(duration_ms=100)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;IPC: {counters.instructions_per_cycle():.2f}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">counters</span> <span class="o">=</span> <span class="n">PerformanceCounters</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_available</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_path</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;perf not available - returning empty counters&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">counters</span>
+
+        <span class="c1"># Build perf command</span>
+        <span class="c1"># --timeout runs for specified milliseconds, then stops</span>
+        <span class="c1"># --field-separator=, makes output CSV format (easier to parse)</span>
+        <span class="c1"># --no-big-num prevents comma formatting in numbers (e.g., 1,234 -&gt; 1234)</span>
+        <span class="n">event_str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">)</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;perf&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;stat&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;-e&quot;</span><span class="p">,</span>
+            <span class="n">event_str</span><span class="p">,</span>
+            <span class="s2">&quot;--field-separator=,&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--no-big-num&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--timeout&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">duration_ms</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Running perf: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Run perf with timeout slightly longer than requested</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="n">cmd</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="p">(</span><span class="n">duration_ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="p">)</span>
+
+            <span class="c1"># ===== DEBUG: Print raw output =====</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            print(&quot;\n&quot; + &quot;=&quot;*50)</span>
+<span class="sd">            print(&quot;RAW PERF STDERR OUTPUT:&quot;)</span>
+<span class="sd">            print(&quot;=&quot;*50)</span>
+<span class="sd">            print(result.stderr)</span>
+<span class="sd">            print(&quot;=&quot;*50)</span>
+<span class="sd">            print(&quot;RAW PERF STDOUT OUTPUT:&quot;)</span>
+<span class="sd">            print(&quot;=&quot;*50)</span>
+<span class="sd">            print(result.stdout)</span>
+<span class="sd">            print(&quot;=&quot;*50)</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="c1"># ===== END DEBUG =====</span>
+
+            <span class="c1"># perf writes counter data to stderr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parse_perf_output</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">counters</span><span class="p">)</span>
+
+            <span class="c1"># Add duration metadata</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">duration_ms</span> <span class="o">=</span> <span class="n">duration_ms</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;perf counters: </span><span class="si">%d</span><span class="s2"> instructions, </span><span class="si">%d</span><span class="s2"> cycles, </span><span class="si">%.2f</span><span class="s2"> IPC&quot;</span><span class="p">,</span>
+                <span class="n">counters</span><span class="o">.</span><span class="n">instructions_retired</span><span class="p">,</span>
+                <span class="n">counters</span><span class="o">.</span><span class="n">cpu_cycles</span><span class="p">,</span>
+                <span class="n">counters</span><span class="o">.</span><span class="n">instructions_per_cycle</span><span class="p">(),</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;perf stat timeout - counters may be incomplete&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;perf read failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">counters</span></div>
+
+
+<div class="viewcode-block" id="PerfReader.read_interval_counters">
+<a class="viewcode-back" href="../../../core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.read_interval_counters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_interval_counters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">interval_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PerformanceCounters</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read multiple samples over time.</span>
+
+<span class="sd">        This is useful for capturing variation in performance counters</span>
+<span class="sd">        during longer experiments, such as tracking how IPC changes</span>
+<span class="sd">        across different phases of agentic AI execution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            interval_ms: Time between samples in milliseconds</span>
+<span class="sd">            samples: Number of samples to take</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of PerformanceCounters objects, one per sample</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; # Monitor performance every 50ms for 1 second</span>
+<span class="sd">            &gt;&gt;&gt; samples = reader.read_interval_counters(interval_ms=50, samples=20)</span>
+<span class="sd">            &gt;&gt;&gt; for i, c in enumerate(samples):</span>
+<span class="sd">            ...     print(f&quot;Sample {i}: IPC={c.instructions_per_cycle():.2f}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">samples</span><span class="p">):</span>
+            <span class="c1"># Take a sample</span>
+            <span class="n">counters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_counters</span><span class="p">(</span><span class="n">duration_ms</span><span class="o">=</span><span class="n">interval_ms</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">counters</span><span class="p">)</span>
+
+            <span class="c1"># Log progress for long-running experiments</span>
+            <span class="k">if</span> <span class="n">samples</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Completed </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">samples</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Don&#39;t sleep after the last sample</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">samples</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval_ms</span> <span class="o">/</span> <span class="mf">1000.0</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Collected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples at </span><span class="si">{</span><span class="n">interval_ms</span><span class="si">}</span><span class="s2">ms intervals&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_perf_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">counters</span><span class="p">:</span> <span class="n">PerformanceCounters</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse perf stat output and populate counters object.</span>
+
+<span class="sd">        perf stat output format (varies by version):</span>
+<span class="sd">        - Some versions: value,event,unit,...</span>
+<span class="sd">        - Some versions: value,,event,...</span>
+
+<span class="sd">        We handle both by looking for the event name position.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output: stderr output from perf stat</span>
+<span class="sd">            counters: PerformanceCounters object to populate</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">output</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+                <span class="n">x</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;performance&quot;</span><span class="p">,</span> <span class="s2">&quot;seconds&quot;</span><span class="p">,</span> <span class="s2">&quot;cpus utilized&quot;</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Split CSV line</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># First part is always the value</span>
+                <span class="n">value_str</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value_str</span><span class="p">)</span>
+
+                <span class="c1"># Find the event name - it&#39;s the first non-empty part after index 0</span>
+                <span class="n">event_name</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                    <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>  <span class="c1"># First non-empty part is the event name</span>
+                        <span class="n">event_name</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                        <span class="k">break</span>
+
+                <span class="k">if</span> <span class="n">event_name</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_map_event_to_counter</span><span class="p">(</span><span class="n">event_name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">counters</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Failed to parse perf line &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_map_event_to_counter</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">counters</span><span class="p">:</span> <span class="n">PerformanceCounters</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Map a perf event name to the appropriate counter field.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_name: perf event name (e.g., &#39;instructions&#39;)</span>
+<span class="sd">            value: counter value</span>
+<span class="sd">            counters: PerformanceCounters object to update</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Instructions retired (Req 1.5)</span>
+        <span class="k">if</span> <span class="s2">&quot;instructions&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">instructions_retired</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># CPU cycles (Req 1.5)</span>
+        <span class="k">elif</span> <span class="s2">&quot;cycles&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">cpu_cycles</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Cache references (Req 1.6)</span>
+        <span class="k">elif</span> <span class="s2">&quot;cache-references&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">cache_references</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Cache misses (Req 1.6)</span>
+        <span class="k">elif</span> <span class="s2">&quot;cache-misses&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Context switches (Req 1.12)</span>
+        <span class="c1"># perf combines both voluntary and involuntary</span>
+        <span class="k">elif</span> <span class="s2">&quot;context-switches&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">context_switches_voluntary</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="c1"># We can&#39;t separate voluntary/involuntary from perf alone</span>
+            <span class="c1"># Module 1 will also read /proc/self/status for breakdown</span>
+
+        <span class="c1"># Thread migrations (Req 1.43)</span>
+        <span class="k">elif</span> <span class="s2">&quot;migrations&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">thread_migrations</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Page faults (Req 1.10)</span>
+        <span class="c1"># perf doesn&#39;t separate major/minor</span>
+        <span class="k">elif</span> <span class="s2">&quot;page-faults&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">minor_page_faults</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="c1"># major faults are handled separately via /proc</span>
+
+        <span class="c1"># Branch instructions</span>
+        <span class="k">elif</span> <span class="s2">&quot;branches&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">branches</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Branch misses</span>
+        <span class="k">elif</span> <span class="s2">&quot;branch-misses&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">branch_misses</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># CPU clock (ms)</span>
+        <span class="k">elif</span> <span class="s2">&quot;cpu-clock&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">cpu_clock_ms</span> <span class="o">=</span> <span class="n">value</span> <span class="o">/</span> <span class="mf">1000.0</span>  <span class="c1"># Convert to ms</span>
+
+        <span class="c1"># Task clock (ms)</span>
+        <span class="k">elif</span> <span class="s2">&quot;task-clock&quot;</span> <span class="ow">in</span> <span class="n">event_name</span><span class="p">:</span>
+            <span class="n">counters</span><span class="o">.</span><span class="n">task_clock_ms</span> <span class="o">=</span> <span class="n">value</span> <span class="o">/</span> <span class="mf">1000.0</span>  <span class="c1"># Convert to ms</span>
+
+<div class="viewcode-block" id="PerfReader.check_paranoid_setting">
+<a class="viewcode-back" href="../../../core.readers.perf_reader.html#core.readers.perf_reader.PerfReader.check_paranoid_setting">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_paranoid_setting</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check the current kernel.perf_event_paranoid setting.</span>
+
+<span class="sd">        The paranoid setting controls access to perf events:</span>
+<span class="sd">        - -1: No restrictions (recommended for research)</span>
+<span class="sd">        - 0: Allow access to CPU-specific data</span>
+<span class="sd">        - 1: Allow kernel and user-space measurements</span>
+<span class="sd">        - 2: Allow only user-space measurements (default on many systems)</span>
+<span class="sd">        - 3: Disable all perf events</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Current paranoid value, or None if cannot read</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/proc/sys/kernel/perf_event_paranoid&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String representation of perf reader state.&quot;&quot;&quot;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;available&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">perf_available</span> <span class="k">else</span> <span class="s2">&quot;unavailable&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;PerfReader(</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">)</span><span class="si">}</span><span class="s2"> events)&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detailed representation for debugging.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;PerfReader(events=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="si">}</span><span class="s2">, path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">perf_path</span><span class="si">}</span><span class="s2">)&quot;</span></div>
+
+
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># USAGE EXAMPLE</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Example: Testing perf_reader with simple measurements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Set up logging</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PERF READER TEST&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Python path: </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project root: </span><span class="si">{</span><span class="n">project_root</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="c1"># Try to load config from Module 0</span>
+    <span class="n">config_path</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span> <span class="o">/</span> <span class="s2">&quot;hw_config.json&quot;</span>
+    <span class="k">if</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Loaded config from </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No config file found, using defaults&quot;</span><span class="p">)</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Initialize reader</span>
+    <span class="n">reader</span> <span class="o">=</span> <span class="n">PerfReader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 </span><span class="si">{</span><span class="n">reader</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Check paranoid setting</span>
+    <span class="n">paranoid</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">check_paranoid_setting</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔧 perf_event_paranoid = </span><span class="si">{</span><span class="n">paranoid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ===== TEST 1: Short sample (might be zero on idle) =====</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📝 Taking 100ms sample (may be zero on idle system)...&quot;</span><span class="p">)</span>
+    <span class="n">counters</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read_counters</span><span class="p">(</span><span class="n">duration_ms</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;100ms SAMPLE RESULTS&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Instructions: </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">instructions_retired</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cycles:       </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">cpu_cycles</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;IPC:          </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">instructions_per_cycle</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ===== TEST 2: Longer sample with workload =====</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;1 SECOND SAMPLE WITH WORKLOAD&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Running CPU workload for 1 second...&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Create a simple workload function</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">busy_work</span><span class="p">(</span><span class="n">duration_ms</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="p">(</span><span class="n">duration_ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">end_time</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10000</span><span class="p">):</span>
+                <span class="n">result</span> <span class="o">+=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="c1"># Measure during workload</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+    <span class="n">result_container</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_workload</span><span class="p">():</span>
+        <span class="n">result_container</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">busy_work</span><span class="p">(</span><span class="mi">1000</span><span class="p">))</span>
+
+    <span class="c1"># Start workload in background</span>
+    <span class="n">workload_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">run_workload</span><span class="p">)</span>
+    <span class="n">workload_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="c1"># Measure during workload</span>
+    <span class="n">counters</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read_counters</span><span class="p">(</span><span class="n">duration_ms</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+    <span class="n">workload_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Instructions: </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">instructions_retired</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cycles:       </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">cpu_cycles</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;IPC:          </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">instructions_per_cycle</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache refs:   </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">cache_references</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache misses: </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">cache_misses</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Miss rate:    </span><span class="si">{</span><span class="n">counters</span><span class="o">.</span><span class="n">cache_miss_rate</span><span class="p">()</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ===== TEST 3: Multiple samples =====</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;3 SAMPLES AT 200ms INTERVALS DURING WORKLOAD&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">background_workload</span><span class="p">():</span>
+        <span class="n">busy_work</span><span class="p">(</span><span class="mi">2000</span><span class="p">)</span>  <span class="c1"># 2 second workload</span>
+
+    <span class="n">workload_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">background_workload</span><span class="p">)</span>
+    <span class="n">workload_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="n">samples</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read_interval_counters</span><span class="p">(</span><span class="n">interval_ms</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">workload_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">samples</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Sample </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">instructions_retired</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> instructions, </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">instructions_per_cycle</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> IPC&quot;</span>
+        <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Test complete!&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

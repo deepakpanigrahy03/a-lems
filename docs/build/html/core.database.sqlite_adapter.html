@@ -1,0 +1,351 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.sqlite_adapter module &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.exceptions package" href="core.exceptions.html" />
+    <link rel="prev" title="core.database.schema module" href="core.database.schema.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="core.html">core package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="core.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="core.database.html">core.database package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="core.database.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="core.database.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="core.database.html#module-core.database">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="core.exceptions.html">core.exceptions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.execution.html">core.execution package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.models.html">core.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.readers.html">core.readers package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.sustainability.html">core.sustainability package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="core.utils.html">core.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="core.html">core package</a></li>
+          <li class="breadcrumb-item"><a href="core.database.html">core.database package</a></li>
+      <li class="breadcrumb-item active">core.database.sqlite_adapter module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.database.sqlite_adapter.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.database.sqlite_adapter">
+<span id="core-database-sqlite-adapter-module"></span><h1>core.database.sqlite_adapter module<a class="headerlink" href="#module-core.database.sqlite_adapter" title="Link to this heading"></a></h1>
+<section id="sqlite-adapter-sqlite-implementation-of-databaseinterface">
+<h2>SQLITE ADAPTER – SQLite implementation of DatabaseInterface<a class="headerlink" href="#sqlite-adapter-sqlite-implementation-of-databaseinterface" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>PURPOSE:</dt><dd><p>Implements the DatabaseInterface for SQLite. This adapter handles all
+SQLite-specific connection details, query execution, and data insertion.</p>
+</dd>
+<dt>WHY THIS EXISTS:</dt><dd><ul class="simple">
+<li><p>Separates SQLite-specific code from the rest of the application</p></li>
+<li><p>Makes it easy to switch to PostgreSQL later</p></li>
+<li><p>Centralizes all SQLite pragmas and settings</p></li>
+<li><p>Implements the adapter pattern for database flexibility</p></li>
+</ul>
+</dd>
+<dt>UNITS AND ASSUMPTIONS:</dt><dd><ul class="simple">
+<li><p>All time values are in nanoseconds</p></li>
+<li><p>All energy values are in microjoules</p></li>
+<li><p>SQLite connection uses Row factory for dict-like access</p></li>
+<li><p>Foreign keys must be enabled for data integrity</p></li>
+<li><p>WAL journal mode for better concurrency</p></li>
+</ul>
+</dd>
+</dl>
+<section id="author-deepak-panigrahy">
+<h3>AUTHOR: Deepak Panigrahy<a class="headerlink" href="#author-deepak-panigrahy" title="Link to this heading"></a></h3>
+</section>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.database.sqlite_adapter.</span></span><span class="sig-name descname"><span class="pre">SQLiteAdapter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="core.database.base.html#core.database.base.DatabaseInterface" title="core.database.base.DatabaseInterface"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatabaseInterface</span></code></a></p>
+<p>SQLite implementation of the database interface.</p>
+<p>This adapter handles all SQLite-specific operations including:
+- Connection management with appropriate pragmas
+- Transaction handling
+- Data insertion with SQLite-specific methods (lastrowid)
+- Batch inserts for performance
+- Schema creation with IF NOT EXISTS</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.close" title="Link to this definition"></a></dt>
+<dd><p>Close database connection.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.commit">
+<span class="sig-name descname"><span class="pre">commit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.commit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.commit" title="Link to this definition"></a></dt>
+<dd><p>Commit the current transaction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.connect">
+<span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.connect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.connect" title="Link to this definition"></a></dt>
+<dd><p>Establish SQLite connection with proper settings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.create_tables">
+<span class="sig-name descname"><span class="pre">create_tables</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.create_tables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.create_tables" title="Link to this definition"></a></dt>
+<dd><p>Create all tables if they don’t exist.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.create_tax_summaries">
+<span class="sig-name descname"><span class="pre">create_tax_summaries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.create_tax_summaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.create_tax_summaries" title="Link to this definition"></a></dt>
+<dd><p>Create tax summary entries for all agentic runs in an experiment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.execute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.execute" title="Link to this definition"></a></dt>
+<dd><p>Execute a query and return results as dictionaries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – SQL query string with placeholders</p></li>
+<li><p><strong>params</strong> – Parameters for the query</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of dictionaries, each representing a row</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.execute_many">
+<span class="sig-name descname"><span class="pre">execute_many</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.execute_many"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.execute_many" title="Link to this definition"></a></dt>
+<dd><p>Execute a query multiple times with different parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> – SQL query string</p></li>
+<li><p><strong>params_list</strong> – List of parameter sets</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of rows affected</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.get_ml_data">
+<span class="sig-name descname"><span class="pre">get_ml_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.get_ml_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.get_ml_data" title="Link to this definition"></a></dt>
+<dd><p>Retrieve flattened ML data from the ml_features view.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.get_run">
+<span class="sig-name descname"><span class="pre">get_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.get_run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.get_run" title="Link to this definition"></a></dt>
+<dd><p>Retrieve a single run by ID.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.get_runs_by_experiment">
+<span class="sig-name descname"><span class="pre">get_runs_by_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.get_runs_by_experiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.get_runs_by_experiment" title="Link to this definition"></a></dt>
+<dd><p>Retrieve all runs for an experiment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.get_tax_summaries">
+<span class="sig-name descname"><span class="pre">get_tax_summaries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.get_tax_summaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.get_tax_summaries" title="Link to this definition"></a></dt>
+<dd><p>Retrieve tax summaries, optionally filtered by experiment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_baseline">
+<span class="sig-name descname"><span class="pre">insert_baseline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_baseline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_baseline" title="Link to this definition"></a></dt>
+<dd><p>Insert an idle baseline measurement.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_cpu_samples">
+<span class="sig-name descname"><span class="pre">insert_cpu_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_cpu_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_cpu_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert CPU samples from turbostat.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_energy_samples">
+<span class="sig-name descname"><span class="pre">insert_energy_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_energy_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_energy_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert high-frequency RAPL samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_environment_config">
+<span class="sig-name descname"><span class="pre">insert_environment_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_environment_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_environment_config" title="Link to this definition"></a></dt>
+<dd><p>Insert environment configuration or return existing ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env_data</strong> – Dictionary with environment fields:
+- env_hash: Unique environment fingerprint
+- python_version, python_implementation
+- os_name, os_version, kernel_version
+- git_commit, git_branch, git_dirty
+- numpy_version, torch_version, transformers_version
+- container_runtime, container_image</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Primary key of existing or new record</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>env_id</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_experiment">
+<span class="sig-name descname"><span class="pre">insert_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_experiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_experiment" title="Link to this definition"></a></dt>
+<dd><p>Insert a new experiment record with all fields including session tracking.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_hardware">
+<span class="sig-name descname"><span class="pre">insert_hardware</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hardware_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_hardware"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_hardware" title="Link to this definition"></a></dt>
+<dd><p>Insert hardware configuration or return existing ID.
+Now supports hardware fingerprint fields and updates old records.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_interrupt_samples">
+<span class="sig-name descname"><span class="pre">insert_interrupt_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_interrupt_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_interrupt_samples" title="Link to this definition"></a></dt>
+<dd><p>Insert interrupt samples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_llm_interaction">
+<span class="sig-name descname"><span class="pre">insert_llm_interaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interaction_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_llm_interaction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_llm_interaction" title="Link to this definition"></a></dt>
+<dd><p>Insert an LLM interaction record</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_orchestration_events">
+<span class="sig-name descname"><span class="pre">insert_orchestration_events</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_orchestration_events"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_orchestration_events" title="Link to this definition"></a></dt>
+<dd><p>Insert orchestration events for a run.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.insert_run">
+<span class="sig-name descname"><span class="pre">insert_run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.insert_run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.insert_run" title="Link to this definition"></a></dt>
+<dd><p>Insert a single run with all its metrics.</p>
+<p>This is a simplified version - the full 80-column insert
+will be implemented in the repositories split.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.rollback">
+<span class="sig-name descname"><span class="pre">rollback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.rollback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.rollback" title="Link to this definition"></a></dt>
+<dd><p>Rollback the current transaction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.database.sqlite_adapter.SQLiteAdapter.transaction">
+<span class="sig-name descname"><span class="pre">transaction</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#core.database.sqlite_adapter.SQLiteAdapter" title="core.database.sqlite_adapter.SQLiteAdapter"><span class="pre">SQLiteAdapter</span></a></span></span><a class="reference internal" href="_modules/core/database/sqlite_adapter.html#SQLiteAdapter.transaction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.database.sqlite_adapter.SQLiteAdapter.transaction" title="Link to this definition"></a></dt>
+<dd><p>Begin a transaction. Legacy method - use context manager instead.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.database.schema.html" class="btn btn-neutral float-left" title="core.database.schema module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.exceptions.html" class="btn btn-neutral float-right" title="core.exceptions package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

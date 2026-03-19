@@ -1,0 +1,38 @@
+# scripts/tools/docs_config.yaml
+site:
+  name: "A-LEMS Documentation"
+  description: "Agent vs Linear AI Energy Measurement Platform"
+  author: "A-LEMS Team"
+  repo: "https://github.com/deepakpanigrahy03/a-lems"
+  theme: "material"
+
+nav:
+  - Home: "index.md"
+  - Getting Started: "getting-started.md"
+  - User Guide:
+    - Running Experiments: "user-guide/running.md"
+    - Understanding Metrics: "user-guide/metrics.md"
+    - Sustainability: "user-guide/sustainability.md"
+  - Developer Guide:
+    - Architecture: "developer/architecture.md"
+    - Adding New Readers: "developer/new-readers.md"
+    - Database Schema: "developer/schema.md"
+  - API Reference: "api.md"
+  - Research: "research.md"
+
+features:
+  - "Hardware-level measurement: RAPL, MSR, perf counters"
+  - "3-layer data model: Raw -> Baseline -> Derived"
+  - "80+ features per run for ML training"
+  - "Sustainability metrics: Carbon, water, methane"
+  - "Multi-provider: Cloud (Groq, OpenRouter) and Local (Ollama)"
+
+extensions:
+  - "admonition"
+  - "codehilite"
+  - "toc"
+  - "pymdownx.superfences"
+  - "pymdownx.tabbed"
+
+plugins:
+  - "search"

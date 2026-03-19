@@ -1,0 +1,617 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.database.base &mdash; A-LEMS 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            A-LEMS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">gui package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">A-LEMS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.database.base</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.database.base</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">================================================================================</span>
+<span class="sd">DATABASE INTERFACE – Abstract Base Class for All Database Adapters</span>
+<span class="sd">================================================================================</span>
+
+<span class="sd">PURPOSE:</span>
+<span class="sd">    Defines a common interface that all database adapters (SQLite, PostgreSQL)</span>
+<span class="sd">    must implement. This allows switching databases by simply changing the</span>
+<span class="sd">    config file, without modifying any application code.</span>
+
+<span class="sd">WHY THIS EXISTS:</span>
+<span class="sd">    - To support future migration from SQLite to PostgreSQL</span>
+<span class="sd">    - To keep database code modular and testable</span>
+<span class="sd">    - To enforce consistent method signatures across adapters</span>
+<span class="sd">    - To implement the adapter pattern for database flexibility</span>
+
+<span class="sd">UNITS AND ASSUMPTIONS:</span>
+<span class="sd">    - All time values are in nanoseconds</span>
+<span class="sd">    - All energy values are in microjoules</span>
+<span class="sd">    - All methods raise DatabaseError on failures</span>
+<span class="sd">    - Context manager support for transactions</span>
+
+<span class="sd">AUTHOR: Deepak Panigrahy</span>
+<span class="sd">================================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+
+<div class="viewcode-block" id="DatabaseError">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatabaseError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception for all database operations.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="DatabaseInterface">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatabaseInterface</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for all database adapters.</span>
+
+<span class="sd">    Any new database adapter (SQLite, PostgreSQL, MySQL) must implement</span>
+<span class="sd">    all methods defined here. This ensures the rest of the application</span>
+<span class="sd">    can interact with any database seamlessly.</span>
+
+<span class="sd">    The interface is divided into sections:</span>
+<span class="sd">    1. Connection management</span>
+<span class="sd">    2. Transaction handling</span>
+<span class="sd">    3. Table creation</span>
+<span class="sd">    4. Core data insertion</span>
+<span class="sd">    5. Query methods</span>
+<span class="sd">    6. Context manager support</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 1. CONNECTION MANAGEMENT</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseInterface.connect">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.connect">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Establish connection to the database.</span>
+
+<span class="sd">        This method should:</span>
+<span class="sd">        - Create the connection using config parameters</span>
+<span class="sd">        - Set any necessary pragmas (for SQLite)</span>
+<span class="sd">        - Configure connection pool (for PostgreSQL)</span>
+<span class="sd">        - Raise DatabaseError if connection fails</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            DatabaseError: If connection fails</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.close">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.close">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Close database connection and release resources.</span>
+
+<span class="sd">        This method should:</span>
+<span class="sd">        - Close the connection gracefully</span>
+<span class="sd">        - Release any connection pool resources</span>
+<span class="sd">        - Be safe to call multiple times</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.execute">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.execute">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute a raw SQL query and return results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: SQL query string with placeholders</span>
+<span class="sd">            params: Parameters for the query (tuple for positional, dict for named)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of dictionaries, each representing a row with column names as keys</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            DatabaseError: If query execution fails</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            results = db.execute(</span>
+<span class="sd">                &quot;SELECT * FROM runs WHERE exp_id = ?&quot;,</span>
+<span class="sd">                (exp_id,)</span>
+<span class="sd">            )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.execute_many">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.execute_many">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute the same query with multiple parameter sets.</span>
+
+<span class="sd">        Used for batch inserts where performance matters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            query: SQL query string</span>
+<span class="sd">            params_list: List of parameter sets, each a tuple or dict</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Number of rows affected</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            DatabaseError: If execution fails</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 2. TRANSACTION HANDLING</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseInterface.transaction">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.transaction">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;DatabaseInterface&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Begin a transaction. Returns self for context manager usage.</span>
+
+<span class="sd">        Usage:</span>
+<span class="sd">            with db.transaction():</span>
+<span class="sd">                db.insert_run(data1)</span>
+<span class="sd">                db.insert_run(data2)</span>
+
+<span class="sd">        This ensures atomicity: both inserts succeed or both fail.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.commit">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.commit">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commit the current transaction.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.rollback">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.rollback">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rollback the current transaction.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 3. TABLE CREATION</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseInterface.create_tables">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.create_tables">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create all necessary tables if they don&#39;t exist.</span>
+
+<span class="sd">        For SQLite, this runs CREATE TABLE IF NOT EXISTS statements.</span>
+<span class="sd">        For PostgreSQL, this may use CREATE TABLE IF NOT EXISTS or migrations.</span>
+
+<span class="sd">        Tables to create:</span>
+<span class="sd">        - experiments</span>
+<span class="sd">        - hardware_config</span>
+<span class="sd">        - idle_baselines</span>
+<span class="sd">        - runs</span>
+<span class="sd">        - orchestration_events</span>
+<span class="sd">        - orchestration_tax_summary</span>
+<span class="sd">        - energy_samples</span>
+<span class="sd">        - cpu_samples</span>
+<span class="sd">        - interrupt_samples</span>
+
+<span class="sd">        Also creates indexes and views (ml_features).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 4. CORE DATA INSERTION</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseInterface.insert_experiment">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_experiment">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiment_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a new experiment record.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            experiment_data: Dictionary with keys:</span>
+<span class="sd">                - name: str - Experiment name</span>
+<span class="sd">                - description: str (optional) - Description</span>
+<span class="sd">                - workflow_type: str - &#39;linear&#39; or &#39;agentic&#39;</span>
+<span class="sd">                - model_name: str - LLM model identifier</span>
+<span class="sd">                - provider: str - &#39;cloud&#39; or &#39;local&#39;</span>
+<span class="sd">                - task_name: str - Task identifier</span>
+<span class="sd">                - country_code: str - ISO country code</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            exp_id of the newly created experiment</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_hardware">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_hardware">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_hardware</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hardware_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert or retrieve hardware configuration.</span>
+
+<span class="sd">        Should check for existing record (by hostname + kernel_version)</span>
+<span class="sd">        and return existing hw_id if found.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            hardware_data: Dictionary with keys:</span>
+<span class="sd">                - hostname: str</span>
+<span class="sd">                - cpu_model: str</span>
+<span class="sd">                - cpu_cores: int</span>
+<span class="sd">                - cpu_threads: int</span>
+<span class="sd">                - ram_gb: int</span>
+<span class="sd">                - kernel_version: str</span>
+<span class="sd">                - microcode_version: str (optional)</span>
+<span class="sd">                - rapl_domains: str (optional)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            hw_id of the hardware record (existing or new)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_baseline">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_baseline">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">baseline_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert an idle baseline measurement.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            baseline_data: Dictionary with keys:</span>
+<span class="sd">                - baseline_id: str (optional, generated if not provided)</span>
+<span class="sd">                - timestamp: float</span>
+<span class="sd">                - package_power_watts: float</span>
+<span class="sd">                - core_power_watts: float</span>
+<span class="sd">                - uncore_power_watts: float (optional)</span>
+<span class="sd">                - dram_power_watts: float (optional)</span>
+<span class="sd">                - duration_seconds: int</span>
+<span class="sd">                - sample_count: int</span>
+<span class="sd">                - package_std: float (optional)</span>
+<span class="sd">                - core_std: float (optional)</span>
+<span class="sd">                - governor: str</span>
+<span class="sd">                - turbo: str (&#39;enabled&#39;/&#39;disabled&#39;)</span>
+<span class="sd">                - background_cpu: float</span>
+<span class="sd">                - process_count: int</span>
+<span class="sd">                - method: str</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            baseline_id of the new baseline</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_run">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_run">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a single run with all its metrics.</span>
+
+<span class="sd">        This is the main method for inserting experiment results.</span>
+<span class="sd">        It should extract all fields from the harness output and</span>
+<span class="sd">        compute derived metrics.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_data: Complete run dictionary from harness containing:</span>
+<span class="sd">                - ml_features: dict with 77+ fields</span>
+<span class="sd">                - layer3_derived: dict (optional)</span>
+<span class="sd">                - execution: dict (optional)</span>
+<span class="sd">                - sustainability: dict (optional)</span>
+<span class="sd">                - orchestration_events: list (optional)</span>
+<span class="sd">                - energy_samples: list (optional)</span>
+<span class="sd">                - cpu_samples: list (optional)</span>
+<span class="sd">                - interrupt_samples: list (optional)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            run_id of the newly inserted run</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_orchestration_events">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_orchestration_events">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_orchestration_events</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert orchestration events for a run.</span>
+
+<span class="sd">        Each event represents a phase (planning, execution, waiting, synthesis)</span>
+<span class="sd">        or a specific action (LLM call, tool call).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: Foreign key to runs table</span>
+<span class="sd">            events: List of event dictionaries with keys:</span>
+<span class="sd">                - step_index: int (optional)</span>
+<span class="sd">                - phase: str (&#39;planning&#39;/&#39;execution&#39;/&#39;waiting&#39;/&#39;synthesis&#39;)</span>
+<span class="sd">                - event_type: str</span>
+<span class="sd">                - start_time_ns: int</span>
+<span class="sd">                - end_time_ns: int</span>
+<span class="sd">                - duration_ns: int</span>
+<span class="sd">                - power_watts: float (optional)</span>
+<span class="sd">                - cpu_util_percent: float (optional)</span>
+<span class="sd">                - interrupt_rate: float (optional)</span>
+<span class="sd">                - event_energy_uj: int</span>
+<span class="sd">                - tax_contribution_uj: int</span>
+<span class="sd">                - tax_percent: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_energy_samples">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_energy_samples">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_energy_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert high-frequency RAPL samples.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: Foreign key to runs table</span>
+<span class="sd">            samples: List of sample dictionaries with keys:</span>
+<span class="sd">                - timestamp_ns: int</span>
+<span class="sd">                - pkg_energy_uj: int (optional)</span>
+<span class="sd">                - core_energy_uj: int (optional)</span>
+<span class="sd">                - uncore_energy_uj: int (optional)</span>
+<span class="sd">                - dram_energy_uj: int (optional)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_cpu_samples">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_cpu_samples">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_cpu_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert CPU samples.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: Foreign key to runs table</span>
+<span class="sd">            samples: List of sample dictionaries with keys:</span>
+<span class="sd">                - timestamp_ns: int</span>
+<span class="sd">                - cpu_util_percent: float</span>
+<span class="sd">                - cpu_busy_mhz: float</span>
+<span class="sd">                - cpu_avg_mhz: float</span>
+<span class="sd">                - c1_residency: float</span>
+<span class="sd">                - c2_residency: float</span>
+<span class="sd">                - c3_residency: float</span>
+<span class="sd">                - c6_residency: float</span>
+<span class="sd">                - c7_residency: float</span>
+<span class="sd">                - pkg_c8_residency: float</span>
+<span class="sd">                - pkg_c9_residency: float</span>
+<span class="sd">                - pkg_c10_residency: float</span>
+<span class="sd">                - package_power: float</span>
+<span class="sd">                - dram_power: float</span>
+<span class="sd">                - gpu_rc6: float</span>
+<span class="sd">                - package_temp: float</span>
+<span class="sd">                - ipc: float</span>
+<span class="sd">                - extra_metrics_json: str (optional)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.insert_interrupt_samples">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.insert_interrupt_samples">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">insert_interrupt_samples</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert interrupt rate samples.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: Foreign key to runs table</span>
+<span class="sd">            samples: List of sample dictionaries with keys:</span>
+<span class="sd">                - timestamp_ns: int</span>
+<span class="sd">                - interrupts_per_sec: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.create_tax_summaries">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.create_tax_summaries">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create tax summary entries for all agentic runs in an experiment.</span>
+
+<span class="sd">        This method:</span>
+<span class="sd">        1. Finds all runs in the experiment</span>
+<span class="sd">        2. Pairs linear and agentic runs by run_number</span>
+<span class="sd">        3. Computes tax = agentic_dynamic_uj - linear_dynamic_uj</span>
+<span class="sd">        4. Stores results in orchestration_tax_summary table</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            exp_id: Experiment ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 5. QUERY METHODS</span>
+    <span class="c1"># ========================================================================</span>
+
+<div class="viewcode-block" id="DatabaseInterface.get_run">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.get_run">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve a single run by its ID.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.get_runs_by_experiment">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.get_runs_by_experiment">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_runs_by_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve all runs for an experiment, ordered by run_number.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.get_tax_summaries">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.get_tax_summaries">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_tax_summaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve tax summaries, optionally filtered by experiment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            exp_id: If provided, only summaries for runs in that experiment</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of tax summary dictionaries</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="DatabaseInterface.get_ml_data">
+<a class="viewcode-back" href="../../../core.database.base.html#core.database.base.DatabaseInterface.get_ml_data">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ml_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve flattened ML data from the ml_features view.</span>
+
+<span class="sd">        This is the primary method for loading data into ML pipelines.</span>
+<span class="sd">        The view contains all features and targets in a single row per run.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            workflow: If provided, filter by &#39;linear&#39; or &#39;agentic&#39;</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of dictionaries, each representing one run with all ML columns</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="c1"># ========================================================================</span>
+    <span class="c1"># 6. CONTEXT MANAGER SUPPORT</span>
+    <span class="c1"># ========================================================================</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;DatabaseInterface&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enter context manager - returns self.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Exit context manager - closes connection.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, A-LEMS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
