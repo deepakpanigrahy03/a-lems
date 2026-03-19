@@ -1,0 +1,31 @@
+digraph {
+  rankdir=LR;
+  splines=curved;
+  nodesep=0.6;
+  "tax.linear" [label="Linear Workflow
+Single LLM Call", shape="box", color="lightgreen"];
+  "tax.agentic" [label="Agentic Workflow
+Planning + Tools + Synthesis", shape="box", color="lightcoral"];
+  "tax.planning" [label="Planning Phase", shape="box", color="lightyellow"];
+  "tax.execution" [label="Tool Execution", shape="box", color="lightyellow"];
+  "tax.synthesis" [label="Synthesis Phase", shape="box", color="lightyellow"];
+  "tax.core" [label="Core Energy
+(computation)", shape="box", color="lightblue"];
+  "tax.uncore" [label="Uncore Energy
+(orchestration overhead)", shape="box", color="lightcoral"];
+  "tax.total" [label="Total Package Energy", shape="box", color="lightblue"];
+  "tax.linear" -> "tax.core" [style=solid, color=blue, label="core_energy"];
+  "tax.core" -> "tax.total" [style=solid, color=blue, label="+"];
+  "tax.agentic" -> "tax.planning" [label="phase 1"];
+  "tax.planning" -> "tax.execution" [label="phase 2"];
+  "tax.execution" -> "tax.synthesis" [label="phase 3"];
+  "tax.planning" -> "tax.core" [style=solid, color=blue, label="core"];
+  "tax.execution" -> "tax.core" [style=solid, color=blue, label="core"];
+  "tax.synthesis" -> "tax.core" [style=solid, color=blue, label="core"];
+  "tax.planning" -> "tax.uncore" [style=solid, color=blue, label="overhead"];
+  "tax.execution" -> "tax.uncore" [style=solid, color=blue, label="overhead"];
+  "tax.synthesis" -> "tax.uncore" [style=solid, color=blue, label="overhead"];
+  "tax.core" -> "tax.total" [style=solid, color=blue, label="+"];
+  "tax.uncore" -> "tax.total" [style=solid, color=blue, label="+"];
+  "tax.total" -> "tax.linear" [style=solid, color=blue, label="ratio"];
+}

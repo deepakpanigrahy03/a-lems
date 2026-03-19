@@ -1,0 +1,26 @@
+digraph {
+  rankdir=TB;
+  compound=True;
+  splines=ortho;
+  nodesep=0.5;
+  ranksep=0.8;
+  "config.loader" [label="ConfigLoader", shape="box", color="lightblue"];
+  "hw.rapl" [label="RAPLReader
+(energy µJ)", shape="box", color="lightgreen"];
+  "hw.msr" [label="MSRReader
+(C-states)", shape="box", color="lightgreen"];
+  "hw.perf" [label="PerfReader
+(IPC, cache)", shape="box", color="lightgreen"];
+  "exec.harness" [label="ExperimentHarness", shape="box", color="lightyellow"];
+  "exec.linear" [label="LinearExecutor", shape="box", color="lightyellow"];
+  "exec.agentic" [label="AgenticExecutor", shape="box", color="lightyellow"];
+  "db.main" [label="Database
+(SQLite)", shape="cylinder", color="lightcoral"];
+  "config.loader" -> "exec.harness" [style=dashed, color=black, arrowhead=normal, label="loads config"];
+  "exec.harness" -> "hw.rapl" [style=dashed, color=black, arrowhead=normal, label="starts"];
+  "exec.harness" -> "hw.msr" [style=dashed, color=black, arrowhead=normal];
+  "exec.harness" -> "hw.perf" [style=dashed, color=black, arrowhead=normal];
+  "hw.rapl" -> "db.main" [style=solid, color=blue, arrowhead=normal, label="energy samples"];
+  "hw.msr" -> "db.main" [style=solid, color=blue, arrowhead=normal, label="C-states"];
+  "hw.perf" -> "db.main" [style=solid, color=blue, arrowhead=normal, label="IPC, cache"];
+}

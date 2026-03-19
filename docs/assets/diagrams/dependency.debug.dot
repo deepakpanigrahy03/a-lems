@@ -1,0 +1,37 @@
+digraph {
+  rankdir=TB;
+  compound=True;
+  splines=ortho;
+  nodesep=0.5;
+  ranksep=0.8;
+  "config.loader" [label="ConfigLoader", shape="box", color="lightblue"];
+  "hw.rapl" [label="RAPLReader
+(energy µJ)", shape="box", color="lightgreen"];
+  "hw.msr" [label="MSRReader
+(C-states)", shape="box", color="lightgreen"];
+  "hw.perf" [label="PerfReader
+(IPC, cache)", shape="box", color="lightgreen"];
+  "hw.turbostat" [label="TurbostatReader
+(freq, temp)", shape="box", color="lightgreen"];
+  "exec.harness" [label="ExperimentHarness", shape="box", color="lightyellow"];
+  "exec.linear" [label="LinearExecutor", shape="box", color="lightyellow"];
+  "exec.agentic" [label="AgenticExecutor", shape="box", color="lightyellow"];
+  "exec.runner" [label="ExperimentRunner", shape="box", color="lightyellow"];
+  "db.main" [label="Database
+(SQLite)", shape="cylinder", color="lightcoral"];
+  "db.runs" [label="runs", shape="record", color="lightgrey"];
+  "db.experiments" [label="experiments", shape="record", color="lightgrey"];
+  "db.energy" [label="energy_samples", shape="record", color="lightgrey"];
+  "config.loader" -> "exec.harness" [style=dashed, color=black, arrowhead=normal, label="loads"];
+  "config.loader" -> "exec.runner" [style=dashed, color=black, arrowhead=normal, label="loads"];
+  "hw.rapl" -> "exec.harness" [style=solid, color=blue, arrowhead=normal, label="energy"];
+  "hw.msr" -> "exec.harness" [style=solid, color=blue, arrowhead=normal, label="C-states"];
+  "hw.perf" -> "exec.harness" [style=solid, color=blue, arrowhead=normal, label="counters"];
+  "hw.turbostat" -> "exec.harness" [style=solid, color=blue, arrowhead=normal, label="freq/temp"];
+  "exec.harness" -> "db.main" [style=solid, color=blue, arrowhead=normal, label="insert runs"];
+  "exec.harness" -> "db.runs" [style=solid, color=blue, arrowhead=normal, label="insert"];
+  "exec.harness" -> "db.energy" [style=solid, color=blue, arrowhead=normal, label="samples"];
+  "exec.harness" -> "exec.linear" [style=dashed, color=black, arrowhead=normal, label="calls"];
+  "exec.harness" -> "exec.agentic" [style=dashed, color=black, arrowhead=normal, label="calls"];
+  "exec.runner" -> "exec.harness" [style=dashed, color=black, arrowhead=normal, label="uses"];
+}

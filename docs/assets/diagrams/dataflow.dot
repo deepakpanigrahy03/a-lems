@@ -1,0 +1,20 @@
+digraph DataFlow {
+        rankdir=LR;
+        node [shape=box, style=filled, fillcolor=lightblue];
+        
+        Task [label="AI Task"];
+        Exec [label="Executor", fillcolor=lightgreen];
+        Sensors [label="Hardware Sensors"];
+        Samples [label="Energy Samples (100Hz)"];
+        DB [label="SQLite DB", fillcolor=lightyellow];
+        Analysis [label="Analysis Engine"];
+        
+        Task -> Exec [label="execute()"];
+        Exec -> Sensors [label="start_measurement()"];
+        Sensors -> Samples [label="100Hz sampling"];
+        Samples -> DB [label="insert_samples()"];
+        Exec -> DB [label="insert_run()"];
+        DB -> Analysis [label="compute_metrics()"];
+        
+        Analysis -> Report [label="PDF/HTML Report"];
+    }

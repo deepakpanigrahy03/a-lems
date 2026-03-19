@@ -1,0 +1,30 @@
+digraph {
+  rankdir=TB;
+  compound=True;
+  splines=ortho;
+  nodesep=0.5;
+  ranksep=0.8;
+  "gui.app" [label="app.py
+(Streamlit)", shape="box", color="lightpink"];
+  "gui.sidebar" [label="sidebar.py", shape="box", color="lightpink"];
+  "gui.session" [label="Session Analysis", shape="box", color="lightpink"];
+  "gui.energy" [label="Energy Page", shape="box", color="lightpink"];
+  "gui.thermal" [label="Thermal Page", shape="box", color="lightpink"];
+  "gui.sustain" [label="Sustainability Page", shape="box", color="lightpink"];
+  "gui.tax" [label="Tax Analysis", shape="box", color="lightpink"];
+  "gui.db" [label="Database
+Connection", shape="cylinder", color="lightcoral"];
+  "gui.report" [label="PDF Generator", shape="box", color="lightpink"];
+  "gui.app" -> "gui.sidebar" [style=dashed, color=black, arrowhead=normal, label="includes"];
+  "gui.sidebar" -> "gui.session" [style=dashed, color=black, arrowhead=normal, label="navigates"];
+  "gui.sidebar" -> "gui.energy" [style=dashed, color=black, arrowhead=normal, label="navigates"];
+  "gui.sidebar" -> "gui.thermal" [style=dashed, color=black, arrowhead=normal, label="navigates"];
+  "gui.sidebar" -> "gui.sustain" [style=dashed, color=black, arrowhead=normal, label="navigates"];
+  "gui.sidebar" -> "gui.tax" [style=dashed, color=black, arrowhead=normal, label="navigates"];
+  "gui.session" -> "gui.db" [style=solid, color=blue, arrowhead=normal, label="queries"];
+  "gui.energy" -> "gui.db" [style=solid, color=blue, arrowhead=normal, label="queries"];
+  "gui.thermal" -> "gui.db" [style=solid, color=blue, arrowhead=normal, label="queries"];
+  "gui.sustain" -> "gui.db" [style=solid, color=blue, arrowhead=normal, label="queries"];
+  "gui.tax" -> "gui.db" [style=solid, color=blue, arrowhead=normal, label="queries"];
+  "gui.session" -> "gui.report" [style=dashed, color=black, arrowhead=normal, label="generates"];
+}

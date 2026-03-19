@@ -1,0 +1,18 @@
+digraph {
+  rankdir=LR;
+  splines=curved;
+  nodesep=0.6;
+  "harness.start" [label="run_linear()/run_agentic()", shape="box", color="lightyellow"];
+  "harness.measure" [label="energy_engine.start_measurement()", shape="box", color="lightyellow"];
+  "harness.execute" [label="executor.execute()", shape="box", color="lightyellow"];
+  "harness.stop" [label="energy_engine.stop_measurement()", shape="box", color="lightyellow"];
+  "harness.analyze" [label="energy_analyzer.compute()", shape="box", color="lightyellow"];
+  "harness.sustain" [label="sustainability.calculate()", shape="box", color="lightyellow"];
+  "harness.ml" [label="build ml_features dict", shape="box", color="lightyellow"];
+  "harness.start" -> "harness.measure" [label="1"];
+  "harness.measure" -> "harness.execute" [label="2"];
+  "harness.execute" -> "harness.stop" [label="3"];
+  "harness.stop" -> "harness.analyze" [label="4"];
+  "harness.analyze" -> "harness.sustain" [label="5"];
+  "harness.sustain" -> "harness.ml" [label="6"];
+}

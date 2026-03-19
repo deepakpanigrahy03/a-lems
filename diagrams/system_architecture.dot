@@ -1,0 +1,23 @@
+digraph G {
+
+rankdir=TB;
+node [shape=box style=filled color=lightblue];
+
+User;
+Dashboard;
+ExperimentRunner;
+Optimizer;
+EnergyReaders;
+Database;
+Sustainability;
+Insights;
+
+User -> Dashboard;
+Dashboard -> ExperimentRunner;
+ExperimentRunner -> Optimizer;
+ExperimentRunner -> EnergyReaders;
+EnergyReaders -> Database;
+Database -> Sustainability;
+Database -> Insights;
+
+}

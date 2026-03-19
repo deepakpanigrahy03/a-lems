@@ -1,0 +1,36 @@
+digraph Lifecycle {
+        rankdir=TB;
+        node [shape=box, style=filled, fillcolor=lightblue];
+        
+        Start [label="Experiment Start", shape=ellipse, fillcolor=lightgreen];
+        Warmup [label="Warm-up Period"];
+        Baseline [label="Measure Baseline", shape=box];
+        Linear [label="Linear Run", fillcolor=lightyellow];
+        Agentic [label="Agentic Run", fillcolor=lightyellow];
+        Cooldown [label="Cool-down Period"];
+        Store [label="Store Results"];
+        Repeat [label="Repeat N times", shape=diamond];
+        End [label="Experiment End", shape=ellipse, fillcolor=lightgreen];
+        
+        Start -> Warmup;
+        Warmup -> Baseline;
+        Baseline -> Linear;
+        Linear -> Cooldown;
+        Cooldown -> Agentic;
+        Agentic -> Store;
+        Store -> Repeat;
+        Repeat -> Linear [label="next repetition"];
+        Repeat -> End [label="all done"];
+        
+        // Add timing annotations
+        Warmup [label="Warm-up
+(5s)"];
+        Baseline [label="Baseline
+(10s)"];
+        Linear [label="Linear
+(2-5s)"];
+        Agentic [label="Agentic
+(10-30s)"];
+        Cooldown [label="Cool-down
+(30s)"];
+    }
