@@ -1,0 +1,112 @@
+# Templates with render rules + edge styles
+version: 1.0
+
+templates:
+  # Layered Architecture
+  layered:
+    graph:
+      rankdir: TB
+      compound: true
+      splines: ortho
+      nodesep: 0.5
+      ranksep: 0.8
+    node:
+      style: filled
+      fontname: "Helvetica"
+      fontsize: 10
+    edge:
+      fontname: "Helvetica"
+      fontsize: 8
+    cluster:
+      style: rounded
+      color: gray
+      fontsize: 12
+      margin: 20
+    edge_styles:
+      control:
+        style: dashed
+        color: black
+        arrowhead: normal
+      data:
+        style: solid
+        color: blue
+        arrowhead: normal
+      flow:
+        style: solid
+        color: black
+        arrowhead: normal
+      fk:
+        style: dotted
+        color: gray50
+        arrowhead: crow
+    cluster_by: layer
+
+  # Data Flow
+  dataflow:
+    graph:
+      rankdir: LR
+      splines: curved
+      nodesep: 0.6
+    node:
+      style: filled
+      fontname: "Helvetica"
+    edge:
+      color: blue
+    edge_styles:
+      data:
+        style: solid
+        color: blue
+
+  # Lifecycle
+  lifecycle:
+    graph:
+      rankdir: TB
+      nodesep: 0.5
+      ranksep: 0.6
+    node:
+      style: filled
+    edge:
+      color: black
+    edge_styles:
+      flow:
+        style: solid
+        color: black
+
+  # Schema
+  schema:
+    graph:
+      rankdir: LR
+      splines: ortho
+    node:
+      shape: record
+      style: filled
+      fillcolor: lightgrey
+    edge:
+      arrowhead: crow
+      color: gray50
+    edge_styles:
+      fk:
+        style: dotted
+        color: gray50
+        arrowhead: crow
+  # Beautiful schema template for ER-style diagrams
+  beautiful-schema:
+    graph:
+      rankdir: LR
+      splines: ortho
+      nodesep: 1.0
+      ranksep: 1.5
+      bgcolor: "#f8f9fa"
+    node:
+      fontname: "Helvetica"
+      fontsize: 10
+    edge:
+      color: "#666666"
+      penwidth: 1.5
+      arrowhead: crow
+    edge_styles:
+      fk:
+        style: solid
+        color: "#4CAF50"
+        penwidth: 2.5
+        arrowhead: crow

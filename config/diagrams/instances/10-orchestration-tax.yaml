@@ -1,0 +1,130 @@
+# Orchestration Tax Visualization
+version: 1.0
+name: orchestration-tax
+title: "Linear vs Agentic Energy Comparison"
+template: dataflow
+
+nodes:
+  - id: tax.linear
+    label: "Linear Workflow\nSingle LLM Call"
+    shape: box
+    layer: execution
+    color: lightgreen
+
+  - id: tax.agentic
+    label: "Agentic Workflow\nPlanning + Tools + Synthesis"
+    shape: box
+    layer: execution
+    color: lightcoral
+
+  - id: tax.planning
+    label: "Planning Phase"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: tax.execution
+    label: "Tool Execution"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: tax.synthesis
+    label: "Synthesis Phase"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: tax.core
+    label: "Core Energy\n(computation)"
+    shape: box
+    layer: hardware
+    color: lightblue
+
+  - id: tax.uncore
+    label: "Uncore Energy\n(orchestration overhead)"
+    shape: box
+    layer: hardware
+    color: lightcoral
+
+  - id: tax.total
+    label: "Total Package Energy"
+    shape: box
+    layer: hardware
+    color: lightblue
+
+edges:
+  # Linear path
+  - from: tax.linear
+    to: tax.core
+    type: data
+    label: "core_energy"
+
+  - from: tax.core
+    to: tax.total
+    type: data
+    label: "+"
+
+  # Agentic path with phases
+  - from: tax.agentic
+    to: tax.planning
+    type: control
+    label: "phase 1"
+
+  - from: tax.planning
+    to: tax.execution
+    type: control
+    label: "phase 2"
+
+  - from: tax.execution
+    to: tax.synthesis
+    type: control
+    label: "phase 3"
+
+  - from: tax.planning
+    to: tax.core
+    type: data
+    label: "core"
+
+  - from: tax.execution
+    to: tax.core
+    type: data
+    label: "core"
+
+  - from: tax.synthesis
+    to: tax.core
+    type: data
+    label: "core"
+
+  - from: tax.planning
+    to: tax.uncore
+    type: data
+    label: "overhead"
+
+  - from: tax.execution
+    to: tax.uncore
+    type: data
+    label: "overhead"
+
+  - from: tax.synthesis
+    to: tax.uncore
+    type: data
+    label: "overhead"
+
+  - from: tax.core
+    to: tax.total
+    type: data
+    label: "+"
+
+  - from: tax.uncore
+    to: tax.total
+    type: data
+    label: "+"
+
+  # Tax formula
+  - from: tax.total
+    to: tax.linear
+    type: data
+    label: "ratio"
+    style: dashed
+    color: red

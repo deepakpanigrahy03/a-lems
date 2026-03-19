@@ -1,0 +1,34 @@
+# Validation rules with micro-fixes
+version: 1.0
+
+validation:
+  strict: true
+  
+  # ID format enforcement
+  node_id_format:
+    pattern: "^[a-z][a-z0-9]*\\.[a-z][a-z0-9]*$"
+    description: "namespace.name (lowercase, no spaces)"
+    examples:
+      - "config.loader"
+      - "hw.rapl"
+      - "exec.harness"
+  
+  # Wildcard expansion rules
+  wildcard_support: true
+  wildcard_behavior:
+    pattern: "*"
+    expands_to: "all nodes with matching prefix"
+    implementation: "fn match_wildcard(pattern, nodes)"
+  
+  # Layer requirements
+  require_layer_for_inline_nodes: true
+  require_layer_for_components: true
+  layers_match_components: true
+  
+  # Node existence checks
+  nodes_exist: true
+  edges_reference_valid_nodes: true
+  boundary_nodes_exist: true
+  no_duplicate_ids: true
+  
+  on_failure: "exit"  # exit | warn | continue

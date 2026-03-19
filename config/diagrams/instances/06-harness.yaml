@@ -1,0 +1,79 @@
+# ExperimentHarness Internals
+version: 1.0
+name: harness
+title: "ExperimentHarness Internal Flow"
+template: dataflow
+
+nodes:
+  - id: harness.start
+    label: "run_linear()/run_agentic()"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: harness.measure
+    label: "energy_engine.start_measurement()"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: harness.execute
+    label: "executor.execute()"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: harness.stop
+    label: "energy_engine.stop_measurement()"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: harness.analyze
+    label: "energy_analyzer.compute()"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: harness.sustain
+    label: "sustainability.calculate()"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+  - id: harness.ml
+    label: "build ml_features dict"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+edges:
+  - from: harness.start
+    to: harness.measure
+    type: flow
+    label: "1"
+
+  - from: harness.measure
+    to: harness.execute
+    type: flow
+    label: "2"
+
+  - from: harness.execute
+    to: harness.stop
+    type: flow
+    label: "3"
+
+  - from: harness.stop
+    to: harness.analyze
+    type: flow
+    label: "4"
+
+  - from: harness.analyze
+    to: harness.sustain
+    type: flow
+    label: "5"
+
+  - from: harness.sustain
+    to: harness.ml
+    type: flow
+    label: "6"

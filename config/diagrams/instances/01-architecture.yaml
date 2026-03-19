@@ -1,0 +1,52 @@
+# High-Level Architecture
+version: 1.0
+name: architecture
+title: "A-LEMS High-Level Architecture"
+template: layered
+boundaries:
+  - "User Space"
+  - "Kernel / Hardware"
+
+nodes:
+  - config.loader
+  - hw.rapl
+  - hw.msr
+  - hw.perf
+  - exec.harness
+  - exec.linear
+  - exec.agentic
+  - db.main
+
+edges:
+  - from: config.loader
+    to: exec.harness
+    type: control
+    label: "loads config"
+
+  - from: exec.harness
+    to: hw.rapl
+    type: control
+    label: "starts"
+
+  - from: exec.harness
+    to: hw.msr
+    type: control
+
+  - from: exec.harness
+    to: hw.perf
+    type: control
+
+  - from: hw.rapl
+    to: db.main
+    type: data
+    label: "energy samples"
+
+  - from: hw.msr
+    to: db.main
+    type: data
+    label: "C-states"
+
+  - from: hw.perf
+    to: db.main
+    type: data
+    label: "IPC, cache"

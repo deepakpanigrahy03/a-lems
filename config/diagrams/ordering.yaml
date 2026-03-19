@@ -1,0 +1,14 @@
+# Explicit ordering for deterministic output
+version: 1.0
+
+# Option 1: Implicit (filename-based)
+order_by: "filename"
+filename_pattern: "^(\\d+)-.*\\.yaml$"  # e.g., 01-architecture.yaml
+
+# Option 2: Explicit (manual ordering) - uncomment to use
+# order_by: "explicit"
+# sequence:
+#   - architecture
+#   - data-flow
+#   - lifecycle
+#   - schema

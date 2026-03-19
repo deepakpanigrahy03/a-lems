@@ -1,0 +1,62 @@
+# Database Schema
+version: 1.0
+name: database-schema
+title: "Database Schema (11 Tables)"
+template: schema
+
+nodes:
+  - id: db.experiments
+    label: "experiments\nexp_id | name | group_id | status"
+    shape: record
+    layer: database
+  
+  - id: db.hardware
+    label: "hardware_config\nhw_id | cpu_model | hardware_hash"
+    shape: record
+    layer: database
+  
+  - id: db.runs
+    label: "runs\nrun_id | exp_id | hw_id\nworkflow_type | dynamic_energy_uj"
+    shape: record
+    layer: database
+  
+  - id: db.energy
+    label: "energy_samples\nsample_id | run_id\ntimestamp_ns | pkg_energy"
+    shape: record
+    layer: database
+  
+  - id: db.events
+    label: "orchestration_events\nevent_id | run_id\nphase | duration_ns"
+    shape: record
+    layer: database
+  
+  - id: db.tax
+    label: "orchestration_tax_summary\ncomparison_id | linear_run_id\nagentic_run_id | tax_percent"
+    shape: record
+    layer: database
+
+edges:
+  - from: db.experiments
+    to: db.runs
+    type: fk
+    label: "exp_id"
+
+  - from: db.hardware
+    to: db.runs
+    type: fk
+    label: "hw_id"
+
+  - from: db.runs
+    to: db.energy
+    type: fk
+    label: "run_id"
+
+  - from: db.runs
+    to: db.events
+    type: fk
+    label: "run_id"
+
+  - from: db.runs
+    to: db.tax
+    type: fk
+    label: "linear_run_id"

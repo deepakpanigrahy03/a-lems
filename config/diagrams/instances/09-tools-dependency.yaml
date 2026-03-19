@@ -1,0 +1,177 @@
+# Developer Tools Dependency
+version: 1.0
+name: tools-dependency
+title: "10-Goal Tools Dependencies"
+template: layered
+
+nodes:
+  # Core tools
+  - id: tool.llm
+    label: "llm_context.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.sphinx
+    label: "sphinx_docs.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.mkdocs
+    label: "mkdocs_docs.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.quality
+    label: "quality_check.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.refactor
+    label: "refactor_advisor.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.team
+    label: "team_dashboard.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.web
+    label: "web_controller.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.verify
+    label: "verify_requirements.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.column
+    label: "column_flow.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.diagram
+    label: "generate_diagrams.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  - id: tool.issue
+    label: "issue_tracer.py"
+    shape: box
+    layer: tools
+    color: lightgray
+
+  # Dependencies
+  - id: tool.path
+    label: "path_loader.py"
+    shape: box
+    layer: tools
+    color: lightblue
+
+edges:
+  # All tools depend on path_loader
+  - from: tool.path
+    to: tool.llm
+    type: data
+
+  - from: tool.path
+    to: tool.sphinx
+    type: data
+
+  - from: tool.path
+    to: tool.mkdocs
+    type: data
+
+  - from: tool.path
+    to: tool.quality
+    type: data
+
+  - from: tool.path
+    to: tool.refactor
+    type: data
+
+  - from: tool.path
+    to: tool.team
+    type: data
+
+  - from: tool.path
+    to: tool.web
+    type: data
+
+  - from: tool.path
+    to: tool.verify
+    type: data
+
+  - from: tool.path
+    to: tool.column
+    type: data
+
+  - from: tool.path
+    to: tool.diagram
+    type: data
+
+  - from: tool.path
+    to: tool.issue
+    type: data
+
+  # Web controller depends on all tools
+  - from: tool.web
+    to: tool.llm
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.sphinx
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.mkdocs
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.quality
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.refactor
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.team
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.verify
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.column
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.diagram
+    type: control
+    label: "calls"
+
+  - from: tool.web
+    to: tool.issue
+    type: control
+    label: "calls"

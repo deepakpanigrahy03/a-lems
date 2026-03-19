@@ -1,0 +1,99 @@
+# Experiment Lifecycle
+version: 1.0
+name: experiment-lifecycle
+title: "Single Repetition Lifecycle"
+template: lifecycle
+
+nodes:
+  - id: lifecycle.start
+    label: "Start"
+    shape: circle
+    layer: execution
+  
+  - id: lifecycle.warmup
+    label: "Warm-up\n(5s)"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.baseline
+    label: "Baseline\n(measure idle)"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.linear
+    label: "Linear Run"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.cooldown1
+    label: "Cool-down\n(2s)"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.agentic
+    label: "Agentic Run"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.cooldown2
+    label: "Cool-down\n(2s)"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.store
+    label: "Save Results"
+    shape: box
+    layer: execution
+  
+  - id: lifecycle.decision
+    label: "More reps?"
+    shape: diamond
+    layer: execution
+  
+  - id: lifecycle.end
+    label: "End"
+    shape: circle
+    layer: execution
+
+edges:
+  - from: lifecycle.start
+    to: lifecycle.warmup
+    type: flow
+
+  - from: lifecycle.warmup
+    to: lifecycle.baseline
+    type: flow
+
+  - from: lifecycle.baseline
+    to: lifecycle.linear
+    type: flow
+
+  - from: lifecycle.linear
+    to: lifecycle.cooldown1
+    type: flow
+
+  - from: lifecycle.cooldown1
+    to: lifecycle.agentic
+    type: flow
+
+  - from: lifecycle.agentic
+    to: lifecycle.cooldown2
+    type: flow
+
+  - from: lifecycle.cooldown2
+    to: lifecycle.store
+    type: flow
+
+  - from: lifecycle.store
+    to: lifecycle.decision
+    type: flow
+
+  - from: lifecycle.decision
+    to: lifecycle.warmup
+    type: flow
+    label: "yes"
+
+  - from: lifecycle.decision
+    to: lifecycle.end
+    type: flow
+    label: "no"
