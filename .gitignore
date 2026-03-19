@@ -94,3 +94,6 @@ docs-src/*/build/
 context.txt
 diagrams/
 archive/
+docs/build/
+docs/source/
+docs/generated/
