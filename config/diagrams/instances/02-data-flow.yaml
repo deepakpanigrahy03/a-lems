@@ -1,0 +1,57 @@
+# Data Flow Diagram
+version: 1.0
+name: data-flow
+title: "Energy Data Flow"
+template: dataflow
+
+nodes:
+  - id: hw.source
+    label: "Hardware\n(/sys, MSR)"
+    shape: box
+    layer: hardware
+  
+  - id: hw.readers
+    label: "Readers"
+    shape: box
+    layer: hardware
+  
+  - id: exec.engine
+    label: "EnergyEngine\n(100Hz)"
+    shape: box
+    layer: execution
+  
+  - id: exec.samples
+    label: "Raw Samples\n(Layer 1)"
+    shape: box
+    layer: execution
+
+  - id: exec.analyzer
+    label: "EnergyAnalyzer\n(Layers 2/3)"
+    shape: box
+    layer: execution
+
+  - id: db.main
+    label: "Database"
+    shape: cylinder
+    layer: database
+
+edges:
+  - from: hw.source
+    to: hw.readers
+    type: data
+
+  - from: hw.readers
+    to: exec.engine
+    type: data
+
+  - from: exec.engine
+    to: exec.samples
+    type: data
+
+  - from: exec.samples
+    to: exec.analyzer
+    type: data
+
+  - from: exec.analyzer
+    to: db.main
+    type: data

@@ -1,0 +1,136 @@
+# EnergyEngine Internals
+version: 1.0
+name: energy-engine
+title: "EnergyEngine Sampling & Coordination"
+template: dataflow
+
+nodes:
+  - id: engine.start
+    label: "start_measurement()"
+    shape: box
+    layer: execution
+    color: lightblue
+
+  - id: engine.thread
+    label: "_sampling_loop()\n100Hz"
+    shape: box
+    layer: execution
+    color: lightblue
+
+  - id: engine.rapl
+    label: "RAPLReader\n(energy µJ)"
+    shape: box
+    layer: hardware
+    color: lightgreen
+
+  - id: engine.msr
+    label: "MSRReader\n(C-states)"
+    shape: box
+    layer: hardware
+    color: lightgreen
+
+  - id: engine.perf
+    label: "PerfReader\n(IPC, cache)"
+    shape: box
+    layer: hardware
+    color: lightgreen
+
+  - id: engine.turbostat
+    label: "TurbostatReader\n(10Hz)"
+    shape: box
+    layer: hardware
+    color: lightgreen
+
+  - id: engine.samples
+    label: "_sampling_queue\n(100Hz samples)"
+    shape: cylinder
+    layer: execution
+    color: lightyellow
+
+  - id: engine.stop
+    label: "stop_measurement()"
+    shape: box
+    layer: execution
+    color: lightblue
+
+  - id: engine.raw
+    label: "RawEnergyMeasurement"
+    shape: box
+    layer: execution
+    color: lightyellow
+
+edges:
+  # Start triggers sampling thread
+  - from: engine.start
+    to: engine.thread
+    type: control
+    label: "starts"
+
+  # Thread reads all readers at 100Hz
+  - from: engine.thread
+    to: engine.rapl
+    type: data
+    label: "100Hz"
+
+  - from: engine.thread
+    to: engine.msr
+    type: data
+    label: "100Hz"
+
+  - from: engine.thread
+    to: engine.perf
+    type: data
+    label: "100Hz"
+
+  - from: engine.thread
+    to: engine.turbostat
+    type: data
+    label: "10Hz"
+
+  # Samples go to queue
+  - from: engine.rapl
+    to: engine.samples
+    type: data
+
+  - from: engine.msr
+    to: engine.samples
+    type: data
+
+  - from: engine.perf
+    to: engine.samples
+    type: data
+
+  - from: engine.turbostat
+    to: engine.samples
+    type: data
+
+  # Stop collects all samples
+  - from: engine.stop
+    to: engine.thread
+    type: control
+    label: "stops"
+
+  - from: engine.samples
+    to: engine.raw
+    type: data
+    label: "all samples"
+
+  - from: engine.rapl
+    to: engine.raw
+    type: data
+    label: "final"
+
+  - from: engine.msr
+    to: engine.raw
+    type: data
+    label: "final"
+
+  - from: engine.perf
+    to: engine.raw
+    type: data
+    label: "final"
+
+  - from: engine.turbostat
+    to: engine.raw
+    type: data
+    label: "final"

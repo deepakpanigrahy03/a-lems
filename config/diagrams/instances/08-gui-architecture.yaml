@@ -1,0 +1,121 @@
+# GUI Dashboard Architecture
+version: 1.0
+name: gui-architecture
+title: "Streamlit GUI Structure"
+template: layered
+
+nodes:
+  - id: gui.app
+    label: "app.py\n(Streamlit)"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.sidebar
+    label: "sidebar.py"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.session
+    label: "Session Analysis"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.energy
+    label: "Energy Page"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.thermal
+    label: "Thermal Page"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.sustain
+    label: "Sustainability Page"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.tax
+    label: "Tax Analysis"
+    shape: box
+    layer: gui
+    color: lightpink
+
+  - id: gui.db
+    label: "Database\nConnection"
+    shape: cylinder
+    layer: database
+    color: lightcoral
+
+  - id: gui.report
+    label: "PDF Generator"
+    shape: box
+    layer: gui
+    color: lightpink
+
+edges:
+  - from: gui.app
+    to: gui.sidebar
+    type: control
+    label: "includes"
+
+  - from: gui.sidebar
+    to: gui.session
+    type: control
+    label: "navigates"
+
+  - from: gui.sidebar
+    to: gui.energy
+    type: control
+    label: "navigates"
+
+  - from: gui.sidebar
+    to: gui.thermal
+    type: control
+    label: "navigates"
+
+  - from: gui.sidebar
+    to: gui.sustain
+    type: control
+    label: "navigates"
+
+  - from: gui.sidebar
+    to: gui.tax
+    type: control
+    label: "navigates"
+
+  - from: gui.session
+    to: gui.db
+    type: data
+    label: "queries"
+
+  - from: gui.energy
+    to: gui.db
+    type: data
+    label: "queries"
+
+  - from: gui.thermal
+    to: gui.db
+    type: data
+    label: "queries"
+
+  - from: gui.sustain
+    to: gui.db
+    type: data
+    label: "queries"
+
+  - from: gui.tax
+    to: gui.db
+    type: data
+    label: "queries"
+
+  - from: gui.session
+    to: gui.report
+    type: control
+    label: "generates"

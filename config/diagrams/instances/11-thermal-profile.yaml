@@ -1,0 +1,79 @@
+# Thermal Profile Over Experiment
+version: 1.0
+name: thermal-profile
+title: "CPU Temperature During Experiment"
+template: lifecycle
+
+nodes:
+  - id: thermal.idle
+    label: "Idle\n(baseline)"
+    shape: box
+    layer: thermal
+    color: lightblue
+
+  - id: thermal.warmup
+    label: "Warm-up"
+    shape: box
+    layer: thermal
+    color: lightyellow
+
+  - id: thermal.linear
+    label: "Linear Run"
+    shape: box
+    layer: thermal
+    color: lightgreen
+
+  - id: thermal.cooldown1
+    label: "Cool-down"
+    shape: box
+    layer: thermal
+    color: lightblue
+
+  - id: thermal.agentic
+    label: "Agentic Run"
+    shape: box
+    layer: thermal
+    color: lightcoral
+
+  - id: thermal.cooldown2
+    label: "Cool-down"
+    shape: box
+    layer: thermal
+    color: lightblue
+
+  - id: thermal.peak
+    label: "Peak Temp\n(agentic)"
+    shape: box
+    layer: thermal
+    color: red
+
+edges:
+  - from: thermal.idle
+    to: thermal.warmup
+    type: flow
+    label: "temp +2°C"
+
+  - from: thermal.warmup
+    to: thermal.linear
+    type: flow
+    label: "temp +5°C"
+
+  - from: thermal.linear
+    to: thermal.cooldown1
+    type: flow
+    label: "temp -3°C"
+
+  - from: thermal.cooldown1
+    to: thermal.agentic
+    type: flow
+    label: "temp +12°C"
+
+  - from: thermal.agentic
+    to: thermal.peak
+    type: flow
+    label: "max temp"
+
+  - from: thermal.agentic
+    to: thermal.cooldown2
+    type: flow
+    label: "temp -10°C"

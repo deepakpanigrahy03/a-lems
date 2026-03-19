@@ -1,0 +1,92 @@
+# Module Dependency Graph
+version: 1.0
+name: dependency
+title: "Core Module Dependencies"
+template: layered
+
+nodes:
+  # Configuration depends on nothing
+  - config.loader
+
+  # Hardware readers are independent
+  - hw.rapl
+  - hw.msr
+  - hw.perf
+  - hw.turbostat
+
+  # Execution depends on config and hardware
+  - exec.harness
+  - exec.linear
+  - exec.agentic
+  - exec.runner
+
+  # Database depends on execution
+  - db.main
+  - db.runs
+  - db.experiments
+  - db.energy
+
+edges:
+  # Config to execution
+  - from: config.loader
+    to: exec.harness
+    type: control
+    label: "loads"
+
+  - from: config.loader
+    to: exec.runner
+    type: control
+    label: "loads"
+
+  # Hardware to execution
+  - from: hw.rapl
+    to: exec.harness
+    type: data
+    label: "energy"
+
+  - from: hw.msr
+    to: exec.harness
+    type: data
+    label: "C-states"
+
+  - from: hw.perf
+    to: exec.harness
+    type: data
+    label: "counters"
+
+  - from: hw.turbostat
+    to: exec.harness
+    type: data
+    label: "freq/temp"
+
+  # Execution to database
+  - from: exec.harness
+    to: db.main
+    type: data
+    label: "insert runs"
+
+  - from: exec.harness
+    to: db.runs
+    type: data
+    label: "insert"
+
+  - from: exec.harness
+    to: db.energy
+    type: data
+    label: "samples"
+
+  # Internal execution dependencies
+  - from: exec.harness
+    to: exec.linear
+    type: control
+    label: "calls"
+
+  - from: exec.harness
+    to: exec.agentic
+    type: control
+    label: "calls"
+
+  - from: exec.runner
+    to: exec.harness
+    type: control
+    label: "uses"

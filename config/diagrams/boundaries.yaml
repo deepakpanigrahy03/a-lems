@@ -1,0 +1,31 @@
+# System boundaries
+version: 1.0
+
+boundaries:
+  - name: "User Space"
+    nodes:
+      - config.*
+      - exec.*
+    style:
+      color: lightblue
+      style: dashed
+      label: "User Space"
+      fontsize: 12
+
+  - name: "Kernel / Hardware"
+    nodes:
+      - hw.*
+    style:
+      color: lightgreen
+      style: solid
+      label: "Kernel / Hardware"
+      fontsize: 12
+
+  - name: "External APIs"
+    nodes:
+      - external.*
+    style:
+      color: orange
+      style: dotted
+      label: "External APIs\n(Groq/OpenRouter)"
+      fontsize: 10

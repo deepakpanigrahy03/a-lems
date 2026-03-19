@@ -1,0 +1,98 @@
+# Namespaced reusable components
+version: 1.0
+
+components:
+  # Configuration Layer
+  config.loader:
+    label: "ConfigLoader"
+    shape: box
+    color: lightblue
+    layer: config
+    description: "Loads YAML/JSON configs"
+
+  # Hardware Layer
+  hw.rapl:
+    label: "RAPLReader\n(energy µJ)"
+    shape: box
+    color: lightgreen
+    layer: hardware
+    description: "Intel RAPL energy counters"
+
+  hw.msr:
+    label: "MSRReader\n(C-states)"
+    shape: box
+    color: lightgreen
+    layer: hardware
+    description: "Model-specific registers"
+
+  hw.perf:
+    label: "PerfReader\n(IPC, cache)"
+    shape: box
+    color: lightgreen
+    layer: hardware
+    description: "Performance counters"
+
+  hw.turbostat:
+    label: "TurbostatReader\n(freq, temp)"
+    shape: box
+    color: lightgreen
+    layer: hardware
+    description: "CPU frequency and temperature"
+
+  # Execution Layer
+  exec.harness:
+    label: "ExperimentHarness"
+    shape: box
+    color: lightyellow
+    layer: execution
+    description: "Main experiment controller"
+
+  exec.linear:
+    label: "LinearExecutor"
+    shape: box
+    color: lightyellow
+    layer: execution
+    description: "Single LLM call"
+
+  exec.agentic:
+    label: "AgenticExecutor"
+    shape: box
+    color: lightyellow
+    layer: execution
+    description: "Planning + tools + synthesis"
+
+  exec.runner:
+    label: "ExperimentRunner"
+    shape: box
+    color: lightyellow
+    layer: execution
+    description: "Shared experiment logic"
+
+  # Database Layer
+  db.main:
+    label: "Database\n(SQLite)"
+    shape: cylinder
+    color: lightcoral
+    layer: database
+    description: "Persistent storage"
+
+  db.runs:
+    label: "runs"
+    shape: record
+    color: lightgrey
+    layer: database
+    description: "80+ columns"
+
+  db.experiments:
+    label: "experiments"
+    shape: record
+    color: lightgrey
+    layer: database
+    description: "Experiment metadata"
+
+  db.energy:
+    label: "energy_samples"
+    shape: record
+    color: lightgrey
+    layer: database
+    description: "100Hz RAPL samples"
