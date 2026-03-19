@@ -1,0 +1,34 @@
+digraph {
+  rankdir=LR;
+  splines=ortho;
+  nodesep=1.0;
+  ranksep=1.5;
+  bgcolor="#f8f9fa";
+  "db.experiments" [label="{experiments|PK exp_id: INTEGER\lname: TEXT\ldescription: TEXT\lworkflow_type: TEXT\lmodel_name: TEXT\lprovider: TEXT\ltask_name: TEXT\lcountry_code: TEXT\l... +11 more\l}", shape="none"];
+  "db.hardwareconfig" [label="{hardware_config|PK hw_id: INTEGER\lhostname: TEXT\lcpu_model: TEXT\lcpu_cores: INTEGER\lcpu_threads: INTEGER\lram_gb: INTEGER\lkernel_version: TEXT\lmicrocode_version: TEXT\l... +22 more\l}", shape="none"];
+  "db.idlebaselines" [label="{idle_baselines|PK baseline_id: TEXT\ltimestamp: REAL\lpackage_power_watts: REAL\lcore_power_watts: REAL\luncore_power_watts: REAL\ldram_power_watts: REAL\lduration_seconds: INTEGER\lsample_count: INTEGER\l... +9 more\l}", shape="none"];
+  "db.runs" [label="{runs|PK run_id: INTEGER\lFK exp_id: INTEGER\lFK hw_id: INTEGER\lFK baseline_id: TEXT\lrun_number: INTEGER\lworkflow_type: TEXT\lstart_time_ns: INTEGER\lend_time_ns: INTEGER\l... +91 more\l}", shape="none"];
+  "db.orchestrationevents" [label="{orchestration_events|PK event_id: INTEGER\lFK run_id: INTEGER\lstep_index: INTEGER\lphase: TEXT\levent_type: TEXT\lstart_time_ns: INTEGER\lend_time_ns: INTEGER\lduration_ns: INTEGER\l... +6 more\l}", shape="none"];
+  "db.orchestrationtaxsummary" [label="{orchestration_tax_summary|PK comparison_id: INTEGER\lFK linear_run_id: INTEGER\lFK agentic_run_id: INTEGER\llinear_dynamic_uj: INTEGER\lagentic_dynamic_uj: INTEGER\lorchestration_tax_uj: INTEGER\ltax_percent: REAL\llinear_orchestration_uj: INTEGER\l... +1 more\l}", shape="none"];
+  "db.energysamples" [label="{energy_samples|PK sample_id: INTEGER\lFK run_id: INTEGER\ltimestamp_ns: INTEGER\lpkg_energy_uj: INTEGER\lcore_energy_uj: INTEGER\luncore_energy_uj: INTEGER\ldram_energy_uj: INTEGER\l}", shape="none"];
+  "db.cpusamples" [label="{cpu_samples|PK sample_id: INTEGER\lFK run_id: INTEGER\ltimestamp_ns: INTEGER\lcpu_util_percent: REAL\lcpu_busy_mhz: REAL\lcpu_avg_mhz: REAL\lc1_residency: REAL\lc2_residency: REAL\l... +12 more\l}", shape="none"];
+  "db.interruptsamples" [label="{interrupt_samples|PK sample_id: INTEGER\lFK run_id: INTEGER\ltimestamp_ns: INTEGER\linterrupts_per_sec: REAL\l}", shape="none"];
+  "db.taskcategories" [label="{task_categories|PK task_id: TEXT\lcategory: TEXT\l}", shape="none"];
+  "db.thermalsamples" [label="{thermal_samples|PK sample_id: INTEGER\lFK run_id: INTEGER\ltimestamp_ns: INTEGER\lsample_time_s: REAL\lcpu_temp: REAL\lsystem_temp: REAL\lwifi_temp: REAL\lthrottle_event: INTEGER\l... +2 more\l}", shape="none"];
+  "db.schemaversion" [label="{schema_version|PK version: INTEGER\lapplied_at: TIMESTAMP\ldescription: TEXT\l}", shape="none"];
+  "db.environmentconfig" [label="{environment_config|PK env_id: INTEGER\lpython_version: TEXT\lpython_implementation: TEXT\los_name: TEXT\los_version: TEXT\lkernel_version: TEXT\lllm_framework: TEXT\lframework_version: TEXT\l... +10 more\l}", shape="none"];
+  "db.llminteractions" [label="{llm_interactions|PK interaction_id: INTEGER\lFK run_id: INTEGER\lstep_index: INTEGER\lworkflow_type: TEXT\lprompt: TEXT\lresponse: TEXT\lmodel_name: TEXT\lprovider: TEXT\l... +7 more\l}", shape="none"];
+  "db.experiments" -> "db.hardwareconfig" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="hw_id"];
+  "db.experiments" -> "db.environmentconfig" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="env_id"];
+  "db.runs" -> "db.idlebaselines" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="baseline_id"];
+  "db.runs" -> "db.hardwareconfig" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="hw_id"];
+  "db.runs" -> "db.experiments" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="exp_id"];
+  "db.orchestrationevents" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="run_id"];
+  "db.orchestrationtaxsummary" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="agentic_run_id"];
+  "db.orchestrationtaxsummary" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="linear_run_id"];
+  "db.energysamples" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="run_id"];
+  "db.cpusamples" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="run_id"];
+  "db.interruptsamples" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="run_id"];
+  "db.thermalsamples" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="run_id"];
+  "db.llminteractions" -> "db.runs" [style=solid, color="#4CAF50", penwidth=2.5, arrowhead=crow, label="run_id"];
+}

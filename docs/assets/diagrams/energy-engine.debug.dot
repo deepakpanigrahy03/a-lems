@@ -1,0 +1,35 @@
+digraph {
+  rankdir=LR;
+  splines=curved;
+  nodesep=0.6;
+  "engine.start" [label="start_measurement()", shape="box", color="lightblue"];
+  "engine.thread" [label="_sampling_loop()
+100Hz", shape="box", color="lightblue"];
+  "engine.rapl" [label="RAPLReader
+(energy µJ)", shape="box", color="lightgreen"];
+  "engine.msr" [label="MSRReader
+(C-states)", shape="box", color="lightgreen"];
+  "engine.perf" [label="PerfReader
+(IPC, cache)", shape="box", color="lightgreen"];
+  "engine.turbostat" [label="TurbostatReader
+(10Hz)", shape="box", color="lightgreen"];
+  "engine.samples" [label="_sampling_queue
+(100Hz samples)", shape="cylinder", color="lightyellow"];
+  "engine.stop" [label="stop_measurement()", shape="box", color="lightblue"];
+  "engine.raw" [label="RawEnergyMeasurement", shape="box", color="lightyellow"];
+  "engine.start" -> "engine.thread" [label="starts"];
+  "engine.thread" -> "engine.rapl" [style=solid, color=blue, label="100Hz"];
+  "engine.thread" -> "engine.msr" [style=solid, color=blue, label="100Hz"];
+  "engine.thread" -> "engine.perf" [style=solid, color=blue, label="100Hz"];
+  "engine.thread" -> "engine.turbostat" [style=solid, color=blue, label="10Hz"];
+  "engine.rapl" -> "engine.samples" [style=solid, color=blue];
+  "engine.msr" -> "engine.samples" [style=solid, color=blue];
+  "engine.perf" -> "engine.samples" [style=solid, color=blue];
+  "engine.turbostat" -> "engine.samples" [style=solid, color=blue];
+  "engine.stop" -> "engine.thread" [label="stops"];
+  "engine.samples" -> "engine.raw" [style=solid, color=blue, label="all samples"];
+  "engine.rapl" -> "engine.raw" [style=solid, color=blue, label="final"];
+  "engine.msr" -> "engine.raw" [style=solid, color=blue, label="final"];
+  "engine.perf" -> "engine.raw" [style=solid, color=blue, label="final"];
+  "engine.turbostat" -> "engine.raw" [style=solid, color=blue, label="final"];
+}

@@ -1,0 +1,20 @@
+digraph {
+  rankdir=LR;
+  splines=curved;
+  nodesep=0.6;
+  "hw.source" [label="Hardware
+(/sys, MSR)", shape="box"];
+  "hw.readers" [label="Readers", shape="box"];
+  "exec.engine" [label="EnergyEngine
+(100Hz)", shape="box"];
+  "exec.samples" [label="Raw Samples
+(Layer 1)", shape="box"];
+  "exec.analyzer" [label="EnergyAnalyzer
+(Layers 2/3)", shape="box"];
+  "db.main" [label="Database", shape="cylinder"];
+  "hw.source" -> "hw.readers" [style=solid, color=blue];
+  "hw.readers" -> "exec.engine" [style=solid, color=blue];
+  "exec.engine" -> "exec.samples" [style=solid, color=blue];
+  "exec.samples" -> "exec.analyzer" [style=solid, color=blue];
+  "exec.analyzer" -> "db.main" [style=solid, color=blue];
+}

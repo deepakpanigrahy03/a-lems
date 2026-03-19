@@ -1,0 +1,25 @@
+digraph {
+  rankdir=LR;
+  splines=ortho;
+  "db.experiments" [label="experiments
+exp_id | name | group_id | status", shape="record"];
+  "db.hardware" [label="hardware_config
+hw_id | cpu_model | hardware_hash", shape="record"];
+  "db.runs" [label="runs
+run_id | exp_id | hw_id
+workflow_type | dynamic_energy_uj", shape="record"];
+  "db.energy" [label="energy_samples
+sample_id | run_id
+timestamp_ns | pkg_energy", shape="record"];
+  "db.events" [label="orchestration_events
+event_id | run_id
+phase | duration_ns", shape="record"];
+  "db.tax" [label="orchestration_tax_summary
+comparison_id | linear_run_id
+agentic_run_id | tax_percent", shape="record"];
+  "db.experiments" -> "db.runs" [style=dotted, color=gray50, arrowhead=crow, label="exp_id"];
+  "db.hardware" -> "db.runs" [style=dotted, color=gray50, arrowhead=crow, label="hw_id"];
+  "db.runs" -> "db.energy" [style=dotted, color=gray50, arrowhead=crow, label="run_id"];
+  "db.runs" -> "db.events" [style=dotted, color=gray50, arrowhead=crow, label="run_id"];
+  "db.runs" -> "db.tax" [style=dotted, color=gray50, arrowhead=crow, label="linear_run_id"];
+}

@@ -1,0 +1,29 @@
+digraph {
+  rankdir=TB;
+  nodesep=0.5;
+  ranksep=0.6;
+  "lifecycle.start" [label="Start", shape="circle"];
+  "lifecycle.warmup" [label="Warm-up
+(5s)", shape="box"];
+  "lifecycle.baseline" [label="Baseline
+(measure idle)", shape="box"];
+  "lifecycle.linear" [label="Linear Run", shape="box"];
+  "lifecycle.cooldown1" [label="Cool-down
+(2s)", shape="box"];
+  "lifecycle.agentic" [label="Agentic Run", shape="box"];
+  "lifecycle.cooldown2" [label="Cool-down
+(2s)", shape="box"];
+  "lifecycle.store" [label="Save Results", shape="box"];
+  "lifecycle.decision" [label="More reps?", shape="diamond"];
+  "lifecycle.end" [label="End", shape="circle"];
+  "lifecycle.start" -> "lifecycle.warmup" [style=solid, color=black];
+  "lifecycle.warmup" -> "lifecycle.baseline" [style=solid, color=black];
+  "lifecycle.baseline" -> "lifecycle.linear" [style=solid, color=black];
+  "lifecycle.linear" -> "lifecycle.cooldown1" [style=solid, color=black];
+  "lifecycle.cooldown1" -> "lifecycle.agentic" [style=solid, color=black];
+  "lifecycle.agentic" -> "lifecycle.cooldown2" [style=solid, color=black];
+  "lifecycle.cooldown2" -> "lifecycle.store" [style=solid, color=black];
+  "lifecycle.store" -> "lifecycle.decision" [style=solid, color=black];
+  "lifecycle.decision" -> "lifecycle.warmup" [style=solid, color=black, label="yes"];
+  "lifecycle.decision" -> "lifecycle.end" [style=solid, color=black, label="no"];
+}

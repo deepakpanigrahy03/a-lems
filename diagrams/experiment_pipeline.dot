@@ -1,0 +1,19 @@
+digraph G {
+
+rankdir=LR;
+node [shape=box style=filled color=lightgreen];
+
+Query;
+Optimizer;
+Executor;
+Measurement;
+Metrics;
+Database;
+
+Query -> Optimizer;
+Optimizer -> Executor;
+Executor -> Measurement;
+Measurement -> Metrics;
+Metrics -> Database;
+
+}

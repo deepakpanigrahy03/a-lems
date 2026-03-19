@@ -1,0 +1,20 @@
+digraph {
+  rankdir=TB;
+  nodesep=0.5;
+  ranksep=0.6;
+  "thermal.idle" [label="Idle
+(baseline)", shape="box", color="lightblue"];
+  "thermal.warmup" [label="Warm-up", shape="box", color="lightyellow"];
+  "thermal.linear" [label="Linear Run", shape="box", color="lightgreen"];
+  "thermal.cooldown1" [label="Cool-down", shape="box", color="lightblue"];
+  "thermal.agentic" [label="Agentic Run", shape="box", color="lightcoral"];
+  "thermal.cooldown2" [label="Cool-down", shape="box", color="lightblue"];
+  "thermal.peak" [label="Peak Temp
+(agentic)", shape="box", color="red"];
+  "thermal.idle" -> "thermal.warmup" [style=solid, color=black, label="temp +2°C"];
+  "thermal.warmup" -> "thermal.linear" [style=solid, color=black, label="temp +5°C"];
+  "thermal.linear" -> "thermal.cooldown1" [style=solid, color=black, label="temp -3°C"];
+  "thermal.cooldown1" -> "thermal.agentic" [style=solid, color=black, label="temp +12°C"];
+  "thermal.agentic" -> "thermal.peak" [style=solid, color=black, label="max temp"];
+  "thermal.agentic" -> "thermal.cooldown2" [style=solid, color=black, label="temp -10°C"];
+}

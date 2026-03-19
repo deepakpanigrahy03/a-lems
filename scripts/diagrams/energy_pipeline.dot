@@ -1,0 +1,20 @@
+digraph G {
+
+rankdir=LR;
+node [shape=box style=filled color=orange];
+
+RAPL;
+Perf;
+Turbostat;
+Telemetry;
+EnergyEngine;
+Database;
+
+RAPL -> Telemetry;
+Perf -> Telemetry;
+Turbostat -> Telemetry;
+
+Telemetry -> EnergyEngine;
+EnergyEngine -> Database;
+
+}
