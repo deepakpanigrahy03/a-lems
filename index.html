@@ -425,87 +425,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-capabilities" class="md-nav__link">
+  <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ✨ Key Capabilities
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#sustainability-layer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🌍 Sustainability Layer
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#who-is-this-for" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        👥 Who Is This For?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#experiment-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧪 Experiment Design
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#output-reporting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📊 Output &amp; Reporting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#live-demos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Live Demos
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation-sections" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📖 Documentation Sections
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#license" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📄 License
+        🚀 Quick Start
       
     </span>
   </a>
@@ -1517,6 +1440,24 @@
 <h2 id="overview">🎯 Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p><strong>A‑LEMS</strong> is a research-grade measurement and profiling framework for AI workloads. It captures telemetry across <strong>hardware, system, orchestration, and workload levels</strong>, enabling energy-aware AI systems research and evaluation of model behavior.</p>
 <hr />
+<h2 id="quick-start">🚀 Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>Get A-LEMS running in minutes:</p>
+<p>```bash</p>
+<h1 id="1-clone-the-repository">1. Clone the repository<a class="headerlink" href="#1-clone-the-repository" title="Permanent link">&para;</a></h1>
+<p>git clone https://github.com/deepakpanigrahy03/a-lems.git
+cd a-lems</p>
+<h1 id="2-create-virtual-environment">2. Create virtual environment<a class="headerlink" href="#2-create-virtual-environment" title="Permanent link">&para;</a></h1>
+<p>python -m venv venv
+source venv/bin/activate</p>
+<h1 id="3-install-dependencies">3. Install dependencies<a class="headerlink" href="#3-install-dependencies" title="Permanent link">&para;</a></h1>
+<p>pip install -r requirements.txt</p>
+<h1 id="4-detect-hardware-requires-sudo-once">4. Detect hardware (requires sudo once)<a class="headerlink" href="#4-detect-hardware-requires-sudo-once" title="Permanent link">&para;</a></h1>
+<p>sudo python scripts/detect_hardware.py</p>
+<h1 id="5-run-your-first-experiment">5. Run your first experiment<a class="headerlink" href="#5-run-your-first-experiment" title="Permanent link">&para;</a></h1>
+<p>python -m core.execution.tests.test_harness --task-id simple --repetitions 1 --provider local --save-db</p>
+<h1 id="6-launch-the-dashboard">6. Launch the dashboard<a class="headerlink" href="#6-launch-the-dashboard" title="Permanent link">&para;</a></h1>
+<p>streamlit run streamlit_app.py</p>
+<p>For detailed setup instructions, see the <a href="getting-started/01-installation/">Getting Started Guide</a>.</p>
 <h2 id="key-capabilities">✨ Key Capabilities<a class="headerlink" href="#key-capabilities" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1668,7 +1609,8 @@
 <h2 id="license">📄 License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
 <p>MIT License - see <a href="LICENSE">LICENSE</a> file for details.</p>
 <hr />
-<p><em>Built for energy-aware AI research</em></p>
+<p><em>Built for energy-aware AI research</em> — <a href="https://github.com/deepakpanigrahy03/a-lems">Back to GitHub</a>
+<em>Visit Again</em> — <a href="https://github.com/deepakpanigrahy03/a-lems" target="_blank">Back to GitHub</a></p>
 
 
 
