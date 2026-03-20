@@ -17,7 +17,6 @@
 </div>
 
 ---
----
 
 ## 🔬 **What is A-LEMS?**
 
@@ -45,7 +44,8 @@ A research platform that measures **hardware-level energy consumption** of AI wo
 
 ## 🚀 **Quick Start**
 
-```bash
+```
+bash
 # 1. Install
 git clone https://github.com/deepakpanigrahy03/a-lems.git
 cd a-lems
@@ -61,7 +61,10 @@ python -m core.execution.tests.test_harness --task-id simple --repetitions 1 --p
 
 # 4. Launch dashboard
 streamlit run streamlit_app.py
-📊 **Live Demo**
+```
+---
+
+## 📊 **Live Demo**
 
 Try the dashboard: [a-lems-dash.streamlit.app](https:///a-lems-dash.streamlit.app)
 Alternatively on : [a-lems-dashboard.onrender.com](https://a-lems-dashboard.onrender.com/)
