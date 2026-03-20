@@ -1,4 +1,4 @@
-name: Deploy Documentation
+name: Deploy MkDocs Documentation
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'docs-src/mkdocs/**'
-      - 'docs-src/sphinx/**'
       - 'docs/assets/diagrams/**'
       - '.github/workflows/docs.yml'
 
@@ -29,15 +28,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mkdocs mkdocs-material pymdown-extensions sphinx sphinx-rtd-theme
+          pip install mkdocs mkdocs-material pymdown-extensions
 
-      - name: Build MkDocs (User Guide)
+      - name: Build MkDocs site
         run: |
           mkdocs build -f docs-src/mkdocs/mkdocs.yml -d site
-
-      - name: Build Sphinx (API Reference)
-        run: |
-          sphinx-build -b html docs-src/sphinx/source site/sphinx
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
