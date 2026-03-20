@@ -66,7 +66,7 @@ streamlit run streamlit_app.py
 
 ## 📊 **Live Demo**
 
-Try the dashboard: [a-lems-dash.streamlit.app](https:///a-lems-dash.streamlit.app)
+Try the dashboard: [a-lems-dash.streamlit.app](https:///a-lems-dash.streamlit.app)  (or)
 Alternatively on : [a-lems-dashboard.onrender.com](https://a-lems-dashboard.onrender.com/)
 
 *(No installation needed — runs in your browser)*
