@@ -6,17 +6,18 @@
   [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://python.org)
   [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
   [![Streamlit](https://img.shields.io/badge/GUI-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://streamlit.io)
-  [![Documentation](https://img.shields.io/badge/docs-live-brightgreen)](https://deepakpanigrahy03.github.io/a-lems/)
+  [![Documentation](https://img.shields.io/badge/Documentation-live-brightgreen?style=for-the-badge)](https://deepakpanigrahy03.github.io/a-lems)
   [![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://a-lems-dash.streamlit.app/)
   
   **Quantifying the energy cost of agentic AI workflows**
   
-  [📖 Documentation](https://deepakpanigrahy03.github.io/a-lems) • 
-  [🚀 Quick Start](#quick-start) • 
-  [📊 Live Demo](https://a-lems-dash.streamlit.app/)
+  <a href="https://deepakpanigrahy03.github.io/a-lems" target="_blank">📖 Documentation</a> • 
+  <a href="#quick-start">🚀 Quick Start</a> • 
+  <a href="https://a-lems-dash.streamlit.app/" target="_blank">📊 Live Demo</a>
   
 </div>
 
+---
 ---
 
 ## 🔬 **What is A-LEMS?**
