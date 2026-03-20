@@ -1,0 +1,1909 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Agent vs Linear AI Energy Measurement Platform">
+      
+      
+        <meta name="author" content="A-LEMS Team">
+      
+      
+      
+        <link rel="prev" href="../01-architecture/">
+      
+      
+        <link rel="next" href="../03-database-schema/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Data Flow - A-LEMS Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#data-flow" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="A-LEMS Documentation" class="md-header__button md-logo" aria-label="A-LEMS Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            A-LEMS Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Data Flow
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/deepakpanigrahy03/a-lems" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/01-installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user-guide/01-running/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../01-architecture/" class="md-tabs__link">
+          
+  
+  
+  Developer Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../research/01-measurement-methodology/" class="md-tabs__link">
+          
+  
+  
+  Research
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../api/reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="A-LEMS Documentation" class="md-nav__button md-logo" aria-label="A-LEMS Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    A-LEMS Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/deepakpanigrahy03/a-lems" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/01-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/02-database-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/03-model-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/04-quick-start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/05-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/01-running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/02-understanding-metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/03-batch-experiments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/04-gui-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/05-generating-reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generating Reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/06-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Flow
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Flow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔄 Data Flow Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔄 Data Flow Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detailed-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Flow:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-1-hardware-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📡 Stage 1: Hardware Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-2-hardware-readers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Stage 2: Hardware Readers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔧 Stage 2: Hardware Readers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hardware-readers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware Readers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hardware Readers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-3-energyengine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚙️ Stage 3: EnergyEngine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Stage 3: EnergyEngine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sampling-thread" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sampling Thread
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sampling Thread">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#relationship-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relationship Diagram
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Differences
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-sample-counts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Sample Counts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-for-duplicate-timestamps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check for Duplicate Timestamps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-database-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-gui-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-adding-readers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Readers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-adding-tasks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Tasks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-tools-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/01-measurement-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurement Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/02-mathematical-derivations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mathematical Derivations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/03-orchestration-tax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestration Tax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/04-publications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h1>
+<p>This document describes how energy data moves through the A-LEMS system, from hardware sensors to the database.</p>
+<hr />
+<h2 id="data-flow-overview">🔄 Data Flow Overview<a class="headerlink" href="#data-flow-overview" title="Permanent link">&para;</a></h2>
+<p>A-LEMS captures energy data at 100Hz and processes it through a 5-stage pipeline:</p>
+<h4 id="detailed-flow">Detailed Flow:<a class="headerlink" href="#detailed-flow" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Component</th>
+<th>Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td>Hardware</td>
+<td>RAPL counters, MSR registers, perf events</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Readers</td>
+<td><code>RAPLReader</code>, <code>MSRReader</code>, <code>PerfReader</code>, etc.</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><code>EnergyEngine</code></td>
+<td>100Hz sampling, synchronization</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Samples</td>
+<td>Raw energy samples with timestamps</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>Database</td>
+<td>Persistent storage in SQLite</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Data Flow Diagram" src="../../assets/diagrams/data-flow.svg" /></p>
+<hr />
+<h2 id="stage-1-hardware-sources">📡 Stage 1: Hardware Sources<a class="headerlink" href="#stage-1-hardware-sources" title="Permanent link">&para;</a></h2>
+<p>A-LEMS reads from multiple hardware sources simultaneously:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Location</th>
+<th>Data Provided</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RAPL</strong></td>
+<td><code>/sys/class/powercap/intel-rapl</code></td>
+<td>Package, core, uncore, dram energy (µJ)</td>
+</tr>
+<tr>
+<td><strong>MSR</strong></td>
+<td><code>/dev/cpu/*/msr</code></td>
+<td>C-state counters, ring bus frequency</td>
+</tr>
+<tr>
+<td><strong>Perf</strong></td>
+<td><code>perf_event_open</code></td>
+<td>Instructions, cycles, cache misses</td>
+</tr>
+<tr>
+<td><strong>Turbostat</strong></td>
+<td><code>turbostat</code> subprocess</td>
+<td>CPU frequency, C-state %, temperature</td>
+</tr>
+<tr>
+<td><strong>Thermal</strong></td>
+<td><code>/sys/class/thermal</code></td>
+<td>Thermal zone temperatures</td>
+</tr>
+<tr>
+<td><strong>Scheduler</strong></td>
+<td><code>/proc/stat</code>, <code>/proc/loadavg</code></td>
+<td>Context switches, interrupts</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="stage-2-hardware-readers">🔧 Stage 2: Hardware Readers<a class="headerlink" href="#stage-2-hardware-readers" title="Permanent link">&para;</a></h2>
+<p>Each hardware source has a dedicated reader class:</p>
+<h3 id="hardware-readers">Hardware Readers<a class="headerlink" href="#hardware-readers" title="Permanent link">&para;</a></h3>
+<p>All hardware readers follow a common interface pattern:</p>
+<table>
+<thead>
+<tr>
+<th>Reader</th>
+<th>Metrics</th>
+<th>Frequency</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RAPLReader</code></td>
+<td>package, core, uncore, dram energy (µJ)</td>
+<td>100Hz</td>
+<td>Intel Running Average Power Limit counters</td>
+</tr>
+<tr>
+<td><code>MSRReader</code></td>
+<td>C-state counters, ring bus freq</td>
+<td>Snapshots</td>
+<td>Model-specific registers for CPU power states</td>
+</tr>
+<tr>
+<td><code>PerfReader</code></td>
+<td>instructions, cycles, cache misses</td>
+<td>Process-attached</td>
+<td>Linux perf events for performance counters</td>
+</tr>
+<tr>
+<td><code>TurbostatReader</code></td>
+<td>CPU freq, C-state %, package temp</td>
+<td>10Hz</td>
+<td>Intel turbostat utility wrapper</td>
+</tr>
+<tr>
+<td><code>SensorReader</code></td>
+<td>Thermal zone temperatures</td>
+<td>1Hz</td>
+<td>System thermal sensors</td>
+</tr>
+<tr>
+<td><code>SchedulerMonitor</code></td>
+<td>Context switches, interrupts</td>
+<td>10Hz</td>
+<td>Linux scheduler metrics</td>
+</tr>
+</tbody>
+</table>
+<h4 id="key-methods">Key Methods<a class="headerlink" href="#key-methods" title="Permanent link">&para;</a></h4>
+<p>All readers implement:</p>
+<ul>
+<li><code>read()</code> → Returns current measurements as dictionary</li>
+<li><code>calibrate()</code> (optional) - One-time calibration</li>
+<li><code>get_metadata()</code> (optional) - Reader information</li>
+</ul>
+<p>Each reader provides:
+- <strong>On-demand reads</strong> for start/stop snapshots
+- <strong>Continuous sampling</strong> for high-frequency data</p>
+<hr />
+<h2 id="stage-3-energyengine">⚙️ Stage 3: EnergyEngine<a class="headerlink" href="#stage-3-energyengine" title="Permanent link">&para;</a></h2>
+<p>The <code>EnergyEngine</code> orchestrates all readers with perfect synchronization:</p>
+<h3 id="sampling-thread">Sampling Thread<a class="headerlink" href="#sampling-thread" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_sampling_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;100Hz sampling thread&quot;&quot;&quot;</span>
+    <span class="n">interval</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_rate_hz</span>
+    <span class="n">sample_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_active</span><span class="p">:</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">energy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rapl</span><span class="o">.</span><span class="n">read_energy_safe</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sampling_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">now</span><span class="p">,</span> <span class="n">energy</span><span class="p">))</span>
+
+        <span class="c1"># Sample interrupts every 10th iteration (10Hz)</span>
+        <span class="k">if</span> <span class="n">sample_counter</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">sample_interrupts</span><span class="p">()</span>
+
+        <span class="n">sample_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+<span class="n">Data</span> <span class="n">Collected</span> <span class="n">Per</span> <span class="n">Sample</span>
+<span class="o">|</span> <span class="n">Time</span> <span class="o">|</span> <span class="n">Package</span> <span class="p">(</span><span class="n">µJ</span><span class="p">)</span> <span class="o">|</span> <span class="n">Core</span> <span class="p">(</span><span class="n">µJ</span><span class="p">)</span> <span class="o">|</span> <span class="n">Uncore</span> <span class="p">(</span><span class="n">µJ</span><span class="p">)</span> <span class="o">|</span> <span class="n">DRAM</span> <span class="p">(</span><span class="n">µJ</span><span class="p">)</span> <span class="o">|</span>
+<span class="o">|------|--------------|-----------|-------------|-----------|</span>
+<span class="o">|</span> <span class="n">t</span><span class="err">₁</span> <span class="o">|</span> <span class="mi">1</span><span class="p">,</span><span class="mi">234</span><span class="p">,</span><span class="mi">567</span> <span class="o">|</span> <span class="mi">890</span><span class="p">,</span><span class="mi">123</span> <span class="o">|</span> <span class="mi">234</span><span class="p">,</span><span class="mi">567</span> <span class="o">|</span> <span class="mi">78</span><span class="p">,</span><span class="mi">901</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">t</span><span class="err">₂</span> <span class="o">|</span> <span class="mi">1</span><span class="p">,</span><span class="mi">235</span><span class="p">,</span><span class="mi">678</span> <span class="o">|</span> <span class="mi">891</span><span class="p">,</span><span class="mi">234</span> <span class="o">|</span> <span class="mi">235</span><span class="p">,</span><span class="mi">678</span> <span class="o">|</span> <span class="mi">79</span><span class="p">,</span><span class="mi">012</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">t</span><span class="err">₃</span> <span class="o">|</span> <span class="mi">1</span><span class="p">,</span><span class="mi">236</span><span class="p">,</span><span class="mi">789</span> <span class="o">|</span> <span class="mi">892</span><span class="p">,</span><span class="mi">345</span> <span class="o">|</span> <span class="mi">236</span><span class="p">,</span><span class="mi">789</span> <span class="o">|</span> <span class="mi">79</span><span class="p">,</span><span class="mi">123</span> <span class="o">|</span>
+
+<span class="err">📊</span> <span class="n">Stage</span> <span class="mi">4</span><span class="p">:</span> <span class="n">Sample</span> <span class="n">Processing</span>
+
+<span class="n">Samples</span> <span class="n">are</span> <span class="n">processed</span> <span class="n">through</span> <span class="n">the</span> <span class="mi">3</span><span class="o">-</span><span class="n">layer</span> <span class="n">data</span> <span class="n">model</span><span class="p">:</span>
+
+<span class="c1">### Layer 1: RawEnergyMeasurement (Immutable)</span>
+
+<span class="err">```</span><span class="n">python</span>
+<span class="p">{</span>
+    <span class="s1">&#39;measurement_id&#39;</span><span class="p">:</span> <span class="s1">&#39;meas_12345&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="mf">1734567890.123</span><span class="p">,</span>
+    <span class="s1">&#39;end_time&#39;</span><span class="p">:</span> <span class="mf">1734567900.456</span><span class="p">,</span>
+    <span class="s1">&#39;rapl_start_uj&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;package-0&#39;</span><span class="p">:</span> <span class="mi">1234567</span><span class="p">,</span> <span class="s1">&#39;core&#39;</span><span class="p">:</span> <span class="mi">890123</span><span class="p">},</span>
+    <span class="s1">&#39;rapl_end_uj&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;package-0&#39;</span><span class="p">:</span> <span class="mi">1334567</span><span class="p">,</span> <span class="s1">&#39;core&#39;</span><span class="p">:</span> <span class="mi">990123</span><span class="p">},</span>
+    <span class="s1">&#39;samples&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="n">t</span><span class="err">₁</span><span class="p">,</span> <span class="n">energy</span><span class="err">₁</span><span class="p">),</span> <span class="p">(</span><span class="n">t</span><span class="err">₂</span><span class="p">,</span> <span class="n">energy</span><span class="err">₂</span><span class="p">),</span> <span class="o">...</span><span class="p">],</span>
+    <span class="s1">&#39;perf_data&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+    <span class="s1">&#39;turbostat_data&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
+<span class="p">}</span><span class="err">```</span> 
+<span class="c1">### Layer 2: BaselineMeasurement</span>
+<span class="err">```</span> <span class="n">python</span>
+<span class="p">{</span>
+    <span class="s1">&#39;baseline_id&#39;</span><span class="p">:</span> <span class="s1">&#39;baseline_12345&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;power_watts&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;package-0&#39;</span><span class="p">:</span> <span class="mf">2.3</span><span class="p">,</span> <span class="s1">&#39;core&#39;</span><span class="p">:</span> <span class="mf">1.1</span><span class="p">},</span>
+    <span class="s1">&#39;duration_seconds&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="s1">&#39;sample_count&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s1">&#39;std_dev_watts&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;package-0&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;core&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">}</span>
+<span class="p">}</span><span class="err">```</span> 
+<span class="c1">### Layer 3: DerivedEnergyMeasurement</span>
+
+<span class="err">```</span><span class="n">python</span>
+<span class="p">{</span>
+    <span class="s1">&#39;workload_energy_uj&#39;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>      <span class="c1"># package - idle</span>
+    <span class="s1">&#39;reasoning_energy_uj&#39;</span><span class="p">:</span> <span class="mi">60000</span><span class="p">,</span>      <span class="c1"># core - idle_core</span>
+    <span class="s1">&#39;orchestration_tax_uj&#39;</span><span class="p">:</span> <span class="mi">40000</span><span class="p">,</span>     <span class="c1"># workload - reasoning</span>
+    <span class="s1">&#39;ipc&#39;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">,</span>
+    <span class="s1">&#39;cache_miss_rate&#39;</span><span class="p">:</span> <span class="mf">0.03</span>
+<span class="p">}</span><span class="err">```</span> 
+
+
+<span class="err">💾</span> <span class="n">Stage</span> <span class="mi">5</span><span class="p">:</span> <span class="n">Database</span> <span class="n">Storage</span>
+<span class="n">Data</span> <span class="ow">is</span> <span class="n">stored</span> <span class="n">across</span> <span class="mi">10</span><span class="o">+</span> <span class="n">tables</span> <span class="k">for</span> <span class="n">complete</span> <span class="n">lineage</span><span class="p">:</span>
+
+<span class="c1">### Database Schema Overview</span>
+
+<span class="n">The</span> <span class="n">database</span> <span class="n">consists</span> <span class="n">of</span> <span class="mi">11</span> <span class="n">tables</span> <span class="k">with</span> <span class="n">the</span> <span class="n">following</span> <span class="n">relationships</span><span class="p">:</span>
+
+<span class="c1">#### Core Tables</span>
+
+<span class="o">|</span> <span class="n">Table</span> <span class="o">|</span> <span class="n">Primary</span> <span class="n">Key</span> <span class="o">|</span> <span class="n">Foreign</span> <span class="n">Keys</span> <span class="o">|</span> <span class="n">Description</span> <span class="o">|</span>
+<span class="o">|-------|-------------|--------------|-------------|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">experiments</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">exp_id</span><span class="err">`</span> <span class="o">|</span> <span class="o">-</span> <span class="o">|</span> <span class="n">Experiment</span> <span class="n">metadata</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">runs</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">exp_id</span><span class="err">`</span><span class="p">,</span> <span class="err">`</span><span class="n">hw_id</span><span class="err">`</span><span class="p">,</span> <span class="err">`</span><span class="n">baseline_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">Core</span> <span class="n">run</span> <span class="n">data</span> <span class="p">(</span><span class="mi">80</span><span class="o">+</span> <span class="n">columns</span><span class="p">)</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">hardware_config</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">hw_id</span><span class="err">`</span> <span class="o">|</span> <span class="o">-</span> <span class="o">|</span> <span class="n">Hardware</span> <span class="n">fingerprints</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">environment_config</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">env_id</span><span class="err">`</span> <span class="o">|</span> <span class="o">-</span> <span class="o">|</span> <span class="n">Software</span> <span class="n">environment</span> <span class="o">|</span>
+
+<span class="c1">#### High-Frequency Sample Tables</span>
+
+<span class="o">|</span> <span class="n">Table</span> <span class="o">|</span> <span class="n">Frequency</span> <span class="o">|</span> <span class="n">Foreign</span> <span class="n">Key</span> <span class="o">|</span> <span class="n">Description</span> <span class="o">|</span>
+<span class="o">|-------|-----------|-------------|-------------|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">energy_samples</span><span class="err">`</span> <span class="o">|</span> <span class="mi">100</span><span class="n">Hz</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">RAPL</span> <span class="n">energy</span> <span class="n">samples</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">cpu_samples</span><span class="err">`</span> <span class="o">|</span> <span class="mi">10</span><span class="n">Hz</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">CPU</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">C</span><span class="o">-</span><span class="n">state</span> <span class="n">residency</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">interrupt_samples</span><span class="err">`</span> <span class="o">|</span> <span class="mi">10</span><span class="n">Hz</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">Interrupt</span> <span class="n">rates</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">thermal_samples</span><span class="err">`</span> <span class="o">|</span> <span class="mi">1</span><span class="n">Hz</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">Temperature</span> <span class="n">samples</span> <span class="o">|</span>
+
+<span class="c1">#### Orchestration Tables</span>
+
+<span class="o">|</span> <span class="n">Table</span> <span class="o">|</span> <span class="n">Primary</span> <span class="n">Key</span> <span class="o">|</span> <span class="n">Foreign</span> <span class="n">Keys</span> <span class="o">|</span> <span class="n">Description</span> <span class="o">|</span>
+<span class="o">|-------|-------------|--------------|-------------|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">orchestration_events</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">event_id</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">Agent</span> <span class="n">step</span> <span class="n">tracking</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">orchestration_tax_summary</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">comparison_id</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">linear_run_id</span><span class="err">`</span><span class="p">,</span> <span class="err">`</span><span class="n">agentic_run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">Per</span><span class="o">-</span><span class="n">pair</span> <span class="n">tax</span> <span class="n">calculations</span> <span class="o">|</span>
+<span class="o">|</span> <span class="err">`</span><span class="n">llm_interactions</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">interaction_id</span><span class="err">`</span> <span class="o">|</span> <span class="err">`</span><span class="n">run_id</span><span class="err">`</span> <span class="o">|</span> <span class="n">LLM</span> <span class="n">prompts</span> <span class="ow">and</span> <span class="n">responses</span> <span class="o">|</span>
+</code></pre></div>
+<h4 id="relationship-diagram">Relationship Diagram<a class="headerlink" href="#relationship-diagram" title="Permanent link">&para;</a></h4>
+<p>experiments ────┐
+▼
+hardware_config ──► runs ◄── environment_config
+│
+├──► energy_samples
+├──► cpu_samples
+├──► interrupt_samples
+├──► thermal_samples
+├──► orchestration_events
+└──► llm_interactions
+<div class="highlight"><pre><span></span><code>orchestration_events ──► orchestration_tax_summary
+
+text
+
+#### Key Relationships
+
+- One `experiment` has many `runs`
+- One `run` has many samples in all sample tables
+- One `run` has many `orchestration_events`
+- Two `runs` (linear + agentic) form one `orchestration_tax_summary`
+
+
+Sample Storage Rates
+Table   Sampling Rate   Typical Rows per Run
+energy_samples  100 Hz  100-1000
+cpu_samples 10 Hz   10-100
+interrupt_samples   10 Hz   10-100
+thermal_samples 1 Hz    1-10
+🔄 End-to-End Data Journey
+Linear Workflow Example
+text
+### Linear vs Agentic Workflow Examples
+
+#### Linear Workflow Timeline
+
+| Step | Duration | Details |
+|------|----------|---------|
+| **Start** | `t₀ = 1734567890.123` | Measurement begins |
+| **LLM Call** | 850ms API + 150ms compute | Single LLM request |
+| **End** | `t₁ = 1734567891.123` | Measurement ends (Δ = 1.000s) |
+| **Sampling** | 100 samples @ 10ms intervals | High-frequency energy data |
+| **Derivation** | - | Workload = 1.2J, Baseline = 0.3J, Dynamic = 0.9J |
+| **Storage** | - | 1 run record, 100 energy samples, 10 CPU samples, 10 interrupt samples |
+
+#### Agentic Workflow Timeline
+
+| Phase | Duration | Description |
+|-------|----------|-------------|
+| **Planning** | 0.3s | LLM call #1 - Creates execution plan |
+| **Tool Call** | 0.1s | Calculator execution |
+| **Reasoning** | 0.4s | LLM call #2 - Interprets results |
+| **Tool Call** | 0.5s | Web search |
+| **Synthesis** | 0.2s | LLM call #3 - Combines results into final answer |
+| **Total** | 1.5s | Cumulative execution time |
+
+#### Storage Comparison
+
+| Metric | Linear | Agentic |
+|--------|--------|---------|
+| Run Records | 1 | 1 |
+| Energy Samples | 100 | 150 |
+| CPU Samples | 10 | 15 |
+| Interrupt Samples | 10 | 15 |
+| Orchestration Events | 0 | 5 |
+</code></pre></div></p>
+<h4 id="key-differences">Key Differences<a class="headerlink" href="#key-differences" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Agentic workflows</strong> involve multiple LLM calls and tool executions</li>
+<li><strong>Orchestration events</strong> track each phase for tax calculation</li>
+<li><strong>Higher sample counts</strong> due to longer execution time</li>
+<li><strong>More complex data</strong> enables orchestration tax analysis
+```</li>
+</ul>
+<p>📈 Data Flow by Sampling Rate
+Rate    Data Type   Purpose
+100Hz   Energy samples  Precise energy curves, transient analysis
+10Hz    CPU metrics Frequency scaling, C-state transitions
+10Hz    Interrupts  I/O pressure, scheduler activity
+1Hz Temperature Thermal trends, cooling analysis
+Per-run Aggregates  Statistical analysis, ML features
+🔍 Debugging Data Flow</p>
+<h3 id="check-sample-counts">Check Sample Counts<a class="headerlink" href="#check-sample-counts" title="Permanent link">&para;</a></h3>
+<p><code>sql
+SELECT 
+    r.run_id,
+    r.workflow_type,
+    (SELECT COUNT(*) FROM energy_samples WHERE run_id = r.run_id) as energy,
+    (SELECT COUNT(*) FROM cpu_samples WHERE run_id = r.run_id) as cpu,
+    (SELECT COUNT(*) FROM interrupt_samples WHERE run_id = r.run_id) as irq
+FROM runs r
+WHERE r.exp_id = (SELECT MAX(exp_id) FROM experiments);</code></p>
+<h3 id="check-for-duplicate-timestamps">Check for Duplicate Timestamps<a class="headerlink" href="#check-for-duplicate-timestamps" title="Permanent link">&para;</a></h3>
+<p><code>sql
+SELECT 
+    timestamp_ns,
+    COUNT(*) as count,
+    GROUP_CONCAT(run_id) as runs
+FROM energy_samples
+GROUP BY timestamp_ns
+HAVING COUNT(*) &gt; 1;</code></p>
+<p>🎯 Key Data Flow Principles</p>
+<p>Immutable Raw Data - Never modify original measurements</p>
+<p>Timestamp Precision - Nanosecond accuracy for correlation</p>
+<p>Complete Lineage - Every derived value traces to raw data</p>
+<p>Separation of Concerns - Collection, processing, storage are distinct</p>
+<p>Reproducibility - Same inputs produce same outputs</p>
+<p>This data flow document corresponds to the diagram at ../assets/diagrams/data-flow.svg</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

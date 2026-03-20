@@ -1,0 +1,2239 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Agent vs Linear AI Energy Measurement Platform">
+      
+      
+        <meta name="author" content="A-LEMS Team">
+      
+      
+      
+        <link rel="prev" href="../03-batch-experiments/">
+      
+      
+        <link rel="next" href="../05-generating-reports/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>GUI Usage - A-LEMS Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using-the-gui-dashboard" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="A-LEMS Documentation" class="md-header__button md-logo" aria-label="A-LEMS Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            A-LEMS Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              GUI Usage
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/deepakpanigrahy03/a-lems" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/01-installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../01-running/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer-guide/01-architecture/" class="md-tabs__link">
+          
+  
+  
+  Developer Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../research/01-measurement-methodology/" class="md-tabs__link">
+          
+  
+  
+  Research
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../api/reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="A-LEMS Documentation" class="md-nav__button md-logo" aria-label="A-LEMS Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    A-LEMS Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/deepakpanigrahy03/a-lems" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/01-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/02-database-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/03-model-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/04-quick-start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/05-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-understanding-metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-batch-experiments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Usage
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#launching-the-gui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Launching the GUI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gui-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖥️ GUI Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#navigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📋 Navigation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📋 Navigation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sidebar-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sidebar Sections
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Key Pages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🎯 Key Pages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-overview-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Overview Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-execute-run-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Execute Run Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-experiments-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Experiments Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-energy-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Energy Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-tax-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Tax Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-sustainability-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Sustainability Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-run-explorer-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Run Explorer Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-sql-query-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. SQL Query Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interactive-visualizations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📊 Interactive Visualizations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Interactive Visualizations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#charts-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charts Support:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chart-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chart Types:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generating-pdf-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📄 Generating PDF Reports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#searching-and-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 Searching and Filtering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Searching and Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#experiments-page-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Experiments Page Filters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-explorer-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Explorer Filters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📈 Custom Queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📈 Custom Queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme-and-appearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎨 Theme and Appearance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keyboard-shortcuts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Keyboard Shortcuts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔧 Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#settings-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings Page
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-gui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🐛 Troubleshooting GUI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-generating-reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generating Reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/01-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/02-data-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Flow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/03-database-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/04-gui-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/05-adding-readers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Readers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/06-adding-tasks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Tasks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer-guide/07-tools-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/01-measurement-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurement Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/02-mathematical-derivations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mathematical Derivations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/03-orchestration-tax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestration Tax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/04-publications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="using-the-gui-dashboard">Using the GUI Dashboard<a class="headerlink" href="#using-the-gui-dashboard" title="Permanent link">&para;</a></h1>
+<p>This guide explains how to use the A-LEMS web-based GUI for experiment monitoring, visualization, and analysis.</p>
+<hr />
+<h2 id="launching-the-gui">🚀 Launching the GUI<a class="headerlink" href="#launching-the-gui" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># From project root with virtualenv activated</span>
+streamlit<span class="w"> </span>run<span class="w"> </span>streamlit_app.py
+</code></pre></div>
+<p><strong>Expected output:</strong></p>
+<div class="highlight"><pre><span></span><code>You can now view your Streamlit app in your browser.
+
+Local URL: http://localhost:8501
+Network URL: http://192.168.0.166:8501
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> CORS warnings are harmless and can be ignored.</p>
+</blockquote>
+<hr />
+<h2 id="gui-overview">🖥️ GUI Overview<a class="headerlink" href="#gui-overview" title="Permanent link">&para;</a></h2>
+<p>The A-LEMS dashboard is organized with a sidebar navigation menu containing:</p>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Overview</strong></td>
+<td>Dashboard home</td>
+</tr>
+<tr>
+<td><strong>Execute Run</strong></td>
+<td>Run new experiments</td>
+</tr>
+<tr>
+<td><strong>Experiments</strong></td>
+<td>Browse past experiments</td>
+</tr>
+<tr>
+<td><strong>Energy</strong></td>
+<td>Energy consumption analysis</td>
+</tr>
+<tr>
+<td><strong>Sustainability</strong></td>
+<td>Carbon, water, methane metrics</td>
+</tr>
+<tr>
+<td><strong>Tax</strong></td>
+<td>Orchestration tax analysis</td>
+</tr>
+<tr>
+<td><strong>Run Explorer</strong></td>
+<td>Deep dive into individual runs</td>
+</tr>
+<tr>
+<td><strong>SQL Query</strong></td>
+<td>Custom database queries</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="navigation">📋 Navigation<a class="headerlink" href="#navigation" title="Permanent link">&para;</a></h2>
+<h3 id="sidebar-sections">Sidebar Sections<a class="headerlink" href="#sidebar-sections" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Pages</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Overview</strong></td>
+<td>Overview</td>
+<td>Dashboard home</td>
+</tr>
+<tr>
+<td><strong>Experiment Control</strong></td>
+<td>Execute Run, Experiments, Settings</td>
+<td>Run and manage experiments</td>
+</tr>
+<tr>
+<td><strong>Energy &amp; Compute</strong></td>
+<td>Energy, Domains, Sustainability</td>
+<td>Visualize metrics</td>
+</tr>
+<tr>
+<td><strong>Orchestration</strong></td>
+<td>Tax, Agentic vs Linear</td>
+<td>Tax analysis</td>
+</tr>
+<tr>
+<td><strong>System Behavior</strong></td>
+<td>CPU, Scheduler</td>
+<td>Hardware telemetry</td>
+</tr>
+<tr>
+<td><strong>Exploration</strong></td>
+<td>Run Explorer, Sessions</td>
+<td>Data exploration</td>
+</tr>
+<tr>
+<td><strong>Research</strong></td>
+<td>Research Insights</td>
+<td>Analysis tools</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="key-pages">🎯 Key Pages<a class="headerlink" href="#key-pages" title="Permanent link">&para;</a></h2>
+<h3 id="1-overview-page">1. Overview Page<a class="headerlink" href="#1-overview-page" title="Permanent link">&para;</a></h3>
+<p>Dashboard home showing:</p>
+<ul>
+<li>Recent experiments</li>
+<li>System status</li>
+<li>Quick stats (total runs, energy saved, carbon avoided)</li>
+<li>Latest results</li>
+</ul>
+<h3 id="2-execute-run-page">2. Execute Run Page<a class="headerlink" href="#2-execute-run-page" title="Permanent link">&para;</a></h3>
+<p>Run experiments directly from the GUI with a simple form:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Options</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Task</strong></td>
+<td><code>gsm8k_basic</code> (default)</td>
+<td>Select from 16+ predefined tasks</td>
+</tr>
+<tr>
+<td><strong>Provider</strong></td>
+<td><code>local</code> / <code>cloud</code></td>
+<td>Local TinyLlama or cloud (Groq/OpenRouter)</td>
+</tr>
+<tr>
+<td><strong>Repetitions</strong></td>
+<td><code>3</code> (configurable)</td>
+<td>Number of runs for statistical significance</td>
+</tr>
+<tr>
+<td><strong>Optimizer</strong></td>
+<td>Checkbox</td>
+<td>Enable runtime optimization (experimental)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Controls:</strong>
+- <code>🚀 RUN EXPERIMENT</code> - Start the experiment</p>
+<p><strong>Live Progress Display:</strong></p>
+<div class="highlight"><pre><span></span><code>Progress: ████████░░░░ 4/8 runs completed
+</code></pre></div>
+<p><strong>Real-time Results:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linear Energy</td>
+<td>1.2 J</td>
+</tr>
+<tr>
+<td>Agentic Energy</td>
+<td>2.6 J</td>
+</tr>
+<tr>
+<td>Orchestration Tax</td>
+<td>2.2x</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-experiments-page">3. Experiments Page<a class="headerlink" href="#3-experiments-page" title="Permanent link">&para;</a></h3>
+<p>Browse and filter all experiments:</p>
+<ul>
+<li><strong>Filter by:</strong> Task, provider, date, status</li>
+<li><strong>Sort by:</strong> ID, date, energy</li>
+<li><strong>Actions:</strong> View details, compare, export</li>
+<li><strong>Statistics:</strong> Summary of selected experiments</li>
+</ul>
+<h3 id="4-energy-page">4. Energy Page<a class="headerlink" href="#4-energy-page" title="Permanent link">&para;</a></h3>
+<p>Visualize energy consumption:</p>
+<ul>
+<li><strong>Bar charts:</strong> Linear vs Agentic comparison</li>
+<li><strong>Line charts:</strong> Energy over time</li>
+<li><strong>Distribution:</strong> Histogram of energy values</li>
+<li><strong>Raw data:</strong> Sample-level view</li>
+</ul>
+<h3 id="5-tax-page">5. Tax Page<a class="headerlink" href="#5-tax-page" title="Permanent link">&para;</a></h3>
+<p>Orchestration tax analysis with statistical summaries:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+<th>95% Confidence Interval</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mean Tax</strong></td>
+<td>12.5x</td>
+<td>[10.2x, 14.8x]</td>
+</tr>
+<tr>
+<td><strong>Median Tax</strong></td>
+<td>11.8x</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Std Deviation</strong></td>
+<td>2.3x</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Min/Max</strong></td>
+<td>6.2x / 18.9x</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="6-sustainability-page">6. Sustainability Page<a class="headerlink" href="#6-sustainability-page" title="Permanent link">&para;</a></h3>
+<p>Environmental impact metrics:</p>
+<ul>
+<li>Carbon footprint by experiment</li>
+<li>Water usage</li>
+<li>Methane emissions</li>
+<li>Comparison to everyday activities</li>
+<li>Country-specific grid intensity</li>
+</ul>
+<h3 id="7-run-explorer-page">7. Run Explorer Page<a class="headerlink" href="#7-run-explorer-page" title="Permanent link">&para;</a></h3>
+<p>Deep dive into individual runs:</p>
+<ul>
+<li>Select run ID</li>
+<li>View all 80+ metrics</li>
+<li>Plot energy curves</li>
+<li>Export raw data</li>
+<li>Compare with other runs</li>
+</ul>
+<h3 id="8-sql-query-page">8. SQL Query Page<a class="headerlink" href="#8-sql-query-page" title="Permanent link">&para;</a></h3>
+<p>Advanced users can run custom SQL:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span>
+<span class="w">    </span><span class="n">run_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">workflow_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">dynamic_energy_uj</span><span class="o">/</span><span class="mi">1</span><span class="n">e6</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">energy_j</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">runs</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">exp_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">185</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">run_id</span><span class="p">;</span>
+</code></pre></div>
+<p>Results exportable to CSV.</p>
+<hr />
+<h2 id="interactive-visualizations">📊 Interactive Visualizations<a class="headerlink" href="#interactive-visualizations" title="Permanent link">&para;</a></h2>
+<h3 id="charts-support">Charts Support:<a class="headerlink" href="#charts-support" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Zoom/Pan</strong></td>
+<td>Click and drag</td>
+</tr>
+<tr>
+<td><strong>Hover</strong></td>
+<td>See exact values</td>
+</tr>
+<tr>
+<td><strong>Legend</strong></td>
+<td>Toggle series</td>
+</tr>
+<tr>
+<td><strong>Download</strong></td>
+<td>Save as PNG</td>
+</tr>
+<tr>
+<td><strong>Reset</strong></td>
+<td>Return to original view</td>
+</tr>
+</tbody>
+</table>
+<h3 id="chart-types">Chart Types:<a class="headerlink" href="#chart-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Chart</th>
+<th>Use For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bar</strong></td>
+<td>Comparisons</td>
+</tr>
+<tr>
+<td><strong>Line</strong></td>
+<td>Trends over time</td>
+</tr>
+<tr>
+<td><strong>Scatter</strong></td>
+<td>Correlations</td>
+</tr>
+<tr>
+<td><strong>Histogram</strong></td>
+<td>Distributions</td>
+</tr>
+<tr>
+<td><strong>Box plot</strong></td>
+<td>Statistical spread</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="generating-pdf-reports">📄 Generating PDF Reports<a class="headerlink" href="#generating-pdf-reports" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Navigate to <strong>Session Analysis</strong> page</li>
+<li>Select an experiment from the list</li>
+<li>Click <strong>"Generate PDF Report"</strong></li>
+<li>Report downloads automatically</li>
+</ol>
+<p><strong>Report contains:</strong></p>
+<ul>
+<li>Experiment metadata</li>
+<li>Energy comparison charts</li>
+<li>Orchestration tax analysis</li>
+<li>Thermal profiles</li>
+<li>CPU and scheduler metrics</li>
+<li>Sustainability impact</li>
+<li>RAPL domain breakdown</li>
+<li>Hardware and software fingerprints</li>
+</ul>
+<hr />
+<h2 id="searching-and-filtering">🔍 Searching and Filtering<a class="headerlink" href="#searching-and-filtering" title="Permanent link">&para;</a></h2>
+<h3 id="experiments-page-filters">Experiments Page Filters<a class="headerlink" href="#experiments-page-filters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Options</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Task</strong></td>
+<td>All tasks, specific task</td>
+</tr>
+<tr>
+<td><strong>Provider</strong></td>
+<td>All, cloud, local</td>
+</tr>
+<tr>
+<td><strong>Date Range</strong></td>
+<td>Today, week, month, custom</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Completed, running, failed</td>
+</tr>
+<tr>
+<td><strong>Energy Range</strong></td>
+<td>Min-max slider</td>
+</tr>
+</tbody>
+</table>
+<h3 id="run-explorer-filters">Run Explorer Filters<a class="headerlink" href="#run-explorer-filters" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Run ID range</li>
+<li>Workflow type</li>
+<li>Energy threshold</li>
+<li>Tax threshold</li>
+<li>Date/time</li>
+</ul>
+<hr />
+<h2 id="custom-queries">📈 Custom Queries<a class="headerlink" href="#custom-queries" title="Permanent link">&para;</a></h2>
+<p>The SQL Query page offers:</p>
+<ul>
+<li><strong>Auto-complete:</strong> Table and column names</li>
+<li><strong>Syntax highlighting:</strong> SQL keywords</li>
+<li><strong>Query history:</strong> Recent queries</li>
+<li><strong>Export:</strong> CSV, JSON, Excel</li>
+<li><strong>Visualize:</strong> Plot results directly</li>
+</ul>
+<h3 id="example-queries">Example Queries<a class="headerlink" href="#example-queries" title="Permanent link">&para;</a></h3>
+<p><strong>Top 10 highest energy runs:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">run_id</span><span class="p">,</span><span class="w"> </span><span class="n">workflow_type</span><span class="p">,</span><span class="w"> </span><span class="n">dynamic_energy_uj</span><span class="o">/</span><span class="mi">1</span><span class="n">e6</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">J</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">runs</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">dynamic_energy_uj</span><span class="w"> </span><span class="k">DESC</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>Average tax by task:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span>
+<span class="w">    </span><span class="n">e</span><span class="p">.</span><span class="n">task_name</span><span class="p">,</span>
+<span class="w">    </span><span class="k">AVG</span><span class="p">(</span><span class="n">ots</span><span class="p">.</span><span class="n">tax_percent</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">avg_tax</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">orchestration_tax_summary</span><span class="w"> </span><span class="n">ots</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">runs</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">ots</span><span class="p">.</span><span class="n">linear_run_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">run_id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">experiments</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">exp_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">exp_id</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">task_name</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="theme-and-appearance">🎨 Theme and Appearance<a class="headerlink" href="#theme-and-appearance" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Dark theme</strong> by default for reduced eye strain</li>
+<li><strong>Color coding:</strong></li>
+<li>🟢 Linear: Green (<code>#22c55e</code>)</li>
+<li>🔴 Agentic: Red (<code>#ef4444</code>)</li>
+<li>🔵 Tax/Other: Blue (<code>#3b82f6</code>)</li>
+<li><strong>Responsive design</strong> works on mobile/tablet</li>
+</ul>
+<hr />
+<h2 id="keyboard-shortcuts">⚡ Keyboard Shortcuts<a class="headerlink" href="#keyboard-shortcuts" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ctrl+Enter</code></td>
+<td>Run query (SQL page)</td>
+</tr>
+<tr>
+<td><code>Ctrl+S</code></td>
+<td>Save current view</td>
+</tr>
+<tr>
+<td><code>Ctrl+E</code></td>
+<td>Export data</td>
+</tr>
+<tr>
+<td><code>Ctrl+P</code></td>
+<td>Print/PDF</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Clear selection</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="configuration">🔧 Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="settings-page">Settings Page<a class="headerlink" href="#settings-page" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Database path:</strong> Change SQLite location</li>
+<li><strong>Refresh interval:</strong> How often to update</li>
+<li><strong>Chart defaults:</strong> Colors, sizes</li>
+<li><strong>Export format:</strong> CSV, JSON, Excel</li>
+<li><strong>Theme:</strong> Dark/Light toggle</li>
+</ul>
+<hr />
+<h2 id="troubleshooting-gui">🐛 Troubleshooting GUI<a class="headerlink" href="#troubleshooting-gui" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GUI won't start</td>
+<td><code>pip install streamlit</code></td>
+</tr>
+<tr>
+<td>Blank page</td>
+<td>Clear browser cache</td>
+</tr>
+<tr>
+<td>Charts empty</td>
+<td>Check database path</td>
+</tr>
+<tr>
+<td>Slow loading</td>
+<td>Add database indices</td>
+</tr>
+<tr>
+<td>CORS warnings</td>
+<td>Safe to ignore</td>
+</tr>
+<tr>
+<td>PDF not generating</td>
+<td><code>pip install reportlab kaleido</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="next-steps">✅ Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../05-generating-reports/">Generate your first report</a></li>
+<li><a href="../01-running/">Explore run data</a></li>
+<li><a href="../03-batch-experiments/">Run batch experiments</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

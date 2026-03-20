@@ -1,0 +1,2323 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Agent vs Linear AI Energy Measurement Platform">
+      
+      
+        <meta name="author" content="A-LEMS Team">
+      
+      
+      
+        <link rel="prev" href="../05-adding-readers/">
+      
+      
+        <link rel="next" href="../07-tools-overview/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Adding New Tasks - A-LEMS Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adding-new-experiment-tasks" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="A-LEMS Documentation" class="md-header__button md-logo" aria-label="A-LEMS Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            A-LEMS Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Adding New Tasks
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/deepakpanigrahy03/a-lems" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/01-installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user-guide/01-running/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../01-architecture/" class="md-tabs__link">
+          
+  
+  
+  Developer Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../research/01-measurement-methodology/" class="md-tabs__link">
+          
+  
+  
+  Research
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../api/reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="A-LEMS Documentation" class="md-nav__button md-logo" aria-label="A-LEMS Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    A-LEMS Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/deepakpanigrahy03/a-lems" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/01-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/02-database-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/03-model-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/04-quick-start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/05-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/01-running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/02-understanding-metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/03-batch-experiments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/04-gui-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/05-generating-reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generating Reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/06-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-data-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Flow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-database-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-gui-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-adding-readers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Readers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Tasks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding New Tasks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#task-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📋 Task Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Task Levels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-definition-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📝 Task Definition Fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step-adding-a-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏗️ Step-by-Step: Adding a Task
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Step-by-Step: Adding a Task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-edit-configtasksyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Edit config/tasks.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-verify-task-loads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Verify Task Loads
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-types-by-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧪 Task Types by Level
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧪 Task Types by Level">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#level-1-simple-tasks-llm-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 1: Simple Tasks (LLM Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#level-2-moderate-tasks-1-2-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 2: Moderate Tasks (1-2 Tools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#level-3-complex-tasks-3-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 3: Complex Tasks (3+ Tools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-with-multiple-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Task with Multiple Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📊 Task Categories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-tasks-are-executed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧠 How Tasks Are Executed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧠 How Tasks Are Executed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linear-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linear Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agentic-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-complexity-score" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📈 Task Complexity Score
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-tool-support-for-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛠️ Adding Tool Support for Tasks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Task Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="✅ Task Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-expected-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Expected Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-documentation-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📝 Task Documentation Template
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-your-new-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧪 Testing Your New Task
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧪 Testing Your New Task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#analyzing-task-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📊 Analyzing Task Performance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Analyzing Task Performance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#query-task-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query Task Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compare-across-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare Across Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🎯 Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clear-prompts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Clear Prompts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-appropriate-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Appropriate Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-include-expected-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Include Expected Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-test-both-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Test Both Providers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-dynamic-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Advanced: Dynamic Tasks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checklist-for-new-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Checklist for New Tasks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging-task-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 Debugging Task Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Debugging Task Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-not-supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Not Supported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wrong-complexity-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wrong Complexity Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-tools-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/01-measurement-methodology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurement Methodology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/02-mathematical-derivations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mathematical Derivations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/03-orchestration-tax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestration Tax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/04-publications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="adding-new-experiment-tasks">Adding New Experiment Tasks<a class="headerlink" href="#adding-new-experiment-tasks" title="Permanent link">&para;</a></h1>
+<p>This guide explains how to add new tasks to A-LEMS for both linear and agentic experiments.</p>
+<hr />
+<h2 id="task-overview">📋 Task Overview<a class="headerlink" href="#task-overview" title="Permanent link">&para;</a></h2>
+<p>Tasks are defined in <code>config/tasks.yaml</code> and follow a simple structure:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">task_id</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Human-readable</span><span class="nv"> </span><span class="s">description&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1|2|3</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0|1|2|...</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;The</span><span class="nv"> </span><span class="s">actual</span><span class="nv"> </span><span class="s">task</span><span class="nv"> </span><span class="s">prompt</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">LLM&quot;</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Expected</span><span class="nv"> </span><span class="s">answer</span><span class="nv"> </span><span class="s">(optional)&quot;</span>
+</code></pre></div>
+<p><img alt="Harness Diagram" src="../../assets/diagrams/harness.svg" /></p>
+<hr />
+<h2 id="task-levels">🎯 Task Levels<a class="headerlink" href="#task-levels" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Description</th>
+<th>Example</th>
+<th>Tool Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td>Simple tasks</td>
+<td>Factual QA, basic math</td>
+<td>0 tools (LLM only)</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Moderate complexity</td>
+<td>Multi-step reasoning</td>
+<td>1-2 tools</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Complex tasks</td>
+<td>Research synthesis</td>
+<td>3+ tools</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="task-definition-fields">📝 Task Definition Fields<a class="headerlink" href="#task-definition-fields" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>description</code></td>
+<td>✅ Yes</td>
+<td>String</td>
+<td>Human-readable description</td>
+</tr>
+<tr>
+<td><code>level</code></td>
+<td>✅ Yes</td>
+<td>Integer</td>
+<td>1, 2, or 3</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>✅ Yes</td>
+<td>Integer</td>
+<td>Number of tools available</td>
+</tr>
+<tr>
+<td><code>prompt</code></td>
+<td>✅ Yes</td>
+<td>String</td>
+<td>The actual prompt sent to LLM</td>
+</tr>
+<tr>
+<td><code>expected_output</code></td>
+<td>❌ No</td>
+<td>String</td>
+<td>For validation/accuracy checking</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="step-by-step-adding-a-task">🏗️ Step-by-Step: Adding a Task<a class="headerlink" href="#step-by-step-adding-a-task" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-edit-configtasksyaml">Step 1: Edit <code>config/tasks.yaml</code><a class="headerlink" href="#step-1-edit-configtasksyaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># config/tasks.yaml</span>
+
+<span class="nt">tasks</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># Existing tasks...</span>
+
+<span class="w">  </span><span class="nt">my_new_task</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;My</span><span class="nv"> </span><span class="s">Custom</span><span class="nv"> </span><span class="s">Task</span><span class="nv"> </span><span class="s">Description&quot;</span>
+<span class="w">    </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">    </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">    </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">Solve this problem step by step:</span>
+<span class="w">      </span><span class="no">A train leaves Chicago at 2 PM traveling at 60 mph.</span>
+<span class="w">      </span><span class="no">Another train leaves New York at 3 PM traveling at 70 mph.</span>
+<span class="w">      </span><span class="no">The distance between cities is 800 miles.</span>
+<span class="w">      </span><span class="no">When will they meet?</span>
+<span class="w">    </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8:00</span><span class="nv"> </span><span class="s">PM&quot;</span>
+</code></pre></div>
+<h3 id="step-2-verify-task-loads">Step 2: Verify Task Loads<a class="headerlink" href="#step-2-verify-task-loads" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># List all tasks to verify</span>
+python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.run_experiment<span class="w"> </span>--list-tasks
+</code></pre></div>
+<p>You should see your new task in the list:</p>
+<div class="highlight"><pre><span></span><code>📋 Available Tasks:
+----------------------------------------------------------------------
+ID              Name                      Level    Tools   
+----------------------------------------------------------------------
+my_new_task     My Custom Task            2        1       
+...
+</code></pre></div>
+<hr />
+<h2 id="task-types-by-level">🧪 Task Types by Level<a class="headerlink" href="#task-types-by-level" title="Permanent link">&para;</a></h2>
+<h3 id="level-1-simple-tasks-llm-only">Level 1: Simple Tasks (LLM Only)<a class="headerlink" href="#level-1-simple-tasks-llm-only" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">factual_qa</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Factual</span><span class="nv"> </span><span class="s">Question&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;What</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">capital</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">France?&quot;</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Paris&quot;</span>
+
+<span class="nt">science_qa</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Science</span><span class="nv"> </span><span class="s">Question&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;What</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">chemical</span><span class="nv"> </span><span class="s">symbol</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">gold?&quot;</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Au&quot;</span>
+</code></pre></div>
+<h3 id="level-2-moderate-tasks-1-2-tools">Level 2: Moderate Tasks (1-2 Tools)<a class="headerlink" href="#level-2-moderate-tasks-1-2-tools" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">gsm8k_basic</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;GSM8K</span><span class="nv"> </span><span class="s">Arithmetic&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">Natalia sold clips to 48 of her friends in April, </span>
+<span class="w">    </span><span class="no">and then she sold half as many clips in May. </span>
+<span class="w">    </span><span class="no">How many clips did Natalia sell altogether in April and May?</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;72&quot;</span>
+
+<span class="nt">logical_reasoning</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Logical</span><span class="nv"> </span><span class="s">Deduction&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">All humans are mortal. Socrates is human. </span>
+<span class="w">    </span><span class="no">Therefore, Socrates is mortal. Is this valid?</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Yes&quot;</span>
+</code></pre></div>
+<h3 id="level-3-complex-tasks-3-tools">Level 3: Complex Tasks (3+ Tools)<a class="headerlink" href="#level-3-complex-tasks-3-tools" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">research_summary</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Research</span><span class="nv"> </span><span class="s">Abstract</span><span class="nv"> </span><span class="s">Summary&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">Summarize the key findings from this research paper abstract:</span>
+<span class="w">    </span><span class="no">[PAPER TEXT HERE]</span>
+<span class="w">    </span><span class="no">Include methodology, results, and conclusions.</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;The</span><span class="nv"> </span><span class="s">paper</span><span class="nv"> </span><span class="s">presents...&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="task-with-multiple-tools">🔧 Task with Multiple Tools<a class="headerlink" href="#task-with-multiple-tools" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">complex_math</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Complex</span><span class="nv"> </span><span class="s">Multi-step</span><span class="nv"> </span><span class="s">Math&quot;</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">  </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">Calculate the compound interest on $5000 invested for 3 years</span>
+<span class="w">    </span><span class="no">at 4.5% annual rate compounded monthly.</span>
+<span class="w">    </span><span class="no">Then calculate the equivalent simple interest.</span>
+<span class="w">    </span><span class="no">Finally, find the difference between the two.</span>
+<span class="w">  </span><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Compound:</span><span class="nv"> </span><span class="s">$723.37,</span><span class="nv"> </span><span class="s">Simple:</span><span class="nv"> </span><span class="s">$675.00,</span><span class="nv"> </span><span class="s">Difference:</span><span class="nv"> </span><span class="s">$48.37&quot;</span>
+</code></pre></div>
+<p>The agentic executor will:</p>
+<ol>
+<li>Plan the steps</li>
+<li>Use calculator tool for each calculation</li>
+<li>Synthesize results</li>
+</ol>
+<hr />
+<h2 id="task-categories">📊 Task Categories<a class="headerlink" href="#task-categories" title="Permanent link">&para;</a></h2>
+<p>You can also organize tasks by category in <code>config/task_categories.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># config/task_categories.yaml</span>
+
+<span class="nt">math</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsm8k_basic</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsm8k_multi_step</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complex_math</span>
+
+<span class="nt">reasoning</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">logical_reasoning</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">commonsense_reasoning</span>
+
+<span class="nt">qa</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">factual_qa</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">science_qa</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">geography_qa</span>
+
+<span class="nt">code</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code_fibonacci</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code_sorting</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bug_fixing</span>
+</code></pre></div>
+<p>Query by category:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">task_categories</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;math&#39;</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="how-tasks-are-executed">🧠 How Tasks Are Executed<a class="headerlink" href="#how-tasks-are-executed" title="Permanent link">&para;</a></h2>
+<h3 id="linear-execution">Linear Execution<a class="headerlink" href="#linear-execution" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># In LinearExecutor.execute()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">):</span>
+    <span class="c1"># Single LLM call</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_llm</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span>
+</code></pre></div>
+<h3 id="agentic-execution">Agentic Execution<a class="headerlink" href="#agentic-execution" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># In AgenticExecutor.execute()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+    <span class="c1"># Phase 1: Planning</span>
+    <span class="n">plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_plan</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="c1"># Phase 2: Execution</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;steps&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">step</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;tool&#39;</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_tool</span><span class="p">(</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;tool&#39;</span><span class="p">],</span> <span class="n">step</span><span class="p">[</span><span class="s1">&#39;args&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_call_llm</span><span class="p">(</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;prompt&#39;</span><span class="p">])</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="c1"># Phase 3: Synthesis</span>
+    <span class="n">final</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_synthesize</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">plan</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">final</span>
+</code></pre></div>
+<hr />
+<h2 id="task-complexity-score">📈 Task Complexity Score<a class="headerlink" href="#task-complexity-score" title="Permanent link">&para;</a></h2>
+<p>The system automatically calculates complexity:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_calculate_complexity_score</span><span class="p">(</span><span class="n">llm_calls</span><span class="p">,</span> <span class="n">tool_calls</span><span class="p">,</span> <span class="n">total_tokens</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Complexity = weighted combination of:</span>
+<span class="sd">    - LLM calls (α=0.4) - each model invocation</span>
+<span class="sd">    - Tool calls (β=0.3) - external operations</span>
+<span class="sd">    - Token volume (γ=0.3) - computation scale</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">normalized_llm</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">llm_calls</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">normalized_tools</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">tool_calls</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">normalized_tokens</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">total_tokens</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">normalized_llm</span> <span class="o">+</span> 
+            <span class="mf">0.3</span> <span class="o">*</span> <span class="n">normalized_tools</span> <span class="o">+</span> 
+            <span class="mf">0.3</span> <span class="o">*</span> <span class="n">normalized_tokens</span><span class="p">)</span>
+</code></pre></div>
+<p>Stored in <code>runs.complexity_score</code>.</p>
+<hr />
+<h2 id="adding-tool-support-for-tasks">🛠️ Adding Tool Support for Tasks<a class="headerlink" href="#adding-tool-support-for-tasks" title="Permanent link">&para;</a></h2>
+<p>If your task needs a new tool, add it in <code>agentic.py</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_execute_tool</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;calculator&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_calculator</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;web_search&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_web_search</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;my_new_tool&quot;</span><span class="p">:</span>  <span class="c1"># ← Add your tool</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_my_new_tool</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown tool: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_my_new_tool</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Implement your custom tool logic.&quot;&quot;&quot;</span>
+    <span class="c1"># Parse args</span>
+    <span class="n">input_data</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;input&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Your tool logic here</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">process_data</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span>
+
+    <span class="c1"># Track for metrics</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_tool_calls</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+</code></pre></div>
+<hr />
+<h2 id="task-validation">✅ Task Validation<a class="headerlink" href="#task-validation" title="Permanent link">&para;</a></h2>
+<h3 id="check-expected-output">Check Expected Output<a class="headerlink" href="#check-expected-output" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_result</span><span class="p">(</span><span class="n">actual</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if task result matches expected.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">expected</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># No validation</span>
+
+    <span class="c1"># Simple exact match</span>
+    <span class="k">if</span> <span class="n">actual</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="n">expected</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># Numeric tolerance for math tasks</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">actual_num</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+        <span class="n">expected_num</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">expected</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">actual_num</span> <span class="o">-</span> <span class="n">expected_num</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.01</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="kc">False</span>
+</code></pre></div>
+<p>Stored in <code>runs.task_success</code> (to be added).</p>
+<hr />
+<h2 id="task-documentation-template">📝 Task Documentation Template<a class="headerlink" href="#task-documentation-template" title="Permanent link">&para;</a></h2>
+<p>When adding a new task, document it in <code>docs/user-guide/tasks.md</code>:</p>
+<p><div class="highlight"><pre><span></span><code><span class="gu">## `my_new_task`</span>
+
+<span class="gs">**Level:**</span> 2  
+<span class="gs">**Tools:**</span> 1 (calculator)  
+<span class="gs">**Description:**</span> My custom task description
+
+<span class="gu">### Prompt</span>
+
+Solve this problem step by step:
+A train leaves Chicago at 2 PM traveling at 60 mph.
+Another train leaves New York at 3 PM traveling at 70 mph.
+The distance between cities is 800 miles.
+When will they meet?
+
+<span class="gu">### Expected Behavior</span>
+
+<span class="k">1.</span> LLM plans steps (distance calculation, relative speed, time)
+<span class="k">2.</span> Uses calculator for each step
+<span class="k">3.</span> Synthesizes final answer
+
+<span class="gu">### Example Output</span>
+</code></pre></div>
+Step 1: Calculate relative speed
+60 mph + 70 mph = 130 mph</p>
+<p>Step 2: Calculate time to meet
+800 miles ÷ 130 mph = 6.15 hours</p>
+<p>Step 3: Add to Chicago departure time
+2 PM + 6 hours = 8 PM
+0.15 hours = 9 minutes</p>
+<p>They will meet at 8:09 PM.
+<div class="highlight"><pre><span></span><code>### Expected Answer: `8:09 PM`
+</code></pre></div></p>
+<hr />
+<h2 id="testing-your-new-task">🧪 Testing Your New Task<a class="headerlink" href="#testing-your-new-task" title="Permanent link">&para;</a></h2>
+<h3 id="quick-test">Quick Test<a class="headerlink" href="#quick-test" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Test linear execution</span>
+python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.test_harness<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--task-id<span class="w"> </span>my_new_task<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repetitions<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--provider<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--verbose
+
+<span class="c1"># Test agentic execution (if tools needed)</span>
+python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.test_harness<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--task-id<span class="w"> </span>my_new_task<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repetitions<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--provider<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--agentic<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--verbose
+</code></pre></div>
+<h3 id="batch-test">Batch Test<a class="headerlink" href="#batch-test" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.run_experiment<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--tasks<span class="w"> </span>my_new_task<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repetitions<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--providers<span class="w"> </span>local,cloud<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--save-db
+</code></pre></div>
+<hr />
+<h2 id="analyzing-task-performance">📊 Analyzing Task Performance<a class="headerlink" href="#analyzing-task-performance" title="Permanent link">&para;</a></h2>
+<h3 id="query-task-results">Query Task Results<a class="headerlink" href="#query-task-results" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">run_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">workflow_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">dynamic_energy_uj</span><span class="o">/</span><span class="mi">1</span><span class="n">e6</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">energy_j</span><span class="p">,</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">duration_ns</span><span class="o">/</span><span class="mi">1</span><span class="n">e9</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">duration_s</span><span class="p">,</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">llm_calls</span><span class="p">,</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">tool_calls</span><span class="p">,</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">complexity_score</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">runs</span><span class="w"> </span><span class="n">r</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">experiments</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">exp_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">exp_id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">task_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;my_new_task&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">run_id</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="compare-across-tasks">Compare Across Tasks<a class="headerlink" href="#compare-across-tasks" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span>
+<span class="w">    </span><span class="n">e</span><span class="p">.</span><span class="n">task_name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">e</span><span class="p">.</span><span class="n">provider</span><span class="p">,</span>
+<span class="w">    </span><span class="k">AVG</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">dynamic_energy_uj</span><span class="o">/</span><span class="mi">1</span><span class="n">e6</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">avg_energy</span><span class="p">,</span>
+<span class="w">    </span><span class="k">AVG</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">duration_ns</span><span class="o">/</span><span class="mi">1</span><span class="n">e9</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">avg_duration</span><span class="p">,</span>
+<span class="w">    </span><span class="k">AVG</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">complexity_score</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">avg_complexity</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">runs</span><span class="w"> </span><span class="n">r</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">experiments</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">exp_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">exp_id</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">task_name</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">provider</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">avg_energy</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="best-practices">🎯 Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="1-clear-prompts">1. Clear Prompts<a class="headerlink" href="#1-clear-prompts" title="Permanent link">&para;</a></h3>
+<p>✅ <strong>Good:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Calculate</span><span class="nv"> </span><span class="s">15%</span><span class="nv"> </span><span class="s">tip</span><span class="nv"> </span><span class="s">on</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">$45.50</span><span class="nv"> </span><span class="s">meal.&quot;</span>
+</code></pre></div>
+<p>❌ <strong>Bad:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;do</span><span class="nv"> </span><span class="s">math&quot;</span>
+</code></pre></div>
+<h3 id="2-appropriate-level">2. Appropriate Level<a class="headerlink" href="#2-appropriate-level" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Level 1</strong>: Questions answerable in one LLM call</li>
+<li><strong>Level 2</strong>: Requires 2-3 steps, may use tools</li>
+<li><strong>Level 3</strong>: Multi-step with multiple tools</li>
+</ul>
+<h3 id="3-include-expected-output">3. Include Expected Output<a class="headerlink" href="#3-include-expected-output" title="Permanent link">&para;</a></h3>
+<p>Always include expected output for validation:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">expected_output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;6.83&quot;</span>
+</code></pre></div>
+<h3 id="4-test-both-providers">4. Test Both Providers<a class="headerlink" href="#4-test-both-providers" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Test with local (faster for iteration)</span>
+python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.test_harness<span class="w"> </span>--task-id<span class="w"> </span>my_task<span class="w"> </span>--provider<span class="w"> </span><span class="nb">local</span>
+
+<span class="c1"># Test with cloud (production)</span>
+python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.test_harness<span class="w"> </span>--task-id<span class="w"> </span>my_task<span class="w"> </span>--provider<span class="w"> </span>cloud
+</code></pre></div>
+<hr />
+<h2 id="advanced-dynamic-tasks">🚀 Advanced: Dynamic Tasks<a class="headerlink" href="#advanced-dynamic-tasks" title="Permanent link">&para;</a></h2>
+<p>You can also generate tasks programmatically:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># scripts/generate_tasks.py</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_math_tasks</span><span class="p">(</span><span class="n">base</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate multiplication tasks of varying difficulty.&quot;&quot;&quot;</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="o">**</span><span class="n">base</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="o">**</span><span class="n">base</span><span class="p">)</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;multiply_</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">tasks</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Multiply </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> × </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;level&#39;</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">base</span><span class="p">),</span>
+            <span class="s1">&#39;tools&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;prompt&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Calculate </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> × </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;expected_output&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="k">return</span> <span class="n">tasks</span>
+</code></pre></div>
+<p>Then merge with <code>tasks.yaml</code>.</p>
+<hr />
+<h2 id="checklist-for-new-tasks">✅ Checklist for New Tasks<a class="headerlink" href="#checklist-for-new-tasks" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] Task ID is unique and descriptive</li>
+<li>[ ] Description clearly explains the task</li>
+<li>[ ] Level appropriate for complexity</li>
+<li>[ ] Tools count matches actual tool usage</li>
+<li>[ ] Prompt is clear and unambiguous</li>
+<li>[ ] Expected output included (if applicable)</li>
+<li>[ ] Tested with local provider</li>
+<li>[ ] Tested with cloud provider (if available)</li>
+<li>[ ] Documented in user guide</li>
+<li>[ ] Added to appropriate category</li>
+</ul>
+<hr />
+<h2 id="debugging-task-issues">🔍 Debugging Task Issues<a class="headerlink" href="#debugging-task-issues" title="Permanent link">&para;</a></h2>
+<h3 id="task-not-found">Task Not Found<a class="headerlink" href="#task-not-found" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>core.execution.tests.run_experiment<span class="w"> </span>--list-tasks
+<span class="c1"># Verify your task appears in the list</span>
+</code></pre></div>
+<h3 id="tool-not-supported">Tool Not Supported<a class="headerlink" href="#tool-not-supported" title="Permanent link">&para;</a></h3>
+<p><strong>Error:</strong> <code>Unknown tool: my_tool</code></p>
+<p><strong>Fix:</strong> Add tool to <code>agentic.py</code> <code>_execute_tool()</code> method.</p>
+<h3 id="wrong-complexity-level">Wrong Complexity Level<a class="headerlink" href="#wrong-complexity-level" title="Permanent link">&para;</a></h3>
+<p>Check calculated score:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">run_id</span><span class="p">,</span><span class="w"> </span><span class="n">complexity_score</span><span class="p">,</span><span class="w"> </span><span class="n">llm_calls</span><span class="p">,</span><span class="w"> </span><span class="n">tool_calls</span><span class="w"> </span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">runs</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">task_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;my_task&#39;</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<p><em>This guide corresponds to the Harness diagram at <code>../assets/diagrams/harness.svg</code>.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
