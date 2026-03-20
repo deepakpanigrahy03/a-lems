@@ -52,20 +52,21 @@ jobs:
 ## 🔧 Manual Deployment (if workflow fails)
 
 ```bash
-# Build the site
-mkdocs build -f docs-src/mkdocs/mkdocs.yml -d site
+# 1. Build the site (from project root)
+cd ~/mydrive/a-lems
+mkdocs build -f docs-src/mkdocs/mkdocs.yml -d docs-src/mkdocs/site
 
-# Create orphan branch with built site
-git checkout --orphan gh-pages
-git rm -rf .
-cp -r site/* .
-touch .nojekyll
+# 2. Go to the built site
+cd docs-src/mkdocs/site
+
+# 3. Create orphan branch and push
+git init
 git add .
 git commit -m "Deploy MkDocs site"
-git push origin gh-pages --force
+git push https://github.com/deepakpanigrahy03/a-lems.git HEAD:gh-pages --force
 
-# Return to main branch
-git checkout main
+# 4. Return to project root
+cd ~/mydrive/a-lems
 ```
 
 ---
