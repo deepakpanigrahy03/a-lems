@@ -9,10 +9,9 @@ In production, this would be replaced by the full Module 0 config loader.
 """
 
 import json
-from pathlib import Path
-from typing import Any, Dict, Optional
-
 import yaml
+from pathlib import Path
+from typing import Dict, Any, Optional
 
 
 class ConfigLoader:

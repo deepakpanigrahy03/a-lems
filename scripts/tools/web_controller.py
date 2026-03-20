@@ -450,30 +450,42 @@ def serve_sphinx_docs(filename):
     print(f"🔍 File exists? {(site_dir / filename).exists()}")
     return send_from_directory(str(site_dir), filename)
 
-@app.route('/docs/')
-@app.route('/docs/<path:filename>')
-def serve_mkdocs_docs(filename='index.html'):
+@app.route('/docs/generated/mkdocs/')
+@app.route('/docs/generated/mkdocs/<path:filename>')
+def serve_mkdocs_docs(filename=None):
     """Serve MkDocs generated documentation"""
     from flask import send_from_directory
     from pathlib import Path
-
     site_dir = ROOT / 'docs' / 'generated' / 'mkdocs'
     
-    # Handle trailing slash (directory request)
-    if filename.endswith('/'):
-        filename = filename.rstrip('/') + '/index.html'
+    print(f"🔍 Debug: site_dir = {site_dir}")
+    print(f"🔍 Debug: filename = {filename}")
     
-    file_path = site_dir / filename
-
-    # If directory → serve index.html inside it
-    if file_path.is_dir():
-        return send_from_directory(str(file_path), 'index.html')
-
-    # If file exists → serve it
-    if file_path.exists():
+    if filename is None or filename == '' or filename.endswith('/'):
+        # If it's a directory request, serve index.html from that directory
+        if filename is None or filename == '':
+            base = ''
+        else:
+            base = filename.rstrip('/')
+        full_path = site_dir / base / 'index.html'
+        print(f"🔍 Debug: directory request, serving: {full_path}")
+        if full_path.exists():
+            return send_from_directory(str(site_dir / base), 'index.html')
+        else:
+            return "File not found", 404
+    
+    # Regular file request
+    full_path = site_dir / filename
+    print(f"🔍 Debug: full_path = {full_path}")
+    print(f"🔍 Debug: file exists? {full_path.exists()}")
+    
+    if full_path.exists() and full_path.is_file():
         return send_from_directory(str(site_dir), filename)
-
-    return "File not found", 404
+    elif (site_dir / filename / 'index.html').exists():
+        # If the path is a directory with index.html
+        return send_from_directory(str(site_dir / filename), 'index.html')
+    else:
+        return "File not found", 404
     
 @app.route("/run", methods=["POST"])
 def run_tool():

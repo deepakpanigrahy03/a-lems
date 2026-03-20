@@ -10,18 +10,17 @@ st.session_state["conn"]:
     mode      : "offline" | "online"
     error     : last error message
 """
-
 import streamlit as st
 
 try:
     import requests as _req
-
     _REQUESTS_OK = True
 except ImportError:
     _REQUESTS_OK = False
 
 _DEFAULT = dict(
-    url="", token="", verified=False, harness=False, mode="offline", error=""
+    url="", token="", verified=False,
+    harness=False, mode="offline", error=""
 )
 
 

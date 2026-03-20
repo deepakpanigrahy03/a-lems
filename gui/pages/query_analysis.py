@@ -4,61 +4,50 @@ Render function: render(ctx)
 ctx keys: ov, runs, tax, lin, age, avg_lin_j, avg_age_j, tax_mult,
           plan_ms, exec_ms, synth_ms, plan_pct, exec_pct, synth_pct
 """
-
 import subprocess
-
+import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st
 from plotly.subplots import make_subplots
 
-from gui.config import DB_PATH, LIVE_API, PL, PROJECT_ROOT, WF_COLORS
-from gui.db import q, q1, q_safe
-from gui.helpers import (_bar_gauge_html, _gauge_html, _human_carbon,
-                         _human_energy, _human_water, fl)
+from gui.config  import PROJECT_ROOT, DB_PATH, LIVE_API, WF_COLORS, PL
+from gui.db      import q, q_safe, q1
+from gui.helpers import fl, _human_energy, _human_water, _human_carbon, _gauge_html, _bar_gauge_html
 
 try:
     import requests as _req
-
     _REQUESTS_OK = True
 except ImportError:
     _REQUESTS_OK = False
-
     class _req:
         @staticmethod
-        def get(*a, **kw):
-            raise RuntimeError("requests not installed")
-
-
+        def get(*a, **kw): raise RuntimeError("requests not installed")
 try:
     import yaml as _yaml
-
     _YAML_OK = True
 except ImportError:
     _YAML_OK = False
 
 
 def render(ctx: dict):
-    ov = ctx["ov"]
-    runs = ctx["runs"]
-    tax = ctx["tax"]
+    ov        = ctx["ov"]
+    runs      = ctx["runs"]
+    tax       = ctx["tax"]
     avg_lin_j = ctx["avg_lin_j"]
     avg_age_j = ctx["avg_age_j"]
-    tax_mult = ctx["tax_mult"]
-    plan_ms = ctx["plan_ms"]
-    exec_ms = ctx["exec_ms"]
-    synth_ms = ctx["synth_ms"]
-    plan_pct = ctx["plan_pct"]
-    exec_pct = ctx["exec_pct"]
+    tax_mult  = ctx["tax_mult"]
+    plan_ms   = ctx["plan_ms"]
+    exec_ms   = ctx["exec_ms"]
+    synth_ms  = ctx["synth_ms"]
+    plan_pct  = ctx["plan_pct"]
+    exec_pct  = ctx["exec_pct"]
     synth_pct = ctx["synth_pct"]
-    lin = ctx["lin"]
-    age = ctx["age"]
+    lin       = ctx["lin"]
+    age       = ctx["age"]
 
     st.title("Query Type Analysis")
-    st.caption(
-        "Energy · latency · tokens · sustainability — grouped by category and workflow"
-    )
+    st.caption("Energy · latency · tokens · sustainability — grouped by category and workflow")
 
     # ── Level 1: category × workflow summary ──────────────────────────────────
     cat_df, _e1 = q_safe("""
@@ -99,59 +88,35 @@ def render(ctx: dict):
     if _e1:
         st.error(f"Query error: {_e1}")
     elif cat_df.empty:
-        st.info(
-            "No data — run experiments and ensure task_categories table is populated."
-        )
+        st.info("No data — run experiments and ensure task_categories table is populated.")
     else:
         # KPI row
         _lin_cat = cat_df[cat_df.workflow_type == "linear"]
         _age_cat = cat_df[cat_df.workflow_type == "agentic"]
-        k1, k2, k3, k4, k5 = st.columns(5)
-        k1.metric("Categories", cat_df.category.nunique())
-        k2.metric("Total runs", int(cat_df.runs.sum()))
-        k3.metric(
-            "Best mJ/token",
-            (
-                f"{cat_df.avg_mj_per_token.min():.4f}"
-                if cat_df.avg_mj_per_token.notna().any()
-                else "—"
-            ),
-        )
-        k4.metric(
-            "Avg linear J",
-            f"{_lin_cat.avg_energy_j.mean():.3f}J" if not _lin_cat.empty else "—",
-        )
-        k5.metric(
-            "Avg agentic J",
-            f"{_age_cat.avg_energy_j.mean():.3f}J" if not _age_cat.empty else "—",
-        )
+        k1,k2,k3,k4,k5 = st.columns(5)
+        k1.metric("Categories",   cat_df.category.nunique())
+        k2.metric("Total runs",   int(cat_df.runs.sum()))
+        k3.metric("Best mJ/token",
+                  f"{cat_df.avg_mj_per_token.min():.4f}" if cat_df.avg_mj_per_token.notna().any() else "—")
+        k4.metric("Avg linear J", f"{_lin_cat.avg_energy_j.mean():.3f}J" if not _lin_cat.empty else "—")
+        k5.metric("Avg agentic J",f"{_age_cat.avg_energy_j.mean():.3f}J" if not _age_cat.empty else "—")
 
         st.divider()
 
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**Energy per query by category**")
-            fig = px.bar(
-                cat_df.dropna(subset=["avg_energy_j"]),
-                x="category",
-                y="avg_energy_j",
-                color="workflow_type",
-                barmode="group",
-                color_discrete_map=WF_COLORS,
-                labels={"avg_energy_j": "Avg Energy (J)", "category": "Category"},
-            )
+            fig = px.bar(cat_df.dropna(subset=["avg_energy_j"]),
+                         x="category", y="avg_energy_j", color="workflow_type",
+                         barmode="group", color_discrete_map=WF_COLORS,
+                         labels={"avg_energy_j":"Avg Energy (J)","category":"Category"})
             st.plotly_chart(fl(fig), use_container_width=True)
         with c2:
             st.markdown("**Energy per token (mJ)**")
-            fig2 = px.bar(
-                cat_df.dropna(subset=["avg_mj_per_token"]),
-                x="category",
-                y="avg_mj_per_token",
-                color="workflow_type",
-                barmode="group",
-                color_discrete_map=WF_COLORS,
-                labels={"avg_mj_per_token": "mJ / token", "category": "Category"},
-            )
+            fig2 = px.bar(cat_df.dropna(subset=["avg_mj_per_token"]),
+                          x="category", y="avg_mj_per_token", color="workflow_type",
+                          barmode="group", color_discrete_map=WF_COLORS,
+                          labels={"avg_mj_per_token":"mJ / token","category":"Category"})
             st.plotly_chart(fl(fig2), use_container_width=True)
 
         c3, c4 = st.columns(2)
@@ -159,29 +124,14 @@ def render(ctx: dict):
             st.markdown("**Phase time breakdown (agentic)**")
             _ap = cat_df[cat_df.workflow_type == "agentic"].copy()
             if not _ap.empty:
-                _ph = _ap[
-                    ["category", "avg_plan_ms", "avg_exec_ms", "avg_synth_ms"]
-                ].melt(id_vars="category", var_name="phase", value_name="ms")
-                _ph["phase"] = _ph["phase"].map(
-                    {
-                        "avg_plan_ms": "Planning",
-                        "avg_exec_ms": "Execution",
-                        "avg_synth_ms": "Synthesis",
-                    }
-                )
-                fig3 = px.bar(
-                    _ph.dropna(),
-                    x="category",
-                    y="ms",
-                    color="phase",
-                    barmode="stack",
-                    color_discrete_map={
-                        "Planning": "#f59e0b",
-                        "Execution": "#3b82f6",
-                        "Synthesis": "#a78bfa",
-                    },
-                    labels={"ms": "ms", "category": "Category"},
-                )
+                _ph = _ap[["category","avg_plan_ms","avg_exec_ms","avg_synth_ms"]].melt(
+                    id_vars="category", var_name="phase", value_name="ms")
+                _ph["phase"] = _ph["phase"].map({
+                    "avg_plan_ms":"Planning","avg_exec_ms":"Execution","avg_synth_ms":"Synthesis"})
+                fig3 = px.bar(_ph.dropna(), x="category", y="ms", color="phase",
+                              barmode="stack",
+                              color_discrete_map={"Planning":"#f59e0b","Execution":"#3b82f6","Synthesis":"#a78bfa"},
+                              labels={"ms":"ms","category":"Category"})
                 st.plotly_chart(fl(fig3), use_container_width=True)
             else:
                 st.info("No agentic data.")
@@ -189,29 +139,14 @@ def render(ctx: dict):
             st.markdown("**Hardware domain breakdown (linear)**")
             _hl = cat_df[cat_df.workflow_type == "linear"].copy()
             if not _hl.empty:
-                _hm = _hl[
-                    ["category", "avg_core_j", "avg_uncore_j", "avg_dram_j"]
-                ].melt(id_vars="category", var_name="domain", value_name="j")
+                _hm = _hl[["category","avg_core_j","avg_uncore_j","avg_dram_j"]].melt(
+                    id_vars="category", var_name="domain", value_name="j")
                 _hm["domain"] = _hm["domain"].map(
-                    {
-                        "avg_core_j": "Core",
-                        "avg_uncore_j": "Uncore",
-                        "avg_dram_j": "DRAM",
-                    }
-                )
-                fig4 = px.bar(
-                    _hm.dropna(),
-                    x="category",
-                    y="j",
-                    color="domain",
-                    barmode="stack",
-                    color_discrete_map={
-                        "Core": "#3b82f6",
-                        "Uncore": "#38bdf8",
-                        "DRAM": "#a78bfa",
-                    },
-                    labels={"j": "Joules", "category": "Category"},
-                )
+                    {"avg_core_j":"Core","avg_uncore_j":"Uncore","avg_dram_j":"DRAM"})
+                fig4 = px.bar(_hm.dropna(), x="category", y="j", color="domain",
+                              barmode="stack",
+                              color_discrete_map={"Core":"#3b82f6","Uncore":"#38bdf8","DRAM":"#a78bfa"},
+                              labels={"j":"Joules","category":"Category"})
                 st.plotly_chart(fl(fig4), use_container_width=True)
             else:
                 st.info("No linear data.")
@@ -220,11 +155,9 @@ def render(ctx: dict):
 
         # ── Level 2: per-task ─────────────────────────────────────────────────
         st.markdown("### Level 2 — Per-task detail")
-        _sel_cat = st.selectbox(
-            "Filter category",
-            ["all"] + sorted(cat_df.category.dropna().unique().tolist()),
-            key="qa_cat",
-        )
+        _sel_cat = st.selectbox("Filter category",
+                                ["all"] + sorted(cat_df.category.dropna().unique().tolist()),
+                                key="qa_cat")
         _cat_where = f"WHERE tc.category = '{_sel_cat}'" if _sel_cat != "all" else ""
 
         task_df, _e2 = q_safe(f"""
@@ -251,36 +184,17 @@ def render(ctx: dict):
         if _e2:
             st.error(_e2)
         elif not task_df.empty:
-            fig5 = px.bar(
-                task_df.dropna(subset=["avg_energy_j"]),
-                x="task_name",
-                y="avg_energy_j",
-                color="workflow_type",
-                barmode="group",
-                color_discrete_map=WF_COLORS,
-                hover_data=["category", "avg_tokens", "avg_mj_per_token"],
-                labels={"avg_energy_j": "Avg Energy (J)", "task_name": "Task"},
-            )
+            fig5 = px.bar(task_df.dropna(subset=["avg_energy_j"]),
+                          x="task_name", y="avg_energy_j", color="workflow_type",
+                          barmode="group", color_discrete_map=WF_COLORS,
+                          hover_data=["category","avg_tokens","avg_mj_per_token"],
+                          labels={"avg_energy_j":"Avg Energy (J)","task_name":"Task"})
             fig5.update_xaxes(tickangle=30)
             st.plotly_chart(fl(fig5), use_container_width=True)
-            _sc = [
-                c
-                for c in [
-                    "task_name",
-                    "category",
-                    "workflow_type",
-                    "runs",
-                    "avg_energy_j",
-                    "avg_duration_s",
-                    "avg_tokens",
-                    "avg_mj_per_token",
-                    "avg_carbon_mg",
-                    "avg_water_ml",
-                    "avg_llm_calls",
-                    "avg_tool_calls",
-                ]
-                if c in task_df.columns
-            ]
+            _sc = [c for c in ["task_name","category","workflow_type","runs","avg_energy_j",
+                                "avg_duration_s","avg_tokens","avg_mj_per_token",
+                                "avg_carbon_mg","avg_water_ml","avg_llm_calls","avg_tool_calls"]
+                   if c in task_df.columns]
             st.dataframe(task_df[_sc], use_container_width=True, hide_index=True)
 
         st.divider()
@@ -291,44 +205,23 @@ def render(ctx: dict):
 
         if not runs.empty and "task_name" in runs.columns:
             _t_opts = sorted(runs.task_name.dropna().unique().tolist())
-            _sel_t = st.selectbox(
-                "Select task to interpret", _t_opts, key="qa_human_task"
-            )
-            _tr = runs[runs.task_name == _sel_t]
+            _sel_t  = st.selectbox("Select task to interpret", _t_opts, key="qa_human_task")
+            _tr     = runs[runs.task_name == _sel_t]
 
-            for _wf, _border in [("linear", "#22c55e"), ("agentic", "#ef4444")]:
+            for _wf, _border in [("linear","#22c55e"),("agentic","#ef4444")]:
                 _wr = _tr[_tr.workflow_type == _wf]
-                if _wr.empty:
-                    continue
-                _ej = float(_wr.energy_j.mean())
-                _wml = (
-                    float(_wr.water_ml.mean())
-                    if "water_ml" in _wr.columns and _wr.water_ml.notna().any()
-                    else 0
-                )
-                _cmg = (
-                    float(_wr.carbon_g.mean() * 1000)
-                    if "carbon_g" in _wr.columns and _wr.carbon_g.notna().any()
-                    else 0
-                )
-                _tok = (
-                    float(_wr.total_tokens.mean())
-                    if "total_tokens" in _wr.columns and _wr.total_tokens.notna().any()
-                    else 0
-                )
-                _dur = (
-                    float(_wr.duration_ms.mean() / 1000)
-                    if "duration_ms" in _wr.columns and _wr.duration_ms.notna().any()
-                    else 0
-                )
+                if _wr.empty: continue
+                _ej  = float(_wr.energy_j.mean())
+                _wml = float(_wr.water_ml.mean())    if "water_ml"   in _wr.columns and _wr.water_ml.notna().any()   else 0
+                _cmg = float(_wr.carbon_g.mean()*1000) if "carbon_g" in _wr.columns and _wr.carbon_g.notna().any()  else 0
+                _tok = float(_wr.total_tokens.mean())  if "total_tokens" in _wr.columns and _wr.total_tokens.notna().any() else 0
+                _dur = float(_wr.duration_ms.mean()/1000) if "duration_ms" in _wr.columns and _wr.duration_ms.notna().any() else 0
 
                 _ins = _human_energy(_ej)
                 _ins_html = "".join(
                     f"<div style='margin:2px 0;font-size:10px;color:#b8c8d8;'>{ic} {desc}</div>"
-                    for ic, desc in _ins
-                )
-                st.markdown(
-                    f"""
+                    for ic, desc in _ins)
+                st.markdown(f"""
                 <div style="background:#0f1520;border:1px solid #1e2d45;border-radius:8px;
                             padding:14px 18px;margin-bottom:8px;border-left:3px solid {_border};">
                   <div style="font-size:12px;font-weight:600;color:#e8f0f8;margin-bottom:6px;">
@@ -341,9 +234,8 @@ def render(ctx: dict):
                   <div style="margin-top:8px;font-size:10px;color:#7090b0;border-top:1px solid #1e2d45;padding-top:6px;">
                     💧 {_human_water(_wml)} &nbsp;·&nbsp; 🌱 {_human_carbon(_cmg)}
                   </div>
-                </div>""",
-                    unsafe_allow_html=True,
-                )
+                </div>""", unsafe_allow_html=True)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════

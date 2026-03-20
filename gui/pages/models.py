@@ -4,49 +4,31 @@ Reads config/models.json live on every render — no hardcoding.
 Schema:  { "cloud": { "linear": {...}, "agentic": {...} },
            "local":  { "linear": {...}, "agentic": {...} } }
 """
-
 import json
-from pathlib import Path
-
+import streamlit as st
 import pandas as pd
 import plotly.express as px
-import streamlit as st
+from pathlib import Path
 
-from gui.config import PROJECT_ROOT, WF_COLORS
-from gui.db import q_safe
+from gui.config  import PROJECT_ROOT, WF_COLORS
+from gui.db      import q_safe
 from gui.helpers import fl
-
 
 # ── Theme helpers ─────────────────────────────────────────────────────────────
 def _is_dark() -> bool:
     return st.session_state.get("theme", "dark") == "dark"
 
-
 def _tok() -> dict:
     if _is_dark():
         return dict(
-            bg0="#0d1117",
-            bg1="#111827",
-            bg2="#1f2937",
-            bg3="#374151",
-            t1="#f1f5f9",
-            t2="#94a3b8",
-            t3="#475569",
-            brd="#1f2937",
-            brd2="#374151",
-            accent="#3b82f6",
+            bg0="#0d1117", bg1="#111827", bg2="#1f2937", bg3="#374151",
+            t1="#f1f5f9",  t2="#94a3b8",  t3="#475569",
+            brd="#1f2937", brd2="#374151", accent="#3b82f6",
         )
     return dict(
-        bg0="#f3f4f6",
-        bg1="#ffffff",
-        bg2="#f9fafb",
-        bg3="#d1d5db",
-        t1="#1f2937",
-        t2="#4b5563",
-        t3="#6b7280",
-        brd="#d1d5db",
-        brd2="#9ca3af",
-        accent="#3b82f6",
+        bg0="#f3f4f6", bg1="#ffffff", bg2="#f9fafb", bg3="#d1d5db",
+        t1="#1f2937",  t2="#4b5563",  t3="#6b7280",
+        brd="#d1d5db", brd2="#9ca3af", accent="#3b82f6",
     )
 
 
@@ -87,9 +69,7 @@ def _load_stats() -> dict:
         """)
         if not df.empty:
             for _, row in df.iterrows():
-                stats[(str(row["model_name"]), str(row["workflow_type"]))] = (
-                    row.to_dict()
-                )
+                stats[(str(row["model_name"]), str(row["workflow_type"]))] = row.to_dict()
     except Exception:
         pass
     return stats
@@ -108,19 +88,19 @@ def _find_stat(stats: dict, spec: dict, wf: str) -> dict | None:
 
 # ── Spec block (linear or agentic half of a card) ─────────────────────────────
 def _spec_block(spec: dict, wf: str, wf_stats: dict | None, t: dict) -> str:
-    bg2, bg3 = t["bg2"], t["bg3"]
+    bg2, bg3   = t["bg2"], t["bg3"]
     t1, t2, t3 = t["t1"], t["t2"], t["t3"]
-    brd = t["brd"]
-    wf_clr = "#16a34a" if wf == "linear" else "#ef4444"
+    brd        = t["brd"]
+    wf_clr     = "#16a34a" if wf == "linear" else "#ef4444"
 
-    name = spec.get("name", "—")
-    mid = spec.get("model_id", "")
-    ep = spec.get("api_endpoint", "")
-    mpath = spec.get("model_path", "")
-    mtok = spec.get("max_tokens", "—")
-    temp = spec.get("temperature", "—")
+    name   = spec.get("name", "—")
+    mid    = spec.get("model_id", "")
+    ep     = spec.get("api_endpoint", "")
+    mpath  = spec.get("model_path", "")
+    mtok   = spec.get("max_tokens", "—")
+    temp   = spec.get("temperature", "—")
     tools_s = spec.get("tools_supported", False)
-    tools = spec.get("tools", [])
+    tools  = spec.get("tools", [])
 
     def _row(k, v, vc=None):
         vc = vc or t2
@@ -141,30 +121,24 @@ def _spec_block(spec: dict, wf: str, wf_stats: dict | None, t: dict) -> str:
         f"<div style='font-size:11px;font-weight:500;color:{t1};margin-bottom:7px'>"
         f"{name}</div>"
     )
-    if mid:
-        html += _row("Model ID", mid)
-    if ep:
-        html += _row("Endpoint", ep.replace("https://", "")[:38])
-    if mpath:
-        html += _row("Model file", Path(mpath).name)
-    html += _row("Max tokens", mtok)
+    if mid:    html += _row("Model ID",    mid)
+    if ep:     html += _row("Endpoint",    ep.replace("https://","")[:38])
+    if mpath:  html += _row("Model file",  Path(mpath).name)
+    html += _row("Max tokens",  mtok)
     html += _row("Temperature", temp)
     if tools_s and tools:
         html += _row("Tools", "✓ " + ", ".join(tools), "#16a34a")
     else:
-        html += _row(
-            "Tools",
-            "✓ enabled" if tools_s else "✗ disabled",
-            "#16a34a" if tools_s else t3,
-        )
+        html += _row("Tools", "✓ enabled" if tools_s else "✗ disabled",
+                     "#16a34a" if tools_s else t3)
 
     # Measured energy section
     if wf_stats:
-        avg_j = wf_stats.get("avg_j", 0) or 0
-        avg_mj = wf_stats.get("avg_mj_tok", 0) or 0
-        avg_dur = wf_stats.get("avg_dur_s", 0) or 0
-        avg_tok = wf_stats.get("avg_tokens", 0) or 0
-        runs = int(wf_stats.get("runs", 0) or 0)
+        avg_j    = wf_stats.get("avg_j", 0) or 0
+        avg_mj   = wf_stats.get("avg_mj_tok", 0) or 0
+        avg_dur  = wf_stats.get("avg_dur_s", 0) or 0
+        avg_tok  = wf_stats.get("avg_tokens", 0) or 0
+        runs     = int(wf_stats.get("runs", 0) or 0)
         html += (
             f"<div style='margin-top:8px;padding-top:7px;border-top:0.5px solid {brd}'>"
             f"<div style='font-size:9px;color:{t3};margin-bottom:6px'>"
@@ -172,8 +146,8 @@ def _spec_block(spec: dict, wf: str, wf_stats: dict | None, t: dict) -> str:
             f"<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px'>"
         )
         for lbl, val, unit in [
-            ("Energy", avg_j, "J"),
-            ("mJ/token", avg_mj, "mJ"),
+            ("Energy",   avg_j,   "J"),
+            ("mJ/token", avg_mj,  "mJ"),
             ("Duration", avg_dur, "s"),
         ]:
             html += (
@@ -200,14 +174,14 @@ def _spec_block(spec: dict, wf: str, wf_stats: dict | None, t: dict) -> str:
 # ── Full group card (cloud / local) ───────────────────────────────────────────
 def _group_card(gkey: str, gcfg: dict, stats: dict, t: dict) -> str:
     bg1, bg2, bg3 = t["bg1"], t["bg2"], t["bg3"]
-    t1, t2, t3 = t["t1"], t["t2"], t["t3"]
-    brd = t["brd"]
-    clr = {"cloud": "#38bdf8", "local": "#22c55e"}.get(gkey, "#7c3aed")
-    icon = {"cloud": "☁", "local": "💻"}.get(gkey, "⚙")
+    t1, t2, t3    = t["t1"], t["t2"], t["t3"]
+    brd           = t["brd"]
+    clr  = {"cloud": "#38bdf8", "local": "#22c55e"}.get(gkey, "#7c3aed")
+    icon = {"cloud": "☁",       "local": "💻"     }.get(gkey, "⚙")
 
-    lin_spec = gcfg.get("linear", {})
-    age_spec = gcfg.get("agentic", {})
-    lin_stats = _find_stat(stats, lin_spec, "linear")
+    lin_spec  = gcfg.get("linear",  {})
+    age_spec  = gcfg.get("agentic", {})
+    lin_stats = _find_stat(stats, lin_spec,  "linear")
     age_stats = _find_stat(stats, age_spec, "agentic")
 
     html = (
@@ -224,7 +198,7 @@ def _group_card(gkey: str, gcfg: dict, stats: dict, t: dict) -> str:
         f"margin-left:auto'>{gkey}</span>"
         f"</div>"
     )
-    html += _spec_block(lin_spec, "linear", lin_stats, t)
+    html += _spec_block(lin_spec,  "linear",  lin_stats,  t)
     html += _spec_block(age_spec, "agentic", age_stats, t)
 
     # Tax multiple if both measured
@@ -233,7 +207,7 @@ def _group_card(gkey: str, gcfg: dict, stats: dict, t: dict) -> str:
         aj = age_stats.get("avg_j") or 0
         if lj > 0:
             mult = aj / lj
-            mc = "#ef4444" if mult >= 2 else "#d97706" if mult >= 1.2 else "#16a34a"
+            mc   = "#ef4444" if mult >= 2 else "#d97706" if mult >= 1.2 else "#16a34a"
             html += (
                 f"<div style='background:{bg2};border-radius:7px;padding:10px 12px;"
                 f"display:flex;justify-content:space-between;align-items:center;"
@@ -253,16 +227,10 @@ def _group_card(gkey: str, gcfg: dict, stats: dict, t: dict) -> str:
 
 # ── Main render ───────────────────────────────────────────────────────────────
 def render(ctx: dict = None):
-    t = _tok()
-    bg1 = t["bg1"]
-    bg2 = t["bg2"]
-    bg3 = t["bg3"]
-    t1 = t["t1"]
-    t2 = t["t2"]
-    t3 = t["t3"]
-    brd = t["brd"]
-    brd2 = t["brd2"]
-    accent = t["accent"]
+    t    = _tok()
+    bg1  = t["bg1"]; bg2 = t["bg2"]; bg3 = t["bg3"]
+    t1   = t["t1"];  t2  = t["t2"];  t3  = t["t3"]
+    brd  = t["brd"]; brd2 = t["brd2"]; accent = t["accent"]
 
     # ── Page header ───────────────────────────────────────────────────────────
     h_col, btn_col = st.columns([7, 1])
@@ -272,8 +240,7 @@ def render(ctx: dict = None):
             f"<span style='font-size:20px;font-weight:600;color:{t1}'>🍎 Models</span>"
             f"<span style='font-size:12px;color:{t3}'>Apple-to-Apple energy comparison</span>"
             f"</div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
     with btn_col:
         if st.button("↺ Reload", key="models_reload"):
             st.rerun()  # No cache — file is always re-read
@@ -291,8 +258,7 @@ def render(ctx: dict = None):
             f"<code style='background:{bg2};padding:1px 5px;border-radius:3px'>"
             f"{PROJECT_ROOT}/config/models.json</code></span>"
             f"</div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
         return
 
     if cfg.get("_error"):
@@ -304,14 +270,13 @@ def render(ctx: dict = None):
     _mtime = "—"
     try:
         import datetime as _dt
-
-        _mtime = _dt.datetime.fromtimestamp(cfg_path.stat().st_mtime).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        _mtime = _dt.datetime.fromtimestamp(
+            cfg_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
     except Exception:
         pass
 
-    groups = [k for k in cfg if not k.startswith("_") and isinstance(cfg[k], dict)]
+    groups = [k for k in cfg
+              if not k.startswith("_") and isinstance(cfg[k], dict)]
 
     st.markdown(
         f"<div style='font-size:10px;color:{t3};margin-bottom:14px'>"
@@ -321,28 +286,26 @@ def render(ctx: dict = None):
         f" · modified {_mtime}"
         f" · {len(groups)} provider group{'s' if len(groups) != 1 else ''}: "
         f"<b style='color:{t2}'>{', '.join(groups)}</b></div>",
-        unsafe_allow_html=True,
-    )
+        unsafe_allow_html=True)
 
     # ── Model config cards — one per provider group ───────────────────────────
     stats = _load_stats()
-    cols = st.columns(max(len(groups), 1))
+    cols  = st.columns(max(len(groups), 1))
     for i, gkey in enumerate(groups):
         with cols[i]:
-            st.markdown(_group_card(gkey, cfg[gkey], stats, t), unsafe_allow_html=True)
+            st.markdown(_group_card(gkey, cfg[gkey], stats, t),
+                        unsafe_allow_html=True)
 
     st.markdown(
         f"<div style='height:0.5px;background:{brd};margin:18px 0 14px'></div>",
-        unsafe_allow_html=True,
-    )
+        unsafe_allow_html=True)
 
     # ── Apple-to-Apple charts ─────────────────────────────────────────────────
     st.markdown(
         f"<div style='font-size:11px;font-weight:500;color:{t2};"
         f"text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px'>"
         f"Measured comparison — all runs</div>",
-        unsafe_allow_html=True,
-    )
+        unsafe_allow_html=True)
 
     _full_df = pd.DataFrame()
     try:
@@ -374,40 +337,35 @@ def render(ctx: dict = None):
             f"border-radius:8px;padding:20px;text-align:center;"
             f"color:{t3};font-size:12px'>"
             f"No run data yet — run experiments to see charts here.</div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
         return
 
     # Task filter
     _, fc = st.columns([4, 1])
     with fc:
         _tasks = sorted(_full_df.task_name.dropna().unique().tolist())
-        _sel = st.selectbox("Task", ["all"] + _tasks, key="models_task")
-    _filt = (_full_df if _sel == "all" else _full_df[_full_df.task_name == _sel]).copy()
+        _sel   = st.selectbox("Task", ["all"] + _tasks, key="models_task")
+    _filt = (_full_df if _sel == "all"
+             else _full_df[_full_df.task_name == _sel]).copy()
     _filt["model_wf"] = (
-        _filt["model_name"].astype(str) + " · " + _filt["workflow_type"].astype(str)
-    )
+        _filt["model_name"].astype(str) + " · " +
+        _filt["workflow_type"].astype(str))
 
     _pl = dict(
-        paper_bgcolor=bg1,
-        plot_bgcolor=bg2,
+        paper_bgcolor=bg1, plot_bgcolor=bg2,
         font=dict(color=t1, size=10),
         margin=dict(t=20, b=70, l=50, r=10),
-        legend=dict(bgcolor=bg1, bordercolor=brd, borderwidth=0.5, font=dict(color=t2)),
-        height=260,
-    )
+        legend=dict(bgcolor=bg1, bordercolor=brd,
+                    borderwidth=0.5, font=dict(color=t2)),
+        height=260)
 
     for (ch_l, ch_r), (col_l, col_r), (lbl_l, lbl_r) in [
-        (
-            ("avg_energy_j", "avg_mj_per_token"),
-            st.columns(2),
-            ("Energy (J) — model × workflow", "mJ / token — model × workflow"),
-        ),
-        (
-            ("avg_duration_s", "avg_carbon_mg"),
-            st.columns(2),
-            ("Avg duration (s)", "Carbon footprint (mg CO₂)"),
-        ),
+        (("avg_energy_j", "avg_mj_per_token"),
+         st.columns(2),
+         ("Energy (J) — model × workflow", "mJ / token — model × workflow")),
+        (("avg_duration_s", "avg_carbon_mg"),
+         st.columns(2),
+         ("Avg duration (s)", "Carbon footprint (mg CO₂)")),
     ]:
         for col, metric, lbl in [(ch_l, col_l, lbl_l), (ch_r, col_r, lbl_r)]:
             pass  # loop structure — see below
@@ -415,26 +373,19 @@ def render(ctx: dict = None):
     # Draw charts explicitly (avoid loop variable confusion)
     ch1, ch2 = st.columns(2)
     for col_ctx, metric, lbl in [
-        (ch1, "avg_energy_j", "Energy (J) — model × workflow"),
-        (ch2, "avg_mj_per_token", "mJ / token — model × workflow"),
+        (ch1, "avg_energy_j",    "Energy (J) — model × workflow"),
+        (ch2, "avg_mj_per_token","mJ / token — model × workflow"),
     ]:
         with col_ctx:
             st.markdown(
                 f"<div style='font-size:11px;font-weight:500;color:{t2};"
-                f"margin-bottom:4px'>{lbl}</div>",
-                unsafe_allow_html=True,
-            )
+                f"margin-bottom:4px'>{lbl}</div>", unsafe_allow_html=True)
             fig = px.bar(
-                _filt.groupby(["model_wf", "workflow_type"])[metric]
-                .mean()
-                .reset_index(),
-                x="model_wf",
-                y=metric,
-                color="workflow_type",
-                barmode="group",
-                color_discrete_map=WF_COLORS,
-                labels={metric: lbl, "model_wf": ""},
-            )
+                _filt.groupby(["model_wf","workflow_type"])[metric]
+                      .mean().reset_index(),
+                x="model_wf", y=metric, color="workflow_type",
+                barmode="group", color_discrete_map=WF_COLORS,
+                labels={metric: lbl, "model_wf": ""})
             fig.update_xaxes(tickangle=30)
             fig.update_layout(**_pl)
             st.plotly_chart(fl(fig), use_container_width=True)
@@ -442,25 +393,18 @@ def render(ctx: dict = None):
     ch3, ch4 = st.columns(2)
     for col_ctx, metric, lbl in [
         (ch3, "avg_duration_s", "Avg duration (s)"),
-        (ch4, "avg_carbon_mg", "Carbon footprint (mg CO₂)"),
+        (ch4, "avg_carbon_mg",  "Carbon footprint (mg CO₂)"),
     ]:
         with col_ctx:
             st.markdown(
                 f"<div style='font-size:11px;font-weight:500;color:{t2};"
-                f"margin-bottom:4px'>{lbl}</div>",
-                unsafe_allow_html=True,
-            )
+                f"margin-bottom:4px'>{lbl}</div>", unsafe_allow_html=True)
             fig = px.bar(
-                _filt.groupby(["model_wf", "workflow_type"])[metric]
-                .mean()
-                .reset_index(),
-                x="model_wf",
-                y=metric,
-                color="workflow_type",
-                barmode="group",
-                color_discrete_map=WF_COLORS,
-                labels={metric: lbl, "model_wf": ""},
-            )
+                _filt.groupby(["model_wf","workflow_type"])[metric]
+                      .mean().reset_index(),
+                x="model_wf", y=metric, color="workflow_type",
+                barmode="group", color_discrete_map=WF_COLORS,
+                labels={metric: lbl, "model_wf": ""})
             fig.update_xaxes(tickangle=30)
             fig.update_layout(**_pl)
             st.plotly_chart(fl(fig), use_container_width=True)
@@ -468,30 +412,15 @@ def render(ctx: dict = None):
     # ── Full matrix ───────────────────────────────────────────────────────────
     st.markdown(
         f"<div style='height:0.5px;background:{brd};margin:8px 0 12px'></div>",
-        unsafe_allow_html=True,
-    )
+        unsafe_allow_html=True)
     st.markdown(
         f"<div style='font-size:11px;font-weight:500;color:{t2};"
         f"margin-bottom:8px'>Full comparison matrix</div>",
-        unsafe_allow_html=True,
-    )
-    _show = [
-        c
-        for c in [
-            "model_name",
-            "provider",
-            "workflow_type",
-            "task_name",
-            "runs",
-            "avg_energy_j",
-            "avg_dynamic_j",
-            "avg_duration_s",
-            "avg_tokens",
-            "avg_mj_per_token",
-            "avg_ipc",
-            "avg_carbon_mg",
-            "avg_water_ml",
-        ]
-        if c in _filt.columns
-    ]
-    st.dataframe(_filt[_show].round(4), use_container_width=True, hide_index=True)
+        unsafe_allow_html=True)
+    _show = [c for c in [
+        "model_name","provider","workflow_type","task_name","runs",
+        "avg_energy_j","avg_dynamic_j","avg_duration_s","avg_tokens",
+        "avg_mj_per_token","avg_ipc","avg_carbon_mg","avg_water_ml"]
+        if c in _filt.columns]
+    st.dataframe(_filt[_show].round(4),
+                 use_container_width=True, hide_index=True)

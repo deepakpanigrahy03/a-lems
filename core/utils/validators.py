@@ -14,9 +14,9 @@ Author: Deepak Panigrahy
 ================================================================================
 """
 
+from typing import Tuple, List, Any
 import sys
 from pathlib import Path
-from typing import Any, List, Tuple
 
 # ============================================================================
 # Fix Python path
@@ -53,20 +53,16 @@ class MeasurementValidator:
             issues.append(f"Negative package energy: {measurement.package_energy_uj}")
 
         # 2. Thermal throttling (Req 1.9)
-        if hasattr(measurement, "thermal"):
-            temp = getattr(measurement.thermal, "package_temperature_celsius", 0)
+        if hasattr(measurement, 'thermal'):
+            temp = getattr(measurement.thermal, 'package_temperature_celsius', 0)
             if temp > 85:
                 issues.append(f"High temperature ({temp:.1f}°C) – possible throttling")
             elif temp > 90:
-                issues.append(
-                    f"Very high temperature ({temp:.1f}°C) – throttling likely"
-                )
+                issues.append(f"Very high temperature ({temp:.1f}°C) – throttling likely")
 
         # 3. Sample count too low (Req 1.46)
         if measurement.sample_count < 5:
-            issues.append(
-                f"Too few samples ({measurement.sample_count}) – measurement may be unreliable"
-            )
+            issues.append(f"Too few samples ({measurement.sample_count}) – measurement may be unreliable")
 
         # 4. Zero energy on a non‑zero duration
         if measurement.duration_seconds > 0.1 and measurement.package_energy_uj == 0:
@@ -74,9 +70,7 @@ class MeasurementValidator:
 
         # 5. Duration too short
         if measurement.duration_seconds < 0.01:
-            issues.append(
-                f"Measurement too short ({measurement.duration_seconds*1000:.2f}ms)"
-            )
+            issues.append(f"Measurement too short ({measurement.duration_seconds*1000:.2f}ms)")
 
         dprint("Validation issues:", issues)
         return len(issues) == 0, issues

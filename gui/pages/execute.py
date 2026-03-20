@@ -11,37 +11,29 @@
 #   6. _parse_summary kept as fallback only; primary source is DB
 # ─────────────────────────────────────────────────────────────────────────────
 
-import math
-import os
-import re as _re
-import signal
-import subprocess
-import threading
-import time as _time
-from datetime import datetime
+import math, subprocess, time as _time, re as _re, threading, os, signal
 from pathlib import Path
+from datetime import datetime
 
+import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit as st
-
 from gui.components.session_tree import render_session_tree
-from gui.config import (DASHBOARD_CFG, INSIGHTS_RULES, LIVE_API, PL,
-                        PROJECT_ROOT, STATUS_COLORS, STATUS_ICONS, WF_COLORS)
-from gui.connection import api_get, api_post, get_conn
-from gui.db import q, q1
-from gui.helpers import _human_carbon, _human_energy, _human_water, fl
+
+from gui.config     import PROJECT_ROOT, LIVE_API, WF_COLORS, PL, \
+                           INSIGHTS_RULES, DASHBOARD_CFG, STATUS_COLORS, STATUS_ICONS
+from gui.connection import get_conn, api_post, api_get
+from gui.db         import q, q1
+from gui.helpers    import fl, _human_energy, _human_water, _human_carbon
 
 try:
     import requests as _req
-
     _REQUESTS_OK = True
 except ImportError:
     _REQUESTS_OK = False
 
 try:
     import yaml as _yaml
-
     _YAML_OK = True
 except ImportError:
     _YAML_OK = False
@@ -51,42 +43,37 @@ except ImportError:
 # THREAD-SAFE SHARED STORE
 # ══════════════════════════════════════════════════════════════════════════════
 import threading as _threading
-
 _STORE_LOCK = _threading.Lock()
 _STORE: dict = {
-    "running": False,
-    "done": False,
-    "phase": "idle",
-    "progress": 0.0,
-    "log": [],
-    "metrics": {},
+    "running":     False,
+    "done":        False,
+    "phase":       "idle",
+    "progress":    0.0,
+    "log":         [],
+    "metrics":     {},
     "result_rows": [],
-    "group_id": "",
-    "run_record": None,
-    "sessions": [],
-    "queue": [],
-    "saved": [],
-    "stop": False,
+    "group_id":    "",
+    "run_record":  None,
+    "sessions":    [],
+    "queue":       [],
+    "saved":       [],
+    "stop":        False,
     "current_cmd": "",
-    "timeline_snap": None,  # cached Plotly fig — only rebuilt when group_id changes
-    "timeline_gid": "",  # which group_id the snap belongs to
+    "timeline_snap": None,   # cached Plotly fig — only rebuilt when group_id changes
+    "timeline_gid":  "",     # which group_id the snap belongs to
 }
-
 
 def _store_get(key, default=None):
     with _STORE_LOCK:
         return _STORE.get(key, default)
 
-
 def _store_set(key, value):
     with _STORE_LOCK:
         _STORE[key] = value
 
-
 def _store_append(key, value):
     with _STORE_LOCK:
         _STORE.setdefault(key, []).append(value)
-
 
 def _store_log(line):
     with _STORE_LOCK:
@@ -96,37 +83,25 @@ def _store_log(line):
 
 
 # ── Config shortcuts ──────────────────────────────────────────────────────────
-_STUCK_MINS = DASHBOARD_CFG.get("stuck_run", {}).get("threshold_minutes", 30)
+_STUCK_MINS    = DASHBOARD_CFG.get("stuck_run", {}).get("threshold_minutes", 30)
 _KILL_ON_RESET = DASHBOARD_CFG.get("stuck_run", {}).get("kill_process", True)
-_QUEUE_FILE = PROJECT_ROOT / DASHBOARD_CFG.get("queue", {}).get(
-    "persist_file", "config/queue_state.yaml"
-)
-_MAX_LOG = DASHBOARD_CFG.get("live", {}).get("max_log_lines", 200)
-_AUTO_SWITCH = DASHBOARD_CFG.get("live", {}).get("auto_switch_to_analysis", True)
+_QUEUE_FILE    = PROJECT_ROOT / DASHBOARD_CFG.get("queue", {}).get(
+                     "persist_file", "config/queue_state.yaml")
+_MAX_LOG       = DASHBOARD_CFG.get("live", {}).get("max_log_lines", 200)
+_AUTO_SWITCH   = DASHBOARD_CFG.get("live", {}).get("auto_switch_to_analysis", True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SESSION STATE
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _init_state():
     with _STORE_LOCK:
         snap = dict(_STORE)
-    for _k in (
-        "running",
-        "done",
-        "phase",
-        "progress",
-        "log",
-        "metrics",
-        "result_rows",
-        "group_id",
-        "run_record",
-        "sessions",
-    ):
+    for _k in ("running","done","phase","progress","log","metrics",
+               "result_rows","group_id","run_record","sessions"):
         st.session_state[f"ex_{_k}"] = snap.get(_k)
-    for _k in ("queue", "saved"):
+    for _k in ("queue","saved"):
         if f"ex_{_k}" not in st.session_state:
             st.session_state[f"ex_{_k}"] = snap.get(_k, [])
         with _STORE_LOCK:
@@ -139,7 +114,6 @@ def _init_state():
 # QUEUE PERSISTENCE
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _save_queue():
     if not _YAML_OK:
         return
@@ -149,7 +123,6 @@ def _save_queue():
             _yaml.dump({"queue": _store_get("queue", [])}, f)
     except Exception:
         pass
-
 
 def _load_queue():
     if not _YAML_OK or not _QUEUE_FILE.exists():
@@ -168,16 +141,15 @@ def _load_queue():
 # TASK LOADER
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _load_tasks() -> tuple:
     if _YAML_OK:
         yaml_path = PROJECT_ROOT / "config" / "tasks.yaml"
         if yaml_path.exists():
             try:
-                raw = _yaml.safe_load(yaml_path.read_text()) or {}
+                raw   = _yaml.safe_load(yaml_path.read_text()) or {}
                 tasks = raw.get("tasks", [])
-                ids = [t["id"] for t in tasks if "id" in t]
-                cats = {t["id"]: t.get("category", "") for t in tasks}
+                ids   = [t["id"] for t in tasks if "id" in t]
+                cats  = {t["id"]: t.get("category", "") for t in tasks}
                 names = {t["id"]: t.get("name", t["id"]) for t in tasks}
                 if ids:
                     return ids, cats, names
@@ -185,10 +157,8 @@ def _load_tasks() -> tuple:
                 st.warning(f"⚠️ Could not parse config/tasks.yaml: {e}")
 
     try:
-        df = q(
-            "SELECT DISTINCT task_name FROM experiments "
-            "WHERE task_name IS NOT NULL ORDER BY task_name"
-        )
+        df = q("SELECT DISTINCT task_name FROM experiments "
+               "WHERE task_name IS NOT NULL ORDER BY task_name")
         ids = df.task_name.tolist() if not df.empty else []
     except Exception:
         ids = []
@@ -203,7 +173,6 @@ def _load_tasks() -> tuple:
 # ══════════════════════════════════════════════════════════════════════════════
 # STUCK RUN DETECTOR
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 def _show_stuck_runs():
     try:
@@ -223,7 +192,7 @@ def _show_stuck_runs():
     for _, row in stuck.iterrows():
         try:
             started = datetime.fromisoformat(str(row.started_at))
-            mins = int((_time.time() - started.timestamp()) / 60)
+            mins    = int((_time.time() - started.timestamp()) / 60)
             elapsed = f"{mins} min ago"
         except Exception:
             elapsed = str(row.started_at)
@@ -244,17 +213,13 @@ def _show_stuck_runs():
             st.success(f"exp_{row.exp_id} marked as error. Refresh to confirm.")
             st.rerun()
 
-
 def _force_reset_experiment(exp_id: int):
     import sqlite3
-
     try:
         conn = sqlite3.connect(str(PROJECT_ROOT / "data" / "experiments.db"))
         conn.execute(
             "UPDATE experiments SET status='error', error_message='Force reset by UI' "
-            "WHERE exp_id = ?",
-            (exp_id,),
-        )
+            "WHERE exp_id = ?", (exp_id,))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -263,7 +228,6 @@ def _force_reset_experiment(exp_id: int):
     if _KILL_ON_RESET:
         try:
             import psutil
-
             for proc in psutil.process_iter(["pid", "cmdline"]):
                 cmdline = " ".join(proc.info.get("cmdline") or [])
                 if "run_experiment" in cmdline or "test_harness" in cmdline:
@@ -276,62 +240,51 @@ def _force_reset_experiment(exp_id: int):
 # SVG GAUGES
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _gauge_svg(value, vmin, vmax, label, unit, color, warn=None, danger=None):
-    pct = max(0.0, min(1.0, (value - vmin) / max(vmax - vmin, 1e-9)))
+    pct   = max(0.0, min(1.0, (value - vmin) / max(vmax - vmin, 1e-9)))
     angle = -140 + pct * 280
-    r = 52
-    cx, cy = 60, 62
-    ex = cx + r * math.sin(math.radians(angle))
-    ey = cy - r * math.cos(math.radians(angle))
+    r     = 52; cx, cy = 60, 62
+    ex    = cx + r * math.sin(math.radians(angle))
+    ey    = cy - r * math.cos(math.radians(angle))
     large = 1 if pct > 0.5 else 0
-    bx = cx + r * math.sin(math.radians(-140))
-    by = cy - r * math.cos(math.radians(-140))
-    ex0 = cx - r * math.sin(math.radians(-140))
-    ey0 = cy - r * math.cos(math.radians(-140))
-    nclr = (
-        "#ef4444"
-        if danger and value >= danger
-        else "#f59e0b" if warn and value >= warn else color
-    )
-    return (
-        f"<div style='text-align:center;padding:2px 0;'>"
-        f"<svg width='120' height='92' viewBox='0 0 120 92'>"
-        f"<path d='M {bx:.1f} {by:.1f} A {r} {r} 0 1 1 {ex0:.1f} {ey0:.1f}'"
-        f" fill='none' stroke='#1e2d45' stroke-width='8' stroke-linecap='round'/>"
-        f"<path d='M {bx:.1f} {by:.1f} A {r} {r} 0 {large} 1 {ex:.1f} {ey:.1f}'"
-        f" fill='none' stroke='{nclr}' stroke-width='8' stroke-linecap='round'/>"
-        f"<circle cx='{cx}' cy='{cy}' r='4' fill='{nclr}'/>"
-        f"<text x='{cx}' y='{cy+5}' text-anchor='middle' font-size='14'"
-        f" font-weight='700' fill='#e8f0f8' font-family='monospace'>{value:.1f}</text>"
-        f"<text x='{cx}' y='{cy+19}' text-anchor='middle' font-size='7' fill='#7090b0'>{unit}</text>"
-        f"<text x='{cx}' y='85' text-anchor='middle' font-size='8'"
-        f" font-weight='600' fill='{nclr}'>{label}</text>"
-        f"<text x='6'   y='74' text-anchor='middle' font-size='6' fill='#3d5570'>{vmin}</text>"
-        f"<text x='114' y='74' text-anchor='middle' font-size='6' fill='#3d5570'>{vmax}</text>"
-        f"</svg></div>"
-    )
-
+    bx    = cx + r * math.sin(math.radians(-140))
+    by    = cy - r * math.cos(math.radians(-140))
+    ex0   = cx - r * math.sin(math.radians(-140))
+    ey0   = cy - r * math.cos(math.radians(-140))
+    nclr  = ("#ef4444" if danger and value >= danger
+             else "#f59e0b" if warn and value >= warn else color)
+    return (f"<div style='text-align:center;padding:2px 0;'>"
+            f"<svg width='120' height='92' viewBox='0 0 120 92'>"
+            f"<path d='M {bx:.1f} {by:.1f} A {r} {r} 0 1 1 {ex0:.1f} {ey0:.1f}'"
+            f" fill='none' stroke='#1e2d45' stroke-width='8' stroke-linecap='round'/>"
+            f"<path d='M {bx:.1f} {by:.1f} A {r} {r} 0 {large} 1 {ex:.1f} {ey:.1f}'"
+            f" fill='none' stroke='{nclr}' stroke-width='8' stroke-linecap='round'/>"
+            f"<circle cx='{cx}' cy='{cy}' r='4' fill='{nclr}'/>"
+            f"<text x='{cx}' y='{cy+5}' text-anchor='middle' font-size='14'"
+            f" font-weight='700' fill='#e8f0f8' font-family='monospace'>{value:.1f}</text>"
+            f"<text x='{cx}' y='{cy+19}' text-anchor='middle' font-size='7' fill='#7090b0'>{unit}</text>"
+            f"<text x='{cx}' y='85' text-anchor='middle' font-size='8'"
+            f" font-weight='600' fill='{nclr}'>{label}</text>"
+            f"<text x='6'   y='74' text-anchor='middle' font-size='6' fill='#3d5570'>{vmin}</text>"
+            f"<text x='114' y='74' text-anchor='middle' font-size='6' fill='#3d5570'>{vmax}</text>"
+            f"</svg></div>")
 
 def _bar_gauge(value, vmax, label, unit, color):
     pct = max(0.0, min(100.0, value / max(vmax, 1e-9) * 100))
-    return (
-        f"<div style='margin:4px 0 8px;'>"
-        f"<div style='display:flex;justify-content:space-between;"
-        f"font-size:9px;color:#7090b0;margin-bottom:3px;'>"
-        f"<span style='font-weight:600;color:#e8f0f8'>{label}</span>"
-        f"<span style='font-family:monospace;color:{color}'>{value:.0f} {unit}</span>"
-        f"</div><div style='background:#1e2d45;border-radius:3px;height:7px;overflow:hidden;'>"
-        f"<div style='background:{color};width:{pct:.1f}%;height:100%;"
-        f"border-radius:3px;transition:width 0.4s;'></div></div></div>"
-    )
+    return (f"<div style='margin:4px 0 8px;'>"
+            f"<div style='display:flex;justify-content:space-between;"
+            f"font-size:9px;color:#7090b0;margin-bottom:3px;'>"
+            f"<span style='font-weight:600;color:#e8f0f8'>{label}</span>"
+            f"<span style='font-family:monospace;color:{color}'>{value:.0f} {unit}</span>"
+            f"</div><div style='background:#1e2d45;border-radius:3px;height:7px;overflow:hidden;'>"
+            f"<div style='background:{color};width:{pct:.1f}%;height:100%;"
+            f"border-radius:3px;transition:width 0.4s;'></div></div></div>")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FIX #3: STABLE GANTT — built once per group_id, cached in _STORE
 # No more full-box rerender every 1s. Only rebuilds when gid changes.
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 def _gantt_chart_stable(group_id: str):
     """Render timeline only when group_id changes — prevents blinking."""
@@ -342,7 +295,8 @@ def _gantt_chart_stable(group_id: str):
     cached_gid = _store_get("timeline_gid", "")
     cached_fig = _store_get("timeline_snap", None)
     if cached_gid == group_id and cached_fig is not None:
-        st.plotly_chart(cached_fig, use_container_width=True, key=f"gantt_{group_id}")
+        st.plotly_chart(cached_fig, use_container_width=True,
+                        key=f"gantt_{group_id}")
         return
 
     # Build fresh
@@ -357,40 +311,30 @@ def _gantt_chart_stable(group_id: str):
         return
 
     bars = []
-    now = datetime.utcnow()
+    now  = datetime.utcnow()
     first_start = None
 
     for _, row in exps.iterrows():
         try:
             s = datetime.fromisoformat(str(row.started_at)) if row.started_at else None
-            e = (
-                datetime.fromisoformat(str(row.completed_at))
-                if row.completed_at
-                else None
-            )
+            e = datetime.fromisoformat(str(row.completed_at)) if row.completed_at else None
             if s is None:
                 continue
             if first_start is None:
                 first_start = s
-            end = e if e else now
+            end   = e if e else now
             dur_s = max((end - s).total_seconds(), 0.5)
-            offset = (s - first_start).total_seconds()
+            offset= (s - first_start).total_seconds()
             st_db = str(row.get("status", "")).lower()
-            clr = {
-                "completed": "#3b82f6",
-                "running": "#22c55e",
-                "failed": "#ef4444",
-                "error": "#ef4444",
-            }.get(st_db, "#4b5563")
-            bars.append(
-                {
-                    "label": f"exp_{row.exp_id} · {row.provider[:3]} · {str(row.task_name)[:14]}",
-                    "start": offset,
-                    "dur": dur_s,
-                    "color": clr,
-                    "status": st_db,
-                }
-            )
+            clr   = {"completed": "#3b82f6", "running": "#22c55e",
+                     "failed": "#ef4444", "error": "#ef4444"}.get(st_db, "#4b5563")
+            bars.append({
+                "label":  f"exp_{row.exp_id} · {row.provider[:3]} · {str(row.task_name)[:14]}",
+                "start":  offset,
+                "dur":    dur_s,
+                "color":  clr,
+                "status": st_db,
+            })
         except Exception:
             continue
 
@@ -399,24 +343,19 @@ def _gantt_chart_stable(group_id: str):
 
     fig = go.Figure()
     for bar in reversed(bars):
-        fig.add_trace(
-            go.Bar(
-                name=bar["label"],
-                x=[bar["dur"]],
-                y=[bar["label"]],
-                base=bar["start"],
-                orientation="h",
-                marker_color=bar["color"],
-                marker_opacity=0.85,
-                showlegend=False,
-                hovertemplate=(
-                    f"{bar['label']}<br>{bar['dur']:.1f}s"
-                    f"<br>{bar['status']}<extra></extra>"
-                ),
-            )
-        )
+        fig.add_trace(go.Bar(
+            name=bar["label"],
+            x=[bar["dur"]], y=[bar["label"]],
+            base=bar["start"],
+            orientation="h",
+            marker_color=bar["color"],
+            marker_opacity=0.85,
+            showlegend=False,
+            hovertemplate=(f"{bar['label']}<br>{bar['dur']:.1f}s"
+                           f"<br>{bar['status']}<extra></extra>"),
+        ))
 
-    _pl_g = {k: v for k, v in PL.items() if k != "margin"}
+    _pl_g = {k: v for k, v in PL.items() if k != 'margin'}
     fig.update_layout(
         **_pl_g,
         height=max(80 + len(bars) * 26, 120),
@@ -427,14 +366,13 @@ def _gantt_chart_stable(group_id: str):
     )
 
     _store_set("timeline_snap", fig)
-    _store_set("timeline_gid", group_id)
+    _store_set("timeline_gid",  group_id)
     st.plotly_chart(fig, use_container_width=True, key=f"gantt_{group_id}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # BACKGROUND RUN THREAD
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 def _thread_run_local(_first_exp: dict, sid: str):
     import sqlite3 as _sl3
@@ -469,29 +407,23 @@ def _thread_run_local(_first_exp: dict, sid: str):
             return
         m = _store_get("metrics", {}).copy()
         try:
-            er = _req.get(
-                f"http://127.0.0.1:8765/api/runs/{rid}/samples/energy", timeout=2
-            ).json()
+            er = _req.get(f"http://127.0.0.1:8765/api/runs/{rid}/samples/energy", timeout=2).json()
             pw = er.get("power", []) if isinstance(er, dict) else []
             if pw:
-                m["pkg_w"] = float(pw[-1].get("pkg_w", 0))
+                m["pkg_w"]  = float(pw[-1].get("pkg_w", 0))
                 m["core_w"] = float(pw[-1].get("core_w", 0))
         except Exception:
             pass
         try:
-            cr = _req.get(
-                f"http://127.0.0.1:8765/api/runs/{rid}/samples/cpu", timeout=2
-            ).json()
+            cr = _req.get(f"http://127.0.0.1:8765/api/runs/{rid}/samples/cpu", timeout=2).json()
             if isinstance(cr, list) and cr:
                 m["temp_c"] = float(cr[-1].get("package_temp", 0))
-                m["util"] = float(cr[-1].get("cpu_util_percent", 0))
-                m["ipc"] = float(cr[-1].get("ipc", 0))
+                m["util"]   = float(cr[-1].get("cpu_util_percent", 0))
+                m["ipc"]    = float(cr[-1].get("ipc", 0))
         except Exception:
             pass
         try:
-            ir = _req.get(
-                f"http://127.0.0.1:8765/api/runs/{rid}/samples/interrupts", timeout=2
-            ).json()
+            ir = _req.get(f"http://127.0.0.1:8765/api/runs/{rid}/samples/interrupts", timeout=2).json()
             if isinstance(ir, list) and ir:
                 m["irq"] = float(ir[-1].get("interrupts_per_sec", 0))
         except Exception:
@@ -499,17 +431,15 @@ def _thread_run_local(_first_exp: dict, sid: str):
         _store_set("metrics", m)
 
     def _run_one(exp, exp_sid):
-        _store_set(
-            "run_record", {"sid": exp_sid, "name": exp.get("name", "?"), "exp": exp}
-        )
-        _store_set("log", [])
-        _store_set("progress", 0.0)
-        _store_set("phase", "starting")
-        _store_set("metrics", {})
-        _store_set("result_rows", [])
-        _store_set("group_id", "")
-        _store_set("stop", False)
-        _store_set("current_cmd", " ".join(str(x) for x in exp.get("cmd", [])))
+        _store_set("run_record",    {"sid": exp_sid, "name": exp.get("name","?"), "exp": exp})
+        _store_set("log",           [])
+        _store_set("progress",      0.0)
+        _store_set("phase",         "starting")
+        _store_set("metrics",       {})
+        _store_set("result_rows",   [])
+        _store_set("group_id",      "")
+        _store_set("stop",          False)
+        _store_set("current_cmd",   " ".join(str(x) for x in exp.get("cmd", [])))
 
         cmd = exp.get("cmd", [])
         if not cmd:
@@ -518,17 +448,12 @@ def _thread_run_local(_first_exp: dict, sid: str):
 
         last_rid = _db1("SELECT COALESCE(MAX(run_id),0) FROM runs") or 0
         line_ctr = 0
-        rc = -1
+        rc       = -1
 
         try:
             proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                cwd=str(PROJECT_ROOT),
-                bufsize=1,
-            )
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, cwd=str(PROJECT_ROOT), bufsize=1)
 
             for raw in iter(proc.stdout.readline, ""):
                 line = raw.rstrip()
@@ -543,14 +468,10 @@ def _thread_run_local(_first_exp: dict, sid: str):
                     return -2
 
                 lo = line.lower()
-                if "planning" in lo:
-                    _store_set("phase", "planning")
-                elif "execution" in lo:
-                    _store_set("phase", "execution")
-                elif "synth" in lo:
-                    _store_set("phase", "synthesis")
-                elif "rep " in lo or "pair" in lo:
-                    _store_set("phase", "running")
+                if   "planning"  in lo: _store_set("phase", "planning")
+                elif "execution" in lo: _store_set("phase", "execution")
+                elif "synth"     in lo: _store_set("phase", "synthesis")
+                elif "rep " in lo or "pair" in lo: _store_set("phase", "running")
                 if any(k in lo for k in ["complete", "saved", "✅"]):
                     _store_set("phase", "complete")
 
@@ -579,7 +500,7 @@ def _thread_run_local(_first_exp: dict, sid: str):
             _store_log(f"[ERROR] {ex}")
             rc = -1
 
-        _store_set("phase", "complete" if rc == 0 else "error")
+        _store_set("phase",    "complete" if rc == 0 else "error")
         _store_set("progress", 1.0)
         _refresh_gid()
 
@@ -588,29 +509,26 @@ def _thread_run_local(_first_exp: dict, sid: str):
         rows = _load_tax_from_db(gid) if gid else []
         _store_set("result_rows", rows)
 
-        _store_append(
-            "sessions",
-            {
-                "sid": exp_sid,
-                "name": exp.get("name", "?"),
-                "status": "complete" if rc == 0 else "error",
-                "log": _store_get("log", []).copy(),
-                "summary_rows": rows,
-                "ts": _time.strftime("%H:%M:%S"),
-                "rc": rc,
-                "group_id": gid,
-            },
-        )
+        _store_append("sessions", {
+            "sid":          exp_sid,
+            "name":         exp.get("name", "?"),
+            "status":       "complete" if rc == 0 else "error",
+            "log":          _store_get("log", []).copy(),
+            "summary_rows": rows,
+            "ts":           _time.strftime("%H:%M:%S"),
+            "rc":           rc,
+            "group_id":     gid,
+        })
         return rc
 
     _store_set("running", True)
-    _store_set("done", False)
+    _store_set("done",    False)
 
     _run_one(_first_exp, sid)
 
     # Safety cap: never drain more than 50 queued experiments per thread start
     _max_drain = 50
-    _drained = 0
+    _drained   = 0
     while _drained < _max_drain:
         if _store_get("stop", False):
             break
@@ -623,13 +541,12 @@ def _thread_run_local(_first_exp: dict, sid: str):
         _run_one(nxt, f"ses_{int(_time.time()*1000)}")
 
     _store_set("running", False)
-    _store_set("done", True)
+    _store_set("done",    True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FIX #1: TAX FROM DB — agentic_energy / linear_energy, always > 1
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 def _load_tax_from_db(group_id: str) -> list:
     """
@@ -692,35 +609,28 @@ def _load_tax_from_db(group_id: str) -> list:
 # LIVE VIEW WIDGET
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _render_live_view():
-    _running = _store_get("running", False)
-    _done = _store_get("done", False)
+    _running = _store_get('running', False)
+    _done    = _store_get('done',    False)
     if not (_running or _done):
         return
     st.session_state.ex_running = _running
-    st.session_state.ex_done = _done
+    st.session_state.ex_done    = _done
 
-    rec = _store_get("run_record") or {}
-    phase = _store_get("phase", "idle")
-    prog = _store_get("progress", 0.0)
-    log = _store_get("log", [])
-    m = _store_get("metrics", {})
-    gid = _store_get("group_id", "")
+    rec   = _store_get('run_record') or {}
+    phase = _store_get('phase', 'idle')
+    prog  = _store_get('progress', 0.0)
+    log   = _store_get('log', [])
+    m     = _store_get('metrics', {})
+    gid   = _store_get('group_id', '')
 
-    pc = {
-        "starting": "#7090b0",
-        "planning": "#f59e0b",
-        "execution": "#3b82f6",
-        "synthesis": "#a78bfa",
-        "running": "#22c55e",
-        "complete": "#22c55e",
-        "error": "#ef4444",
-        "idle": "#3d5570",
-    }.get(phase, "#7090b0")
+    pc = {"starting": "#7090b0", "planning": "#f59e0b",
+          "execution": "#3b82f6", "synthesis": "#a78bfa",
+          "running": "#22c55e", "complete": "#22c55e",
+          "error": "#ef4444", "idle": "#3d5570"}.get(phase, "#7090b0")
 
     hdr_col, stop_col = st.columns([5, 1])
-    cur_cmd = _store_get("current_cmd", "")
+    cur_cmd = _store_get('current_cmd', '')
     hdr_col.markdown(
         f"<div style='background:#080d18;border:1px solid {pc}44;"
         f"border-left:4px solid {pc};border-radius:5px;"
@@ -733,15 +643,13 @@ def _render_live_view():
         f"<span style='font-size:9px;color:#3d5570;margin-left:8px;'>{int(prog*100)}%</span>"
         f"{'<span style=\"font-size:9px;color:#22c55e;margin-left:8px;\">⚡ RUNNING</span>' if _running else ''}"
         f"</div>",
-        unsafe_allow_html=True,
-    )
+        unsafe_allow_html=True)
 
     if _running:
-        if stop_col.button(
-            "⏹ Stop", type="secondary", use_container_width=True, key="stop_run_btn"
-        ):
-            _store_set("stop", True)
-            st.warning("Stop signal sent.")
+        if stop_col.button('⏹ Stop', type='secondary', use_container_width=True,
+                           key='stop_run_btn'):
+            _store_set('stop', True)
+            st.warning('Stop signal sent.')
 
     if cur_cmd:
         st.markdown(
@@ -749,8 +657,7 @@ def _render_live_view():
             f"background:#05080f;border:1px solid #1e2d45;border-radius:4px;"
             f"padding:4px 10px;margin-bottom:4px;overflow-x:auto;white-space:nowrap;'>"
             f"$ {cur_cmd[:200]}</div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
     st.progress(prog)
 
     left_col, right_col = st.columns([1, 1])
@@ -759,21 +666,13 @@ def _render_live_view():
         st.markdown(
             "<div style='font-size:10px;font-weight:700;color:#7090b0;"
             "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
-            "🌳 Session Tree</div>",
-            unsafe_allow_html=True,
-        )
-        render_session_tree(
-            group_id=gid,
-            expanded=True,
-            live_log=_store_get("log", []),
-            key_suffix="live",
-        )
+            "🌳 Session Tree</div>", unsafe_allow_html=True)
+        render_session_tree(group_id=gid, expanded=True,
+                            live_log=_store_get('log', []), key_suffix="live")
         st.markdown(
             "<div style='font-size:10px;font-weight:700;color:#7090b0;"
             "text-transform:uppercase;letter-spacing:.08em;margin:6px 0 2px;'>"
-            "⏱ Timeline</div>",
-            unsafe_allow_html=True,
-        )
+            "⏱ Timeline</div>", unsafe_allow_html=True)
         # FIX #3: stable chart — no blink
         _gantt_chart_stable(gid)
 
@@ -781,25 +680,18 @@ def _render_live_view():
         st.markdown(
             "<div style='font-size:10px;font-weight:700;color:#7090b0;"
             "text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;'>"
-            "⚡ Live Telemetry</div>",
-            unsafe_allow_html=True,
-        )
+            "⚡ Live Telemetry</div>", unsafe_allow_html=True)
         st.markdown(
             f"<div style='display:flex;justify-content:space-around;'>"
             f"{_gauge_svg(m.get('pkg_w',0),0,80,'Pkg Power','W','#3b82f6',warn=50,danger=70)}"
             f"{_gauge_svg(m.get('core_w',0),0,60,'Core Power','W','#22c55e',warn=40,danger=55)}"
             f"{_gauge_svg(m.get('temp_c',0),30,105,'Pkg Temp','°C','#f59e0b',warn=80,danger=95)}"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
+            f"</div>", unsafe_allow_html=True)
         st.markdown(
-            _bar_gauge(m.get("util", 0), 100, "CPU Util", "%", "#38bdf8")
-            + _bar_gauge(
-                min(m.get("irq", 0), 50000), 50000, "IRQ Rate", "/s", "#f59e0b"
-            )
-            + _bar_gauge(m.get("ipc", 0), 3.0, "IPC", "inst/cyc", "#a78bfa"),
-            unsafe_allow_html=True,
-        )
+            _bar_gauge(m.get('util', 0),   100,   "CPU Util",  "%",        "#38bdf8") +
+            _bar_gauge(min(m.get('irq', 0), 50000), 50000, "IRQ Rate", "/s", "#f59e0b") +
+            _bar_gauge(m.get('ipc', 0),    3.0,   "IPC",       "inst/cyc", "#a78bfa"),
+            unsafe_allow_html=True)
 
         if log:
             log_html = "".join(
@@ -807,14 +699,11 @@ def _render_live_view():
                 f"{'#ef4444' if any(k in l.lower() for k in ['error','fail','traceback']) else '#22c55e' if any(k in l.lower() for k in ['complete','saved','✅','pair']) else '#f59e0b' if 'planning' in l.lower() else '#b8c8d8'};"
                 f"font-family:monospace;font-size:9px;line-height:1.5;'>"
                 f"{l.replace('<','&lt;').replace('>','&gt;')}</div>"
-                for l in log[-40:]
-            )
+                for l in log[-40:])
             st.markdown(
                 "<div style='background:#050810;border:1px solid #1e2d45;"
                 "border-radius:4px;padding:8px;height:220px;overflow-y:auto;'>"
-                f"{log_html}</div>",
-                unsafe_allow_html=True,
-            )
+                f"{log_html}</div>", unsafe_allow_html=True)
 
     if _running:
         st.rerun()
@@ -822,31 +711,26 @@ def _render_live_view():
     if st.session_state.ex_done and st.session_state.ex_result_rows:
         st.divider()
         st.markdown("### 📊 Results")
-        _analytics_card(
-            {
-                "sid": rec.get("sid", ""),
-                "summary_rows": st.session_state.ex_result_rows,
-                "log": log,
-            }
-        )
+        _analytics_card({
+            "sid":          rec.get("sid", ""),
+            "summary_rows": st.session_state.ex_result_rows,
+            "log":          log,
+        })
         st.session_state.ex_done = False
 
     if not _running and st.session_state.ex_queue:
-        st.info(
-            f"⏳ {len(st.session_state.ex_queue)} more queued — click ▶ Start again."
-        )
+        st.info(f"⏳ {len(st.session_state.ex_queue)} more queued — click ▶ Start again.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ANALYTICS CARD  (uses DB-sourced tax rows — always agentic/linear >= 1)
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _analytics_card(session: dict):
-    rows = session.get("summary_rows", [])
+    rows  = session.get("summary_rows", [])
     lines = session.get("log", [])
-    sid = session.get("sid", "x")
-    gid = session.get("group_id", "")
+    sid   = session.get("sid", "x")
+    gid   = session.get("group_id", "")
 
     # If no rows in memory, try loading from DB using group_id
     if not rows and gid:
@@ -854,14 +738,10 @@ def _analytics_card(session: dict):
 
     if rows:
         _thresholds = INSIGHTS_RULES.get("tax_thresholds", {})
-
         def _tax_color(tx):
-            if tx >= _thresholds.get("extreme", {}).get("min", 15):
-                return "#ef4444"
-            if tx >= _thresholds.get("high", {}).get("max", 15):
-                return "#f59e0b"
-            if tx >= _thresholds.get("moderate", {}).get("max", 5):
-                return "#38bdf8"
+            if tx >= _thresholds.get("extreme", {}).get("min", 15):   return "#ef4444"
+            if tx >= _thresholds.get("high",    {}).get("max", 15):   return "#f59e0b"
+            if tx >= _thresholds.get("moderate",{}).get("max",  5):   return "#38bdf8"
             return "#22c55e"
 
         rh = ""
@@ -872,11 +752,11 @@ def _analytics_card(session: dict):
             # Ensure tax is always agentic/linear
             if lin_j > 0 and age_j > 0:
                 tax_x = age_j / lin_j
-            tc = _tax_color(tax_x)
-            mx = max(lin_j, age_j, 0.001)
-            lw = lin_j / mx * 100
-            aw = age_j / mx * 100
-            hi = _human_energy(age_j)
+            tc  = _tax_color(tax_x)
+            mx  = max(lin_j, age_j, 0.001)
+            lw  = lin_j / mx * 100
+            aw  = age_j / mx * 100
+            hi   = _human_energy(age_j)
             hi_s = hi[0][1] if hi else ""
             rh += (
                 f"<tr style='border-bottom:1px solid #111827;'>"
@@ -921,95 +801,46 @@ def _analytics_card(session: dict):
         )
 
         if len(rows) > 1:
-            tax_vals = [
-                age_j / max(lin_j, 1e-9)
-                for r in rows
-                for lin_j, age_j in [
-                    (
-                        float(r.get("linear_j", 0) or 0),
-                        float(r.get("agentic_j", 0) or 0),
-                    )
-                ]
-            ]
-            best_r = min(
-                rows,
-                key=lambda r: float(r.get("agentic_j", 0) or 0)
-                / max(float(r.get("linear_j", 0) or 1), 1e-9),
-            )
-            worst_r = max(
-                rows,
-                key=lambda r: float(r.get("agentic_j", 0) or 0)
-                / max(float(r.get("linear_j", 0) or 1), 1e-9),
-            )
+            tax_vals = [age_j / max(lin_j, 1e-9)
+                        for r in rows
+                        for lin_j, age_j in [(float(r.get("linear_j",0) or 0),
+                                              float(r.get("agentic_j",0) or 0))]]
+            best_r  = min(rows, key=lambda r: float(r.get("agentic_j",0) or 0) /
+                          max(float(r.get("linear_j",0) or 1), 1e-9))
+            worst_r = max(rows, key=lambda r: float(r.get("agentic_j",0) or 0) /
+                          max(float(r.get("linear_j",0) or 1), 1e-9))
             avg_t = sum(tax_vals) / len(tax_vals)
-            best_t = float(best_r.get("agentic_j", 0)) / max(
-                float(best_r.get("linear_j", 1)), 1e-9
-            )
-            worst_t = float(worst_r.get("agentic_j", 0)) / max(
-                float(worst_r.get("linear_j", 1)), 1e-9
-            )
+            best_t  = float(best_r.get("agentic_j",0)) / max(float(best_r.get("linear_j",1)), 1e-9)
+            worst_t = float(worst_r.get("agentic_j",0)) / max(float(worst_r.get("linear_j",1)), 1e-9)
             c1, c2, c3 = st.columns(3)
-            c1.success(
-                f"**✅ Lowest overhead**\n\n{best_r.get('provider','')} · "
-                f"{str(best_r.get('task',''))[:24]}\n\n**{best_t:.2f}×**"
-            )
-            c2.error(
-                f"**⚠ Highest overhead**\n\n{worst_r.get('provider','')} · "
-                f"{str(worst_r.get('task',''))[:24]}\n\n**{worst_t:.2f}×**"
-            )
-            c3.info(
-                f"**📈 Average**\n\n{len(rows)} comparisons · **{avg_t:.2f}×** mean tax"
-            )
+            c1.success(f"**✅ Lowest overhead**\n\n{best_r.get('provider','')} · "
+                       f"{str(best_r.get('task',''))[:24]}\n\n**{best_t:.2f}×**")
+            c2.error(f"**⚠ Highest overhead**\n\n{worst_r.get('provider','')} · "
+                     f"{str(worst_r.get('task',''))[:24]}\n\n**{worst_t:.2f}×**")
+            c3.info(f"**📈 Average**\n\n{len(rows)} comparisons · **{avg_t:.2f}×** mean tax")
 
-        df = pd.DataFrame(rows)
-        df["label"] = (
-            df["provider"].astype(str) + " · " + df["task"].astype(str).str[:22]
-        )
+        df  = pd.DataFrame(rows)
+        df["label"] = df["provider"].astype(str) + " · " + df["task"].astype(str).str[:22]
         fig = go.Figure()
-        fig.add_trace(
-            go.Bar(
-                name="Linear",
-                x=df["label"],
-                y=df["linear_j"],
-                marker_color="#22c55e",
-                text=df["linear_j"].round(3),
-                textposition="outside",
-                textfont=dict(size=8),
-            )
-        )
-        fig.add_trace(
-            go.Bar(
-                name="Agentic",
-                x=df["label"],
-                y=df["agentic_j"],
-                marker_color="#ef4444",
-                text=df["agentic_j"].round(3),
-                textposition="outside",
-                textfont=dict(size=8),
-            )
-        )
-        _pl2 = {k: v for k, v in PL.items() if k != "margin"}
-        fig.update_layout(
-            **_pl2,
-            barmode="group",
-            height=260,
-            title="Linear vs Agentic energy",
-            xaxis_tickangle=20,
-            margin=dict(t=40, b=10),
-        )
+        fig.add_trace(go.Bar(name="Linear",  x=df["label"], y=df["linear_j"],
+                             marker_color="#22c55e", text=df["linear_j"].round(3),
+                             textposition="outside", textfont=dict(size=8)))
+        fig.add_trace(go.Bar(name="Agentic", x=df["label"], y=df["agentic_j"],
+                             marker_color="#ef4444", text=df["agentic_j"].round(3),
+                             textposition="outside", textfont=dict(size=8)))
+        _pl2 = {k: v for k, v in PL.items() if k != 'margin'}
+        fig.update_layout(**_pl2, barmode="group", height=260,
+                          title="Linear vs Agentic energy",
+                          xaxis_tickangle=20, margin=dict(t=40, b=10))
         import time as _t
-
-        st.plotly_chart(fig, use_container_width=True, key=f"ac_{sid}_{_t.time_ns()}")
+        st.plotly_chart(fig, use_container_width=True,
+                        key=f'ac_{sid}_{_t.time_ns()}')
 
         csv = df[["provider", "task", "linear_j", "agentic_j"]].copy()
         csv["tax_x"] = csv["agentic_j"] / csv["linear_j"].clip(lower=1e-9)
-        st.download_button(
-            "📥 Export CSV",
-            csv.to_csv(index=False),
-            file_name=f"alems_{sid}.csv",
-            mime="text/csv",
-            key=f"csv_{sid}_{__import__('time').time_ns()}",
-        )
+        st.download_button("📥 Export CSV", csv.to_csv(index=False),
+                           file_name=f"alems_{sid}.csv",
+                           mime="text/csv", key=f"csv_{sid}_{__import__('time').time_ns()}")
     else:
         st.info("No tax data found yet. Results appear after the experiment completes.")
 
@@ -1018,8 +849,7 @@ def _analytics_card(session: dict):
             f"<div style='color:{'#ef4444' if any(k in l.lower() for k in ['error','fail']) else '#22c55e' if any(k in l.lower() for k in ['complete','saved','✅']) else '#b8c8d8'};"
             f"font-family:monospace;font-size:10px;line-height:1.5;'>"
             f"{l.replace('<','&lt;').replace('>','&gt;')}</div>"
-            for l in lines
-        )
+            for l in lines)
         st.markdown(
             "<div style='background:#050810;border:1px solid #1e2d45;border-radius:4px;"
             f"padding:10px;max-height:300px;overflow-y:auto;'>{log_html}</div>",
@@ -1031,35 +861,23 @@ def _analytics_card(session: dict):
 # REMOTE EXECUTION
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _run_remote(exp: dict, session_id: str, base_url: str):
-    lines = []
-    summary_rows = []
+    lines = []; summary_rows = []
     if not _REQUESTS_OK:
-        st.error("pip install requests")
-        return -1, lines, summary_rows
+        st.error("pip install requests"); return -1, lines, summary_rows
 
-    prog_ph = st.progress(0)
-    status_ph = st.empty()
+    prog_ph = st.progress(0); status_ph = st.empty()
     cols = st.columns([11, 9])
     with cols[0]:
-        st.markdown(
-            "<div style='font-size:10px;font-weight:600;color:#7090b0;"
-            "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
-            "⬛ Remote terminal</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("<div style='font-size:10px;font-weight:600;color:#7090b0;"
+                    "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
+                    "⬛ Remote terminal</div>", unsafe_allow_html=True)
         out_ph = st.empty()
     with cols[1]:
-        st.markdown(
-            "<div style='font-size:10px;font-weight:600;color:#7090b0;"
-            "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
-            "⚡ Live telemetry</div>",
-            unsafe_allow_html=True,
-        )
-        phase_ph = st.empty()
-        gauge_ph = st.empty()
-        bar_ph = st.empty()
+        st.markdown("<div style='font-size:10px;font-weight:600;color:#7090b0;"
+                    "text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;'>"
+                    "⚡ Live telemetry</div>", unsafe_allow_html=True)
+        phase_ph = st.empty(); gauge_ph = st.empty(); bar_ph = st.empty()
 
     _pw = _core_w = _tp = _util = _irq = _ipc = 0.0
 
@@ -1069,67 +887,51 @@ def _run_remote(exp: dict, session_id: str, base_url: str):
             f"{_gauge_svg(_pw,0,80,'Pkg Power','W','#3b82f6',warn=50,danger=70)}"
             f"{_gauge_svg(_core_w,0,60,'Core Power','W','#22c55e',warn=40,danger=55)}"
             f"{_gauge_svg(_tp,30,105,'Pkg Temp','°C','#f59e0b',warn=80,danger=95)}"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
+            f"</div>", unsafe_allow_html=True)
         bar_ph.markdown(
-            _bar_gauge(_util, 100, "CPU Util", "%", "#38bdf8")
-            + _bar_gauge(min(_irq, 50000), 50000, "IRQ Rate", "/s", "#f59e0b")
-            + _bar_gauge(_ipc, 3.0, "IPC", "inst/cyc", "#a78bfa"),
-            unsafe_allow_html=True,
-        )
-        pc = {
-            "starting": "#7090b0",
-            "running": "#22c55e",
-            "complete": "#22c55e",
-            "error": "#ef4444",
-        }.get(phase, "#7090b0")
+            _bar_gauge(_util, 100, "CPU Util", "%", "#38bdf8") +
+            _bar_gauge(min(_irq, 50000), 50000, "IRQ Rate", "/s", "#f59e0b") +
+            _bar_gauge(_ipc, 3.0, "IPC", "inst/cyc", "#a78bfa"),
+            unsafe_allow_html=True)
+        pc = {"starting": "#7090b0", "running": "#22c55e",
+              "complete": "#22c55e", "error": "#ef4444"}.get(phase, "#7090b0")
         phase_ph.markdown(
             f"<div style='font-size:10px;padding:3px 10px;background:{pc}22;"
             f"border:1px solid {pc};border-radius:4px;display:inline-block;color:{pc};'>"
-            f"● {phase.upper()}</div>",
-            unsafe_allow_html=True,
-        )
+            f"● {phase.upper()}</div>", unsafe_allow_html=True)
 
     seen = 0
     for _ in range(600):
         _time.sleep(1)
         try:
-            r = _req.get(f"{base_url}/api/run/status/{session_id}", timeout=6)
+            r    = _req.get(f"{base_url}/api/run/status/{session_id}", timeout=6)
             data = r.json()
         except Exception as e:
-            status_ph.warning(f"Poll error: {e}")
-            continue
+            status_ph.warning(f"Poll error: {e}"); continue
 
         status = data.get("status", "?")
-        log = data.get("log", [])
-        prog = float(data.get("progress", 0))
+        log    = data.get("log", [])
+        prog   = float(data.get("progress", 0))
         prog_ph.progress(min(prog, 1.0))
 
-        new = log[seen:]
-        seen = len(log)
-        for l in new:
-            lines.append(l)
+        new = log[seen:]; seen = len(log)
+        for l in new: lines.append(l)
 
         if lines:
             html = "".join(
                 f"<div style='color:{'#ef4444' if any(k in l.lower() for k in ['error','fail']) else '#22c55e' if any(k in l.lower() for k in ['complete','✅','saved']) else '#b8c8d8'};"
                 f"font-family:monospace;font-size:10px;line-height:1.5;'>"
                 f"{l.replace('<','&lt;').replace('>','&gt;')}</div>"
-                for l in lines[-50:]
-            )
+                for l in lines[-50:])
             out_ph.markdown(
                 "<div style='background:#060a0f;border:1px solid #1e2d45;border-radius:4px;"
                 f"padding:8px;max-height:340px;overflow-y:auto;'>{html}</div>",
-                unsafe_allow_html=True,
-            )
+                unsafe_allow_html=True)
 
         _draw(status)
         status_ph.markdown(
             f"<div style='font-size:9px;color:#5a7090;'>Session <code>{session_id}</code>"
-            f" · <b style='color:#4fc3f7;'>{status}</b></div>",
-            unsafe_allow_html=True,
-        )
+            f" · <b style='color:#4fc3f7;'>{status}</b></div>", unsafe_allow_html=True)
 
         if data.get("done") or status in ("complete", "error", "cancelled"):
             if status == "complete":
@@ -1142,25 +944,23 @@ def _run_remote(exp: dict, session_id: str, base_url: str):
                 st.error(f"Run ended: {status}")
             return (0 if status == "complete" else 1), lines, summary_rows
 
-    st.warning("Polling timed out.")
-    return -1, lines, []
+    st.warning("Polling timed out."); return -1, lines, []
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FIX #5 & #6: BEAUTIFUL RUN HISTORY CARD
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _history_card(sess: dict, idx: int, expanded: bool):
     """Beautiful history card for Tab 4."""
-    status = sess.get("status", "?")
-    is_ok = status == "complete"
-    clr = "#22c55e" if is_ok else "#ef4444"
-    icon = "✅" if is_ok else "❌"
-    name = sess.get("name", "Run")
-    ts = sess.get("ts", "")
-    rows = sess.get("summary_rows", [])
-    gid = sess.get("group_id", "")
+    status  = sess.get("status", "?")
+    is_ok   = status == "complete"
+    clr     = "#22c55e" if is_ok else "#ef4444"
+    icon    = "✅" if is_ok else "❌"
+    name    = sess.get("name", "Run")
+    ts      = sess.get("ts", "")
+    rows    = sess.get("summary_rows", [])
+    gid     = sess.get("group_id", "")
     n_pairs = len(rows)
 
     # Load from DB if in-memory rows empty
@@ -1183,8 +983,7 @@ def _history_card(sess: dict, idx: int, expanded: bool):
             f"<span style='font-size:10px;color:#3d5570;font-family:monospace;'>{ts}</span>"
             f"{'<span style=\"font-size:10px;color:#4b6080;font-family:monospace;\">'+gid+'</span>' if gid else ''}"
             f"</div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
 
         if rows:
             # Mini tax summary grid
@@ -1192,7 +991,7 @@ def _history_card(sess: dict, idx: int, expanded: bool):
             for ci, r in enumerate(rows[:3]):
                 lin_j = float(r.get("linear_j", 0) or 0)
                 age_j = float(r.get("agentic_j", 0) or 0)
-                tax = age_j / max(lin_j, 1e-9)
+                tax   = age_j / max(lin_j, 1e-9)
                 t_clr = "#ef4444" if tax > 10 else "#f59e0b" if tax > 5 else "#22c55e"
                 with cols[ci]:
                     st.markdown(
@@ -1205,8 +1004,7 @@ def _history_card(sess: dict, idx: int, expanded: bool):
                         f"<div style='font-size:8px;color:#3d5570;margin-top:4px;'>"
                         f"Linear {lin_j:.3f}J → Agentic {age_j:.3f}J</div>"
                         f"</div>",
-                        unsafe_allow_html=True,
-                    )
+                        unsafe_allow_html=True)
 
             st.markdown("")
             _analytics_card(dict(sess, summary_rows=rows))
@@ -1218,11 +1016,9 @@ def _history_card(sess: dict, idx: int, expanded: bool):
 # FIX #2: NON-BLOCKING get_conn()
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def _get_conn_safe() -> dict:
     """get_conn with 2s timeout so startup never hangs."""
     import concurrent.futures
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
         fut = ex.submit(get_conn)
         try:
@@ -1235,7 +1031,6 @@ def _get_conn_safe() -> dict:
 # MAIN RENDER
 # ══════════════════════════════════════════════════════════════════════════════
 
-
 def render(ctx: dict):
     _init_state()
     _load_queue()
@@ -1246,11 +1041,8 @@ def render(ctx: dict):
     _conn = _get_conn_safe()
     if _conn.get("verified"):
         _hclr = "#22c55e" if _conn.get("harness") else "#f59e0b"
-        _hmsg = (
-            "Harness ready — runs execute on lab machine"
-            if _conn.get("harness")
-            else "Server reachable but harness not loaded"
-        )
+        _hmsg = ("Harness ready — runs execute on lab machine"
+                 if _conn.get("harness") else "Server reachable but harness not loaded")
         st.markdown(
             f"<div style='background:#0a2010;border:1px solid #22c55e33;"
             f"border-left:3px solid #22c55e;border-radius:4px;"
@@ -1258,8 +1050,7 @@ def render(ctx: dict):
             f"🟢 <b style='color:#22c55e'>LIVE MODE</b>  ·  "
             f"<span style='color:{_hclr}'>{_hmsg}</span><br/>"
             f"<span style='color:#3d5570;font-size:9px;'>Tunnel: {_conn.get('url','')}</span></div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
     else:
         st.markdown(
             "<div style='background:#0a0f1a;border:1px solid #1e2d45;"
@@ -1267,17 +1058,16 @@ def render(ctx: dict):
             "padding:8px 14px;margin-bottom:10px;font-size:11px;'>"
             "⚫ <b style='color:#3b82f6'>LOCAL MODE</b>  ·  "
             "<span style='color:#5a7090'>Runs execute on this machine.</span></div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
 
     # Queue banner
     # FIX: Only sync session_state.ex_queue → _STORE when NOT running.
     # If running, the thread owns _STORE["queue"]; syncing overwrites pops done by thread
     # and causes infinite re-queuing.
-    if "ex_queue" not in st.session_state:
-        st.session_state.ex_queue = _store_get("queue", [])
-    elif not _store_get("running", False):
-        _store_set("queue", list(st.session_state.ex_queue))
+    if 'ex_queue' not in st.session_state:
+        st.session_state.ex_queue = _store_get('queue', [])
+    elif not _store_get('running', False):
+        _store_set('queue', list(st.session_state.ex_queue))
     qlen = len(st.session_state.ex_queue)
     if qlen > 0:
         st.markdown(
@@ -1286,23 +1076,20 @@ def render(ctx: dict):
             f"⏳ <b>{qlen}</b> experiment{'s' if qlen > 1 else ''} queued"
             f"{'  ·  🔴 run in progress' if st.session_state.ex_running else ''}"
             f"</div>",
-            unsafe_allow_html=True,
-        )
+            unsafe_allow_html=True)
 
     # Live view is now INSIDE tab 2 only — see TAB 2 block below
-    st.session_state.ex_running = _store_get("running", False)
-    st.session_state.ex_done = _store_get("done", False)
+    st.session_state.ex_running = _store_get('running', False)
+    st.session_state.ex_done    = _store_get('done', False)
 
     all_tasks, _cat_map, _name_map = _load_tasks()
 
-    tab1, tab2, tab3, tab4 = st.tabs(
-        [
-            "📋 Create & Queue",
-            "⚡ Live Execution",
-            "📊 Session Analysis",
-            "📈 Run History",
-        ]
-    )
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📋 Create & Queue",
+        "⚡ Live Execution",
+        "📊 Session Analysis",
+        "📈 Run History",
+    ])
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 1 — CREATE & QUEUE
@@ -1314,12 +1101,8 @@ def render(ctx: dict):
         with left:
             st.markdown("#### 🔬 Build Experiment")
             exp_name = st.text_input("Name", value="My Experiment", key="ex_name")
-            exp_mode = st.radio(
-                "Mode",
-                ["Single (test_harness)", "Batch (run_experiment)"],
-                horizontal=True,
-                key="ex_mode",
-            )
+            exp_mode = st.radio("Mode", ["Single (test_harness)", "Batch (run_experiment)"],
+                                horizontal=True, key="ex_mode")
 
             if not all_tasks:
                 st.error("No tasks available. Please check config/tasks.yaml.")
@@ -1327,146 +1110,76 @@ def render(ctx: dict):
 
             if "Single" in exp_mode:
                 task_labels = [f"{tid}  ({_cat_map.get(tid,'')})" for tid in all_tasks]
-                h_task_idx = st.selectbox(
-                    "Task",
-                    range(len(all_tasks)),
-                    format_func=lambda i: task_labels[i],
-                    key="h_task_idx",
-                )
-                h_task = all_tasks[h_task_idx]
-                h_prov = st.selectbox("Provider", ["cloud", "local"], key="h_prov")
-                h_reps = st.number_input("Repetitions", 1, 100, 3, key="h_reps")
-                h_country = st.selectbox(
-                    "Region",
-                    ["US", "DE", "FR", "NO", "IN", "AU", "GB", "CN", "BR"],
-                    format_func=lambda x: {
-                        "US": "🇺🇸 US",
-                        "DE": "🇩🇪 DE",
-                        "FR": "🇫🇷 FR",
-                        "NO": "🇳🇴 NO",
-                        "IN": "🇮🇳 IN",
-                        "AU": "🇦🇺 AU",
-                        "GB": "🇬🇧 GB",
-                        "CN": "🇨🇳 CN",
-                        "BR": "🇧🇷 BR",
-                    }.get(x, x),
-                    key="h_country",
-                )
-                h_cd = st.number_input("Cool-down (s)", 0, 120, 5, step=5, key="h_cd")
-                h_save_db = st.checkbox("--save-db", value=True, key="h_savedb")
-                h_opt = st.checkbox("--optimizer", value=False, key="h_opt")
-                h_warmup = st.checkbox("--no-warmup", value=False, key="h_warmup")
-                h_debug = st.checkbox("--debug", value=False, key="h_debug")
+                h_task_idx  = st.selectbox("Task", range(len(all_tasks)),
+                                            format_func=lambda i: task_labels[i],
+                                            key="h_task_idx")
+                h_task    = all_tasks[h_task_idx]
+                h_prov    = st.selectbox("Provider", ["cloud", "local"], key="h_prov")
+                h_reps    = st.number_input("Repetitions", 1, 100, 3, key="h_reps")
+                h_country = st.selectbox("Region",
+                    ["US","DE","FR","NO","IN","AU","GB","CN","BR"],
+                    format_func=lambda x: {"US":"🇺🇸 US","DE":"🇩🇪 DE","FR":"🇫🇷 FR",
+                        "NO":"🇳🇴 NO","IN":"🇮🇳 IN","AU":"🇦🇺 AU",
+                        "GB":"🇬🇧 GB","CN":"🇨🇳 CN","BR":"🇧🇷 BR"}.get(x, x),
+                    key="h_country")
+                h_cd      = st.number_input("Cool-down (s)", 0, 120, 5, step=5, key="h_cd")
+                h_save_db = st.checkbox("--save-db",   value=True,  key="h_savedb")
+                h_opt     = st.checkbox("--optimizer", value=False, key="h_opt")
+                h_warmup  = st.checkbox("--no-warmup", value=False, key="h_warmup")
+                h_debug   = st.checkbox("--debug",     value=False, key="h_debug")
 
-                cmd = [
-                    "python",
-                    "-m",
-                    "core.execution.tests.test_harness",
-                    "--task-id",
-                    h_task,
-                    "--provider",
-                    h_prov,
-                    "--repetitions",
-                    str(int(h_reps)),
-                    "--country",
-                    h_country,
-                    "--cool-down",
-                    str(int(h_cd)),
-                ]
-                if h_save_db:
-                    cmd.append("--save-db")
-                if h_opt:
-                    cmd.append("--optimizer")
-                if h_warmup:
-                    cmd.append("--no-warmup")
-                if h_debug:
-                    cmd.append("--debug")
+                cmd = ["python", "-m", "core.execution.tests.test_harness",
+                       "--task-id", h_task, "--provider", h_prov,
+                       "--repetitions", str(int(h_reps)), "--country", h_country,
+                       "--cool-down", str(int(h_cd))]
+                if h_save_db: cmd.append("--save-db")
+                if h_opt:     cmd.append("--optimizer")
+                if h_warmup:  cmd.append("--no-warmup")
+                if h_debug:   cmd.append("--debug")
 
-                meta = {
-                    "name": exp_name,
-                    "mode": "single",
-                    "task": h_task,
-                    "provider": h_prov,
-                    "reps": int(h_reps),
-                    "country": h_country,
-                    "cmd": cmd,
-                }
+                meta = {"name": exp_name, "mode": "single", "task": h_task,
+                        "provider": h_prov, "reps": int(h_reps),
+                        "country": h_country, "cmd": cmd}
 
             else:
                 _b_all = st.checkbox("All tasks", value=False, key="b_all")
                 if _b_all:
-                    _sel = all_tasks
-                    st.caption(f"All {len(all_tasks)} tasks selected")
+                    _sel = all_tasks; st.caption(f"All {len(all_tasks)} tasks selected")
                 else:
                     _sel = st.multiselect(
-                        "Tasks",
-                        all_tasks,
+                        "Tasks", all_tasks,
                         default=all_tasks[:2] if len(all_tasks) >= 2 else all_tasks,
                         format_func=lambda t: f"{t}  ({_cat_map.get(t,'')})",
-                        key="b_task_multi",
-                    )
+                        key="b_task_multi")
 
-                b_prov = st.multiselect(
-                    "Providers", ["cloud", "local"], default=["cloud"], key="b_prov"
-                )
-                b_reps = st.number_input("Repetitions", 1, 100, 3, key="b_reps")
-                b_country = st.selectbox(
-                    "Region",
-                    ["US", "DE", "FR", "NO", "IN", "AU", "GB", "CN", "BR"],
-                    format_func=lambda x: {
-                        "US": "🇺🇸 US",
-                        "DE": "🇩🇪 DE",
-                        "FR": "🇫🇷 FR",
-                        "NO": "🇳🇴 NO",
-                        "IN": "🇮🇳 IN",
-                        "AU": "🇦🇺 AU",
-                        "GB": "🇬🇧 GB",
-                        "CN": "🇨🇳 CN",
-                        "BR": "🇧🇷 BR",
-                    }.get(x, x),
-                    key="b_country",
-                )
-                b_cd = st.number_input("Cool-down (s)", 0, 120, 5, step=5, key="b_cd")
-                b_save_db = st.checkbox("--save-db", value=True, key="b_savedb")
-                b_opt = st.checkbox("--optimizer", value=False, key="b_opt")
-                b_warmup = st.checkbox("--no-warmup", value=False, key="b_warmup")
+                b_prov    = st.multiselect("Providers", ["cloud", "local"],
+                                           default=["cloud"], key="b_prov")
+                b_reps    = st.number_input("Repetitions", 1, 100, 3, key="b_reps")
+                b_country = st.selectbox("Region",
+                    ["US","DE","FR","NO","IN","AU","GB","CN","BR"],
+                    format_func=lambda x: {"US":"🇺🇸 US","DE":"🇩🇪 DE","FR":"🇫🇷 FR",
+                        "NO":"🇳🇴 NO","IN":"🇮🇳 IN","AU":"🇦🇺 AU",
+                        "GB":"🇬🇧 GB","CN":"🇨🇳 CN","BR":"🇧🇷 BR"}.get(x, x),
+                    key="b_country")
+                b_cd      = st.number_input("Cool-down (s)", 0, 120, 5, step=5, key="b_cd")
+                b_save_db = st.checkbox("--save-db",   value=True,  key="b_savedb")
+                b_opt     = st.checkbox("--optimizer", value=False, key="b_opt")
+                b_warmup  = st.checkbox("--no-warmup", value=False, key="b_warmup")
 
-                prov_arg = ",".join(b_prov) if b_prov else "cloud"
-                tasks_arg = (
-                    ",".join(_sel) if _sel else (all_tasks[0] if all_tasks else "")
-                )
+                prov_arg  = ",".join(b_prov)  if b_prov else "cloud"
+                tasks_arg = ",".join(_sel)    if _sel   else (all_tasks[0] if all_tasks else "")
 
-                cmd = [
-                    "python",
-                    "-m",
-                    "core.execution.tests.run_experiment",
-                    "--tasks",
-                    tasks_arg,
-                    "--providers",
-                    prov_arg,
-                    "--repetitions",
-                    str(int(b_reps)),
-                    "--country",
-                    b_country,
-                    "--cool-down",
-                    str(int(b_cd)),
-                ]
-                if b_save_db:
-                    cmd.append("--save-db")
-                if b_opt:
-                    cmd.append("--optimizer")
-                if b_warmup:
-                    cmd.append("--no-warmup")
+                cmd = ["python", "-m", "core.execution.tests.run_experiment",
+                       "--tasks", tasks_arg, "--providers", prov_arg,
+                       "--repetitions", str(int(b_reps)), "--country", b_country,
+                       "--cool-down", str(int(b_cd))]
+                if b_save_db: cmd.append("--save-db")
+                if b_opt:     cmd.append("--optimizer")
+                if b_warmup:  cmd.append("--no-warmup")
 
-                meta = {
-                    "name": exp_name,
-                    "mode": "batch",
-                    "tasks": _sel,
-                    "providers": b_prov,
-                    "reps": int(b_reps),
-                    "country": b_country,
-                    "cmd": cmd,
-                }
+                meta = {"name": exp_name, "mode": "batch", "tasks": _sel,
+                        "providers": b_prov, "reps": int(b_reps),
+                        "country": b_country, "cmd": cmd}
 
             st.code(" \\\n  ".join(cmd), language="bash")
 
@@ -1475,16 +1188,14 @@ def render(ctx: dict):
                 st.session_state.ex_saved.append(dict(meta))
                 st.success(f"Saved **{exp_name}**")
 
-            if c2.button(
-                "▶ Run Now", type="primary", use_container_width=True, key="ex_run_now"
-            ):
+            if c2.button("▶ Run Now", type="primary", use_container_width=True,
+                         key="ex_run_now"):
                 if st.session_state.ex_running:
                     st.warning("A run is already in progress. Queue it instead.")
                 else:
                     st.session_state.ex_queue.insert(0, dict(meta))
                     _save_queue()
-                    st.success("Queued — go to ⚡ Live Execution")
-                    st.rerun()
+                    st.success("Queued — go to ⚡ Live Execution"); st.rerun()
 
             if c3.button("➕ Queue", use_container_width=True, key="ex_queue_btn"):
                 st.session_state.ex_queue.append(dict(meta))
@@ -1505,22 +1216,15 @@ def render(ctx: dict):
                         f"{exp.get('task', ', '.join(exp.get('tasks', [])))[:30]} · "
                         f"{exp.get('provider', '/'.join(exp.get('providers', [])))} · "
                         f"{exp.get('reps', 3)} reps</div>",
-                        unsafe_allow_html=True,
-                    )
+                        unsafe_allow_html=True)
                     if eb.button("▶", key=f"sv_run_{i}", use_container_width=True):
                         st.session_state.ex_queue.insert(0, dict(exp))
-                        _save_queue()
-                        st.rerun()
+                        _save_queue(); st.rerun()
                     if ec.button("🗑", key=f"sv_del_{i}", use_container_width=True):
-                        st.session_state.ex_saved.pop(i)
-                        st.rerun()
+                        st.session_state.ex_saved.pop(i); st.rerun()
 
-                if st.button(
-                    "▶▶ Run All Saved",
-                    type="primary",
-                    use_container_width=True,
-                    key="run_all",
-                ):
+                if st.button("▶▶ Run All Saved", type="primary",
+                             use_container_width=True, key="run_all"):
                     for e in st.session_state.ex_saved:
                         st.session_state.ex_queue.append(dict(e))
                     _save_queue()
@@ -1537,17 +1241,14 @@ def render(ctx: dict):
                     qa.markdown(
                         f"<div style='font-size:11px;color:#93c5fd;'>"
                         f"#{i+1} — <b>{exp['name']}</b></div>",
-                        unsafe_allow_html=True,
-                    )
+                        unsafe_allow_html=True)
                     if qb.button("✕", key=f"q_del_{i}", use_container_width=True):
                         st.session_state.ex_queue.pop(i)
-                        _save_queue()
-                        st.rerun()
+                        _save_queue(); st.rerun()
 
                 if st.button("🗑 Clear queue", use_container_width=True, key="clear_q"):
                     st.session_state.ex_queue.clear()
-                    _save_queue()
-                    st.rerun()
+                    _save_queue(); st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 2 — LIVE EXECUTION (start button only)
@@ -1557,7 +1258,7 @@ def render(ctx: dict):
 
         if not st.session_state.ex_running and st.session_state.ex_queue:
             next_exp = st.session_state.ex_queue[0]
-            rem = len(st.session_state.ex_queue) - 1
+            rem      = len(st.session_state.ex_queue) - 1
 
             st.markdown(
                 f"<div style='background:#0a1a0a;border:1px solid #22c55e33;"
@@ -1565,16 +1266,10 @@ def render(ctx: dict):
                 f"padding:8px 14px;margin-bottom:10px;font-size:12px;'>"
                 f"▶ Ready: <b style='color:#22c55e'>{next_exp['name']}</b>"
                 f"{'  ·  '+str(rem)+' more queued' if rem > 0 else ''}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
+                f"</div>", unsafe_allow_html=True)
 
-            if st.button(
-                f"▶ Start — {next_exp['name']}",
-                type="primary",
-                use_container_width=True,
-                key="start_next",
-            ):
+            if st.button(f"▶ Start — {next_exp['name']}", type="primary",
+                         use_container_width=True, key="start_next"):
 
                 exp = st.session_state.ex_queue.pop(0)
                 _save_queue()
@@ -1582,31 +1277,14 @@ def render(ctx: dict):
 
                 if conn.get("verified"):
                     payload = {
-                        "task_id": exp.get(
-                            "task",
-                            (
-                                exp.get("tasks")
-                                or [all_tasks[0] if all_tasks else "gsm8k_basic"]
-                            )[0],
-                        ),
-                        "provider": exp.get(
-                            "provider", (exp.get("providers") or ["cloud"])[0]
-                        ),
+                        "task_id":      exp.get("task", (exp.get("tasks") or [all_tasks[0] if all_tasks else "gsm8k_basic"])[0]),
+                        "provider":     exp.get("provider", (exp.get("providers") or ["cloud"])[0]),
                         "country_code": exp.get("country", "US"),
-                        "repetitions": exp.get("reps", 3),
-                        "cool_down": 5,
-                        "tasks": exp.get(
-                            "tasks",
-                            [
-                                exp.get(
-                                    "task", all_tasks[0] if all_tasks else "gsm8k_basic"
-                                )
-                            ],
-                        ),
-                        "providers": exp.get(
-                            "providers", [exp.get("provider", "cloud")]
-                        ),
-                        "token": conn.get("token", ""),
+                        "repetitions":  exp.get("reps", 3),
+                        "cool_down":    5,
+                        "tasks":        exp.get("tasks", [exp.get("task", all_tasks[0] if all_tasks else "gsm8k_basic")]),
+                        "providers":    exp.get("providers", [exp.get("provider", "cloud")]),
+                        "token":        conn.get("token", ""),
                     }
                     resp, err = api_post("/api/run/start", payload)
                     if err:
@@ -1615,34 +1293,23 @@ def render(ctx: dict):
                         rsid = resp.get("session_id", "")
                         st.success(f"✅ Started — session `{rsid}`")
                         rc, lines, rows = _run_remote(exp, rsid, conn["url"])
-                        record = {
-                            "sid": sid,
-                            "name": exp["name"],
-                            "status": "complete" if rc == 0 else "error",
-                            "log": lines,
-                            "summary_rows": rows,
-                            "ts": _time.strftime("%H:%M:%S"),
-                        }
+                        record = {"sid": sid, "name": exp["name"],
+                                  "status": "complete" if rc == 0 else "error",
+                                  "log": lines, "summary_rows": rows,
+                                  "ts": _time.strftime("%H:%M:%S")}
                         st.session_state.ex_sessions.append(record)
                         if record["status"] == "complete":
                             _analytics_card(record)
                 else:
-                    st.session_state.ex_run_record = {
-                        "sid": sid,
-                        "name": exp["name"],
-                        "exp": exp,
-                    }
+                    st.session_state.ex_run_record = {"sid": sid, "name": exp["name"], "exp": exp}
                     # FIX: sync remaining queue to _STORE ONCE before starting thread
                     # then clear session queue so rerun loop can't re-add items
-                    remaining = list(
-                        st.session_state.ex_queue
-                    )  # already popped first exp above
-                    _store_set("queue", remaining)
+                    remaining = list(st.session_state.ex_queue)  # already popped first exp above
+                    _store_set('queue', remaining)
                     st.session_state.ex_queue.clear()
                     _save_queue()
                     t = threading.Thread(
-                        target=_thread_run_local, args=(exp, sid), daemon=True
-                    )
+                        target=_thread_run_local, args=(exp, sid), daemon=True)
                     t.start()
                     st.session_state.ex_thread = t
                     st.rerun()
@@ -1654,12 +1321,13 @@ def render(ctx: dict):
         if st.session_state.ex_running or st.session_state.ex_done:
             _render_live_view()
 
+
+
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 3 — SESSION ANALYSIS
     # ══════════════════════════════════════════════════════════════════════════
     with tab3:
         from gui.pages.session_analysis import render_session_analysis
-
         st.markdown("### 📊 Session Analysis")
 
         try:
@@ -1689,10 +1357,9 @@ def render(ctx: dict):
                 format_func=lambda g: (
                     f"{g}  ({recent[recent.group_id==g].iloc[0].n_exps:.0f} exps, "
                     f"{recent[recent.group_id==g].iloc[0].n_runs or 0:.0f} runs)"
-                    if not recent[recent.group_id == g].empty
-                    else g
+                    if not recent[recent.group_id==g].empty else g
                 ),
-                key="t3_gid_sel",
+                key="t3_gid_sel"
             )
             if sel_gid:
                 render_session_tree(sel_gid, expanded=False, key_suffix="hist")
@@ -1713,8 +1380,7 @@ def render(ctx: dict):
                 "<div style='font-size:12px;color:#3d5570;margin-top:6px;'>"
                 "Completed runs will appear here as expandable cards</div>"
                 "</div>",
-                unsafe_allow_html=True,
-            )
+                unsafe_allow_html=True)
         else:
             # Newest first
             sessions_rev = list(reversed(sessions))
@@ -1727,8 +1393,7 @@ def render(ctx: dict):
                 f"<div style='background:#1e2d45;border-radius:10px;padding:2px 10px;"
                 f"font-size:10px;color:#4fc3f7;font-weight:600;'>{n} run{'s' if n!=1 else ''}</div>"
                 f"</div>",
-                unsafe_allow_html=True,
-            )
+                unsafe_allow_html=True)
 
             for i, sess in enumerate(sessions_rev):
                 _history_card(sess, idx=i, expanded=(i == 0))

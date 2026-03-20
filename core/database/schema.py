@@ -182,10 +182,6 @@ CREATE TABLE IF NOT EXISTS runs (
     dns_latency_ms REAL,
     api_latency_ms REAL,
     compute_time_ms REAL,
-    -- Network metrics (NEW)
-    bytes_sent INTEGER,
-    bytes_recv INTEGER,
-    tcp_retransmits INTEGER,
 
     -- System state
     governor TEXT,
@@ -433,85 +429,16 @@ CREATE INDEX IF NOT EXISTS idx_thermal_run_time ON thermal_samples(run_id, times
 CREATE_ML_VIEW = """
 CREATE VIEW IF NOT EXISTS ml_features AS
 SELECT
-    -- ========================================================================
-    -- 1. Core identifiers (for joins)
-    -- ========================================================================
     r.run_id,
-    r.exp_id,
-    e.group_id,
-    r.run_number,
-    r.workflow_type,
-    
-    -- ========================================================================
-    -- 2. Experiment metadata (from experiments table)
-    -- ========================================================================
-    e.task_name,
-    e.provider,
-    e.model_name,
+    e.workflow_type,
     e.country_code,
-    e.optimization_enabled,
-    
-    -- ========================================================================
-    -- 3. Hardware specs (from hardware_config)
-    -- ========================================================================
-    h.cpu_model,
-    h.cpu_cores,
-    h.cpu_threads,
-    h.cpu_architecture,
-    h.cpu_vendor,
-    h.cpu_family,
-    h.cpu_model_id,
-    h.cpu_stepping,
-    h.has_avx2,
-    h.has_avx512,
-    h.has_vmx,
-    h.gpu_model,
-    h.gpu_driver,
-    h.gpu_count,
-    h.ram_gb,
-    h.system_type,
-    h.system_manufacturer,
-    h.system_product,
-    h.virtualization_type,
-    h.microcode_version,
-    
-    -- ========================================================================
-    -- 4. Environment (from environment_config)
-    -- ========================================================================
-    env.python_version,
-    env.git_commit,
-    env.git_branch,
-    env.git_dirty,
-    env.numpy_version,
-    env.torch_version,
-    env.transformers_version,
-    
-    -- ========================================================================
-    -- 5. Timing (from runs)
-    -- ========================================================================
-    r.start_time_ns,
-    r.end_time_ns,
-    r.duration_ns,
+    e.model_name,
+    e.provider,
+    r.run_number,
     r.duration_ns / 1e6 AS duration_ms,
-    
-    -- ========================================================================
-    -- 6. Energy metrics (from runs)
-    -- ========================================================================
-    r.total_energy_uj,
-    r.total_energy_uj / 1e6 AS total_energy_j,
-    r.dynamic_energy_uj,
+    r.total_energy_uj / 1e6 AS energy_j,
     r.dynamic_energy_uj / 1e6 AS dynamic_energy_j,
-    r.baseline_energy_uj,
-    r.baseline_energy_uj / 1e6 AS baseline_energy_j,
     r.avg_power_watts,
-    r.pkg_energy_uj / 1e6 AS pkg_energy_j,
-    r.core_energy_uj / 1e6 AS core_energy_j,
-    r.uncore_energy_uj / 1e6 AS uncore_energy_j,
-    r.dram_energy_uj / 1e6 AS dram_energy_j,
-    
-    -- ========================================================================
-    -- 7. Performance counters (from runs)
-    -- ========================================================================
     r.instructions,
     r.cycles,
     r.ipc,
@@ -521,10 +448,6 @@ SELECT
     r.page_faults,
     r.major_page_faults,
     r.minor_page_faults,
-    
-    -- ========================================================================
-    -- 8. Scheduler metrics (from runs)
-    -- ========================================================================
     r.context_switches_voluntary,
     r.context_switches_involuntary,
     r.total_context_switches,
@@ -532,90 +455,32 @@ SELECT
     r.run_queue_length,
     r.kernel_time_ms,
     r.user_time_ms,
-    
-    -- ========================================================================
-    -- 9. Frequency & bus (from runs)
-    -- ========================================================================
     r.frequency_mhz,
     r.ring_bus_freq_mhz,
-    r.cpu_busy_mhz,
-    r.cpu_avg_mhz,
-    
-    -- ========================================================================
-    -- 10. Thermal metrics (from runs)
-    -- ========================================================================
     r.package_temp_celsius,
-    r.baseline_temp_celsius,
     r.start_temp_c,
     r.max_temp_c,
-    r.min_temp_c,
     r.thermal_delta_c,
-    r.thermal_during_experiment,
-    r.thermal_now_active,
-    r.thermal_since_boot,
-    r.experiment_valid,
-    
-    -- ========================================================================
-    -- 11. C-state residencies (from runs)
-    -- ========================================================================
     r.c2_time_seconds,
     r.c3_time_seconds,
     r.c6_time_seconds,
     r.c7_time_seconds,
-    
-    -- ========================================================================
-    -- 12. Memory & swap (from runs)
-    -- ========================================================================
-    r.swap_total_mb,
-    r.swap_end_free_mb,
-    r.swap_start_used_mb,
-    r.swap_end_used_mb,
-    r.swap_start_cached_mb,
-    r.swap_end_cached_mb,
-    r.swap_end_percent,
-    r.rss_memory_mb,
-    r.vms_memory_mb,
-    
-    -- ========================================================================
-    -- 13. MSR & wakeup (from runs)
-    -- ========================================================================
     r.wakeup_latency_us,
     r.interrupt_rate,
     r.thermal_throttle_flag,
-    
-    -- ========================================================================
-    -- 14. Token counts (from runs)
-    -- ========================================================================
+    r.rss_memory_mb,
+    r.vms_memory_mb,
     r.total_tokens,
     r.prompt_tokens,
     r.completion_tokens,
-    
-    -- ========================================================================
-    -- 15. Network latencies (from runs)
-    -- ========================================================================
     r.dns_latency_ms,
     r.api_latency_ms,
     r.compute_time_ms,
-    
-    -- ========================================================================
-    -- 16. Network metrics (NEW)
-    -- ========================================================================
-    r.bytes_sent,
-    r.bytes_recv,
-    r.tcp_retransmits,
-    
-    -- ========================================================================
-    -- 17. System state (from runs)
-    -- ========================================================================
     r.governor,
     r.turbo_enabled,
     r.is_cold_start,
     r.background_cpu_percent,
     r.process_count,
-    
-    -- ========================================================================
-    -- 18. Agentic-specific metrics (from runs)
-    -- ========================================================================
     r.planning_time_ms,
     r.execution_time_ms,
     r.synthesis_time_ms,
@@ -629,50 +494,29 @@ SELECT
     r.avg_step_time_ms,
     r.complexity_level,
     r.complexity_score,
-    
-    -- ========================================================================
-    -- 19. Sustainability metrics (from runs)
-    -- ========================================================================
     r.carbon_g,
     r.water_ml,
     r.methane_mg,
-    
-    -- ========================================================================
-    -- 20. Derived efficiency metrics (from runs)
-    -- ========================================================================
+    r.run_state_hash,
     r.energy_per_instruction,
     r.energy_per_cycle,
     r.energy_per_token,
     r.instructions_per_token,
     r.interrupts_per_second,
-    
-    -- ========================================================================
-    -- 21. Baseline data (from idle_baselines)
-    -- ========================================================================
-    ib.package_power_watts AS baseline_package_power,
-    ib.core_power_watts AS baseline_core_power,
-    ib.uncore_power_watts AS baseline_uncore_power,
-    ib.dram_power_watts AS baseline_dram_power,
-    ib.governor AS baseline_governor,
-    ib.turbo AS baseline_turbo,
-    ib.background_cpu AS baseline_background_cpu,
-    ib.process_count AS baseline_process_count,
-    
-    -- ========================================================================
-    -- 22. Tax summary (target variable)
-    -- ========================================================================
-    ots.orchestration_tax_uj / 1e6 AS orchestration_tax_j,
-    ots.tax_percent,
-    
-    -- ========================================================================
-    -- 23. Cryptographic run state hash
-    -- ========================================================================
-    r.run_state_hash
-    
+    -- Targets
+    r.total_energy_uj / 1e6 AS energy_j,
+    CASE 
+        WHEN e.workflow_type = 'agentic' 
+        THEN ots.orchestration_tax_uj / 1e6
+        ELSE 0
+    END AS orchestration_tax_j,
+    CASE 
+        WHEN r.total_tokens > 0 
+        THEN (r.total_energy_uj / 1e6) / r.total_tokens 
+        ELSE 0 
+    END AS energy_per_token
 FROM runs r
 JOIN experiments e ON r.exp_id = e.exp_id
-LEFT JOIN hardware_config h ON r.hw_id = h.hw_id
-LEFT JOIN environment_config env ON e.env_id = env.env_id
 LEFT JOIN idle_baselines ib ON r.baseline_id = ib.baseline_id
 LEFT JOIN orchestration_tax_summary ots ON r.run_id = ots.agentic_run_id;
 """
@@ -822,7 +666,6 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
     completion_tokens INTEGER,
     total_tokens INTEGER,
     api_latency_ms REAL,
-    throughput_kbps REAL,
     compute_time_ms REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(run_id) REFERENCES runs(run_id)
@@ -830,3 +673,5 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_interactions(run_id);
 CREATE INDEX IF NOT EXISTS idx_llm_workflow ON llm_interactions(workflow_type);
 """
+
+
