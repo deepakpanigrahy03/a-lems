@@ -15,33 +15,6 @@ A cross-layer measurement and profiling framework for AI workloads.
 
 ---
 
-## 🚀 Quick Start
-
-Get A-LEMS running in minutes:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/deepakpanigrahy03/a-lems.git
-cd a-lems
-
-# 2. Create virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Detect hardware (requires sudo once)
-sudo python scripts/detect_hardware.py
-
-# 5. Run your first experiment
-python -m core.execution.tests.test_harness --task-id simple --repetitions 1 --provider local --save-db
-
-# 6. Launch the dashboard
-streamlit run streamlit_app.py
-
-For detailed setup instructions, see the [Getting Started Guide](getting-started/01-installation.md).
-
 ## ✨ Key Capabilities
 
 | Level | Metrics Captured |
@@ -129,5 +102,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Built for energy-aware AI research* — [Back to GitHub](https://github.com/deepakpanigrahy03/a-lems)
-*Visit Again* — <a href="https://github.com/deepakpanigrahy03/a-lems" target="_blank">Back to GitHub</a>
+*Built for energy-aware AI research*
