@@ -12,7 +12,6 @@
   **Quantifying the energy cost of agentic AI workflows**
   
   <a href="https://deepakpanigrahy03.github.io/a-lems" target="_blank">📖 Documentation</a> • 
-  <a href="#quick-start">🚀 Quick Start</a> • 
   <a href="https://a-lems-dash.streamlit.app/" target="_blank">📊 Live Demo</a>
   
 </div>
