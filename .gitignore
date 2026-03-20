@@ -92,3 +92,4 @@ archive/
 docs/build/
 docs/source/
 docs/generated/
+docs-src/mkdocs/site/
