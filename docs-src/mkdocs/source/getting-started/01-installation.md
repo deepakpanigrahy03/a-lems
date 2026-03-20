@@ -135,10 +135,20 @@ pip install -r requirements-gui.txt
 # Optional: Developer tools (for contributors)
 pip install -r requirements-tools.txt
 ```
+---
+# 🔧 Step 4.1: Build MSR Helper
 
+The MSR helper needs to be compiled before running permissions:
+
+```bash
+cd core/msr_helper
+make
+cd ../..
+```
+**This is just for information but this part is currently incluced in (4.2)
 ---
 
-## 🔧 Step 4: Fix Permissions
+## 🔧 Step 4.2: Fix Permissions
 
 The `fix_permissions.sh` script grants necessary access to hardware interfaces:
 
@@ -175,7 +185,7 @@ A-LEMS automatically detects your hardware configuration:
 
 ```bash
 # First run (requires sudo for MSR/turbostat access)
-sudo python scripts/detect_hardware.py --output config/hw_config.json --verbose
+python scripts/detect_hardware.py --output config/hw_config.json --verbose
 
 # Fix permissions on generated config
 sudo ./scripts/fix_permissions.sh
