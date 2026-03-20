@@ -235,6 +235,25 @@ else
 fi
 
 # ============================================================================
+# 2.5 MSR HELPER BINARY - SET SUID
+# ============================================================================
+echo -e "\n[2.5/4] Setting SUID on MSR helper binary..."
+
+MSR_HELPER="core/msr_helper/msr_read"
+if [ -f "$MSR_HELPER" ]; then
+    sudo chown root:root "$MSR_HELPER"
+    sudo chmod u+s "$MSR_HELPER"
+    echo "  ✅ SUID set on $MSR_HELPER"
+    
+    # Verify
+    ls -la "$MSR_HELPER"
+else
+    echo "  ⚠️ MSR helper not found at $MSR_HELPER"
+    echo "  Run: cd core/msr_helper && make"
+fi
+
+
+# ============================================================================
 # FINAL MESSAGE
 # ============================================================================
 echo -e "\n================================================================="
