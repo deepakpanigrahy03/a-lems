@@ -32,11 +32,11 @@ jobs:
 
       - name: Build MkDocs site
         run: |
-          mkdocs build -f docs-src/mkdocs/mkdocs.yml -d site
+          mkdocs build -f docs-src/mkdocs/mkdocs.yml
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+          publish_dir: ./docs/generated/mkdocs
           publish_branch: gh-pages
