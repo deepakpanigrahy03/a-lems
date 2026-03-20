@@ -26,7 +26,6 @@ nav:
     - Model Configuration: getting-started/03-model-config.md
     - Quick Start: getting-started/04-quick-start.md
     - Troubleshooting: getting-started/05-troubleshooting.md
-    - Deployment Guide: deployment-guide.md
   
   - User Guide:
     - Running Experiments: user-guide/01-running.md
