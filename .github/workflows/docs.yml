@@ -33,7 +33,7 @@ jobs:
 
       - name: Build MkDocs (User Guide)
         run: |
-          mkdocs build -f docs-src/mkdocs/mkdocs.yml -d site/mkdocs
+          mkdocs build -f docs-src/mkdocs/mkdocs.yml -d site
 
       - name: Build Sphinx (API Reference)
         run: |
