@@ -50,7 +50,9 @@ nav:
     - Orchestration Tax: research/03-orchestration-tax.md
     - Publications: research/04-publications.md
   
-  - API Reference: api/reference.md
+  - API Reference: 
+    - Overview: api/reference.md
+    - Full API Docs: sphinx/
 
 markdown_extensions:
   - admonition
