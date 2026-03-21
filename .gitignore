@@ -42,7 +42,18 @@ data/ml_dataset_*.csv
 data/turbostat_raw/
 data/baselines/
 *.csv
-*.json
+# JSON files - track important ones, ignore generated ones
+# Keep these:
+!config/models.json
+!config/*.example
+!config/*.template
+!config/grid_intensity_2026.json
+
+# Ignore these:
+config/hw_config.json
+config/environment.json
+config/current_session.json
+data/*.json
 
 # Python cache
 __pycache__/

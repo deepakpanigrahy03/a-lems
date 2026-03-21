@@ -235,6 +235,60 @@ else
 fi
 
 # ============================================================================
+# 2.5 MSR HELPER BINARY - COMPILE AND SET SUID
+# ============================================================================
+echo -e "\n[2.5/4] Compiling MSR helper binary..."
+
+MSR_DIR="core/msr_helper"
+MSR_HELPER="$MSR_DIR/msr_read"
+
+# Check if we need to compile
+if [ ! -f "$MSR_HELPER" ]; then
+    echo "  🔧 MSR helper not found, compiling..."
+    
+    # Check if source exists
+    if [ -f "$MSR_DIR/msr_read.c" ]; then
+        cd "$MSR_DIR"
+        make 2>/dev/null || gcc -o msr_read msr_read.c
+        cd - > /dev/null
+        echo "  ✅ MSR helper compiled"
+        # Verify
+        ls -la "$MSR_HELPER"
+    else
+        echo "  ❌ MSR source not found at $MSR_DIR/msr_read.c"
+        echo "  Please restore the source file from git or backup"
+        exit 1
+    fi
+else
+    echo "  ✅ MSR helper already exists"
+fi
+
+# Verify binary exists
+if [ -f "$MSR_HELPER" ]; then
+    echo "  ✅ Binary found at $MSR_HELPER"
+else
+    echo "  ❌ Failed to compile MSR helper"
+    exit 1
+fi
+
+# ============================================================================
+# 2.6 MSR HELPER BINARY - SET SUID
+# ============================================================================
+echo -e "\n[2.6/4] Setting SUID on MSR helper binary..."
+
+if [ -f "$MSR_HELPER" ]; then
+    sudo chown root:root "$MSR_HELPER"
+    sudo chmod u+s "$MSR_HELPER"
+    echo "  ✅ SUID set on $MSR_HELPER"
+    
+    # Verify
+    ls -la "$MSR_HELPER"
+else
+    echo "  ⚠️ MSR helper not found at $MSR_HELPER"
+fi
+
+
+# ============================================================================
 # FINAL MESSAGE
 # ============================================================================
 echo -e "\n================================================================="
