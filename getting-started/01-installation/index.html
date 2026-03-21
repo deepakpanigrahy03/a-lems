@@ -583,96 +583,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-fix-permissions" class="md-nav__link">
+  <a href="#core-requirements-always-needed-pip-install-r-requirementstxt-optional-gui-dashboard-for-web-interface-pip-install-r-requirements-guitxt-optional-developer-tools-for-contributors-pip-install-r-requirements-toolstxt" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🔧 Step 4: Fix Permissions
+        # Core requirements (always needed) pip install -r requirements.txt # Optional: GUI dashboard (for web interface) pip install -r requirements-gui.txt # Optional: Developer tools (for contributors) pip install -r requirements-tools.txt
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-verify-installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🖥️ Step 5: Verify Installation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-6-hardware-detection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🏗️ Step 6: Hardware Detection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-7-environment-detection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🌍 Step 7: Environment Detection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installation-complete" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ✅ Installation Complete!
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#post-installation-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🔄 Post-Installation Workflow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ⚠️ Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="⚠️ Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#still-having-issues" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Still having issues?
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1721,7 +1638,7 @@ sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> <
 <p><em>On some systems, use <code>python</code> instead of <code>python3</code>.</em></p>
 <hr />
 <h2 id="step-3-install-python-dependencies">📦 Step 3: Install Python Dependencies<a class="headerlink" href="#step-3-install-python-dependencies" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Core requirements (always needed)</span>
+<h2 id="core-requirements-always-needed-pip-install-r-requirementstxt-optional-gui-dashboard-for-web-interface-pip-install-r-requirements-guitxt-optional-developer-tools-for-contributors-pip-install-r-requirements-toolstxt"><div class="highlight"><pre><span></span><code><span class="c1"># Core requirements (always needed)</span>
 pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
 
 <span class="c1"># Optional: GUI dashboard (for web interface)</span>
@@ -1729,9 +1646,16 @@ pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </s
 
 <span class="c1"># Optional: Developer tools (for contributors)</span>
 pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements-tools.txt
+</code></pre></div><a class="headerlink" href="#core-requirements-always-needed-pip-install-r-requirementstxt-optional-gui-dashboard-for-web-interface-pip-install-r-requirements-guitxt-optional-developer-tools-for-contributors-pip-install-r-requirements-toolstxt" title="Permanent link">&para;</a></h2>
+<h1 id="step-41-build-msr-helper">🔧 Step 4.1: Build MSR Helper<a class="headerlink" href="#step-41-build-msr-helper" title="Permanent link">&para;</a></h1>
+<p>The MSR helper needs to be compiled before running permissions:</p>
+<p><div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>core/msr_helper
+make
+<span class="nb">cd</span><span class="w"> </span>../..
 </code></pre></div>
+**This is just for information but this part is currently incluced in (4.2)</p>
 <hr />
-<h2 id="step-4-fix-permissions">🔧 Step 4: Fix Permissions<a class="headerlink" href="#step-4-fix-permissions" title="Permanent link">&para;</a></h2>
+<h2 id="step-42-fix-permissions">🔧 Step 4.2: Fix Permissions<a class="headerlink" href="#step-42-fix-permissions" title="Permanent link">&para;</a></h2>
 <p>The <code>fix_permissions.sh</code> script grants necessary access to hardware interfaces:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>./scripts/fix_permissions.sh
 </code></pre></div>
@@ -1753,7 +1677,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </s
 <h2 id="step-6-hardware-detection">🏗️ Step 6: Hardware Detection<a class="headerlink" href="#step-6-hardware-detection" title="Permanent link">&para;</a></h2>
 <p>A-LEMS automatically detects your hardware configuration:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># First run (requires sudo for MSR/turbostat access)</span>
-sudo<span class="w"> </span>python<span class="w"> </span>scripts/detect_hardware.py<span class="w"> </span>--output<span class="w"> </span>config/hw_config.json<span class="w"> </span>--verbose
+python<span class="w"> </span>scripts/detect_hardware.py<span class="w"> </span>--output<span class="w"> </span>config/hw_config.json<span class="w"> </span>--verbose
 
 <span class="c1"># Fix permissions on generated config</span>
 sudo<span class="w"> </span>./scripts/fix_permissions.sh
