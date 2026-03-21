@@ -8,28 +8,28 @@ import streamlit as st
 
 # ── Colour tokens ─────────────────────────────────────────────────────────────
 DARK = {
-    "bg0":    "#0d1117",   # page background
-    "bg1":    "#111827",   # card background
-    "bg2":    "#1f2937",   # inset / secondary surface
-    "bg3":    "#374151",   # borders, tracks, empty bars
-    "t1":     "#f1f5f9",   # primary text
-    "t2":     "#94a3b8",   # secondary text / tabs / sidebar labels
-    "t3":     "#475569",   # muted / metric labels
-    "brd":    "#1f2937",   # card border
-    "brd2":   "#374151",   # input border / dividers
+    "bg0": "#0d1117",  # page background
+    "bg1": "#111827",  # card background
+    "bg2": "#1f2937",  # inset / secondary surface
+    "bg3": "#374151",  # borders, tracks, empty bars
+    "t1": "#f1f5f9",  # primary text
+    "t2": "#94a3b8",  # secondary text / tabs / sidebar labels
+    "t3": "#475569",  # muted / metric labels
+    "brd": "#1f2937",  # card border
+    "brd2": "#374151",  # input border / dividers
     "accent": "#3b82f6",
 }
 
 LIGHT = {
-    "bg0":    "#f3f4f6",   # soft off-white page bg — less harsh than pure white
-    "bg1":    "#ffffff",   # cards pop off page bg with contrast
-    "bg2":    "#f9fafb",   # input / secondary surface
-    "bg3":    "#d1d5db",   # borders / tracks — visible but not harsh
-    "t1":     "#1f2937",   # main text — softer than pure black
-    "t2":     "#4b5563",   # secondary text / tabs / sidebar
-    "t3":     "#6b7280",   # muted labels — readable on bg1 and bg2
-    "brd":    "#d1d5db",   # card border — clearly visible
-    "brd2":   "#9ca3af",   # input border / subtle lines
+    "bg0": "#f3f4f6",  # soft off-white page bg — less harsh than pure white
+    "bg1": "#ffffff",  # cards pop off page bg with contrast
+    "bg2": "#f9fafb",  # input / secondary surface
+    "bg3": "#d1d5db",  # borders / tracks — visible but not harsh
+    "t1": "#1f2937",  # main text — softer than pure black
+    "t2": "#4b5563",  # secondary text / tabs / sidebar
+    "t3": "#6b7280",  # muted labels — readable on bg1 and bg2
+    "brd": "#d1d5db",  # card border — clearly visible
+    "brd2": "#9ca3af",  # input border / subtle lines
     "accent": "#3b82f6",
 }
 
@@ -45,9 +45,10 @@ def inject_theme():
     Injects global CSS overriding Streamlit's default colours.
     """
     dark = st.session_state.get("theme", "dark") == "dark"
-    t    = _tokens(dark)
+    t = _tokens(dark)
 
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <style>
     /* ── Page & app background ──────────────────────────────────── */
     .stApp, [data-testid="stAppViewContainer"] {{
@@ -163,7 +164,9 @@ def inject_theme():
     ::-webkit-scrollbar-track {{ background: {t["bg0"]}; }}
     ::-webkit-scrollbar-thumb {{ background: {t["bg3"]}; border-radius: 3px; }}
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def theme_toggle_button():
@@ -187,14 +190,20 @@ def plotly_layout(dark: bool = None) -> dict:
         dark = st.session_state.get("theme", "dark") == "dark"
     t = _tokens(dark)
     return dict(
-        paper_bgcolor = t["bg1"],
-        plot_bgcolor  = t["bg2"],
-        font          = dict(color=t["t1"], size=10),
-        xaxis         = dict(gridcolor=t["brd2"], zerolinecolor=t["brd2"],
-                             tickfont=dict(color=t["t3"])),
-        yaxis         = dict(gridcolor=t["brd2"], zerolinecolor=t["brd2"],
-                             tickfont=dict(color=t["t3"])),
-        legend        = dict(bgcolor=t["bg1"], bordercolor=t["brd"],
-                             borderwidth=0.5, font=dict(color=t["t2"])),
-        margin        = dict(t=40, b=40, l=50, r=20),
+        paper_bgcolor=t["bg1"],
+        plot_bgcolor=t["bg2"],
+        font=dict(color=t["t1"], size=10),
+        xaxis=dict(
+            gridcolor=t["brd2"], zerolinecolor=t["brd2"], tickfont=dict(color=t["t3"])
+        ),
+        yaxis=dict(
+            gridcolor=t["brd2"], zerolinecolor=t["brd2"], tickfont=dict(color=t["t3"])
+        ),
+        legend=dict(
+            bgcolor=t["bg1"],
+            bordercolor=t["brd"],
+            borderwidth=0.5,
+            font=dict(color=t["t2"]),
+        ),
+        margin=dict(t=40, b=40, l=50, r=20),
     )

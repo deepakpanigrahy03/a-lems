@@ -4,50 +4,61 @@ Render function: render(ctx)
 ctx keys: ov, runs, tax, lin, age, avg_lin_j, avg_age_j, tax_mult,
           plan_ms, exec_ms, synth_ms, plan_pct, exec_pct, synth_pct
 """
+
 import subprocess
-import streamlit as st
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 from plotly.subplots import make_subplots
 
-from gui.config  import PROJECT_ROOT, DB_PATH, LIVE_API, WF_COLORS, PL
-from gui.db      import q, q_safe, q1
-from gui.helpers import fl, _human_energy, _human_water, _human_carbon, _gauge_html, _bar_gauge_html
+from gui.config import DB_PATH, LIVE_API, PL, PROJECT_ROOT, WF_COLORS
+from gui.db import q, q1, q_safe
+from gui.helpers import (_bar_gauge_html, _gauge_html, _human_carbon,
+                         _human_energy, _human_water, fl)
 
 try:
     import requests as _req
+
     _REQUESTS_OK = True
 except ImportError:
     _REQUESTS_OK = False
+
     class _req:
         @staticmethod
-        def get(*a, **kw): raise RuntimeError("requests not installed")
+        def get(*a, **kw):
+            raise RuntimeError("requests not installed")
+
+
 try:
     import yaml as _yaml
+
     _YAML_OK = True
 except ImportError:
     _YAML_OK = False
 
 
 def render(ctx: dict):
-    ov        = ctx["ov"]
-    runs      = ctx["runs"]
-    tax       = ctx["tax"]
+    ov = ctx["ov"]
+    runs = ctx["runs"]
+    tax = ctx["tax"]
     avg_lin_j = ctx["avg_lin_j"]
     avg_age_j = ctx["avg_age_j"]
-    tax_mult  = ctx["tax_mult"]
-    plan_ms   = ctx["plan_ms"]
-    exec_ms   = ctx["exec_ms"]
-    synth_ms  = ctx["synth_ms"]
-    plan_pct  = ctx["plan_pct"]
-    exec_pct  = ctx["exec_pct"]
+    tax_mult = ctx["tax_mult"]
+    plan_ms = ctx["plan_ms"]
+    exec_ms = ctx["exec_ms"]
+    synth_ms = ctx["synth_ms"]
+    plan_pct = ctx["plan_pct"]
+    exec_pct = ctx["exec_pct"]
     synth_pct = ctx["synth_pct"]
-    lin       = ctx["lin"]
-    age       = ctx["age"]
+    lin = ctx["lin"]
+    age = ctx["age"]
 
     st.title("💬 SQL Query")
-    st.caption(f"Ad-hoc SELECT queries against `{DB_PATH.name}` · results exportable as CSV")
+    st.caption(
+        f"Ad-hoc SELECT queries against `{DB_PATH.name}` · results exportable as CSV"
+    )
 
     QUERY_LIBRARY = {
         "— pick a preset —": "",
@@ -117,24 +128,44 @@ def render(ctx: dict):
         ),
     }
 
-    _preset = st.selectbox("Preset queries", list(QUERY_LIBRARY.keys()), key="sql_preset")
+    _preset = st.selectbox(
+        "Preset queries", list(QUERY_LIBRARY.keys()), key="sql_preset"
+    )
     _default_sql = QUERY_LIBRARY.get(_preset, "")
 
-    _sql_input = st.text_area("SQL (SELECT only)", value=_default_sql, height=150,
-                               key="sql_input",
-                               placeholder="SELECT * FROM runs LIMIT 10")
+    _sql_input = st.text_area(
+        "SQL (SELECT only)",
+        value=_default_sql,
+        height=150,
+        key="sql_input",
+        placeholder="SELECT * FROM runs LIMIT 10",
+    )
 
     _col_r, _col_l = st.columns([2, 1])
     with _col_r:
         _sql_run = st.button("▶ Run query", type="primary", key="sql_run")
     with _col_l:
-        _row_limit = st.number_input("Row limit", 10, 10000, 500, step=100, key="sql_limit")
+        _row_limit = st.number_input(
+            "Row limit", 10, 10000, 500, step=100, key="sql_limit"
+        )
 
     if _sql_run:
         _cleaned = _sql_input.strip()
-        _upper   = _cleaned.upper()
-        _bad     = [kw for kw in ["DROP","DELETE","UPDATE","INSERT","ALTER","CREATE",
-                                   "REPLACE","ATTACH"] if kw in _upper]
+        _upper = _cleaned.upper()
+        _bad = [
+            kw
+            for kw in [
+                "DROP",
+                "DELETE",
+                "UPDATE",
+                "INSERT",
+                "ALTER",
+                "CREATE",
+                "REPLACE",
+                "ATTACH",
+            ]
+            if kw in _upper
+        ]
         if _bad:
             st.error(f"Blocked keywords: {', '.join(_bad)}. SELECT only.")
         elif not _cleaned:
@@ -150,9 +181,13 @@ def render(ctx: dict):
             else:
                 st.success(f"✓ {len(_result):,} rows")
                 st.dataframe(_result, use_container_width=True, hide_index=True)
-                st.download_button("⬇ Download CSV", data=_result.to_csv(index=False),
-                                   file_name="alems_query.csv", mime="text/csv",
-                                   key="sql_dl")
+                st.download_button(
+                    "⬇ Download CSV",
+                    data=_result.to_csv(index=False),
+                    file_name="alems_query.csv",
+                    mime="text/csv",
+                    key="sql_dl",
+                )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
