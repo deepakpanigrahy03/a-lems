@@ -439,6 +439,7 @@ class ExperimentHarness:
             "workflow": "linear",
             "country_code": country_code,
             "execution": exec_result,
+             "pending_interactions": exec_result.get("pending_interactions", []),
             # THREE LAYERS – All available for analysis
             "layer1_raw": raw_energy.to_dict(),  # Raw hardware readings
             "layer2_baseline": (
@@ -884,6 +885,7 @@ class ExperimentHarness:
             "energy_per_token": energy_per_token,
             "cpu_metrics": cpu_metrics,
             "orchestration_events": orchestration_events,
+            "pending_interactions": exec_result.get("pending_interactions", []),
             # ====================================================================
             # NEW: ML Features Dictionary (ALL features for training)
             # ====================================================================

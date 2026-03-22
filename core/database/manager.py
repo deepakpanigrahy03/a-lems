@@ -174,6 +174,9 @@ class DatabaseManager:
     ) -> None:
         """Insert thermal samples for a run."""
         self.thermal.insert_thermal_samples(run_id, thermal_samples)
+    def insert_llm_interaction(self, interaction_data: dict) -> int:
+        """Insert an LLM interaction record."""
+        return self.db.insert_llm_interaction(interaction_data)
 
     # ========================================================================
     # Query Methods (Delegated to Adapter)

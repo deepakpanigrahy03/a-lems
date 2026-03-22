@@ -365,6 +365,11 @@ class DatabaseInterface(ABC):
                 - interrupts_per_sec: float
         """
         pass
+
+    @abstractmethod
+    def insert_llm_interaction(self, interaction_data: dict) -> int:
+        """Insert an LLM interaction record."""
+        pass    
     
     @abstractmethod
     def create_tax_summaries(self, exp_id: int) -> None:
