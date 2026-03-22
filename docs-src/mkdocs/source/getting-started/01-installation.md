@@ -274,3 +274,54 @@ This will automatically check your system and suggest fixes.
 ---
 
 > **Note:** A-LEMS is designed to work on any Linux system with Intel processors. The hardware detection automatically adapts to your specific configuration - no manual tweaking required!
+## Environment Variables
+Copy  to  and add your API keys.
+Run =================================================================
+A-LEMS Universal Permission Fixer
+=================================================================
+
+[1/4] Fixing RAPL permissions...
+  ✅ RAPL systemd service created
+
+[1.5/4] Fixing uncore frequency permissions...
+  Reading paths from config/hw_config.json...
+    ✅ Already correct: /sys/devices/system/cpu/intel_uncore_frequency/package_00_die_00/current_freq_khz
+    ✅ Already correct: /sys/devices/system/cpu/intel_uncore_frequency/package_00_die_00/initial_max_freq_khz
+    ✅ Already correct: /sys/devices/system/cpu/intel_uncore_frequency/package_00_die_00/initial_min_freq_khz
+    ✅ Already correct: /sys/devices/system/cpu/intel_uncore_frequency/package_00_die_00/max_freq_khz
+    ✅ Already correct: /sys/devices/system/cpu/intel_uncore_frequency/package_00_die_00/min_freq_khz
+  ✅ Uncore frequency permissions fixed from config
+  ✅ Uncore frequency systemd service created
+
+[2/4] Fixing MSR permissions...
+  ✅ Group 'a-lems' ensured
+  ✅ Udev rule created
+  ✅ Permissions applied to existing MSR devices
+  ✅ Udev rules reloaded
+  ✅ rdmsr capabilities set
+  ✅ turbostat capabilities set
+
+[3/4] Fixing perf_event permissions...
+  ✅ perf_event_paranoid set to -1
+
+[4/4] Setting turbostat capabilities on REAL binary...
+  Found real turbostat at: /usr/lib/linux-tools/6.17.0-19-generic/turbostat
+  ✅ turbostat capabilities set on REAL binary
+
+[2.5/4] Compiling MSR helper binary...
+  ✅ MSR helper already exists
+  ✅ Binary found at core/msr_helper/msr_read
+
+[2.6/4] Setting SUID on MSR helper binary...
+  ✅ SUID set on core/msr_helper/msr_read
+-rwsrwxr-x 1 root root 16560 Mar 21 11:52 core/msr_helper/msr_read
+
+=================================================================
+✅ PERMISSIONS FIXED!
+=================================================================
+
+⚠️  IMPORTANT: Log out and log back in NOW!
+
+After logging back in, run detection:
+  python scripts/detect_hardware.py --output config/hw_config.json --merge --verbose
+================================================================= to compile the MSR helper.

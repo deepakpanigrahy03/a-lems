@@ -100,3 +100,5 @@ docs-src/*/.cache/
 .env
 context.txt
 archive/
+core/.env
+core/msr_helper/msr_read
