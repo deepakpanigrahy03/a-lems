@@ -134,6 +134,9 @@ pip install -r requirements-gui.txt
 
 # Optional: Developer tools (for contributors)
 pip install -r requirements-tools.txt
+
+# Install library for local LLM
+pip install llama-cpp-python
 ```
 
 ---
@@ -175,7 +178,7 @@ A-LEMS automatically detects your hardware configuration:
 
 ```bash
 # First run (requires sudo for MSR/turbostat access)
-sudo python scripts/detect_hardware.py --output config/hw_config.json --verbose
+python scripts/detect_hardware.py --output config/hw_config.json --merge --verbose
 
 # Fix permissions on generated config
 sudo ./scripts/fix_permissions.sh
@@ -212,6 +215,21 @@ python scripts/detect_environment.py --verbose
 This creates `config/environment.json` with a unique `env_hash` for your environment.
 
 ---
+## 🏗️ Step 8: Measure baselines
+
+Measure baseline MSR and idle power states before running experiments:
+
+```bash
+python -m core.utils.idle_baseline --duration 10 --samples 3
+python scripts/measure_msr_baseline.py
+```
+**What it does:**
+
+- ✅ Captures idle power consumption baseline
+- ✅ Records MSR C-state baseline for accurate measurements
+- ✅ Establishes reference for energy calculations
+
+---
 
 ## ✅ Installation Complete!
 
@@ -230,8 +248,15 @@ After installation, your daily workflow is simple:
 ```bash
 cd a-lems
 source venv/bin/activate
+
 # Load API keys (if using cloud models)
-source .env
+cp core/.env.example core/.env
+# Edit core/.env with your API keys
+nano core/.env
+
+# Test LLM (verify everything works)
+python -m core.execution.tests.test_llm_setup --provider local --verbose
+python -m core.execution.tests.test_llm_setup --provider cloud --verbose
 
 # Run experiments
 python -m core.execution.tests.run_experiment --tasks gsm8k_basic --repetitions 3
