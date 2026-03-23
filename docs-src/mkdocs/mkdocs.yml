@@ -49,6 +49,7 @@ nav:
     - Mathematical Derivations: research/02-mathematical-derivations.md
     - Orchestration Tax: research/03-orchestration-tax.md
     - Publications: research/04-publications.md
+    - LLM Measurement Methodology: research/05-llm-measurement-methodology.md
   
   - API Reference: 
     - Overview: api/reference.md
