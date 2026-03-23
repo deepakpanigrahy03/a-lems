@@ -252,6 +252,7 @@ class AgenticExecutor:
         # Temperature=0 for reproducibility – same task = same plan
         # This is CRITICAL for experimental reproducibility
         # ====================================================================
+        orchestration_start = time.time()
         plan_start = time.time()
         call_counter += 1
         plan = self._create_plan(
@@ -416,6 +417,45 @@ class AgenticExecutor:
                 f"📊 Average throughput: {total_effective_kbps:.1f} kbps across {len(self._effective_kbps_list)} calls"
             )
 
+        # Calculate orchestration CPU overhead and aggregate network metrics
+        total_llm_compute_ms = 0  # This is local_compute_ms from all interactions
+        total_llm_compute_ms = 0
+        total_non_local_ms = 0
+        total_pre_ms = 0
+        total_post_ms = 0
+        total_bytes_sent = 0
+        total_bytes_recv = 0
+        total_workflow_non_local_ms = 0
+        total_tcp_retransmits = 0
+        
+        for interaction in self.pending_interactions:
+            total_llm_compute_ms += interaction.get("local_compute_ms", 0)
+            total_non_local_ms += interaction.get("non_local_ms", 0)
+            total_pre_ms += interaction.get("preprocess_ms", 0)
+            total_post_ms += interaction.get("postprocess_ms", 0)
+            total_bytes_sent += interaction.get("bytes_sent_approx", 0)
+            total_bytes_recv += interaction.get("bytes_recv_approx", 0)
+            total_workflow_non_local_ms += interaction.get("non_local_ms", 0)
+            total_tcp_retransmits += interaction.get("tcp_retransmits", 0)
+        
+        
+        # Calculate effective throughput for the entire workflow
+        if total_workflow_non_local_ms > 0:
+            total_bytes = total_bytes_sent + total_bytes_recv
+            effective_throughput_kbps = (total_bytes * 8) / (total_workflow_non_local_ms / 1000) / 1000
+        else:
+            effective_throughput_kbps = 0
+        
+        orchestration_end = time.time()
+        total_orchestration_ms = (orchestration_end - orchestration_start) * 1000
+        orchestration_cpu_ms = max(0, 
+            total_orchestration_ms 
+            - total_llm_compute_ms 
+            - total_non_local_ms
+        )
+
+
+
         result = {
             "experiment_id": experiment_id,
             "response": synthesis.get("content", ""),
@@ -424,11 +464,17 @@ class AgenticExecutor:
             "steps": len(steps),
             "tools_used": tools_used,
             "tool_count": tool_count,
+            "tool_calls": tool_count,  # Alias for database column
             "pending_interactions": getattr(self, "pending_interactions", []),
             "complexity_level": complexity_level,  # Req 3.2
             "complexity_score": self._calculate_complexity_score(
                 final_llm_calls, tool_count, tokens.get("total", 0)
             ),
+            "orchestration_cpu_ms": 0, # Will be calculated after pending_interactions
+             "total_bytes_sent": 0,
+             "total_bytes_recv": 0,
+             "total_workflow_non_local_ms": 0,
+             "effective_throughput_kbps": 0,
             "phase_times": {
                 "planning_ms": planning_time_ms,
                 "execution_ms": execution_time_ms,
@@ -450,6 +496,18 @@ class AgenticExecutor:
                     else 0
                 ),
             },
+            "phase_ratios": {
+                "planning_ratio": (
+                    planning_time_ms / total_time_ms if total_time_ms > 0 else 0
+                ),
+                "execution_ratio": (
+                    execution_time_ms / total_time_ms if total_time_ms > 0 else 0
+                ),
+                "synthesis_ratio": (
+                    synthesis_time_ms / total_time_ms if total_time_ms > 0 else 0
+                ),
+            },
+
             "timestamps": {
                 "plan_start": plan_start,
                 "plan_end": plan_end,
@@ -513,11 +571,19 @@ class AgenticExecutor:
                 total_active += sum(self._tool_latencies)
             waiting_time_ms = max(0, total_time_ms - total_active)
 
+
+        # Add to result
+        result["orchestration_cpu_ms"] = orchestration_cpu_ms
+        result["total_bytes_sent"] = total_bytes_sent
+        result["total_bytes_recv"] = total_bytes_recv
+        result["total_workflow_non_local_ms"] = total_workflow_non_local_ms
+        result["effective_throughput_kbps"] = effective_throughput_kbps
+        result["total_tcp_retransmits"] = total_tcp_retransmits  
         # Add to result
         result.update(
             {
                 "api_latency_ms": total_api_latency_ms,
-                "compute_time_ms": total_time_ms - total_api_latency_ms,
+                "compute_time_ms": total_pre_ms + total_post_ms + orchestration_cpu_ms,
                 "waiting_time_ms": waiting_time_ms,  # M3-9
                 "avg_step_time_ms": execution_time_ms / len(steps) if steps else 0,
                 "events": getattr(self, "_events", []),  # M3-10
@@ -529,6 +595,8 @@ class AgenticExecutor:
                 ),
             }
         )
+
+    
 
         self.pending_interactions = []
         dprint(
@@ -734,12 +802,14 @@ You can use tools like calculator or web search if needed.
                 - 'tokens': Dict with prompt/completion/total token counts
         """
         # Track calls for this execution
+        # Initialize call tracking
         if not hasattr(self, "_call_count"):
             self._call_count = 0
-            self._api_latencies = []  # ← NEW: track latencies
+            self._api_latencies = []
+            self._llm = None
+            self._cpu_samples = []
 
         self._call_count += 1
-
         temp = temperature if temperature is not None else self.temperature
 
         dprint(f"\n{'='*50}")
@@ -749,116 +819,130 @@ You can use tools like calculator or web search if needed.
         if self.provider not in ["ollama", "local"] and not self.api_key:
             logger.error("No API key available")
             return {"content": "Error: No API key", "tokens": {}}
-        # Capture network before
-        net_before = self._get_network_metrics()
+
+        
+        #dprint(f"🔍 NET_BEFORE CAPTURED: {net_before}")
 
         try:
-            api_latency_ms = 0
-            effective_kbps = 0
+            # ====================================================================
+            # Phase 1: PRE-PROCESSING (Local CPU work)
+            # ====================================================================
+            t_pre_start = time.time()
+
+            request_data = {
+                "model": self.config["model_id"],
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": self.max_tokens,
+                "temperature": temp,
+            }
+
+            json_payload = json.dumps(request_data)
+            prompt_bytes = len(json_payload)
+
+            t_pre_end = time.time()
+            preprocess_ms = (t_pre_end - t_pre_start) * 1000
+
+            # ====================================================================
+            # Phase 2: WAIT + INFERENCE (Provider-dependent)
+            # ====================================================================
             content = ""
             tokens = {}
             response_bytes = 0
-            prompt_bytes = 0
+            non_local_ms = 0
+            local_compute_ms = 0
+            cpu_during_phase = 0
 
-            api_start = time.time()
-            prompt_bytes = len(prompt.encode("utf-8"))
-
+            # --------------------------------------------------------------------
+            # Provider: OLLAMA (Local API, local inference)
+            # --------------------------------------------------------------------
             if self.provider == "ollama":
-                # Local Ollama API (minimal network latency)
+                t_start = time.time()
                 response = requests.post(
                     self.config["api_endpoint"],
-                    json={
-                        "model": self.config["model_id"],
-                        "messages": [{"role": "user", "content": prompt}],
-                        "stream": False,
-                        "options": {
-                            "temperature": temp,
-                            "num_predict": self.max_tokens,
-                        },
-                    },
+                    json=request_data,
                     timeout=30,
                 )
                 response.raise_for_status()
                 data = response.json()
+                t_end = time.time()
+
                 content = data["message"]["content"]
+                local_compute_ms = (t_end - t_start) * 1000
+                non_local_ms = 0
+
                 tokens = {
                     "prompt": len(prompt.split()),
                     "completion": len(content.split()),
                     "total": len(prompt.split()) + len(content.split()),
                 }
 
-                api_latency_ms = (time.time() - api_start) * 1000
-                response_bytes = len(content.encode("utf-8"))
-                total_bytes = prompt_bytes + response_bytes
-                effective_kbps = (
-                    (total_bytes * 8) / (api_latency_ms / 1000) / 1000
-                    if api_latency_ms > 0
-                    else 0
-                )
-            # ====================================================================
-            # NEW: Local GGUF model using llama-cpp-python
-            # ====================================================================
+            # --------------------------------------------------------------------
+            # Provider: LOCAL (GGUF via llama-cpp-python) - ACTIVE COMPUTE
+            # --------------------------------------------------------------------
             elif self.provider == "local":
-                api_start = time.time()
-                prompt_bytes = len(prompt.encode("utf-8"))
+                bytes_sent_approx = 0
+                bytes_recv_approx = 0
+                tcp_retransmits = 0
 
-                try:
+                if self._llm is None:
                     from llama_cpp import Llama
+                    self._llm = Llama(model_path=self.model_path)
 
-                    # Load model (consider caching for performance)
-                    llm = Llama(model_path=self.model_path)
+                t_start = time.time()
+                response = self._llm(
+                    prompt,
+                    max_tokens=self.max_tokens,
+                    temperature=temp,
+                    echo=False
+                )
+                t_end = time.time()
 
-                    # Run inference
-                    response = llm(
-                        prompt, max_tokens=self.max_tokens, temperature=temp, echo=False
-                    )
+                content = response["choices"][0]["text"].strip()
+                local_compute_ms = (t_end - t_start) * 1000
+                non_local_ms = 0
 
-                    api_latency_ms = (time.time() - api_start) * 1000
-                    content = response["choices"][0]["text"].strip()
+                tokens = {
+                    "prompt": response["usage"]["prompt_tokens"],
+                    "completion": response["usage"]["completion_tokens"],
+                    "total": response["usage"]["total_tokens"],
+                }
+                response_bytes = len(content.encode('utf-8'))
+                postprocess_ms = 0  # No postprocessing time for local provider since it's all compute
+                # Calculate total_time_ms (preprocess and postprocess are already set)
+                total_time_ms = preprocess_ms + local_compute_ms + postprocess_ms
+                # Calculate throughput for local
+                total_bytes = prompt_bytes + response_bytes
+                if total_time_ms > 0:
+                    app_throughput_kbps = (total_bytes * 8) / (total_time_ms / 1000) / 1000
+                else:
+                    app_throughput_kbps = 0
 
-                    # Get token counts from response
-                    tokens = {
-                        "prompt": response["usage"]["prompt_tokens"],
-                        "completion": response["usage"]["completion_tokens"],
-                        "total": response["usage"]["total_tokens"],
-                    }
-                    # ============================================================
-                    # ADD THIS - Store interaction data (16 spaces indentation)
-                    # ============================================================
 
-                    # Calculate bytes for throughput (optional)
-                    response_bytes = len(content.encode("utf-8"))
-                    total_bytes = prompt_bytes + response_bytes
-                    effective_kbps = (
-                        (total_bytes * 8) / (api_latency_ms / 1000) / 1000
-                        if api_latency_ms > 0
-                        else 0
-                    )
-
-                except Exception as e:
-                    logger.error(f"Local model inference failed: {e}")
-                    raise
-
+            # --------------------------------------------------------------------
+            # Provider: CLOUD (Groq, OpenRouter) - IDLE WAIT
+            # --------------------------------------------------------------------
             else:
-                # Cloud APIs
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 }
-                payload = {
-                    "model": self.config["model_id"],
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": self.max_tokens,
-                    "temperature": temp,
-                }
+
+                net_before = self._get_network_metrics()
+
+                t_start = time.time()
                 response = requests.post(
                     self.config["api_endpoint"],
                     headers=headers,
-                    json=payload,
+                    json=request_data,
                     timeout=30,
                 )
                 response.raise_for_status()
                 data = response.json()
+                t_end = time.time()
+
+                non_local_ms = (t_end - t_start) * 1000
+                local_compute_ms = 0
+                cpu_during_phase = psutil.cpu_percent(interval=0.1)
 
                 if "choices" in data:
                     content = data["choices"][0]["message"]["content"]
@@ -868,137 +952,224 @@ You can use tools like calculator or web search if needed.
                         "completion": usage.get("completion_tokens", 0),
                         "total": usage.get("total_tokens", 0),
                     }
-
+                    if tokens["total"] == 0:
+                        tokens = {
+                            "prompt": len(prompt.split()),
+                            "completion": len(content.split()),
+                            "total": len(prompt.split()) + len(content.split()),
+                        }
                 else:
                     content = str(data)
                     tokens = {}
                     logger.warning(f"Unexpected API response format")
 
-            api_end = time.time()
-            api_latency_ms = (api_end - api_start) * 1000
+            # ====================================================================
+            # Phase 3: POST-PROCESSING (Local CPU work)
+            # ====================================================================
+            t_post_start = time.time()
+            response_bytes = len(content.encode("utf-8"))
+            t_post_end = time.time()
+            postprocess_ms = (t_post_end - t_post_start) * 1000
 
-            self._api_latencies.append(api_latency_ms)  # ← NEW: store latency
-            # Emit LLM call event
-            phase = "planning" if self._call_count == 1 else "execution"
-            self._emit_event(
-                phase=phase,
-                event_type="llm_call",
-                start_time=api_start,
-                end_time=api_end,
-                metadata={
-                    "call_number": self._call_count,
-                    "temperature": temp,
-                    "tokens": tokens,
-                    "model": self.config.get("model_id"),
-                },
-            )
+            # ====================================================================
+            # Total API latency
+            # ====================================================================
+            total_time_ms = preprocess_ms + non_local_ms + local_compute_ms + postprocess_ms
+
+            # ====================================================================
+            # Throughput Calculation
+            # ====================================================================
+            total_bytes = prompt_bytes + response_bytes
+            if non_local_ms > 0:
+                app_throughput_kbps = (total_bytes * 8) / (non_local_ms / 1000) / 1000
+
+            # ====================================================================
+            # Network Metrics
+            # ====================================================================
+            dprint(f"🔍 PROVIDER FOR NETWORK: {self.provider}")
+            if self.provider in ["local", "ollama"]:
+                bytes_sent_approx = 0
+                bytes_recv_approx = 0
+                tcp_retransmits = 0
+            else:
+                net_after = self._get_network_metrics()
+                bytes_sent_approx = net_after["bytes_sent"] - net_before["bytes_sent"]
+                bytes_recv_approx = net_after["bytes_recv"] - net_before["bytes_recv"]
+                tcp_retransmits = net_after["tcp_retransmits"] - net_before["tcp_retransmits"]
+
+                dprint(f"🔍 NET_BEFORE IN CLOUD: {net_before}")
+                dprint(f"🔍 NET_AFTER IN CLOUD: {net_after}")
+
+                dprint(f"🔍 NETWORK DEBUG - bytes_sent: {bytes_sent_approx}, bytes_recv: {bytes_recv_approx}, tcp_retrans: {tcp_retransmits}")
+
+            # ====================================================================
+            # Store latency and throughput
+            # ====================================================================
+            self._api_latencies.append(total_time_ms)
 
             if not hasattr(self, "_effective_kbps_list"):
                 self._effective_kbps_list = []
-            self._effective_kbps_list.append(effective_kbps)  # effective kbps
+            self._effective_kbps_list.append(app_throughput_kbps)
 
-            # Capture network after
-            net_after = self._get_network_metrics()
+            if self.provider not in ["local", "ollama"]:
+                dprint(
+                    f"📬 Response: {content[:100]}... "
+                    f"(Pre: {preprocess_ms:.1f}ms, "
+                    f"Non-local: {non_local_ms:.1f}ms, "
+                    f"Local Compute: {local_compute_ms:.1f}ms, "
+                    f"Post: {postprocess_ms:.1f}ms, "
+                    f"Throughput: {app_throughput_kbps:.1f} kbps, "
+                    f"CPU Wait: {cpu_during_phase:.1f}%)"
+                    f"🔍 BEFORE: {net_before['bytes_sent']}, AFTER: {net_after['bytes_sent']}, DELTA: {bytes_sent_approx}"
+                )
+            else:
+                dprint(
+                    f"📬 Response: {content[:100]}... "
+                    f"(Pre: {preprocess_ms:.1f}ms, "
+                    f"Non-local: {non_local_ms:.1f}ms, "
+                    f"Local Compute: {local_compute_ms:.1f}ms, "
+                    f"Post: {postprocess_ms:.1f}ms, "
+                    f"Throughput: {app_throughput_kbps:.1f} kbps, "
+                    f"CPU Wait: {cpu_during_phase:.1f}%)"
+                )
 
-            # Calculate network deltas
-            bytes_sent = net_after["bytes_sent"] - net_before["bytes_sent"]
-            bytes_recv = net_after["bytes_recv"] - net_before["bytes_recv"]
-            tcp_retransmits = (
-                net_after["tcp_retransmits"] - net_before["tcp_retransmits"]
-            )
-
-            dprint(
-                f"📬 Response: {content[:100]}... (API: {api_latency_ms:.1f}ms, Throughput: {effective_kbps:.1f} kbps)"
-            )
-
-            # Capture network after
-            net_after = self._get_network_metrics()
-
-            # Calculate network deltas
-            bytes_sent = net_after["bytes_sent"] - net_before["bytes_sent"]
-            bytes_recv = net_after["bytes_recv"] - net_before["bytes_recv"]
-            tcp_retransmits = (
-                net_after["tcp_retransmits"] - net_before["tcp_retransmits"]
-            )
-
-            # ============================================================
-            # CREATE INTERACTION HERE (after all metrics are available)
-            # ============================================================
+            # ====================================================================
+            # Create interaction record
+            # ====================================================================
             interaction = {
-                "step_index": call_counter if call_counter else self.call_counter,
+                "step_index": call_counter if call_counter is not None else self._call_count,
                 "workflow_type": "agentic",
                 "prompt": prompt,
                 "response": content,
-                "model_name": self.config.get("model_id"),
+                "model_name": self.config.get("model_id", self.config.get("name", "unknown")),
                 "provider": self.provider,
                 "prompt_tokens": tokens.get("prompt", 0),
                 "completion_tokens": tokens.get("completion", 0),
                 "total_tokens": tokens.get("total", 0),
-                "api_latency_ms": api_latency_ms,
-                "throughput_kbps": effective_kbps,
-                "bytes_sent": bytes_sent,
-                "bytes_recv": bytes_recv,
+                "total_time_ms": total_time_ms,
+                "preprocess_ms": preprocess_ms,
+                "non_local_ms": non_local_ms,
+                "local_compute_ms": local_compute_ms,
+                "postprocess_ms": postprocess_ms,
+                "app_throughput_kbps": app_throughput_kbps,
+                "bytes_sent_approx": bytes_sent_approx,
+                "bytes_recv_approx": bytes_recv_approx,
                 "tcp_retransmits": tcp_retransmits,
-                "compute_time_ms": api_latency_ms,
+                "cpu_percent_during_wait": cpu_during_phase,
+                # Legacy compatibility
+                "api_latency_ms": total_time_ms,
+                "compute_time_ms": preprocess_ms + postprocess_ms,
+                "pending_interactions": self.pending_interactions.copy(),
+
             }
 
-            # Store in pending list
             if not hasattr(self, "pending_interactions"):
                 self.pending_interactions = []
-                print(f"🔍 DEBUG - Initialized pending_interactions")
-
             self.pending_interactions.append(interaction)
-            print(
-                f"🔍 DEBUG - Added interaction, now has {len(self.pending_interactions)} items"
-            )
+            dprint(f"🔍 DEBUG - Added interaction, now has {len(self.pending_interactions)} items")
 
             return {
                 "content": content,
                 "tokens": tokens,
-                "api_latency_ms": api_latency_ms,  # Already there
-                "effective_kbps": effective_kbps,
-                "bytes_sent": bytes_sent,
-                "bytes_recv": bytes_recv,
+                "total_time_ms": total_time_ms,
+                "preprocess_ms": preprocess_ms,
+                "non_local_ms": non_local_ms,
+                "local_compute_ms": local_compute_ms,
+                "postprocess_ms": postprocess_ms,
+                "app_throughput_kbps": app_throughput_kbps,
+                "bytes_sent_approx": bytes_sent_approx,
+                "bytes_recv_approx": bytes_recv_approx,
                 "tcp_retransmits": tcp_retransmits,
+                "cpu_percent_during_wait": cpu_during_phase,
                 "pending_interactions": self.pending_interactions.copy(),
             }
 
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
+            
+            # Calculate time spent before failure
+            t_error = time.time()
+            total_time_ms = (t_error - t_pre_start) * 1000 if 't_pre_start' in locals() else 0
+            pre_ms = preprocess_ms if 'preprocess_ms' in locals() else 0
+            
+            # Create interaction record even for failure
+            interaction = {
+                "step_index": call_counter if call_counter is not None else self._call_count,
+                "workflow_type": "agentic",
+                "prompt": prompt,
+                "response": f"ERROR: {e}",
+                "model_name": self.config.get("model_id", self.config.get("name", "unknown")),
+                "provider": self.provider,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "total_time_ms": total_time_ms,
+                "preprocess_ms": pre_ms,
+                "non_local_ms": 0,
+                "local_compute_ms": 0,
+                "postprocess_ms": 0,
+                "app_throughput_kbps": 0,
+                "bytes_sent_approx": 0,
+                "bytes_recv_approx": 0,
+                "tcp_retransmits": 0,
+                "cpu_percent_during_wait": 0,
+                "error_message": str(e),
+                "status": "failed",
+            }
+            
+            # Store failed interaction
+            if not hasattr(self, "pending_interactions"):
+                self.pending_interactions = []
+            self.pending_interactions.append(interaction)
+            
             return {
                 "content": f"Error: {e}",
                 "tokens": {},
-                "api_latency_ms": 0,
-                "effective_kbps": 0,
-                "bytes_sent": 0,
-                "bytes_recv": 0,
+                "total_time_ms": total_time_ms,
+                "preprocess_ms": pre_ms,
+                "non_local_ms": 0,
+                "local_compute_ms": 0,
+                "postprocess_ms": 0,
+                "app_throughput_kbps": 0,
+                "bytes_sent_approx": 0,
+                "bytes_recv_approx": 0,
                 "tcp_retransmits": 0,
+                "cpu_percent_during_wait": 0,
+                "pending_interactions": self.pending_interactions.copy(),
             }
 
     def _get_network_metrics(self) -> Dict[str, Any]:
         """
         Get network I/O metrics before/after API call.
         """
-        metrics = {}
+        metrics = {
+            "bytes_sent": 0,
+            "bytes_recv": 0,
+            "tcp_retransmits": 0,
+        }
 
         try:
             net_io = psutil.net_io_counters()
             metrics["bytes_sent"] = net_io.bytes_sent
             metrics["bytes_recv"] = net_io.bytes_recv
 
-            with open("/proc/net/snmp", "r") as f:
-                for line in f:
-                    if line.startswith("Tcp:"):
-                        parts = line.split()
-                        if "RetransSegs" in parts:
-                            idx = parts.index("RetransSegs")
-                            metrics["tcp_retransmits"] = int(parts[idx + 1])
-                        break
+            # Safe TCP parsing
+            try:
+                with open("/proc/net/snmp", "r") as f:
+                    lines = f.readlines()
+                    for i in range(len(lines)):
+                        if lines[i].startswith("Tcp:") and i + 1 < len(lines):
+                            headers = lines[i].split()
+                            values = lines[i + 1].split()
+                            if "RetransSegs" in headers:
+                                idx = headers.index("RetransSegs")
+                                metrics["tcp_retransmits"] = int(values[idx])
+                            break
+            except Exception:
+                pass  # Don't kill metrics if TCP parsing fails
+
         except Exception as e:
             logger.debug(f"Could not get network metrics: {e}")
-            metrics["bytes_sent"] = 0
-            metrics["bytes_recv"] = 0
-            metrics["tcp_retransmits"] = 0
 
         return metrics
 

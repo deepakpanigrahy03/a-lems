@@ -433,6 +433,10 @@ class ExperimentHarness:
         duration = raw_energy.duration_seconds
         interrupt_rate = get_interrupt_rate(intr_before, intr_after, duration)
 
+        dprint(f"🔍 LINEAR HARNESS - total_bytes_sent: {exec_result.get('total_bytes_sent', 'NOT FOUND')}")
+        dprint(f"🔍 LINEAR HARNESS - total_bytes_recv: {exec_result.get('total_bytes_recv', 'NOT FOUND')}")
+        dprint(f"🔍 LINEAR HARNESS - total_tcp_retransmits: {exec_result.get('total_tcp_retransmits', 'NOT FOUND')}")
+
         result = {
             "experiment_id": exec_result.get("experiment_id"),
             "task_id": task_id,
@@ -549,6 +553,12 @@ class ExperimentHarness:
                 "prompt_tokens": exec_result.get("tokens", {}).get("prompt", 0),
                 "completion_tokens": exec_result.get("tokens", {}).get("completion", 0),
                 # Network metrics (for cloud models)
+                "bytes_sent": exec_result.get("total_bytes_sent", 0),
+                "bytes_recv": exec_result.get("total_bytes_recv", 0),
+                "tcp_retransmits": exec_result.get("total_tcp_retransmits", 0),
+                "total_non_local_ms": exec_result.get("total_workflow_non_local_ms", 0),
+                "effective_throughput_kbps": exec_result.get("effective_throughput_kbps", 0),
+
                 "dns_latency_ms": network_metrics.get("dns_latency_ms", 0),
                 "api_latency_ms": exec_result.get("api_latency_ms", 0),
                 "compute_time_ms": exec_result.get(
@@ -861,6 +871,8 @@ class ExperimentHarness:
         else:
             print("🔍 DEBUG - No orchestration events found in executor")
 
+
+
         # ====================================================================
         # Step 6: Return ALL THREE LAYERS with ML features
         # ====================================================================
@@ -982,6 +994,12 @@ class ExperimentHarness:
                 "total_tokens": exec_result.get("tokens", {}).get("total", 0),
                 "prompt_tokens": exec_result.get("tokens", {}).get("prompt", 0),
                 "completion_tokens": exec_result.get("tokens", {}).get("completion", 0),
+                "bytes_sent": exec_result.get("total_bytes_sent", 0),
+                "bytes_recv": exec_result.get("total_bytes_recv", 0),
+                "total_non_local_ms": exec_result.get("total_workflow_non_local_ms", 0),
+                "effective_throughput_kbps": exec_result.get("effective_throughput_kbps", 0),
+                "tcp_retransmits": exec_result.get("total_tcp_retransmits", 0),
+
                 # ====================================================================
                 # AGENTIC-SPECIFIC FEATURES
                 # ====================================================================
@@ -1014,6 +1032,7 @@ class ExperimentHarness:
                 "tools_used": len(exec_result.get("tools_used", [])),
                 "steps": exec_result.get("steps", 1),
                 "avg_step_time_ms": exec_result.get("avg_step_time_ms", 0),
+                "orchestration_cpu_ms": exec_result.get("orchestration_cpu_ms", 0),
                 "complexity_level": exec_result.get("complexity_level", 1),
                 "complexity_score": exec_result.get("complexity_score", {}).get(
                     "raw_score", 0

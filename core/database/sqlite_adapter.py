@@ -741,7 +741,7 @@ class SQLiteAdapter(DatabaseInterface):
                 )
 
     def insert_llm_interaction(self, interaction_data: dict) -> int:
-        """Insert an LLM interaction record"""
+        """Insert an LLM interaction record with all research metrics."""
         cursor = self.conn.execute(
             """
             INSERT INTO llm_interactions (
@@ -749,8 +749,13 @@ class SQLiteAdapter(DatabaseInterface):
                 prompt, response,
                 model_name, provider,
                 prompt_tokens, completion_tokens, total_tokens,
-                api_latency_ms, throughput_kbps, compute_time_ms
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                api_latency_ms, compute_time_ms,
+                app_throughput_kbps,
+                total_time_ms, preprocess_ms, non_local_ms, local_compute_ms, postprocess_ms,
+                cpu_percent_during_wait,
+                bytes_sent_approx, bytes_recv_approx, tcp_retransmits,
+                error_message, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 interaction_data.get("run_id"),
@@ -760,12 +765,24 @@ class SQLiteAdapter(DatabaseInterface):
                 interaction_data.get("response"),
                 interaction_data.get("model_name"),
                 interaction_data.get("provider"),
-                interaction_data.get("prompt_tokens"),
-                interaction_data.get("completion_tokens"),
-                interaction_data.get("total_tokens"),
-                interaction_data.get("api_latency_ms"),
-                interaction_data.get("throughput_kbps", 0.0),
-                interaction_data.get("compute_time_ms"),
+                interaction_data.get("prompt_tokens", 0),
+                interaction_data.get("completion_tokens", 0),
+                interaction_data.get("total_tokens", 0),
+                interaction_data.get("api_latency_ms", 0),
+                interaction_data.get("compute_time_ms", 0),
+                interaction_data.get("app_throughput_kbps", 0),
+                interaction_data.get("total_time_ms", 0),
+                interaction_data.get("preprocess_ms", 0),
+                interaction_data.get("non_local_ms", 0),
+                interaction_data.get("local_compute_ms", 0),
+                interaction_data.get("postprocess_ms", 0),
+                interaction_data.get("cpu_percent_during_wait", 0),
+                interaction_data.get("bytes_sent_approx", 0),
+                interaction_data.get("bytes_recv_approx", 0),
+                interaction_data.get("tcp_retransmits", 0),
+                interaction_data.get("error_message", ""),
+                interaction_data.get("status", "success")
+
             ),
         )
         return cursor.lastrowid

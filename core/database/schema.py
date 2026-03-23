@@ -206,6 +206,7 @@ CREATE TABLE IF NOT EXISTS runs (
     tools_used INTEGER,
     steps INTEGER,
     avg_step_time_ms REAL,
+    orchestration_cpu_ms REAL,
     complexity_level INTEGER,
     complexity_score REAL,
 
@@ -821,9 +822,27 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
     prompt_tokens INTEGER,
     completion_tokens INTEGER,
     total_tokens INTEGER,
+    
+    -- Existing (keep)
     api_latency_ms REAL,
-    throughput_kbps REAL,
     compute_time_ms REAL,
+    
+    -- Renamed
+    app_throughput_kbps REAL,
+    
+    -- NEW columns
+    total_time_ms REAL,
+    preprocess_ms REAL,
+    non_local_ms REAL,
+    local_compute_ms REAL,
+    postprocess_ms REAL,
+    cpu_percent_during_wait REAL,
+    bytes_sent_approx INTEGER,
+    bytes_recv_approx INTEGER,
+    tcp_retransmits INTEGER,
+    error_message TEXT,
+    status TEXT,
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(run_id) REFERENCES runs(run_id)
 );
