@@ -849,3 +849,41 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
 CREATE INDEX IF NOT EXISTS idx_llm_run ON llm_interactions(run_id);
 CREATE INDEX IF NOT EXISTS idx_llm_workflow ON llm_interactions(workflow_type);
 """
+# ========================================================================
+# View : ml_view - analytical view that flattens runs and llm_interactions for ML modeling
+# ========================================================================
+CREATE_RESEARCH_METRICS_VIEW = """
+CREATE VIEW IF NOT EXISTS research_metrics_view AS
+SELECT 
+    r.run_id,
+    r.exp_id,
+    e.provider,
+    r.workflow_type,
+    r.duration_ns / 1e6 AS total_time_ms,
+    r.compute_time_ms,
+    r.orchestration_cpu_ms,
+    r.bytes_sent AS total_bytes_sent,
+    r.bytes_recv AS total_bytes_recv,
+    
+    COALESCE(i.total_wait_ms, 0) AS total_wait_ms,
+    COALESCE(i.total_llm_compute_ms, 0) AS total_llm_compute_ms,
+    
+    CASE WHEN r.duration_ns > 0 THEN r.orchestration_cpu_ms * 1.0 / (r.duration_ns / 1e6) ELSE 0 END AS ooi_time,
+    CASE WHEN r.compute_time_ms > 0 THEN r.orchestration_cpu_ms * 1.0 / r.compute_time_ms ELSE 0 END AS ooi_cpu,
+    CASE WHEN r.duration_ns > 0 THEN COALESCE(i.total_llm_compute_ms, 0) * 1.0 / (r.duration_ns / 1e6) ELSE 0 END AS ucr,
+    CASE WHEN r.duration_ns > 0 THEN COALESCE(i.total_wait_ms, 0) * 1.0 / (r.duration_ns / 1e6) ELSE 0 END AS network_ratio
+
+FROM runs r
+JOIN experiments e ON r.exp_id = e.exp_id
+LEFT JOIN (
+    SELECT 
+        run_id, 
+        SUM(non_local_ms) AS total_wait_ms,
+        SUM(local_compute_ms) AS total_llm_compute_ms
+    FROM llm_interactions
+    GROUP BY run_id
+) i ON r.run_id = i.run_id
+WHERE (i.total_llm_compute_ms > 0 OR i.total_wait_ms > 0)
+  AND (r.orchestration_cpu_ms <= r.compute_time_ms * 5);
+
+"""

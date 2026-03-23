@@ -41,7 +41,7 @@ from .schema import (CREATE_CPU_SAMPLES, CREATE_ENERGY_SAMPLES,
                      CREATE_ORCHESTRATION_EVENTS, CREATE_RUNS,
                      CREATE_RUNS_INDEXES, CREATE_TAX_INDEXES,
                      CREATE_TAX_SUMMARY, TASK_CATEGORIES_SCHEMA,
-                     THERMAL_SAMPLES_SCHEMA)
+                     THERMAL_SAMPLES_SCHEMA, CREATE_RESEARCH_METRICS_VIEW)
 
 
 class SQLiteAdapter(DatabaseInterface):
@@ -249,6 +249,7 @@ class SQLiteAdapter(DatabaseInterface):
         self.conn.execute(CREATE_ORCHESTRATION_ANALYSIS)
         self.conn.execute(CREATE_ENVIRONMENT_CONFIG)
         self.conn.executescript(CREATE_LLM_INTERACTIONS)
+        self.conn.execute(CREATE_RESEARCH_METRICS_VIEW)
 
         # Commit explicitly (DDL should be committed)
         self.conn.commit()

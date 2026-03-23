@@ -43,15 +43,15 @@ Where:
 
 ### Phase Calculations
 
-$$preprocess\_ms = (t_1 - t_0) \times 1000$$
+$$t_{\text{pre}} = (t_1 - t_0) \times 1000$$
 
-$$non\_local\_ms = (t_2 - t_1) \times 1000$$
+$$t_{\text{wait}} = (t_2 - t_1) \times 1000$$
 
-$$local\_compute\_ms = (t_3 - t_2) \times 1000$$
+$$t_{\text{compute}} = (t_3 - t_2) \times 1000$$
 
-$$postprocess\_ms = (t_4 - t_3) \times 1000$$
+$$t_{\text{post}} = (t_4 - t_3) \times 1000$$
 
-$$total\_time\_ms = preprocess\_ms + non\_local\_ms + local\_compute\_ms + postprocess\_ms$$
+$$t_{\text{total}} = t_{\text{pre}} + t_{\text{wait}} + t_{\text{compute}} + t_{\text{post}}$$
 
 ---
 
@@ -59,11 +59,11 @@ $$total\_time\_ms = preprocess\_ms + non\_local\_ms + local\_compute\_ms + postp
 
 ### From API Response
 
-$$prompt\_tokens = \text{usage.prompt\_tokens}$$
+$$\text{prompt\_tokens} = \text{usage.prompt\_tokens}$$
 
-$$completion\_tokens = \text{usage.completion\_tokens}$$
+$$\text{completion\_tokens} = \text{usage.completion\_tokens}$$
 
-$$total\_tokens = prompt\_tokens + completion\_tokens$$
+$$\text{total\_tokens} = \text{prompt\_tokens} + \text{completion\_tokens}$$
 
 ### Fallback Estimation (when API doesn't return tokens)
 
@@ -77,24 +77,24 @@ $$completion\_tokens \approx \lceil \frac{\text{len(response)}}{4} \rceil$$
 
 ### Application-Level Throughput
 
-$$total\_bytes = \text{len(prompt)} + \text{len(response)}$$
+$$\text{total\_bytes} = \text{len(prompt)} + \text{len(response)}$$
 
-$$app\_throughput\_kbps = \begin{cases}
-\frac{total\_bytes \times 8}{non\_local\_ms / 1000} / 1000 & \text{if } non\_local\_ms > 0 \\
+$$\text{app\_throughput\_kbps} = \begin{cases}
+
+\frac{\text{total\_bytes} \times 8}{t_{\text{wait}} / 1000} / 1000 & \text{if } t_{\text{wait}} > 0 \\
 0 & \text{otherwise}
 \end{cases}$$
-
 ---
 
 ## 📡 Network Metrics
 
 Captured before and after API call:
 
-$$bytes\_sent = net_{after}["bytes\_sent"] - net_{before}["bytes\_sent"]$$
+$$\text{bytes\_sent} = \text{net}_{\text{after}}[\text{"bytes\_sent"}] - \text{net}_{\text{before}}[\text{"bytes\_sent"}]$$
 
-$$bytes\_recv = net_{after}["bytes\_recv"] - net_{before}["bytes\_recv"]$$
+$$\text{bytes\_recv} = \text{net}_{\text{after}}[\text{"bytes\_recv"}] - \text{net}_{\text{before}}[\text{"bytes\_recv"}]$$
 
-$$tcp\_retransmits = net_{after}["tcp\_retransmits"] - net_{before}["tcp\_retransmits"]$$
+$$\text{tcp\_retransmits} = \text{net}_{\text{after}}[\text{"tcp\_retransmits"}] - \text{net}_{\text{before}}[\text{"tcp\_retransmits"}]$$
 
 **Note:** For local runs ($provider \in \{\text{local}, \text{ollama}\}$), these are set to 0.
 
@@ -102,32 +102,33 @@ $$tcp\_retransmits = net_{after}["tcp\_retransmits"] - net_{before}["tcp\_retran
 
 ## 💻 CPU During Wait
 
-$$cpu\_percent\_during\_wait = \begin{cases}
-\text{psutil.cpu\_percent}(interval = non\_local\_ms / 1000) & \text{if } non\_local\_ms > 0 \\
+$$\text{cpu\_percent\_during\_wait} = \begin{cases}
+\text{psutil.cpu\_percent}(interval = t_{\text{wait}} / 1000) & \text{if } t_{\text{wait}} > 0 \\
 0 & \text{otherwise}
 \end{cases}$$
-
 ---
 
 ## 🔄 Workflow Aggregation (Agentic)
 
 For workflows with multiple LLM calls:
 
-$$total\_pre = \sum_{i} preprocess\_ms_i$$
+$$t_{\text{pre,total}} = \sum_{i} t_{\text{pre},i}$$
 
-$$total\_wait = \sum_{i} non\_local\_ms_i$$
+$$t_{\text{wait,total}} = \sum_{i} t_{\text{wait},i}$$
 
-$$total\_post = \sum_{i} postprocess\_ms_i$$
+$$t_{\text{post,total}} = \sum_{i} t_{\text{post},i}$$
 
-$$total\_compute = \sum_{i} local\_compute\_ms_i$$
+$$t_{\text{compute,total}} = \sum_{i} t_{\text{compute},i}$$
 
-$$total\_bytes\_sent = \sum_{i} bytes\_sent\_approx_i$$
+$$\text{bytes\_sent,total} = \sum_{i} \text{bytes\_sent\_approx}_i$$
 
-$$total\_bytes\_recv = \sum_{i} bytes\_recv\_approx_i$$
+$$\text{bytes\_recv,total} = \sum_{i} \text{bytes\_recv\_approx}_i$$
 
 ### Orchestration CPU
 
-$$T_{orchestration} = T_{workflow} - total\_compute - total\_wait$$
+$$T_{\text{orchestration}} = T_{\text{workflow}} - t_{\text{compute,total}} - t_{\text{wait,total}}$$
+
+$$\text{compute\_time\_ms} = t_{\text{pre,total}} + t_{\text{post,total}} + T_{\text{orchestration}}$$
 
 Where $T_{workflow}$ is the total workflow execution time from start to end.
 
@@ -135,12 +136,12 @@ Where $T_{workflow}$ is the total workflow execution time from start to end.
 
 ### Workflow Compute Time
 
-$$T_{compute\_total} = total\_pre + total\_post + T_{orchestration}$$
+$$T_{\text{compute\_total}} = t_{\text{pre,total}} + t_{\text{post,total}} + T_{\text{orchestration}}$$
 
 ### Effective Throughput
 
-$$effective\_throughput\_kbps = \begin{cases}
-\frac{(total\_bytes\_sent + total\_bytes\_recv) \times 8}{total\_wait / 1000} / 1000 & \text{if } total\_wait > 0 \\
+$$\text{effective\_throughput\_kbps} = \begin{cases}
+\frac{(\text{bytes\_sent,total} + \text{bytes\_recv,total}) \times 8}{t_{\text{wait,total}} / 1000} / 1000 & \text{if } t_{\text{wait,total}} > 0 \\
 0 & \text{otherwise}
 \end{cases}$$
 
@@ -150,11 +151,11 @@ $$effective\_throughput\_kbps = \begin{cases}
 
 ### Time-Based OOI
 
-$$OOI_{time} = \frac{T_{orchestration}}{T_{total}}$$
+$$OOI_{\text{time}} = \frac{T_{\text{orchestration}}}{T_{\text{total}}}$$
 
 ### CPU-Based OOI
 
-$$OOI_{cpu} = \frac{T_{orchestration}}{T_{compute\_total}}$$
+$$OOI_{\text{cpu}} = \frac{T_{\text{orchestration}}}{\text{compute\_time\_ms}}$$
 
 **Interpretation:**
 
@@ -169,7 +170,7 @@ $$OOI_{cpu} = \frac{T_{orchestration}}{T_{compute\_total}}$$
 
 ## 📊 Useful Compute Ratio (UCR)
 
-$$UCR = \frac{T_{compute}}{T_{total}}$$
+$$UCR = \frac{t_{\text{compute,total}}}{T_{\text{total}}}$$
 
 **Interpretation:**
 
@@ -194,9 +195,9 @@ $$UCR = \frac{T_{compute}}{T_{total}}$$
 
 For backward compatibility with existing analyses:
 
-$$api\_latency\_ms = total\_wait\_time = \sum_{i} non\_local\_ms_i$$
+$$\text{api\_latency\_ms} = t_{\text{wait,total}}$$
 
-$$compute\_time\_ms = T_{compute\_total}$$
+$$\text{compute\_time\_ms} = T_{\text{compute\_total}}$$
 
 ---
 
@@ -232,6 +233,57 @@ $$local\_compute\_ms \stackrel{?}{>} 0$$
 
 ---
 
+## 🔧 Implementation Mapping
+
+This section maps mathematical notation to actual code variables in A-LEMS.
+
+### Phase Variables
+
+| Mathematical Notation | Code Variable | Location |
+|-----------------------|---------------|----------|
+| $t_{\text{pre}}$ | `preprocess_ms` | `_call_llm()` in `agentic.py`, `linear.py` |
+| $t_{\text{wait}}$ | `non_local_ms` | `_call_llm()` in `agentic.py`, `linear.py` |
+| $t_{\text{compute}}$ | `local_compute_ms` | `_call_llm()` in `agentic.py`, `linear.py` |
+| $t_{\text{post}}$ | `postprocess_ms` | `_call_llm()` in `agentic.py`, `linear.py` |
+| $t_{\text{total}}$ | `total_time_ms` | `_call_llm()` return value |
+
+### Workflow Aggregation
+
+| Mathematical Notation | Code Variable | Location |
+|-----------------------|---------------|----------|
+| $t_{\text{pre,total}}$ | `total_pre_ms` | `agentic.py` aggregation loop |
+| $t_{\text{wait,total}}$ | `total_workflow_non_local_ms` | `agentic.py` aggregation loop |
+| $t_{\text{post,total}}$ | `total_post_ms` | `agentic.py` aggregation loop |
+| $t_{\text{compute,total}}$ | `total_llm_compute_ms` | `agentic.py` aggregation loop |
+
+### Workflow-Level Metrics
+
+| Mathematical Notation | Code Variable | Table |
+|-----------------------|---------------|-------|
+| $T_{\text{workflow}}$ | `total_time_ms` (workflow) | `runs` table |
+| $T_{\text{orchestration}}$ | `orchestration_cpu_ms` | `runs` table |
+| $T_{\text{compute\_total}}$ | `compute_time_ms` | `runs` table |
+| $t_{\text{wait,total}}$ | `total_workflow_non_local_ms` | `runs` table |
+| $\text{bytes\_sent,total}$ | `total_bytes_sent` → `bytes_sent` | `runs` table |
+| $\text{bytes\_recv,total}$ | `total_bytes_recv` → `bytes_recv` | `runs` table |
+
+### Database Storage
+
+| Metric | Table | Column |
+|--------|-------|--------|
+| Per-call phases | `llm_interactions` | `preprocess_ms`, `non_local_ms`, `local_compute_ms`, `postprocess_ms` |
+| Workflow aggregation | `runs` | `orchestration_cpu_ms`, `compute_time_ms`, `bytes_sent`, `bytes_recv` |
+
+### Derived Metrics (Computed in Analysis)
+
+| Mathematical Notation | Formula | Calculation |
+|-----------------------|---------|-------------|
+| $OOI_{\text{time}}$ | $\frac{T_{\text{orchestration}}}{T_{\text{total}}}$ | `orchestration_cpu_ms / total_time_ms` |
+| $OOI_{\text{cpu}}$ | $\frac{T_{\text{orchestration}}}{T_{\text{compute\_total}}}$ | `orchestration_cpu_ms / compute_time_ms` |
+| $UCR$ | $\frac{t_{\text{compute,total}}}{T_{\text{total}}}$ | `total_llm_compute_ms / total_time_ms` |
+
+---
+
 ## ⚠️ Failure Handling
 
 Failed LLM calls are still recorded:
@@ -246,8 +298,38 @@ $$preprocess\_ms = (t_1 - t_0) \times 1000 \text{ (if available)}$$
 
 ---
 
+## 📊 Empirical Results (Preliminary)
+
+The methodology described above has been validated with initial experiments. The following results are from a small sample (25-30 runs per configuration) and demonstrate the types of insights A-LEMS can provide.
+
+**Note:** These are illustrative results from a limited dataset. Full-scale experiments with statistical significance will be conducted for publication.
+
+| Workflow | Provider | OOI_time | OOI_cpu | UCR | Network Ratio |
+|----------|----------|----------|---------|-----|---------------|
+| **Agentic** | cloud | 0.065 | 0.92 | 0.0 | 0.41 |
+| **Agentic** | local | 0.008 | 1.00 | 0.49 | 0.0 |
+| **Linear** | cloud | 0.0 | 0.0 | 0.0 | 0.33 |
+| **Linear** | local | 0.0 | 0.0 | 0.47 | 0.0 |
+
+### Preliminary Interpretation
+
+- **Agentic workflows appear to consume nearly all local CPU resources for orchestration** (OOI_cpu ≈ 0.92-1.00)
+- This overhead accounts for **1-7% of total execution time** (OOI_time)
+- **Cloud workloads show significant network waiting time** (33-41% of total time)
+
+### Next Steps
+
+Full-scale experiments will:
+- Increase statistical power with 100+ runs per configuration
+- Vary task complexity (simple, multi-step, reasoning)
+- Compare across different model sizes and providers
+- Analyze scaling behavior with increasing steps/tools
+
+See [Publication Roadmap](04-publications.md) for detailed plan.
+
+
 ## 📚 References
 
 1. A-LEMS Technical Documentation: [System Architecture](../developer-guide/01-architecture.md)
 2. A-LEMS Database Schema: [Database Design](../developer-guide/03-database-schema.md)
-3. Orchestration Tax Analysis: [Mathematical Derivations](02-mathematical-derivations.md)
+3. Orchestration Tax Analysis: [Mathematical Derivations](02-mathematical-derivations.md)   

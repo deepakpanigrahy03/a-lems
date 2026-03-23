@@ -212,6 +212,76 @@ Total: 7.6s
 | Interrupts per second | `interrupt_rate` | < 5000 |
 
 ---
+## LLM Interaction Metrics
+
+A-LEMS captures fine-grained metrics for each LLM call, separated into phases:
+
+### Phase Timing
+
+| Metric | Description | What it measures |
+|--------|-------------|------------------|
+| `preprocess_ms` | Time spent preparing the request | JSON serialization, prompt formatting |
+| `non_local_ms` | Time spent waiting for network/remote inference | Network latency + cloud model inference |
+| `local_compute_ms` | Time spent in local model inference | llama-cpp inference time |
+| `postprocess_ms` | Time spent parsing the response | JSON parsing, token extraction |
+| `total_time_ms` | Total time for the LLM call | Sum of all phases |
+
+### Network Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `bytes_sent_approx` | Approximate bytes sent (system-level) |
+| `bytes_recv_approx` | Approximate bytes received (system-level) |
+| `tcp_retransmits` | TCP retransmission count |
+| `app_throughput_kbps` | Application-level throughput (bytes / non_local_ms) |
+
+### Failure Tracking
+
+| Metric | Description |
+|--------|-------------|
+| `status` | "success" or "failed" |
+| `error_message` | Error details if failed |
+
+---
+
+## Research Metrics (View: `research_metrics_view`)
+
+A-LEMS provides derived research metrics for analysis:
+
+### Orchestration Overhead Index (OOI)
+
+| Metric | Formula | Interpretation |
+|--------|---------|----------------|
+| `ooi_time` | `orchestration_cpu_ms / total_time_ms` | Fraction of total time spent on orchestration |
+| `ooi_cpu` | `orchestration_cpu_ms / compute_time_ms` | Fraction of local CPU spent on orchestration |
+
+**Typical Values:**
+- Agentic cloud: `ooi_time ≈ 0.06`, `ooi_cpu ≈ 0.92`
+- Agentic local: `ooi_time ≈ 0.01`, `ooi_cpu ≈ 1.00`
+- Linear: `ooi_time = 0`, `ooi_cpu = 0`
+
+### Useful Compute Ratio (UCR)
+
+| Metric | Formula | Interpretation |
+|--------|---------|----------------|
+| `ucr` | `total_llm_compute_ms / total_time_ms` | Fraction of time spent on actual model inference |
+
+**Typical Values:**
+- Agentic local: `ucr ≈ 0.49`
+- Linear local: `ucr ≈ 0.47`
+- Cloud: `ucr = 0`
+
+### Network Ratio
+
+| Metric | Formula | Interpretation |
+|--------|---------|----------------|
+| `network_ratio` | `total_wait_ms / total_time_ms` | Fraction of time waiting for network/remote compute |
+
+**Typical Values:**
+- Agentic cloud: `network_ratio ≈ 0.41`
+- Linear cloud: `network_ratio ≈ 0.33`
+- Local: `network_ratio = 0`
+
 
 ## 🔍 Sample Queries
 
