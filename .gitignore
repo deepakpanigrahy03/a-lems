@@ -101,5 +101,4 @@ docs-src/*/.cache/
 context.txt
 archive/
 core/.env
-core/msr_helper/msr_read
 config/hw_config.json.*

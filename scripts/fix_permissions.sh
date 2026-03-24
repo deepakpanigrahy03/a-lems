@@ -242,13 +242,11 @@ echo -e "\n[2.5/4] Compiling MSR helper binary..."
 MSR_DIR="core/msr_helper"
 MSR_HELPER="$MSR_DIR/msr_read"
 
-# Check if we need to compile
-if [ ! -f "$MSR_HELPER" ]; then
-    echo "  🔧 MSR helper not found, compiling..."
     
     # Check if source exists
     if [ -f "$MSR_DIR/msr_read.c" ]; then
         cd "$MSR_DIR"
+        make clean 2>/dev/null || true   # Remove old binary
         make 2>/dev/null || gcc -o msr_read msr_read.c
         cd - > /dev/null
         echo "  ✅ MSR helper compiled"
@@ -259,9 +257,7 @@ if [ ! -f "$MSR_HELPER" ]; then
         echo "  Please restore the source file from git or backup"
         exit 1
     fi
-else
-    echo "  ✅ MSR helper already exists"
-fi
+
 
 # Verify binary exists
 if [ -f "$MSR_HELPER" ]; then
