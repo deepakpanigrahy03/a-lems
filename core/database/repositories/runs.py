@@ -101,6 +101,10 @@ class RunsRepository:
         energy_per_token = (total_energy_j / total_tokens) if total_tokens else None
         instructions_per_token = (instructions / total_tokens) if total_tokens else None
 
+        duration_sec = ml.get("duration_sec", 0)
+        energy_j = ml.get("energy_j", 0)
+        avg_power_watts = energy_j / duration_sec if duration_sec > 0 else 0
+
         # Thermal delta
         start_temp = ml.get("start_temp_c")
         max_temp = ml.get("max_temp_c")
@@ -116,7 +120,7 @@ class RunsRepository:
             "duration_ms": ml.get("duration_ms", 0),
             "total_energy_j": total_energy_j,
             "total_energy_uj": total_energy_uj,
-            "avg_power_watts": ml.get("avg_power_watts", 0),
+            'avg_power_watts': avg_power_watts,
             # Performance counters
             "instructions": instructions,
             "cycles": cycles,
@@ -352,7 +356,7 @@ class RunsRepository:
             pkg_raw_uj,
             max(pkg_raw_uj - baseline_energy_uj, 0),
             baseline_energy_uj,
-            fields["avg_power_watts"],
+            fields.get("avg_power_watts", 0),
             pkg_raw_uj,
             core_raw_uj,
             uncore_raw_uj,
@@ -499,6 +503,7 @@ class RunsRepository:
             UPDATE runs SET
                 cpu_busy_mhz = ?,
                 cpu_avg_mhz = ?,
+                frequency_mhz = ?,
                 package_temp_celsius = ?,
                 max_temp_c = ?,
                 min_temp_c = ?,
@@ -507,6 +512,7 @@ class RunsRepository:
         """,
             (
                 stats.get("cpu_busy_mhz", 0),
+                stats.get("cpu_avg_mhz", 0),
                 stats.get("cpu_avg_mhz", 0),
                 stats.get("package_temp_celsius", 0),
                 stats.get("max_temp_c", 0),

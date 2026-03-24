@@ -49,9 +49,10 @@ experiment:
   # ====================================================================
   baseline:
     force_remeasure: false           # Set to false during development
-    duration_seconds: 10
+    duration_seconds: 30
     num_samples: 3
     pre_wait_seconds: 10
+    cache_file: "data/idle_baseline.json"
   # true for production, false to use cache  
   
 # ===== NEW: MSR measurement settings =====

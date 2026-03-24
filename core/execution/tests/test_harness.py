@@ -294,7 +294,7 @@ def main():
         # Create database connection and experiment
         db, hw_id, env_id = runner.setup_database()
 
-        runner.ensure_baseline_in_db(db, harness)
+        #runner.ensure_baseline_in_db(db, harness)
         config.sync_task_categories(db.db.conn)
         exp_id = runner.create_experiment(
             db,

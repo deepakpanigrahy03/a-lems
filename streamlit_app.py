@@ -15,6 +15,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+
+
 _ROOT = Path(__file__).parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -25,6 +27,12 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── GUI table migrations — runs every startup, safe, idempotent ───────────────
+from gui.db_migrations import ensure_gui_tables
+_migration_status = ensure_gui_tables()
+if _migration_status["errors"]:
+    st.sidebar.warning(f"⚠ DB migration issues: {len(_migration_status['errors'])} error(s).")
 
 st.markdown(
     """
@@ -142,12 +150,16 @@ _PAGE_MODULES = {
     "data_network": "gui.pages.data_network",
     "data_swap": "gui.pages.data_swap",
     "data_interrupts": "gui.pages.data_interrupts",
+    "data_network_bytes": "gui.pages.data_network_bytes",
     # Data Quality
     "dq_validity": "gui.pages.dq_validity",
     "dq_coverage": "gui.pages.dq_coverage",
     "dq_sufficiency": "gui.pages.dq_sufficiency",
     "dq_integrity": "gui.pages.dq_integrity",
+    "dq_swap": "gui.pages.dq_swap",
+    "dq_drift": "gui.pages.dq_drift",
     "dq_schema": "gui.pages.dq_schema",
+    
 }
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────

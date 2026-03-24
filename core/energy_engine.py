@@ -307,6 +307,7 @@ class EnergyEngine:
         Measure system idle energy baseline.
         """
         # Measure baseline using utility (returns BaselineMeasurement object)
+        dprint(f"🔍 DEBUG - force_remeasure value: {force_remeasure}")
         baseline = measure_baseline(
             rapl_reader=self.rapl,
             core_pinner=self.core_pinner,

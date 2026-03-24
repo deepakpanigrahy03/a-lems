@@ -298,8 +298,8 @@ SECTION_PAGES = {
                 "label": "Network Bytes",
                 "icon": "⊞",
                 "desc": "bytes_sent / bytes_recv, TCP retransmits, effective throughput.",
-                "status": BLOCKED,
-                "blocked_reason": "Collect bytes_sent / bytes_recv — not yet captured by the measurement harness.",
+                "status": NEW,
+               
             },
         ],
     },
@@ -460,12 +460,27 @@ SECTION_PAGES = {
                 "status": NEW,
             },
             {
+                "id": "dq_swap",
+                "label": "Swap Analysis",
+                "icon": "⇅",
+                "desc": "Swap delta as memory pressure signal — ML training data quality.",
+                "status": NEW,
+            },
+
+            {
+                "id": "dq_drift",
+                "label": "Data Drift",
+                "icon": "⟳",
+                "desc": "Detects if recent runs have drifted from historical baseline.",
+                "status": NEW,
+            },
+            {
                 "id": "dq_schema",
                 "label": "Schema Log",
                 "icon": "≡",
                 "desc": "Schema version history — migration log and applied changes.",
                 "status": NEW,
-            },
+            },        
         ],
     },
     "SILICON LAB": {

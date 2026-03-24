@@ -110,7 +110,7 @@ def run_provider_task(
             db, hw_id, env_id = runner.setup_database()
 
             config.sync_task_categories(db.db.conn)
-            runner.ensure_baseline_in_db(db, harness)
+            #runner.ensure_baseline_in_db(db, harness)
             exp_id = runner.create_experiment(
                 db,
                 task["id"],

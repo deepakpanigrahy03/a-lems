@@ -255,6 +255,12 @@ class ExperimentHarness:
         raw_energy = (
             self.energy_engine.stop_measurement()
         )  # RawEnergyMeasurement (Layer 1)
+        if hasattr(raw_energy, 'perf'):
+            dprint(f"🔍 PERF DEBUG - raw_energy.perf: {raw_energy.perf}")
+            dprint(f"🔍 PERF DEBUG - minor_page_faults: {raw_energy.perf.minor_page_faults}")
+            dprint(f"🔍 PERF DEBUG - major_page_faults: {raw_energy.perf.major_page_faults}")
+        else:
+            dprint(f"🔍 PERF DEBUG - raw_energy has no 'perf' attribute")
         run_end_dt = datetime.now()  # Human-readable end time
         run_end_perf = time.perf_counter()
         run_duration_sec = run_end_perf - run_start_perf
@@ -488,19 +494,14 @@ class ExperimentHarness:
                     else 0
                 ),
                 "page_faults": (
-                    raw_energy.perf.page_faults
-                    if hasattr(raw_energy.perf, "page_faults")
-                    else 0
+                     raw_energy.perf.minor_page_faults + raw_energy.perf.major_page_faults
+
                 ),
                 "major_page_faults": (
-                    raw_energy.perf.major_faults
-                    if hasattr(raw_energy.perf, "major_faults")
-                    else 0
+                    raw_energy.perf.major_page_faults
                 ),
                 "minor_page_faults": (
-                    raw_energy.perf.minor_faults
-                    if hasattr(raw_energy.perf, "minor_faults")
-                    else 0
+                    raw_energy.perf.minor_page_faults
                 ),
                 "context_switches_voluntary": derived.context_switches_voluntary,
                 "context_switches_involuntary": derived.context_switches_involuntary,
@@ -509,7 +510,7 @@ class ExperimentHarness:
                 "run_queue_length": derived.run_queue_length,
                 "kernel_time_ms": derived.kernel_time_ms,
                 "user_time_ms": derived.user_time_ms,
-                "frequency_mhz": derived.frequency_mhz,
+                "frequency_mhz": cpu_metrics.get('cpu_avg_mhz', 0),
                 "package_temp_celsius": derived.package_temp_celsius,
                 "baseline_temp_celsius": (
                     self.baseline.cpu_temperature_c if self.baseline else None
@@ -691,6 +692,13 @@ class ExperimentHarness:
         raw_energy = (
             self.energy_engine.stop_measurement()
         )  # RawEnergyMeasurement (Layer 1)
+        if hasattr(raw_energy, 'perf'):
+            dprint(f"🔍 PERF DEBUG - raw_energy.perf: {raw_energy.perf}")
+            dprint(f"🔍 PERF DEBUG - minor_page_faults: {raw_energy.perf.minor_page_faults}")
+            dprint(f"🔍 PERF DEBUG - major_page_faults: {raw_energy.perf.major_page_faults}")
+        else:
+            print(f"🔍 PERF DEBUG - raw_energy has no 'perf' attribute")
+
         run_end_dt = datetime.now()  # Human-readable end time
         run_end_perf = time.perf_counter()
         run_duration_sec = run_end_perf - run_start_perf
@@ -928,19 +936,14 @@ class ExperimentHarness:
                     else 0
                 ),
                 "page_faults": (
-                    raw_energy.perf.page_faults
-                    if hasattr(raw_energy.perf, "page_faults")
-                    else 0
+                    raw_energy.perf.minor_page_faults + raw_energy.perf.major_page_faults
                 ),
                 "major_page_faults": (
-                    raw_energy.perf.major_faults
-                    if hasattr(raw_energy.perf, "major_faults")
-                    else 0
+
+                    raw_energy.perf.major_page_faults
                 ),
                 "minor_page_faults": (
-                    raw_energy.perf.minor_faults
-                    if hasattr(raw_energy.perf, "minor_faults")
-                    else 0
+                    raw_energy.perf.minor_page_faults
                 ),
                 "context_switches_voluntary": derived.context_switches_voluntary,
                 "context_switches_voluntary": derived.context_switches_voluntary,
@@ -950,7 +953,7 @@ class ExperimentHarness:
                 "run_queue_length": derived.run_queue_length,
                 "kernel_time_ms": derived.kernel_time_ms,
                 "user_time_ms": derived.user_time_ms,
-                "frequency_mhz": derived.frequency_mhz,
+                "frequency_mhz": cpu_metrics.get('cpu_avg_mhz', 0),
                 "package_temp_celsius": derived.package_temp_celsius,
                 "baseline_temp_celsius": (
                     self.baseline.cpu_temperature_c if self.baseline else None

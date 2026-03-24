@@ -30,9 +30,11 @@ from core.utils.core_pinner import CorePinner
 from core.utils.debug import dprint
 
 logger = logging.getLogger(__name__)
-
-# Default cache file location
-DEFAULT_CACHE_FILE = project_root / "data" / "idle_baseline.json"
+from core.config_loader import ConfigLoader
+config = ConfigLoader()
+settings = config.get_settings()
+cache_file = settings.get("experiment", {}).get("baseline", {}).get("cache_file", "data/idle_baseline.json")
+DEFAULT_CACHE_FILE = project_root / cache_file
 
 
 def get_system_state() -> Dict[str, Any]:

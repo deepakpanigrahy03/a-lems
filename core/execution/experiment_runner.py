@@ -176,14 +176,22 @@ class ExperimentRunner:
         return env_info
 
     # ========================================================================
-    # DUPLICATE CODE 2: Baseline measurement (from test_harness, add to run_experiment)
+    # Baseline measurement (from test_harness, add to run_experiment)
     # ========================================================================
     def ensure_baseline(self, harness) -> Optional[BaselineMeasurement]:
-        """Baseline measurement - add to run_experiment which currently lacks it"""
+        """Get baseline (measure if needed) and insert to DB once."""
         baseline_config = self.settings.get("experiment", {}).get("baseline", {})
         force_remeasure = baseline_config.get("force_remeasure", False)
-
-        if force_remeasure or not harness.baseline:
+        cache_file = baseline_config.get("cache_file", "data/idle_baseline.json")
+        
+        # Check if cache file exists
+        cache_path = Path(cache_file)
+        cache_exists = cache_path.exists()
+        
+        # Determine if we need to measure
+        needs_measure = force_remeasure or not cache_exists
+        
+        if needs_measure:
             print("\n" + "=" * 70)
             print("📏 MEASURING IDLE POWER BASELINE")
             print("=" * 70)
@@ -191,12 +199,8 @@ class ExperimentRunner:
             duration = baseline_config.get("duration_seconds", 10)
             samples = baseline_config.get("num_samples", 3)
             pre_wait = baseline_config.get("pre_wait_seconds", 5)
-            force = baseline_config.get("force_remeasure", True)
 
-            print(
-                f"   Duration: {duration}s × {samples} samples = {duration * samples}s total"
-            )
-            print(f"   Force remeasure: {force}")
+            print(f"   Duration: {duration}s × {samples} samples = {duration * samples}s total")
             print("   Please don't use mouse/keyboard during this time.\n")
 
             try:
@@ -204,30 +208,40 @@ class ExperimentRunner:
                     duration_seconds=duration,
                     num_samples=samples,
                     pre_wait_seconds=pre_wait,
-                    force_remeasure=force,
+                    force_remeasure=force_remeasure,
                 )
+                
+                # Insert to DB (only once, when measured)
                 harness.baseline_mgr.save(harness.baseline)
 
                 print(f"\n   ✅ Baseline measured and saved!")
                 print(f"      Baseline ID: {harness.baseline.baseline_id}")
-                print(
-                    f"      Package idle power: {harness.baseline.power_watts.get('package-0', 0):.3f} W"
-                )
-                print(
-                    f"      Core idle power:    {harness.baseline.power_watts.get('core', 0):.3f} W"
-                )
-                return harness.baseline
+                print(f"      Package idle power: {harness.baseline.power_watts.get('package-0', 0):.3f} W")
+                print(f"      Core idle power:    {harness.baseline.power_watts.get('core', 0):.3f} W")
 
             except Exception as e:
-                print(f"\n   ⚠️ Baseline measurement failed: {e}")
                 import traceback
-
+                print(f"\n   ⚠️ Baseline measurement failed: {e}")
                 traceback.print_exc()
                 print("   Continuing without baseline")
                 return None
         else:
-            print(f"\n📏 Using existing baseline: {harness.baseline.baseline_id}")
-            return harness.baseline
+            # Load from cache if not already in memory
+            if not harness.baseline:
+                try:
+                    with open(cache_path, 'r') as f:
+                        data = json.load(f)
+                        harness.baseline = BaselineMeasurement.from_dict(data)
+                    print(f"\n📏 Loaded baseline from cache: {harness.baseline.baseline_id}")
+                except Exception as e:
+                    print(f"\n⚠️ Failed to load baseline from cache: {e}")
+                    return None
+            else:
+                print(f"\n📏 Using existing baseline: {harness.baseline.baseline_id}")
+        
+        return harness.baseline
+
+
 
     def aggregate_run_stats(
         self, run_id: int, cpu_samples: List[Dict], interrupt_samples: List[Dict]
