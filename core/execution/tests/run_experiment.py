@@ -12,6 +12,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from core.utils.preflight import preflight
 
 import numpy as np
 from dotenv import load_dotenv
@@ -85,6 +86,12 @@ def run_provider_task(
     if not linear_config or not agentic_config:
         print(f"   ❌ Failed to load {provider} configs, skipping...")
         return None
+    # ========================================================================
+    # PRE-FLIGHT CHECKS - Validate before creating executors
+    # ========================================================================
+    from core.utils.preflight import preflight
+    dummy = type('obj', (object,), {'config': linear_config})()
+    preflight(dummy, provider)
 
     if args.optimizer:
         from core.execution.optimizer_wrapper import OptimizedExecutorWrapper

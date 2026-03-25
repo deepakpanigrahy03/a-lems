@@ -102,6 +102,7 @@ _PAGE_MODULES = {
     "overview": "gui.pages.overview",
     "execute": "gui.pages.execute",
     "experiments": "gui.pages.experiments",
+    "experiment_planner":  "gui.pages.experiment_planner",
     "settings": "gui.pages.settings",
     "explorer": "gui.pages.explorer",
     "energy": "gui.pages.energy",
@@ -133,6 +134,7 @@ _PAGE_MODULES = {
     "efficiency": "gui.pages.efficiency",
     "ml_features": "gui.pages.ml_features_page",
     "hypotheses": "gui.pages.hypotheses",
+    "research_metrics":    "gui.pages.research_metrics_view_page",
     # Environment
     "carbon_country": "gui.pages.carbon_country",
     "water_methane": "gui.pages.water_methane",
@@ -151,6 +153,7 @@ _PAGE_MODULES = {
     "data_swap": "gui.pages.data_swap",
     "data_interrupts": "gui.pages.data_interrupts",
     "data_network_bytes": "gui.pages.data_network_bytes",
+    "data_page_faults": "gui.pages.data_page_faults",
     # Data Quality
     "dq_validity": "gui.pages.dq_validity",
     "dq_coverage": "gui.pages.dq_coverage",

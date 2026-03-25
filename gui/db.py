@@ -108,7 +108,8 @@ def load_runs() -> pd.DataFrame:
             r.instructions, r.cycles,
             r.start_time_ns, r.avg_power_watts,
             r.experiment_valid, r.background_cpu_percent,
-            r.bytes_sent, r.bytes_recv, r.tcp_retransmits
+            r.bytes_sent, r.bytes_recv, r.tcp_retransmits,
+            r.major_page_faults, r.minor_page_faults, r.page_faults 
              
         FROM runs r
         JOIN experiments e ON r.exp_id = e.exp_id

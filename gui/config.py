@@ -157,6 +157,13 @@ SECTION_PAGES = {
                 "status": EXISTS,
             },
             {
+                "id":"experiment_planner",
+                "label":"Experiment Planner",
+                "icon":"◈",
+                "desc":"Auto-suggest next experiments + estimate energy budget before running.",
+                "status":NEW,              
+            },
+            {
                 "id": "multi_host_dispatch",
                 "label": "Multi-Host Dispatch",
                 "icon": "⊕",
@@ -290,8 +297,8 @@ SECTION_PAGES = {
                 "label": "Page Faults",
                 "icon": "⊘",
                 "desc": "Major/minor page fault energy impact.",
-                "status": BLOCKED,
-                "blocked_reason": "Fix PF-1 — page faults collected but not inserted into the runs table.",
+                "status": NEW,
+                
             },
             {
                 "id": "data_network_bytes",
@@ -353,6 +360,13 @@ SECTION_PAGES = {
                 "status": EXISTS,
             },
             {
+                "id":"research_metrics",
+                "label":"Orchestration Metrics",
+                "icon":"🔬",
+                "desc":"OOI · UCR · Network Ratio — publication-ready analysis.",
+                "status":NEW
+            },
+            {
                 "id": "query_analysis",
                 "label": "Query Analysis",
                 "icon": "◑",
@@ -384,7 +398,7 @@ SECTION_PAGES = {
                 "id": "ml_features",
                 "label": "ML Features",
                 "icon": "⊟",
-                "desc": "70-column ml_features view — correlation matrix, export for training.",
+                "desc": "144-column ml_features view — correlation matrix, export for training.",
                 "status": NEW,
             },
             {
@@ -519,7 +533,7 @@ SECTION_PAGES = {
             },
         ],
     },
-    "DEVELOPER TOOLS": {
+    "RESEARCHER TOOLS": {
         "accent": "#94a3b8",
         "icon": "📋",
         "who": "Engineers and developers building on A-LEMS",

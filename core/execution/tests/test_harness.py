@@ -9,6 +9,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from core.utils.preflight import preflight
 
 import requests  # Add this for IP geolocation
 from dotenv import load_dotenv
@@ -239,6 +240,10 @@ def main():
     linear_config = config.get_model_config(args.provider, "linear")
     agentic_config = config.get_model_config(args.provider, "agentic")
 
+   
+    dummy = type('obj', (object,), {'config': linear_config})()
+    preflight(dummy, args.provider)
+
     if not linear_config or not agentic_config:
         print(f"❌ Failed to load {args.provider} model configurations")
         return 1
@@ -279,6 +284,7 @@ def main():
     # Create runner and ensure baseline
     # ========================================================================
     runner = ExperimentRunner(config, args)
+    #runner.validate_experiment(linear_executor, args.provider)
     baseline = runner.ensure_baseline(harness)
     harness.baseline = baseline
 

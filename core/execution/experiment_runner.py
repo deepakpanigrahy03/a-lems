@@ -25,6 +25,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from core.utils.preflight import preflight
 
 import psutil
 
@@ -47,6 +48,10 @@ class ExperimentRunner:
         self.settings = config_loader.get_settings()
         self.group_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
+    def validate_experiment(self, executor, provider):
+        """Run pre-flight checks before experiment."""
+        preflight(executor, provider)
+        
     # ========================================================================
     # DUPLICATE CODE 1: Hardware info collection (identical in both scripts)
     # ========================================================================
