@@ -381,9 +381,24 @@ def get_machines(session: Session = Depends(get_db)):
 
 def _remap_for_pg(row: dict, hw_id: int) -> dict:
     """Remove SQLite-only fields, ensure hw_id is server-side."""
-    row = {k: v for k, v in row.items() if v is not None}
-    row["hw_id"] = hw_id  # always use server-side hw_id
-    return row
+    # SQLite boolean columns that PostgreSQL expects as true BOOLEAN
+    _BOOL_COLS = {
+        "has_avx2", "has_avx512", "has_vmx", "gpu_power_available",
+        "rapl_has_dram", "rapl_has_uncore", "git_dirty",
+        "thermal_during_experiment", "thermal_now_active",
+        "thermal_since_boot", "experiment_valid", "turbo_enabled",
+        "is_cold_start",
+    }
+    result = {}
+    for k, v in row.items():
+        if v is None:
+            continue
+        if k in _BOOL_COLS:
+            result[k] = bool(v)  # 0/1 → False/True
+        else:
+            result[k] = v
+    result["hw_id"] = hw_id
+    return result
 
 
 def _remap_child_for_pg(row: dict) -> dict:
