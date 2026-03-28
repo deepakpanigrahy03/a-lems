@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS hardware_config (
     last_seen           TIMESTAMP,
     agent_status        TEXT      DEFAULT 'offline',
     agent_version       TEXT,
-    api_key             TEXT 
+    api_key             TEXT,
+    server_hw_id        INTEGER 
 );
 
 -- ── environment_config ────────────────────────────────────────────────────────

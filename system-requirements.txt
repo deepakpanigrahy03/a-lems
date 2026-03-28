@@ -1,0 +1,47 @@
+# A-LEMS System Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+# These are OS-level packages installed via apt (Ubuntu/Debian).
+# NOT managed by pip or requirements.txt.
+#
+# Track here whenever a new system package is installed so any new
+# machine or fresh VM can be set up identically.
+#
+# Install all at once:
+#   sudo apt update
+#   sudo apt install -y $(grep -v '^#' system-requirements.txt | grep -v '^$')
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── EXISTING (pre-distributed) ────────────────────────────────────────────────
+# python3-dev          # Python headers for building native extensions
+# python3-pip          # pip package manager
+# python3-venv         # virtual environment support
+# graphviz             # diagram rendering (.dot → .svg)
+# git                  # version control
+
+# ── ADDED: distributed orchestration (Oracle VM only) ─────────────────────────
+postgresql             # PostgreSQL 16 database server
+postgresql-contrib     # Additional PostgreSQL utilities
+libpq-dev              # PostgreSQL client headers (required by psycopg2)
+
+# ── ADDED: firewall persistence (Oracle VM only) ──────────────────────────────
+iptables-persistent    # Saves iptables rules across reboots
+netfilter-persistent   # Companion to iptables-persistent
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notes:
+#
+# Oracle VM (aarch64 Ubuntu 24.04):
+#   PostgreSQL installed via: sudo apt install postgresql postgresql-contrib
+#   Version confirmed: PostgreSQL 16.13
+#
+# Local machines (x86_64 Ubuntu / macOS):
+#   PostgreSQL NOT required — SQLite only
+#   graphviz: brew install graphviz (macOS) or apt install graphviz (Linux)
+#
+# Python version:
+#   All machines must use same Python version as venv was created with.
+#   Confirm: python --version inside venv
+#   Oracle VM: Python 3.12
+#   Local (UBUNTU2505): Python 3.13
+#   NOTE: tomli needed for Python < 3.11 (built-in tomllib in 3.11+)
+# ─────────────────────────────────────────────────────────────────────────────
