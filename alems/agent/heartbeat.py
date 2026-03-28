@@ -33,11 +33,10 @@ TIMEOUT = 10  # seconds — never block longer than this
 
 def _headers() -> dict:
     api_key = get_api_key()
-    return {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type":  "application/json",
-        "X-Agent-Version": AGENT_VERSION,
-    }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
 
 
 def _post(url: str, payload: dict) -> Optional[dict]:
@@ -69,11 +68,6 @@ def _get(url: str, params: dict | None = None) -> Optional[dict]:
 # ── Registration ──────────────────────────────────────────────────────────────
 
 def register(db_path: str) -> bool:
-    """
-    POST /register with hardware_config data from local SQLite.
-    Saves api_key and server_hw_id to agent.conf.
-    Returns True on success.
-    """
     server_url = get_server_url()
     hw = _read_hardware(db_path)
     if not hw:
@@ -81,8 +75,19 @@ def register(db_path: str) -> bool:
         return False
 
     hw["agent_version"] = AGENT_VERSION
-    resp = _post(f"{server_url}/register", hw)
-    if not resp:
+    
+    # Registration uses NO auth header — this call gets the api_key
+    try:
+        r = httpx.post(
+            f"{server_url}/register",
+            json=hw,
+            headers={"Content-Type": "application/json"},  # no Bearer token
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        resp = r.json()
+    except Exception as e:
+        print(f"[heartbeat] Registration error: {e}")
         return False
 
     try:
