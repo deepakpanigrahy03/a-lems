@@ -26,7 +26,7 @@ import httpx
 
 from alems.agent.mode_manager import get_api_key, get_server_url, get_sync_config
 
-TIMEOUT = 60
+#TIMEOUT = 60 -- coming from sync_config now, default 300s (5min) to allow for large batches and slow connections
 
 
 def _headers() -> dict:
@@ -156,13 +156,15 @@ def _build_payload(
 
 
 def _post_sync(payload: dict) -> Optional[dict]:
+    from alems.agent.mode_manager import get_sync_config
+    timeout = int(get_sync_config().get("timeout_seconds", 300))
     server_url = get_server_url()
     try:
         r = httpx.post(
             f"{server_url}/bulk-sync",
             json=payload,
             headers=_headers(),
-            timeout=TIMEOUT,
+            timeout=timeout,
         )
         r.raise_for_status()
         return r.json()

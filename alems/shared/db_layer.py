@@ -31,10 +31,6 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 # ── Engine factory ────────────────────────────────────────────────────────────
 
 def get_engine(db_url: str | None = None) -> Engine:
-    """
-    Returns a SQLAlchemy engine.
-    Priority: explicit db_url → ALEMS_DB_URL env var → default SQLite path.
-    """
     url = db_url or os.environ.get("ALEMS_DB_URL") or _default_sqlite_url()
 
     if url.startswith("sqlite"):
@@ -47,8 +43,10 @@ def get_engine(db_url: str | None = None) -> Engine:
         return create_engine(
             url,
             pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=int(os.environ.get("ALEMS_DB_POOL_SIZE", 5)),
+            max_overflow=int(os.environ.get("ALEMS_DB_MAX_OVERFLOW", 10)),
+            pool_timeout=int(os.environ.get("ALEMS_DB_POOL_TIMEOUT", 60)),
+            pool_recycle=int(os.environ.get("ALEMS_DB_POOL_RECYCLE", 1800)),
             echo=False,
         )
 

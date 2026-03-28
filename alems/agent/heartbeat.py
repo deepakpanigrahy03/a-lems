@@ -28,7 +28,7 @@ from alems.shared.models import (
 )
 
 AGENT_VERSION = "1.0.0"
-TIMEOUT = 10  # seconds — never block longer than this
+#TIMEOUT = 10  # coming from execution_config now, default 30s to allow for slow connections and server startup
 
 
 def _headers() -> dict:
@@ -39,10 +39,14 @@ def _headers() -> dict:
     return headers
 
 
+def _get_http_timeout() -> int:
+    from alems.agent.mode_manager import get_sync_config
+    return int(get_sync_config().get("http_timeout_seconds", 10))
+
 def _post(url: str, payload: dict) -> Optional[dict]:
-    """POST with timeout. Returns response dict or None on any error."""
     try:
-        r = httpx.post(url, json=payload, headers=_headers(), timeout=TIMEOUT)
+        r = httpx.post(url, json=payload, headers=_headers(),
+                      timeout=_get_http_timeout())
         r.raise_for_status()
         return r.json()
     except httpx.TimeoutException:
@@ -53,11 +57,10 @@ def _post(url: str, payload: dict) -> Optional[dict]:
         print(f"[heartbeat] Error {url}: {e}")
     return None
 
-
 def _get(url: str, params: dict | None = None) -> Optional[dict]:
-    """GET with timeout. Returns response dict or None on any error."""
     try:
-        r = httpx.get(url, params=params, headers=_headers(), timeout=TIMEOUT)
+        r = httpx.get(url, params=params, headers=_headers(),
+                     timeout=_get_http_timeout())
         r.raise_for_status()
         return r.json()
     except Exception as e:
