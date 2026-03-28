@@ -11,6 +11,8 @@ ALTER TABLE hardware_config ADD COLUMN agent_status  TEXT DEFAULT 'offline';
 ALTER TABLE hardware_config ADD COLUMN agent_version TEXT;
 ALTER TABLE hardware_config ADD COLUMN server_hw_id  INTEGER;
 ALTER TABLE hardware_config ADD COLUMN api_key       TEXT;
+ALTER TABLE runs ADD COLUMN sync_samples_status INTEGER DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_runs_samples_status ON runs(sync_samples_status);
 CREATE INDEX IF NOT EXISTS idx_runs_sync_status ON runs(sync_status);
 INSERT OR IGNORE INTO schema_version(version, description)
 VALUES (7, 'distributed identity: sync_status, agent tracking (no UUIDs)');

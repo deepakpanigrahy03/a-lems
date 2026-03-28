@@ -29,10 +29,12 @@ st.set_page_config(
 )
 
 # ── GUI table migrations — runs every startup, safe, idempotent ───────────────
-from gui.db_migrations import ensure_gui_tables
-_migration_status = ensure_gui_tables()
-if _migration_status["errors"]:
-    st.sidebar.warning(f"⚠ DB migration issues: {len(_migration_status['errors'])} error(s).")
+from gui.db import is_server_mode
+if not is_server_mode():
+    from gui.db_migrations import ensure_gui_tables
+    _migration_status = ensure_gui_tables()
+    if _migration_status["errors"]:
+        st.sidebar.warning(f"⚠ DB migration issues: {len(_migration_status['errors'])} error(s).")
 
 st.markdown(
     """

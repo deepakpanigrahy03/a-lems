@@ -27,6 +27,8 @@ nav:
     - Quick Start: getting-started/04-quick-start.md
     - Troubleshooting: getting-started/05-troubleshooting.md
     - Adding a New Client: getting-started/06-new-client.md
+    - Setup:
+      - Oracle VM: setup/02-oracle-vm.md
   
   - User Guide:
     - Running Experiments: user-guide/01-running.md
@@ -48,6 +50,8 @@ nav:
     - Data Flow & Sync: developer-guide/09-data-flow-sync.md
     - Schema Migration: developer-guide/10-schema-migration.md
     - Troubleshooting Distributed: developer-guide/11-troubleshooting-distributed.md
+    - Registration & Onboarding: developer-guide/12-registration-onboarding.md
+
     
   - Research:
     - Measurement Methodology: research/01-measurement-methodology.md
