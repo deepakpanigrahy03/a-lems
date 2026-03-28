@@ -257,13 +257,20 @@ def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
             _upsert_pg(session, "experiments", exp, "hw_id, exp_id")
             rows_inserted += 1
  
-        # 6. runs (deps: experiments, hardware_config, idle_baselines)
+        # 6. runs
+        _RUNS_STRIP = {"sync_status", "_local_run_id", "_skip"}
+        skipped_runs = []
         for run in payload.runs:
             run = _remap_run_for_pg(run, hw_id, session)
-            local_run_id = run.pop("_local_run_id")  # extracted before insert
+            if run.pop("_skip", False):
+                skipped_runs.append(run.get("run_id"))
+                continue
+            local_run_id = run.pop("_local_run_id")
             _upsert_pg(session, "runs", run, "hw_id, run_id")
             synced_run_ids.append(local_run_id)
             rows_inserted += 1
+        if skipped_runs:
+            print(f"[server] Skipped {len(skipped_runs)} runs — experiment not yet synced")
  
         # 7. child tables (deps: runs — joined via hw_id + local run_id)
         child_tables = [
@@ -444,7 +451,6 @@ def _remap_exp_for_pg(exp: dict, hw_id: int) -> dict:
 def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
     row = _clean_row(run)
     row["hw_id"] = hw_id
-
     local_run_id = row.get("run_id")
     row["_local_run_id"] = local_run_id
 
@@ -456,6 +462,14 @@ def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
         """), {"hw": hw_id, "eid": exp_id}).fetchone()
         if exp_row:
             row["global_exp_id"] = exp_row[0]
+        else:
+            # Experiment not yet synced to PG — skip this run
+            row["_skip"] = True
+
+    # Remove old UUID string if present
+    if isinstance(row.get("global_exp_id"), str):
+        row.pop("global_exp_id", None)
+        row["_skip"] = True
 
     return row
  
