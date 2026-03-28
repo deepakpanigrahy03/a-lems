@@ -267,11 +267,11 @@ def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
  
         # 7. child tables (deps: runs — joined via hw_id + local run_id)
         child_tables = [
-            ("energy_samples",            "hw_id, local_run_id, timestamp_ns"),
-            ("cpu_samples",               "hw_id, local_run_id, timestamp_ns"),
-            ("thermal_samples",           "hw_id, local_run_id, timestamp_ns"),
-            ("interrupt_samples",         "hw_id, local_run_id, timestamp_ns"),
-            ("orchestration_events",      "hw_id, local_run_id, start_time_ns, event_type"),
+            ("energy_samples",            "hw_id, run_id, timestamp_ns"),
+            ("cpu_samples",               "hw_id, run_id, timestamp_ns"),
+            ("thermal_samples",           "hw_id, run_id, timestamp_ns"),
+            ("interrupt_samples",         "hw_id, run_id, timestamp_ns"),
+            ("orchestration_events",      "hw_id, run_id, start_time_ns, event_type"),
             ("llm_interactions",          None),
             ("orchestration_tax_summary", None),
             ("outliers",                  None),
@@ -442,19 +442,12 @@ def _remap_exp_for_pg(exp: dict, hw_id: int) -> dict:
  
  
 def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
-    """
-    Remap run row for PostgreSQL insert.
-    Resolves global_exp_id from experiments table using hw_id + exp_id.
-    Stashes local run_id as _local_run_id for sync tracking.
-    """
     row = _clean_row(run)
     row["hw_id"] = hw_id
- 
-    # Store local run_id for sync tracking, then keep it as reference column
+
     local_run_id = row.get("run_id")
-    row["_local_run_id"] = local_run_id  # extracted after insert, not sent to PG
- 
-    # Resolve global_exp_id from experiments (BIGSERIAL assigned by PG)
+    row["_local_run_id"] = local_run_id
+
     exp_id = row.get("exp_id")
     if exp_id:
         exp_row = session.execute(text("""
@@ -463,31 +456,21 @@ def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
         """), {"hw": hw_id, "eid": exp_id}).fetchone()
         if exp_row:
             row["global_exp_id"] = exp_row[0]
- 
-    row.pop("global_run_id", None)  # old UUID — removed
+
     return row
  
  
 def _remap_child_for_pg(row: dict, hw_id: int) -> dict:
-    """
-    Remap child table row for PostgreSQL.
-    Maps local run_id → local_run_id reference column.
-    """
+    """Remap child table row — direct one-to-one column mapping."""
     result = {}
     for k, v in row.items():
         if k in _LOCAL_PKS:
-            continue  # PG assigns its own BIGSERIAL PK
+            continue
         if k in _SQLITE_ONLY:
             continue
         if v is None:
             continue
-        if k == "run_id":
-            result["local_run_id"] = v  # rename for PG schema
-            result["run_id"] = v        # keep original too for reference
-        elif k in _ALL_BOOL_COLS:
-            result[k] = bool(v)
-        else:
-            result[k] = v
+        result[k] = bool(v) if k in _ALL_BOOL_COLS else v
     result["hw_id"] = hw_id
     return result
  
