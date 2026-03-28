@@ -254,6 +254,26 @@ def run_server_tests(server_url: str, pg_url: str | None):
             "SELECT * FROM experiments WHERE exp_id=?", (run_dict["exp_id"],)
         ).fetchone()
         exp_dict = dict(exp) if exp else {}
+        # Fetch environment_config for this experiment
+        env_id = exp_dict.get("env_id")
+        env_configs = []
+        if env_id:
+            env_row = con.execute(
+                "SELECT * FROM environment_config WHERE env_id=?", (env_id,)
+            ).fetchone()
+            if env_row:
+                env_configs = [dict(env_row)]
+
+        # Fetch idle_baselines for this run
+        baseline_id = run_dict.get("baseline_id")
+        baselines = []
+        if baseline_id:
+            bl_row = con.execute(
+                "SELECT * FROM idle_baselines WHERE baseline_id=?", (baseline_id,)
+            ).fetchone()
+            if bl_row:
+                baselines = [dict(bl_row)]        
+
         hw = con.execute("SELECT * FROM hardware_config LIMIT 1").fetchone()
         hw_dict = dict(hw) if hw else {}
         con.close()
