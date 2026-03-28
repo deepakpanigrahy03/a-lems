@@ -227,6 +227,66 @@ def _do_registration() -> bool:
     print("[agent] Registering with server...")
     return register(_get_db_path())
 
+def _sync_all_baselines():
+    """
+    Sync idle_baselines and task_categories to server on startup.
+    These reference tables must exist in PostgreSQL before runs sync
+    because SQL calculations use baseline power/temperature values.
+    Idempotent — ON CONFLICT DO NOTHING on server side.
+    """
+    import sqlite3
+    import httpx
+    from alems.agent.mode_manager import get_api_key, get_server_url
+
+    db_path    = _get_db_path()
+    server_url = get_server_url()
+
+    try:
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+        baselines = [dict(r) for r in con.execute(
+            "SELECT * FROM idle_baselines").fetchall()]
+        task_cats = [dict(r) for r in con.execute(
+            "SELECT * FROM task_categories").fetchall()]
+        hw_row    = con.execute(
+            "SELECT * FROM hardware_config LIMIT 1").fetchone()
+        hw_data   = dict(hw_row) if hw_row else {}
+        con.close()
+
+        payload = {
+            "hardware_hash":             hw_data.get("hardware_hash", ""),
+            "api_key":                   get_api_key(),
+            "hardware_data":             hw_data,
+            "environment_config":        [],
+            "idle_baselines":            baselines,
+            "task_categories":           task_cats,
+            "experiments":               [],
+            "runs":                      [],
+            "energy_samples":            [],
+            "cpu_samples":               [],
+            "thermal_samples":           [],
+            "interrupt_samples":         [],
+            "orchestration_events":      [],
+            "llm_interactions":          [],
+            "orchestration_tax_summary": [],
+            "outliers":                  [],
+        }
+
+        r = httpx.post(
+            f"{server_url}/bulk-sync",
+            json=payload,
+            headers={"Authorization": f"Bearer {get_api_key()}",
+                     "Content-Type": "application/json"},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            print(f"[agent] Reference tables synced: "
+                  f"{len(baselines)} baselines, "
+                  f"{len(task_cats)} task categories")
+        else:
+            print(f"[agent] Reference sync warning: HTTP {r.status_code}")
+    except Exception as e:
+        print(f"[agent] Reference sync error (non-fatal): {e}")
 
 # ── CLI entry point ───────────────────────────────────────────────────────────
 
@@ -253,6 +313,10 @@ def cmd_start(mode: Optional[str] = None):
             if not _do_registration():
                 print("[agent] WARNING: Registration failed — running without server connection")
                 print("[agent] Will retry registration on next heartbeat")
+        # Sync reference tables before any run sync
+        # idle_baselines MUST exist in PostgreSQL before runs can sync
+        _sync_all_baselines()
+                
 
     # Signal handler for clean shutdown
     def _handle_signal(sig, frame):

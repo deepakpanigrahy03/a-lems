@@ -227,26 +227,44 @@ def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
     synced_run_ids = []
 
     try:
-        # 1. Upsert hardware_config
+        # 1. hardware_config (no deps)
         if payload.hardware_data:
             hw = dict(payload.hardware_data)
             hw["agent_status"] = "syncing"
             upsert_hardware(session, hw)
 
-        # 2. Upsert experiments
+        # 2. environment_config (no deps)
+        for env in payload.environment_config:
+            env = {k: v for k, v in env.items() if v is not None}
+            _upsert_pg(session, "environment_config", env, "env_hash")
+            rows_inserted += 1
+
+        # 3. idle_baselines (no deps)
+        for bl in payload.idle_baselines:
+            bl = {k: v for k, v in bl.items() if v is not None}
+            _upsert_pg(session, "idle_baselines", bl, "baseline_id")
+            rows_inserted += 1
+
+        # 4. task_categories (no deps, reference data)
+        for tc in payload.task_categories:
+            tc = {k: v for k, v in tc.items() if v is not None}
+            _upsert_pg(session, "task_categories", tc, "task_id")
+            rows_inserted += 1
+
+        # 5. experiments (deps: hardware_config, environment_config)
         for exp in payload.experiments:
             exp = _remap_for_pg(exp, hw_id)
             _upsert_pg(session, "experiments", exp, "global_exp_id")
             rows_inserted += 1
 
-        # 3. Upsert runs
+        # 6. runs (deps: experiments, hardware_config, idle_baselines)
         for run in payload.runs:
             run = _remap_for_pg(run, hw_id)
             _upsert_pg(session, "runs", run, "global_run_id")
             synced_run_ids.append(run["global_run_id"])
             rows_inserted += 1
 
-        # 4. Child tables
+        # 7. child tables (deps: runs)
         child_map = {
             "energy_samples":            ("energy_samples",            "global_run_id, timestamp_ns"),
             "cpu_samples":               ("cpu_samples",               "global_run_id, timestamp_ns"),
@@ -255,6 +273,7 @@ def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
             "orchestration_events":      ("orchestration_events",      "global_run_id, start_time_ns, event_type"),
             "llm_interactions":          ("llm_interactions",          None),
             "orchestration_tax_summary": ("orchestration_tax_summary", "linear_run_id, agentic_run_id"),
+            "outliers":                  ("outliers",                  None),
         }
         for attr, (tbl, conflict_cols) in child_map.items():
             rows = getattr(payload, attr, [])
@@ -266,7 +285,7 @@ def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
                     _insert_ignore_pg(session, tbl, row)
                 rows_inserted += 1
 
-        # 5. Mark hw as idle after sync
+        # 8. Mark machine idle after sync
         session.execute(text("""
             UPDATE hardware_config SET agent_status='idle' WHERE hw_id=:id
         """), {"id": hw_id})

@@ -121,6 +121,10 @@ class BulkSyncPayload(BaseModel):
     orchestration_events:       list[dict[str, Any]] = Field(default_factory=list)
     llm_interactions:           list[dict[str, Any]] = Field(default_factory=list)
     orchestration_tax_summary:  list[dict[str, Any]] = Field(default_factory=list)
+    environment_config:          list[dict[str, Any]] = Field(default_factory=list)
+    idle_baselines:              list[dict[str, Any]] = Field(default_factory=list)
+    task_categories:             list[dict[str, Any]] = Field(default_factory=list)
+    outliers:                    list[dict[str, Any]] = Field(default_factory=list)
 
 
 class BulkSyncResponse(BaseModel):

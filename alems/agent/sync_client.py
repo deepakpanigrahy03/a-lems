@@ -110,16 +110,8 @@ def sync_unsynced_runs(db_path: str, immediately: bool = False) -> dict:
 
 # ── Payload builder ───────────────────────────────────────────────────────────
 
-def _build_payload(
-    con: sqlite3.Connection,
-    run_ids: list[int],
-    exp_ids: list[int],
-    global_run_ids: list[str],
-    db_path: str,
-) -> dict:
-    """Build the full BulkSyncPayload dict from local SQLite."""
-
-    def fetch_table(table: str, id_col: str, ids: list) -> list[dict]:
+def _build_payload(con, run_ids, exp_ids, global_run_ids, db_path):
+    def fetch_table(table, id_col, ids):
         if not ids:
             return []
         ph = ",".join("?" * len(ids))
@@ -128,25 +120,41 @@ def _build_payload(
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # Hardware
-    hw_row = con.execute("SELECT * FROM hardware_config LIMIT 1").fetchone()
+    hw_row  = con.execute("SELECT * FROM hardware_config LIMIT 1").fetchone()
     hw_data = dict(hw_row) if hw_row else {}
+
+    # Fetch core tables
+    exp_rows = fetch_table("experiments", "exp_id", exp_ids)
+    run_rows = fetch_table("runs", "run_id", run_ids)
+
+    # Collect FK parent IDs
+    env_ids      = list({e["env_id"]      for e in exp_rows if e.get("env_id")})
+    baseline_ids = list({r["baseline_id"] for r in run_rows if r.get("baseline_id")})
+
+    # task_categories — small reference table, always full sync
+    task_cats = [dict(r) for r in con.execute("SELECT * FROM task_categories").fetchall()]
 
     return {
         "hardware_hash":             hw_data.get("hardware_hash", ""),
         "api_key":                   get_api_key(),
         "hardware_data":             hw_data,
-        "experiments":               fetch_table("experiments", "exp_id", exp_ids),
-        "runs":                      fetch_table("runs", "run_id", run_ids),
-        "energy_samples":            fetch_table("energy_samples", "run_id", run_ids),
-        "cpu_samples":               fetch_table("cpu_samples", "run_id", run_ids),
-        "thermal_samples":           fetch_table("thermal_samples", "run_id", run_ids),
+        # No-dep parent tables — must arrive before experiments/runs
+        "environment_config":        fetch_table("environment_config", "env_id", env_ids),
+        "idle_baselines":            fetch_table("idle_baselines", "baseline_id", baseline_ids),
+        "task_categories":           task_cats,
+        # Core
+        "experiments":               exp_rows,
+        "runs":                      run_rows,
+        # Children (FK → runs)
+        "energy_samples":            fetch_table("energy_samples",    "run_id", run_ids),
+        "cpu_samples":               fetch_table("cpu_samples",       "run_id", run_ids),
+        "thermal_samples":           fetch_table("thermal_samples",   "run_id", run_ids),
         "interrupt_samples":         fetch_table("interrupt_samples", "run_id", run_ids),
         "orchestration_events":      fetch_table("orchestration_events", "run_id", run_ids),
-        "llm_interactions":          fetch_table("llm_interactions", "run_id", run_ids),
+        "llm_interactions":          fetch_table("llm_interactions",  "run_id", run_ids),
         "orchestration_tax_summary": fetch_table(
-            "orchestration_tax_summary", "linear_run_id", run_ids
-        ),
+            "orchestration_tax_summary", "linear_run_id", run_ids),
+        "outliers":                  fetch_table("outliers", "run_id", run_ids),
     }
 
 

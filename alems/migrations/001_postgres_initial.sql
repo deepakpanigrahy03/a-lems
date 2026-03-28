@@ -68,7 +68,30 @@ CREATE TABLE IF NOT EXISTS environment_config (
     container_image         TEXT,
     created_at              TIMESTAMP DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS idle_baselines (
+    baseline_id         TEXT        PRIMARY KEY,
+    timestamp           DOUBLE PRECISION NOT NULL,
+    package_power_watts DOUBLE PRECISION,
+    core_power_watts    DOUBLE PRECISION,
+    uncore_power_watts  DOUBLE PRECISION,
+    dram_power_watts    DOUBLE PRECISION,
+    duration_seconds    INTEGER,
+    sample_count        INTEGER,
+    package_std         DOUBLE PRECISION,
+    core_std            DOUBLE PRECISION,
+    uncore_std          DOUBLE PRECISION,
+    dram_std            DOUBLE PRECISION,
+    governor            TEXT,
+    turbo               TEXT,
+    background_cpu      DOUBLE PRECISION,
+    process_count       INTEGER,
+    method              TEXT
+);
 
+CREATE TABLE IF NOT EXISTS task_categories (
+    task_id     TEXT PRIMARY KEY,
+    category    TEXT NOT NULL
+);
 -- ── experiments ───────────────────────────────────────────────────────────────
 -- global_exp_id (UUID) is PK. Local integer exp_id kept for reference.
 -- UNIQUE(hw_id, exp_id) prevents collision when two machines have same local exp_id.
