@@ -398,22 +398,43 @@ def get_machines(session: Session = Depends(get_db)):
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _remap_for_pg(row: dict, hw_id: int) -> dict:
-    """Remove SQLite-only fields, ensure hw_id is server-side."""
-    # SQLite boolean columns that PostgreSQL expects as true BOOLEAN
-    _BOOL_COLS = {
-        "has_avx2", "has_avx512", "has_vmx", "gpu_power_available",
-        "rapl_has_dram", "rapl_has_uncore", "git_dirty",
-        "thermal_during_experiment", "thermal_now_active",
-        "thermal_since_boot", "experiment_valid", "turbo_enabled",
-        "is_cold_start",
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+# ALL boolean columns across ALL tables (SQLite stores as 0/1 integer)
+_ALL_BOOL_COLS = {
+    # hardware_config
+    "has_avx2", "has_avx512", "has_vmx", "gpu_power_available",
+    "rapl_has_dram", "rapl_has_uncore",
+    # environment_config
+    "git_dirty",
+    # runs
+    "thermal_during_experiment", "thermal_now_active", "thermal_since_boot",
+    "experiment_valid", "turbo_enabled", "is_cold_start",
+    # thermal_samples
+    "throttle_event",
+}
+
+# FK columns that reference tables — strip local integer IDs
+_STRIP_LOCAL_IDS = {"sample_id", "event_id", "interaction_id", "outlier_id",
+                    "comparison_id", "baseline_id_local"}
+
+
+def _cast_booleans(row: dict) -> dict:
+    """Cast SQLite 0/1 integers to Python bool for PostgreSQL BOOLEAN columns."""
+    return {
+        k: (bool(v) if k in _ALL_BOOL_COLS and v is not None else v)
+        for k, v in row.items()
     }
+
+
+def _remap_for_pg(row: dict, hw_id: int) -> dict:
+    """Remap a row for PostgreSQL: cast booleans, set server hw_id, drop nulls."""
     result = {}
     for k, v in row.items():
         if v is None:
             continue
-        if k in _BOOL_COLS:
-            result[k] = bool(v)  # 0/1 → False/True
+        if k in _ALL_BOOL_COLS:
+            result[k] = bool(v)
         else:
             result[k] = v
     result["hw_id"] = hw_id
@@ -421,33 +442,45 @@ def _remap_for_pg(row: dict, hw_id: int) -> dict:
 
 
 def _remap_child_for_pg(row: dict) -> dict:
-    """Remove local sample_id (server assigns its own BIGSERIAL)."""
-    row = dict(row)
-    row.pop("sample_id", None)
-    row.pop("event_id", None)
-    row.pop("interaction_id", None)
-    return {k: v for k, v in row.items() if v is not None}
+    """Remap child table row: cast booleans, remove local autoincrement PKs."""
+    _LOCAL_PKS = {"sample_id", "event_id", "interaction_id",
+                  "outlier_id", "comparison_id"}
+    result = {}
+    for k, v in row.items():
+        if k in _LOCAL_PKS:
+            continue  # server assigns its own BIGSERIAL PK
+        if v is None:
+            continue
+        if k in _ALL_BOOL_COLS:
+            result[k] = bool(v)
+        else:
+            result[k] = v
+    return result
 
 
 def _upsert_pg(session: Session, table: str, row: dict, conflict_cols: str) -> None:
     if not row:
         return
-    cols = list(row.keys())
-    col_str = ", ".join(cols)
-    ph_str  = ", ".join(f":{c}" for c in cols)
+    # Cast booleans for any table
+    row = _cast_booleans(row)
+    cols      = list(row.keys())
+    col_str   = ", ".join(cols)
+    ph_str    = ", ".join(f":{c}" for c in cols)
+    conflict_set = set(conflict_cols.replace(" ", "").split(","))
     update_str = ", ".join(
-        f"{c} = EXCLUDED.{c}" for c in cols if c not in conflict_cols
+        f"{c} = EXCLUDED.{c}" for c in cols if c not in conflict_set
     )
-    sql = f"""
-        INSERT INTO {table} ({col_str})
-        VALUES ({ph_str})
-        ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_str}
-    """
     if not update_str:
         sql = f"""
             INSERT INTO {table} ({col_str})
             VALUES ({ph_str})
             ON CONFLICT ({conflict_cols}) DO NOTHING
+        """
+    else:
+        sql = f"""
+            INSERT INTO {table} ({col_str})
+            VALUES ({ph_str})
+            ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_str}
         """
     session.execute(text(sql), row)
 
@@ -455,6 +488,7 @@ def _upsert_pg(session: Session, table: str, row: dict, conflict_cols: str) -> N
 def _insert_ignore_pg(session: Session, table: str, row: dict) -> None:
     if not row:
         return
+    row    = _cast_booleans(row)
     cols   = list(row.keys())
     col_str = ", ".join(cols)
     ph_str  = ", ".join(f":{c}" for c in cols)
