@@ -106,6 +106,16 @@ def upsert_hardware(session: Session, hw_data: dict) -> int:
     Upsert hardware_config by hardware_hash. Works on both dialects.
     Returns hw_id.
     """
+
+    # Cast SQLite integer booleans to Python bool for PostgreSQL compatibility
+    _BOOL_COLS = {
+        "has_avx2", "has_avx512", "has_vmx", "gpu_power_available",
+        "rapl_has_dram", "rapl_has_uncore",
+    }
+    hw_data = {
+        k: (bool(v) if k in _BOOL_COLS and v is not None else v)
+        for k, v in hw_data.items()
+    }
     engine = session.get_bind()
     hardware_hash = hw_data["hardware_hash"]
 
