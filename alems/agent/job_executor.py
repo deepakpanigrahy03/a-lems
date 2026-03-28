@@ -2,14 +2,12 @@
 alems/agent/job_executor.py
 ────────────────────────────────────────────────────────────────────────────
 Wraps the existing test_harness execution pipeline.
-The command string comes from the server's job payload and is run as a
+
+The command string comes from the server job payload and is run as a
 subprocess exactly as it would be from the Streamlit "Execute Run" button.
 
-Key behaviours:
-  - Assigns global_run_id BEFORE the run starts (inserted into SQLite
-    immediately so the heartbeat can report it live)
-  - Does NOT modify test_harness in any way
-  - Returns the global_run_id of the completed run (or None on failure)
+No UUID assignment — PostgreSQL assigns global IDs when synced.
+Local SQLite uses natural run_id/exp_id integers.
 ────────────────────────────────────────────────────────────────────────────
 """
 
@@ -23,8 +21,6 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from alems.shared.uuid_gen import new_run_uuid, new_exp_uuid
-
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
@@ -33,17 +29,16 @@ def execute_job(
     db_path: str,
     job_id: Optional[str] = None,
     cwd: Optional[str] = None,
-) -> Optional[str]:
+) -> Optional[int]:
     """
     Run test_harness command as subprocess.
-    Assigns global_run_id to the resulting run row.
-    Returns global_run_id on success, None on failure.
+    Returns the new run_id created in SQLite on success, None on failure.
+    No UUID assignment — PostgreSQL assigns global IDs during sync.
     """
     working_dir = cwd or str(PROJECT_ROOT)
     print(f"[executor] Executing: {command}")
     print(f"[executor] Working dir: {working_dir}")
 
-    # Snapshot run count before execution
     run_id_before = _get_max_run_id(db_path)
 
     start_time = time.time()
@@ -51,9 +46,9 @@ def execute_job(
         result = subprocess.run(
             shlex.split(command),
             cwd=working_dir,
-            capture_output=False,   # let output stream to terminal
+            capture_output=False,
             text=True,
-            timeout=3600,           # 1 hour hard limit
+            timeout=3600,
         )
     except subprocess.TimeoutExpired:
         print("[executor] ERROR: job timed out after 1 hour")
@@ -70,9 +65,11 @@ def execute_job(
 
     print(f"[executor] Job completed in {elapsed:.1f}s")
 
-    # Find the new run(s) created by this job and assign global_run_ids
-    global_run_id = _assign_global_ids_to_new_runs(db_path, run_id_before)
-    return global_run_id
+    # Find the new run_id created by this job
+    new_run_id = _get_new_run_id(db_path, run_id_before)
+    if new_run_id:
+        print(f"[executor] New run created: run_id={new_run_id}")
+    return new_run_id
 
 
 def _get_max_run_id(db_path: str) -> int:
@@ -85,72 +82,17 @@ def _get_max_run_id(db_path: str) -> int:
         return 0
 
 
-def _assign_global_ids_to_new_runs(db_path: str, run_id_before: int) -> Optional[str]:
-    """
-    Find all runs with run_id > run_id_before and assign global_run_id.
-    Also assigns global_exp_id to their experiments if missing.
-    Returns the global_run_id of the last new run.
-    """
+def _get_new_run_id(db_path: str, run_id_before: int) -> Optional[int]:
+    """Return the highest run_id created after run_id_before."""
     try:
         con = sqlite3.connect(db_path)
-        con.row_factory = sqlite3.Row
-
-        # New runs created by this job
-        new_runs = con.execute("""
-            SELECT run_id, exp_id, hw_id
-            FROM runs
-            WHERE run_id > ? AND global_run_id IS NULL
-            ORDER BY run_id ASC
-        """, (run_id_before,)).fetchall()
-
-        last_global_run_id = None
-        exp_ids_done = set()
-
-        for row in new_runs:
-            run_id = row["run_id"]
-            exp_id = row["exp_id"]
-            hw_id  = row["hw_id"] or 1
-
-            # Assign global_run_id
-            uid = new_run_uuid()
-            con.execute(
-                "UPDATE runs SET global_run_id=? WHERE run_id=?",
-                (uid, run_id)
-            )
-            last_global_run_id = uid
-
-            # Propagate to child tables
-            for tbl in ["energy_samples", "cpu_samples", "thermal_samples",
-                         "interrupt_samples", "orchestration_events",
-                         "llm_interactions"]:
-                con.execute(f"""
-                    UPDATE {tbl} SET global_run_id=?
-                    WHERE run_id=? AND global_run_id IS NULL
-                """, (uid, run_id))
-
-            # Assign global_exp_id if missing
-            if exp_id not in exp_ids_done:
-                exp_row = con.execute(
-                    "SELECT global_exp_id FROM experiments WHERE exp_id=?",
-                    (exp_id,)
-                ).fetchone()
-                if exp_row and not exp_row["global_exp_id"]:
-                    con.execute(
-                        "UPDATE experiments SET global_exp_id=? WHERE exp_id=?",
-                        (new_exp_uuid(), exp_id)
-                    )
-                exp_ids_done.add(exp_id)
-
-        con.commit()
+        row = con.execute(
+            "SELECT MAX(run_id) FROM runs WHERE run_id > ?",
+            (run_id_before,)
+        ).fetchone()
         con.close()
-
-        if new_runs:
-            print(f"[executor] Assigned global_run_id to {len(new_runs)} new run(s)")
-
-        return last_global_run_id
-
-    except Exception as e:
-        print(f"[executor] Error assigning global IDs: {e}")
+        return int(row[0]) if row and row[0] else None
+    except Exception:
         return None
 
 

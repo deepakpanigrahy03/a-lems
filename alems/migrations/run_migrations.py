@@ -1,18 +1,23 @@
 """
 alems/migrations/run_migrations.py
 ────────────────────────────────────────────────────────────────────────────
-Run SQLite migration 007 on a local experiments.db.
-Also validates PostgreSQL schema when ALEMS_DB_URL is set.
+Migration runner for A-LEMS distributed setup.
+
+Migration 007 adds ONLY:
+  - runs.sync_status          (track what's been pushed to PostgreSQL)
+  - hardware_config agent tracking columns
+
+No UUID columns. No backfill. PostgreSQL assigns its own sequential IDs.
 
 Usage:
-    # Apply to default SQLite path
+    # Apply SQLite migration (every local machine)
     python -m alems.migrations.run_migrations
 
-    # Apply to specific SQLite file
-    python -m alems.migrations.run_migrations --db /path/to/experiments.db
-
-    # Apply PostgreSQL schema (requires ALEMS_DB_URL env var)
+    # Apply PostgreSQL schema (Oracle VM only, first time)
     python -m alems.migrations.run_migrations --postgres
+
+    # Apply PostgreSQL UUID removal migration (Oracle VM, one time)
+    python -m alems.migrations.run_migrations --postgres-migrate-002
 ────────────────────────────────────────────────────────────────────────────
 """
 
@@ -56,7 +61,8 @@ def _index_exists(con: sqlite3.Connection, name: str) -> bool:
 def apply_sqlite_007(db_path: Path) -> None:
     """
     Apply migration 007 idempotently to SQLite.
-    Checks each ALTER TABLE before running — safe to run multiple times.
+    Adds sync_status and hardware_config agent tracking columns.
+    NO UUID columns — PostgreSQL assigns its own sequential IDs.
     """
     print(f"\n[migration] SQLite target: {db_path}")
 
@@ -65,15 +71,12 @@ def apply_sqlite_007(db_path: Path) -> None:
         sys.exit(1)
 
     con = sqlite3.connect(db_path)
-
     current_version = _get_sqlite_version(con)
     print(f"[migration] Current schema version: {current_version}")
 
+    # Check if sync_status exists (the key column for migration 007)
     if current_version >= 7:
-        # Version says done but verify columns actually exist
-        # This handles cases where version was bumped but ALTER TABLEs failed
-        missing = not _column_exists(con, "runs", "global_run_id") or \
-                not _column_exists(con, "experiments", "global_exp_id")
+        missing = not _column_exists(con, "runs", "sync_status")
         if not missing:
             print("[migration] Migration 007 already applied — skipping")
             con.close()
@@ -82,61 +85,32 @@ def apply_sqlite_007(db_path: Path) -> None:
 
     print("[migration] Applying migration 007 (distributed identity)...")
 
-    # ── experiments ──────────────────────────────────────────────────────────
-    if not _column_exists(con, "experiments", "global_exp_id"):
-        con.execute("ALTER TABLE experiments ADD COLUMN global_exp_id TEXT")
-        print("  + experiments.global_exp_id")
+    # ── runs: sync tracking ───────────────────────────────────────────────────
+    if not _column_exists(con, "runs", "sync_status"):
+        con.execute("ALTER TABLE runs ADD COLUMN sync_status INTEGER DEFAULT 0")
+        print("  + runs.sync_status")
 
-    # ── runs ─────────────────────────────────────────────────────────────────
-    for col, defn in [
-        ("global_run_id", "TEXT"),
-        ("sync_status",   "INTEGER DEFAULT 0"),
-    ]:
-        if not _column_exists(con, "runs", col):
-            con.execute(f"ALTER TABLE runs ADD COLUMN {col} {defn}")
-            print(f"  + runs.{col}")
-
-    # ── child tables ─────────────────────────────────────────────────────────
-    child_tables = [
-        "energy_samples",
-        "cpu_samples",
-        "thermal_samples",
-        "interrupt_samples",
-        "orchestration_events",
-        "llm_interactions",
-        "orchestration_tax_summary",
-    ]
-    for tbl in child_tables:
-        if not _column_exists(con, tbl, "global_run_id"):
-            con.execute(f"ALTER TABLE {tbl} ADD COLUMN global_run_id TEXT")
-            print(f"  + {tbl}.global_run_id")
-
-    # ── hardware_config agent tracking ───────────────────────────────────────
+    # ── hardware_config: agent tracking ───────────────────────────────────────
     for col, defn in [
         ("last_seen",     "TIMESTAMP"),
         ("agent_status",  "TEXT DEFAULT 'offline'"),
         ("agent_version", "TEXT"),
         ("server_hw_id",  "INTEGER"),
+        ("api_key",       "TEXT"),
     ]:
         if not _column_exists(con, "hardware_config", col):
             con.execute(f"ALTER TABLE hardware_config ADD COLUMN {col} {defn}")
             print(f"  + hardware_config.{col}")
 
-    # ── indexes ──────────────────────────────────────────────────────────────
-    indexes = [
-        ("idx_runs_sync_status", "CREATE INDEX IF NOT EXISTS idx_runs_sync_status ON runs(sync_status)"),
-        ("idx_runs_global_id",   "CREATE INDEX IF NOT EXISTS idx_runs_global_id ON runs(global_run_id)"),
-        ("idx_exp_global_id",    "CREATE INDEX IF NOT EXISTS idx_exp_global_id ON experiments(global_exp_id)"),
-    ]
-    for name, sql in indexes:
-        if not _index_exists(con, name):
-            con.execute(sql)
-            print(f"  + index {name}")
+    # ── indexes ───────────────────────────────────────────────────────────────
+    if not _index_exists(con, "idx_runs_sync_status"):
+        con.execute("CREATE INDEX IF NOT EXISTS idx_runs_sync_status ON runs(sync_status)")
+        print("  + index idx_runs_sync_status")
 
-    # ── version bump ─────────────────────────────────────────────────────────
+    # ── version bump ──────────────────────────────────────────────────────────
     con.execute(
         "INSERT OR IGNORE INTO schema_version(version, description) VALUES (?, ?)",
-        (7, "distributed identity: global_run_id, global_exp_id, sync_status, agent tracking")
+        (7, "distributed identity: sync_status, agent tracking (no UUIDs)")
     )
 
     con.commit()
@@ -144,12 +118,12 @@ def apply_sqlite_007(db_path: Path) -> None:
     print("[migration] Migration 007 applied successfully")
 
 
-def apply_postgres(pg_url: str) -> None:
-    """Apply PostgreSQL initial schema using psycopg2."""
+def apply_postgres_initial(pg_url: str) -> None:
+    """Apply PostgreSQL initial schema (001_postgres_initial.sql)."""
     try:
         import psycopg2
     except ImportError:
-        print("[migration] ERROR: psycopg2 not installed. Run: pip install psycopg2-binary")
+        print("[migration] ERROR: psycopg2 not installed: pip install psycopg2-binary")
         sys.exit(1)
 
     sql_path = MIGRATIONS_DIR / "001_postgres_initial.sql"
@@ -165,11 +139,42 @@ def apply_postgres(pg_url: str) -> None:
     try:
         cur.execute(sql)
         con.commit()
-        print("[migration] PostgreSQL schema applied successfully")
+        print("[migration] PostgreSQL initial schema applied successfully")
     except Exception as e:
         con.rollback()
-        print(f"[migration] ERROR applying PostgreSQL schema: {e}")
+        print(f"[migration] ERROR: {e}")
         sys.exit(1)
+    finally:
+        cur.close()
+        con.close()
+
+
+def apply_postgres_002(pg_url: str) -> None:
+    """Apply PostgreSQL migration 002 — remove UUID PKs, use BIGSERIAL."""
+    try:
+        import psycopg2
+    except ImportError:
+        print("[migration] ERROR: psycopg2 not installed: pip install psycopg2-binary")
+        sys.exit(1)
+
+    sql_path = MIGRATIONS_DIR / "002_remove_uuid_pks.sql"
+    if not sql_path.exists():
+        print(f"[migration] ERROR: {sql_path} not found")
+        sys.exit(1)
+
+    print(f"\n[migration] Applying PostgreSQL migration 002 (remove UUID PKs)...")
+    sql = sql_path.read_text()
+
+    con = psycopg2.connect(pg_url)
+    cur = con.cursor()
+    try:
+        cur.execute(sql)
+        con.commit()
+        print("[migration] PostgreSQL migration 002 applied successfully")
+    except Exception as e:
+        con.rollback()
+        print(f"[migration] ERROR: {e}")
+        raise
     finally:
         cur.close()
         con.close()
@@ -177,25 +182,30 @@ def apply_postgres(pg_url: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="A-LEMS migration runner")
-    parser.add_argument("--db",       type=str, default=None,
-                        help="Path to SQLite experiments.db")
-    parser.add_argument("--postgres", action="store_true",
-                        help="Apply PostgreSQL schema (reads ALEMS_DB_URL)")
+    parser.add_argument("--db",                  type=str, default=None)
+    parser.add_argument("--postgres",            action="store_true",
+                        help="Apply PostgreSQL initial schema")
+    parser.add_argument("--postgres-migrate-002", action="store_true",
+                        help="Remove UUID PKs from PostgreSQL (run once)")
     args = parser.parse_args()
 
+    pg_url = os.environ.get("ALEMS_DB_URL")
+
     if args.postgres:
-        pg_url = os.environ.get("ALEMS_DB_URL")
         if not pg_url:
-            print("[migration] ERROR: ALEMS_DB_URL environment variable not set")
+            print("[migration] ERROR: ALEMS_DB_URL not set")
             sys.exit(1)
-        apply_postgres(pg_url)
+        apply_postgres_initial(pg_url)
+
+    elif getattr(args, "postgres_migrate_002", False):
+        if not pg_url:
+            print("[migration] ERROR: ALEMS_DB_URL not set")
+            sys.exit(1)
+        apply_postgres_002(pg_url)
+
     else:
         db_path = Path(args.db) if args.db else _default_sqlite_path()
         apply_sqlite_007(db_path)
-        # Always run backfill after migration
-        print("\n[migration] Running UUID backfill for existing rows...")
-        from alems.agent.backfill import backfill_global_ids
-        backfill_global_ids(str(db_path))
 
 
 if __name__ == "__main__":

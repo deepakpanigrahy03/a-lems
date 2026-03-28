@@ -129,7 +129,7 @@ class BulkSyncPayload(BaseModel):
 
 class BulkSyncResponse(BaseModel):
     ok:             bool
-    synced_run_ids: list[str] = Field(default_factory=list)
+    synced_run_ids: list[int] = Field(default_factory=list)  # local run_ids
     rows_inserted:  int = 0
     message:        str = "ok"
 

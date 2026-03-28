@@ -222,83 +222,84 @@ def job_status(req: JobStatusRequest, session: Session = Depends(get_db)):
 @app.post("/bulk-sync", response_model=BulkSyncResponse)
 def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
     hw_id = _auth(payload.hardware_hash, payload.api_key, session)
-
+ 
     rows_inserted  = 0
-    synced_run_ids = []
-
+    synced_run_ids = []  # local run_ids that were successfully synced
+ 
     try:
         # 1. hardware_config (no deps)
         if payload.hardware_data:
             hw = dict(payload.hardware_data)
             hw["agent_status"] = "syncing"
             upsert_hardware(session, hw)
-
+ 
         # 2. environment_config (no deps)
         for env in payload.environment_config:
-            env = {k: v for k, v in env.items() if v is not None}
+            env = _clean_row(env)
             _upsert_pg(session, "environment_config", env, "env_hash")
             rows_inserted += 1
-
+ 
         # 3. idle_baselines (no deps)
         for bl in payload.idle_baselines:
-            bl = {k: v for k, v in bl.items() if v is not None}
+            bl = _clean_row(bl)
             _upsert_pg(session, "idle_baselines", bl, "baseline_id")
             rows_inserted += 1
-
+ 
         # 4. task_categories (no deps, reference data)
         for tc in payload.task_categories:
-            tc = {k: v for k, v in tc.items() if v is not None}
+            tc = _clean_row(tc)
             _upsert_pg(session, "task_categories", tc, "task_id")
             rows_inserted += 1
-
+ 
         # 5. experiments (deps: hardware_config, environment_config)
         for exp in payload.experiments:
-            exp = _remap_for_pg(exp, hw_id)
-            _upsert_pg(session, "experiments", exp, "global_exp_id")
+            exp = _remap_exp_for_pg(exp, hw_id)
+            _upsert_pg(session, "experiments", exp, "hw_id, exp_id")
             rows_inserted += 1
-
+ 
         # 6. runs (deps: experiments, hardware_config, idle_baselines)
         for run in payload.runs:
-            run = _remap_for_pg(run, hw_id)
-            _upsert_pg(session, "runs", run, "global_run_id")
-            synced_run_ids.append(run["global_run_id"])
+            run = _remap_run_for_pg(run, hw_id, session)
+            local_run_id = run.pop("_local_run_id")  # extracted before insert
+            _upsert_pg(session, "runs", run, "hw_id, run_id")
+            synced_run_ids.append(local_run_id)
             rows_inserted += 1
-
-        # 7. child tables (deps: runs)
-        child_map = {
-            "energy_samples":            ("energy_samples",            "global_run_id, timestamp_ns"),
-            "cpu_samples":               ("cpu_samples",               "global_run_id, timestamp_ns"),
-            "thermal_samples":           ("thermal_samples",           "global_run_id, timestamp_ns"),
-            "interrupt_samples":         ("interrupt_samples",         "global_run_id, timestamp_ns"),
-            "orchestration_events":      ("orchestration_events",      "global_run_id, start_time_ns, event_type"),
-            "llm_interactions":          ("llm_interactions",          None),
-            "orchestration_tax_summary": ("orchestration_tax_summary", "linear_run_id, agentic_run_id"),
-            "outliers":                  ("outliers",                  None),
-        }
-        for attr, (tbl, conflict_cols) in child_map.items():
+ 
+        # 7. child tables (deps: runs — joined via hw_id + local run_id)
+        child_tables = [
+            ("energy_samples",            "hw_id, local_run_id, timestamp_ns"),
+            ("cpu_samples",               "hw_id, local_run_id, timestamp_ns"),
+            ("thermal_samples",           "hw_id, local_run_id, timestamp_ns"),
+            ("interrupt_samples",         "hw_id, local_run_id, timestamp_ns"),
+            ("orchestration_events",      "hw_id, local_run_id, start_time_ns, event_type"),
+            ("llm_interactions",          None),
+            ("orchestration_tax_summary", None),
+            ("outliers",                  None),
+        ]
+        for attr, conflict_cols in child_tables:
             rows = getattr(payload, attr, [])
             for row in rows:
-                row = _remap_child_for_pg(row)
+                row = _remap_child_for_pg(row, hw_id)
                 if conflict_cols:
-                    _upsert_pg(session, tbl, row, conflict_cols)
+                    _upsert_pg(session, attr, row, conflict_cols)
                 else:
-                    _insert_ignore_pg(session, tbl, row)
+                    _insert_ignore_pg(session, attr, row)
                 rows_inserted += 1
-
-        # 8. Mark machine idle after sync
-        session.execute(text("""
-            UPDATE hardware_config SET agent_status='idle' WHERE hw_id=:id
-        """), {"id": hw_id})
-
+ 
+        # 8. Mark machine idle
+        session.execute(text(
+            "UPDATE hardware_config SET agent_status='idle' WHERE hw_id=:id"
+        ), {"id": hw_id})
+ 
         session.commit()
-
+ 
         return BulkSyncResponse(
             ok=True,
-            synced_run_ids=synced_run_ids,
+            synced_run_ids=synced_run_ids,  # local integer run_ids
             rows_inserted=rows_inserted,
             message=f"synced {len(synced_run_ids)} runs, {rows_inserted} rows",
         )
-
+ 
     except Exception as e:
         session.rollback()
         print(f"[server] bulk-sync error: {e}")
@@ -396,78 +397,109 @@ def get_machines(session: Session = Depends(get_db)):
     return [dict(r._mapping) for r in rows]
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
-
+ 
 # ALL boolean columns across ALL tables (SQLite stores as 0/1 integer)
 _ALL_BOOL_COLS = {
-    # hardware_config
     "has_avx2", "has_avx512", "has_vmx", "gpu_power_available",
-    "rapl_has_dram", "rapl_has_uncore",
-    # environment_config
-    "git_dirty",
-    # runs
+    "rapl_has_dram", "rapl_has_uncore",           # hardware_config
+    "git_dirty",                                   # environment_config
     "thermal_during_experiment", "thermal_now_active", "thermal_since_boot",
-    "experiment_valid", "turbo_enabled", "is_cold_start",
-    # thermal_samples
-    "throttle_event",
+    "experiment_valid", "turbo_enabled", "is_cold_start",  # runs
 }
-
-# FK columns that reference tables — strip local integer IDs
-_STRIP_LOCAL_IDS = {"sample_id", "event_id", "interaction_id", "outlier_id",
-                    "comparison_id", "baseline_id_local"}
-
-
-def _cast_booleans(row: dict) -> dict:
-    """Cast SQLite 0/1 integers to Python bool for PostgreSQL BOOLEAN columns."""
+ 
+# Columns that only exist in SQLite — never send to PostgreSQL
+_SQLITE_ONLY = {
+    "sync_status",       # SQLite sync tracking, not in PG
+    "global_run_id",     # old UUID — no longer used
+    "global_exp_id",     # old UUID — no longer used
+}
+ 
+# Local autoincrement PKs in child tables — PG assigns its own BIGSERIAL
+_LOCAL_PKS = {
+    "sample_id", "event_id", "interaction_id",
+    "outlier_id", "comparison_id",
+}
+ 
+ 
+def _clean_row(row: dict) -> dict:
+    """Remove nulls, strip SQLite-only columns, cast booleans."""
     return {
         k: (bool(v) if k in _ALL_BOOL_COLS and v is not None else v)
         for k, v in row.items()
+        if v is not None and k not in _SQLITE_ONLY
     }
-
-
-def _remap_for_pg(row: dict, hw_id: int) -> dict:
-    """Remap a row for PostgreSQL: cast booleans, set server hw_id, drop nulls."""
+ 
+ 
+def _remap_exp_for_pg(exp: dict, hw_id: int) -> dict:
+    """Remap experiment row for PostgreSQL insert."""
+    row = _clean_row(exp)
+    row["hw_id"] = hw_id  # always use server-side hw_id
+    # global_exp_id assigned by BIGSERIAL — do not include
+    row.pop("global_exp_id", None)
+    return row
+ 
+ 
+def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
+    """
+    Remap run row for PostgreSQL insert.
+    Resolves global_exp_id from experiments table using hw_id + exp_id.
+    Stashes local run_id as _local_run_id for sync tracking.
+    """
+    row = _clean_row(run)
+    row["hw_id"] = hw_id
+ 
+    # Store local run_id for sync tracking, then keep it as reference column
+    local_run_id = row.get("run_id")
+    row["_local_run_id"] = local_run_id  # extracted after insert, not sent to PG
+ 
+    # Resolve global_exp_id from experiments (BIGSERIAL assigned by PG)
+    exp_id = row.get("exp_id")
+    if exp_id:
+        exp_row = session.execute(text("""
+            SELECT global_exp_id FROM experiments
+            WHERE hw_id = :hw AND exp_id = :eid
+        """), {"hw": hw_id, "eid": exp_id}).fetchone()
+        if exp_row:
+            row["global_exp_id"] = exp_row[0]
+ 
+    row.pop("global_run_id", None)  # old UUID — removed
+    return row
+ 
+ 
+def _remap_child_for_pg(row: dict, hw_id: int) -> dict:
+    """
+    Remap child table row for PostgreSQL.
+    Maps local run_id → local_run_id reference column.
+    """
     result = {}
     for k, v in row.items():
+        if k in _LOCAL_PKS:
+            continue  # PG assigns its own BIGSERIAL PK
+        if k in _SQLITE_ONLY:
+            continue
         if v is None:
             continue
-        if k in _ALL_BOOL_COLS:
+        if k == "run_id":
+            result["local_run_id"] = v  # rename for PG schema
+            result["run_id"] = v        # keep original too for reference
+        elif k in _ALL_BOOL_COLS:
             result[k] = bool(v)
         else:
             result[k] = v
     result["hw_id"] = hw_id
     return result
-
-
-def _remap_child_for_pg(row: dict) -> dict:
-    """Remap child table row: cast booleans, remove local autoincrement PKs."""
-    _LOCAL_PKS = {"sample_id", "event_id", "interaction_id",
-                  "outlier_id", "comparison_id"}
-    result = {}
-    for k, v in row.items():
-        if k in _LOCAL_PKS:
-            continue  # server assigns its own BIGSERIAL PK
-        if v is None:
-            continue
-        if k in _ALL_BOOL_COLS:
-            result[k] = bool(v)
-        else:
-            result[k] = v
-    return result
-
-
+ 
+ 
 def _upsert_pg(session: Session, table: str, row: dict, conflict_cols: str) -> None:
     if not row:
         return
-    # Cast booleans for any table
-    row = _cast_booleans(row)
-    cols      = list(row.keys())
-    col_str   = ", ".join(cols)
-    ph_str    = ", ".join(f":{c}" for c in cols)
-    conflict_set = set(conflict_cols.replace(" ", "").split(","))
-    update_str = ", ".join(
+    cols         = list(row.keys())
+    col_str      = ", ".join(cols)
+    ph_str       = ", ".join(f":{c}" for c in cols)
+    conflict_set = set(c.strip() for c in conflict_cols.split(","))
+    update_str   = ", ".join(
         f"{c} = EXCLUDED.{c}" for c in cols if c not in conflict_set
     )
     if not update_str:
@@ -483,21 +515,20 @@ def _upsert_pg(session: Session, table: str, row: dict, conflict_cols: str) -> N
             ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_str}
         """
     session.execute(text(sql), row)
-
-
+ 
+ 
 def _insert_ignore_pg(session: Session, table: str, row: dict) -> None:
     if not row:
         return
-    row    = _cast_booleans(row)
-    cols   = list(row.keys())
+    cols    = list(row.keys())
     col_str = ", ".join(cols)
     ph_str  = ", ".join(f":{c}" for c in cols)
     session.execute(text(f"""
         INSERT INTO {table} ({col_str}) VALUES ({ph_str})
         ON CONFLICT DO NOTHING
     """), row)
-
-
+ 
+ 
 def _build_command_from_config(config_json: str) -> str:
     import json
     try:
@@ -506,11 +537,12 @@ def _build_command_from_config(config_json: str) -> str:
         return build_command(cfg)
     except Exception:
         return ""
-
-
+ 
+ 
 def _parse_json(s: str) -> dict:
     import json
     try:
         return json.loads(s)
     except Exception:
         return {}
+ 
