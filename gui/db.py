@@ -34,6 +34,36 @@ def _db_url() -> str:
 def is_server_mode() -> bool:
     return _db_url().startswith("postgresql")
 
+def _adapt_sql(sql: str) -> str:
+    """
+    Adapt SQLite-specific SQL to PostgreSQL.
+    Called automatically when is_server_mode() is True.
+    """
+    if not is_server_mode():
+        return sql
+    import re
+    # ROUND(expr, n) → ROUND(expr::numeric, n)
+    sql = re.sub(
+        r'ROUND\(([^,]+),\s*(\d+)\)',
+        lambda m: f'ROUND(({m.group(1)})::numeric, {m.group(2)})',
+        sql
+    )
+    # strftime('%Y-%m', datetime(col/1e9,'unixepoch')) → to_char(to_timestamp(col/1e9),'YYYY-MM')
+    sql = re.sub(
+        r"strftime\('([^']+)',\s*datetime\(([^,]+),\s*'unixepoch'\)\)",
+        lambda m: f"to_char(to_timestamp({m.group(2)}), '{m.group(1).replace('%Y','YYYY').replace('%m','MM').replace('%d','DD')}')",
+        sql
+    )
+    # datetime(col/1e9,'unixepoch') → to_timestamp(col/1e9)
+    sql = re.sub(
+        r"datetime\(([^,]+),\s*'unixepoch'\)",
+        lambda m: f"to_timestamp({m.group(1)})",
+        sql
+    )
+    # CAST(x AS REAL) → CAST(x AS DOUBLE PRECISION)
+    sql = sql.replace("CAST(", "CAST(").replace("AS REAL)", "AS DOUBLE PRECISION)")
+    return sql
+
 def get_db_label() -> str:
     return "PostgreSQL · server" if is_server_mode() else "SQLite · local"
 
@@ -96,7 +126,7 @@ class _PgWrapper:
 
     def execute(self, sql: str, params: tuple = ()):
         # Convert SQLite ? placeholders to PostgreSQL %s
-        sql_pg = sql.replace("?", "%s")
+        sql_pg = _adapt_sql(sql).replace("?", "%s")
         cur = self._con.cursor()
         cur.execute(sql_pg, params)
         return _PgCursor(cur)
@@ -140,7 +170,7 @@ def q(sql: str, params: tuple = ()) -> pd.DataFrame:
             import psycopg2
             url = _db_url()
             con = psycopg2.connect(url)
-            sql_pg = sql.replace("?", "%s")
+            sql_pg = _adapt_sql(sql).replace("?", "%s")
             df = pd.read_sql_query(sql_pg, con, params=params or None)
             con.close()
             return df
@@ -173,7 +203,7 @@ def q1(sql: str, params: tuple = ()) -> dict:
             url = _db_url()
             con = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
             cur = con.cursor()
-            sql_pg = sql.replace("?", "%s")
+            sql_pg = _adapt_sql(sql).replace("?", "%s")
             cur.execute(sql_pg, params or None)
             row = cur.fetchone()
             con.close()
