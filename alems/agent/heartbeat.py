@@ -85,7 +85,7 @@ def register(db_path: str) -> bool:
             f"{server_url}/register",
             json=hw,
             headers={"Content-Type": "application/json"},  # no Bearer token
-            timeout=TIMEOUT,
+            timeout=_get_http_timeout(), 
         )
         r.raise_for_status()
         resp = r.json()
