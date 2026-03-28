@@ -246,20 +246,20 @@ CREATE TABLE IF NOT EXISTS runs (
 CREATE TABLE IF NOT EXISTS energy_samples (
     sample_id       BIGSERIAL   PRIMARY KEY,
     global_run_id   BIGINT      REFERENCES runs(global_run_id),
-    local_run_id    BIGINT      NOT NULL,
+    run_id    BIGINT      NOT NULL,
     hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns    BIGINT      NOT NULL,
     pkg_energy_uj   BIGINT,
     core_energy_uj  BIGINT,
     uncore_energy_uj BIGINT,
     dram_energy_uj  BIGINT,
-    UNIQUE (hw_id, local_run_id, timestamp_ns)
+    UNIQUE (hw_id, run_id, timestamp_ns)
 );
 
 CREATE TABLE IF NOT EXISTS cpu_samples (
     sample_id           BIGSERIAL   PRIMARY KEY,
     global_run_id       BIGINT      REFERENCES runs(global_run_id),
-    local_run_id        BIGINT      NOT NULL,
+    run_id        BIGINT      NOT NULL,
     hw_id               BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns        BIGINT      NOT NULL,
     cpu_util_percent    DOUBLE PRECISION,
@@ -279,13 +279,13 @@ CREATE TABLE IF NOT EXISTS cpu_samples (
     package_temp        DOUBLE PRECISION,
     ipc                 DOUBLE PRECISION,
     extra_metrics_json  TEXT,
-    UNIQUE (hw_id, local_run_id, timestamp_ns)
+    UNIQUE (hw_id, run_id, timestamp_ns)
 );
 
 CREATE TABLE IF NOT EXISTS thermal_samples (
     sample_id       BIGSERIAL   PRIMARY KEY,
     global_run_id   BIGINT      REFERENCES runs(global_run_id),
-    local_run_id    BIGINT      NOT NULL,
+    run_id    BIGINT      NOT NULL,
     hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns    BIGINT      NOT NULL,
     sample_time_s   DOUBLE PRECISION,
@@ -295,23 +295,23 @@ CREATE TABLE IF NOT EXISTS thermal_samples (
     throttle_event  INTEGER     DEFAULT 0,
     all_zones_json  TEXT,
     sensor_count    INTEGER,
-    UNIQUE (hw_id, local_run_id, timestamp_ns)
+    UNIQUE (hw_id, run_id, timestamp_ns)
 );
 
 CREATE TABLE IF NOT EXISTS interrupt_samples (
     sample_id           BIGSERIAL   PRIMARY KEY,
     global_run_id       BIGINT      REFERENCES runs(global_run_id),
-    local_run_id        BIGINT      NOT NULL,
+    run_id        BIGINT      NOT NULL,
     hw_id               BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns        BIGINT      NOT NULL,
     interrupts_per_sec  DOUBLE PRECISION,
-    UNIQUE (hw_id, local_run_id, timestamp_ns)
+    UNIQUE (hw_id, run_id, timestamp_ns)
 );
 
 CREATE TABLE IF NOT EXISTS orchestration_events (
     event_id            BIGSERIAL   PRIMARY KEY,
     global_run_id       BIGINT      REFERENCES runs(global_run_id),
-    local_run_id        BIGINT      NOT NULL,
+    run_id        BIGINT      NOT NULL,
     hw_id               BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     step_index          INTEGER,
     phase               TEXT,
@@ -325,13 +325,13 @@ CREATE TABLE IF NOT EXISTS orchestration_events (
     event_energy_uj     BIGINT,
     tax_contribution_uj BIGINT,
     tax_percent         DOUBLE PRECISION,
-    UNIQUE (hw_id, local_run_id, start_time_ns, event_type)
+    UNIQUE (hw_id, run_id, start_time_ns, event_type)
 );
 
 CREATE TABLE IF NOT EXISTS llm_interactions (
     interaction_id          BIGSERIAL   PRIMARY KEY,
     global_run_id           BIGINT      REFERENCES runs(global_run_id),
-    local_run_id            BIGINT      NOT NULL,
+    run_id            BIGINT      NOT NULL,
     hw_id                   BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     step_index              INTEGER,
     workflow_type           TEXT,
@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
 CREATE TABLE IF NOT EXISTS orchestration_tax_summary (
     comparison_id           BIGSERIAL   PRIMARY KEY,
     global_run_id           BIGINT      REFERENCES runs(global_run_id),
-    local_run_id            BIGINT,
+    run_id            BIGINT,
     hw_id                   BIGINT      REFERENCES hardware_config(hw_id),
     linear_run_id           BIGINT      NOT NULL,
     agentic_run_id          BIGINT      NOT NULL,
@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS orchestration_tax_summary (
 CREATE TABLE IF NOT EXISTS outliers (
     outlier_id    BIGSERIAL   PRIMARY KEY,
     global_run_id BIGINT      REFERENCES runs(global_run_id),
-    local_run_id  BIGINT      NOT NULL,
+    run_id  BIGINT      NOT NULL,
     hw_id         BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     column_name   TEXT        NOT NULL,
     value         DOUBLE PRECISION,
@@ -470,12 +470,12 @@ CREATE INDEX IF NOT EXISTS idx_exp_hw_id             ON experiments(hw_id);
 CREATE INDEX IF NOT EXISTS idx_exp_hw_exp            ON experiments(hw_id, exp_id);
 
 -- Child tables
-CREATE INDEX IF NOT EXISTS idx_energy_hw_run         ON energy_samples(hw_id, local_run_id);
-CREATE INDEX IF NOT EXISTS idx_cpu_hw_run            ON cpu_samples(hw_id, local_run_id);
-CREATE INDEX IF NOT EXISTS idx_thermal_hw_run        ON thermal_samples(hw_id, local_run_id);
-CREATE INDEX IF NOT EXISTS idx_interrupt_hw_run      ON interrupt_samples(hw_id, local_run_id);
-CREATE INDEX IF NOT EXISTS idx_orch_hw_run           ON orchestration_events(hw_id, local_run_id);
-CREATE INDEX IF NOT EXISTS idx_llm_hw_run            ON llm_interactions(hw_id, local_run_id);
+CREATE INDEX IF NOT EXISTS idx_energy_hw_run         ON energy_samples(hw_id, run_id);
+CREATE INDEX IF NOT EXISTS idx_cpu_hw_run            ON cpu_samples(hw_id, run_id);
+CREATE INDEX IF NOT EXISTS idx_thermal_hw_run        ON thermal_samples(hw_id, run_id);
+CREATE INDEX IF NOT EXISTS idx_interrupt_hw_run      ON interrupt_samples(hw_id, run_id);
+CREATE INDEX IF NOT EXISTS idx_orch_hw_run           ON orchestration_events(hw_id, run_id);
+CREATE INDEX IF NOT EXISTS idx_llm_hw_run            ON llm_interactions(hw_id, run_id);
 
 -- Server operational
 CREATE INDEX IF NOT EXISTS idx_job_status            ON job_queue(status);
