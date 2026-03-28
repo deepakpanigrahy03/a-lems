@@ -26,6 +26,7 @@ nav:
     - Model Configuration: getting-started/03-model-config.md
     - Quick Start: getting-started/04-quick-start.md
     - Troubleshooting: getting-started/05-troubleshooting.md
+    - Adding a New Client: getting-started/06-new-client.md
   
   - User Guide:
     - Running Experiments: user-guide/01-running.md
@@ -43,6 +44,9 @@ nav:
     - Adding New Readers: developer-guide/05-adding-readers.md
     - Adding New Tasks: developer-guide/06-adding-tasks.md
     - Developer Tools: developer-guide/07-tools-overview.md
+    - Distributed Architecture: developer-guide/08-distributed-architecture.md
+    - Data Flow & Sync: developer-guide/09-data-flow-sync.md
+    - Schema Migration: developer-guide/10-schema-migration.md
     
   - Research:
     - Measurement Methodology: research/01-measurement-methodology.md
@@ -53,6 +57,7 @@ nav:
   
   - API Reference: 
     - Overview: api/reference.md
+    - Orchestration API: api/orchestration-api.md
     - Full API Docs: sphinx/
 
 markdown_extensions:

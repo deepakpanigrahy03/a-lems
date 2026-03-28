@@ -171,6 +171,36 @@ SECTION_PAGES = {
                 "desc": "Trigger parallel runs across N silicon targets simultaneously.",
                 "status": NEW,
             },
+
+            {
+                "id":     "dispatch_queue",
+                "label":  "Dispatch Queue",
+                "icon":   "⬡",
+                "desc":   "View and manage the server job queue across all machines.",
+                "status": NEW,
+            },
+            {
+                "id":     "sync_monitor",
+                "label":  "Sync Monitor",
+                "icon":   "⟳",
+                "desc":   "Per-machine sync health, lag, and retry status.",
+                "status": NEW,
+            },
+            {
+                "id":     "experiment_submissions",
+                "label":  "Global Queue",
+                "icon":   "◎",
+                "desc":   "Review and approve researcher experiment submissions.",
+                "status": NEW,
+            },
+            {
+                "id": "multi_host_status",
+                "label": "Multi-Host Status",
+                "icon": "⊕",
+                "desc": "Per-host connection health, tunnel state, last run timestamp.",
+                "status": EXISTS,
+            },
+
         ],
     },
     "ENERGY & SILICON": {
@@ -580,13 +610,7 @@ SECTION_PAGES = {
                 "desc": "Same experiment, different chips — controlled silicon comparison.",
                 "status": NEW,
             },
-            {
-                "id": "multi_host_status",
-                "label": "Multi-Host Status",
-                "icon": "⊕",
-                "desc": "Per-host connection health, tunnel state, last run timestamp.",
-                "status": NEW,
-            },
+
             {
                 "id": "capability_matrix",
                 "label": "Capability Matrix",

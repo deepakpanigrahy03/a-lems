@@ -374,13 +374,14 @@ def t10_sync_counts():
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    global DB_PATH
     parser = argparse.ArgumentParser(description="A-LEMS E2E tests")
     parser.add_argument("--sqlite-only", action="store_true")
     parser.add_argument("--server",      type=str, default=None)
     parser.add_argument("--db",          type=str, default=DB_PATH)
     args = parser.parse_args()
 
-    global DB_PATH
+    
     DB_PATH = args.db
 
     pg_url = os.environ.get("ALEMS_DB_URL")

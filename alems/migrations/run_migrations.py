@@ -70,9 +70,15 @@ def apply_sqlite_007(db_path: Path) -> None:
     print(f"[migration] Current schema version: {current_version}")
 
     if current_version >= 7:
-        print("[migration] Migration 007 already applied — skipping")
-        con.close()
-        return
+        # Version says done but verify columns actually exist
+        # This handles cases where version was bumped but ALTER TABLEs failed
+        missing = not _column_exists(con, "runs", "global_run_id") or \
+                not _column_exists(con, "experiments", "global_exp_id")
+        if not missing:
+            print("[migration] Migration 007 already applied — skipping")
+            con.close()
+            return
+        print("[migration] Migration 007 version set but columns missing — reapplying...")
 
     print("[migration] Applying migration 007 (distributed identity)...")
 

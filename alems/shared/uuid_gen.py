@@ -16,7 +16,7 @@ The stable namespace UUID below is fixed forever — do not change it.
 import uuid
 
 # Fixed namespace for all A-LEMS UUIDs — generated once, never changes
-_NS = uuid.UUID("a1em5000-0000-4000-8000-000000000001")
+_NS = uuid.UUID("a1e05000-0000-4000-8000-000000000001")
 
 
 def run_uuid(hw_id: int, run_id: int) -> str:

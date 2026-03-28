@@ -11,7 +11,7 @@ Entry point — 3-layer navigation dispatcher.
 import importlib
 import sys
 from pathlib import Path
-
+sys.path.insert(0, str(Path(__file__).parent))
 import pandas as pd
 import streamlit as st
 
@@ -104,6 +104,9 @@ _PAGE_MODULES = {
     "experiments": "gui.pages.experiments",
     "experiment_planner":  "gui.pages.experiment_planner",
     "multi_host_dispatch": "gui.pages.multi_host_dispatch",
+    "dispatch_queue":         "gui.pages.dispatch_queue",
+    "sync_monitor":           "gui.pages.sync_monitor",
+    "experiment_submissions": "gui.pages.experiment_submissions",
     "explorer": "gui.pages.explorer",
     "energy": "gui.pages.energy",
     "domains": "gui.pages.domains",
