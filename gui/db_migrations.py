@@ -47,11 +47,6 @@ _DB_PATH = Path(__file__).parent.parent / "data" / "experiments.db"
 _GUI_TABLE_MIGRATIONS = [
 
     # ── 1. COVERAGE MATRIX ────────────────────────────────────────────────────
-    # Tracks how many runs exist for each combination of:
-    #   hardware × model × task × workflow type
-    # Powers the Sufficiency Advisor (dq_sufficiency.py) — tells you which
-    # cells need more experiments to reach statistical significance (30+ runs).
-    # Updated by the GUI after each experiment completes.
     """
     CREATE TABLE IF NOT EXISTS coverage_matrix (
         hw_id         INTEGER NOT NULL,
@@ -65,155 +60,165 @@ _GUI_TABLE_MIGRATIONS = [
     )
     """,
 
-    # Index for fast sufficiency queries — "which cells have < 30 runs?"
     """
     CREATE INDEX IF NOT EXISTS idx_coverage_run_count
         ON coverage_matrix (run_count)
     """,
 
     # ── 2. HYPOTHESES ─────────────────────────────────────────────────────────
-    # Research hypothesis tracker — lets you state a hypothesis, then mark
-    # it as supported / rejected / inconclusive as evidence accumulates.
-    # Persists across restarts unlike session_state.
-    # Used by: gui/pages/hypotheses.py
     """
     CREATE TABLE IF NOT EXISTS hypotheses (
         hypothesis_id    INTEGER PRIMARY KEY AUTOINCREMENT,
         title            TEXT    NOT NULL,
         description      TEXT,
-
-        -- Current state of the hypothesis
         status           TEXT    NOT NULL DEFAULT 'open',
-        -- Allowed values: open | supported | rejected | inconclusive
-
-        -- Free-text evidence fields — researcher fills these in via the GUI
         evidence_for     TEXT,
         evidence_against TEXT,
-
-        -- Optional link to a specific run or experiment that is most relevant
         key_run_id       INTEGER REFERENCES runs(run_id),
         key_exp_id       INTEGER REFERENCES experiments(exp_id),
-
-        -- Who and when
         created_by       TEXT    DEFAULT 'researcher',
         created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """,
 
-    # ── 3. SAVED EXPERIMENTS ─────────────────────────────────────────────────
-    # Persists experiment configs saved in the Execute tab (Tab 1).
-    # Currently these live only in st.session_state and are lost on refresh.
-    # With this table they survive restarts, reboots, and new sessions.
-    # Used by: gui/pages/execute.py
+    # ── 3. SAVED EXPERIMENTS ──────────────────────────────────────────────────
     """
     CREATE TABLE IF NOT EXISTS saved_experiments (
         saved_id     INTEGER PRIMARY KEY AUTOINCREMENT,
         name         TEXT    NOT NULL,
-
-        -- Full experiment config stored as JSON
-        -- Matches the dict structure built in execute.py (task, provider, cmd, etc.)
         config_json  TEXT    NOT NULL,
-
-        -- Optional notes the researcher adds when saving
         notes        TEXT,
-
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """,
 
     # ── 4. TAGS ───────────────────────────────────────────────────────────────
-    # Flexible tagging system — attach labels to any run or experiment.
-    # Examples: "baseline", "paper-ready", "anomaly", "thermal-issue",
-    #           "exclude", "best-result", "rerun-needed"
-    # Used by: any page that displays run lists
     """
     CREATE TABLE IF NOT EXISTS tags (
         tag_id       INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        -- A tag can target either a run or an experiment (not both)
         run_id       INTEGER REFERENCES runs(run_id),
         exp_id       INTEGER REFERENCES experiments(exp_id),
-
-        -- The label itself, e.g. "paper-ready", "anomaly", "exclude"
         label        TEXT    NOT NULL,
-
-        -- Optional category groups labels: "quality", "status", "research"
         category     TEXT    DEFAULT 'general',
-
-        -- Optional free-text note attached to this tag
         note         TEXT,
-
         tagged_by    TEXT    DEFAULT 'researcher',
         tagged_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """,
 
-    # Fast lookup: all tags for a given run
     """
     CREATE INDEX IF NOT EXISTS idx_tags_run_id
         ON tags (run_id)
     """,
 
-    # Fast lookup: all tags for a given experiment
     """
     CREATE INDEX IF NOT EXISTS idx_tags_exp_id
         ON tags (exp_id)
     """,
 
     # ── 5. OUTLIERS ───────────────────────────────────────────────────────────
-    # Stores statistically detected outlier runs — runs where a metric
-    # is more than 2 or 3 standard deviations from the population mean.
-    #
-    # The outlier detection job runs in dq_validity.py and writes here.
-    # The excluded flag lets you soft-exclude a run from analysis without
-    # deleting it — the raw data is always preserved.
-    #
-    # severity levels:
-    #   mild   → 2–3σ  (flag for review)
-    #   severe → >3σ   (likely bad data or hardware event)
     """
     CREATE TABLE IF NOT EXISTS outliers (
         outlier_id   INTEGER PRIMARY KEY AUTOINCREMENT,
         run_id       INTEGER NOT NULL REFERENCES runs(run_id),
-
-        -- Which metric triggered the outlier flag
         column_name  TEXT    NOT NULL,
-
-        -- The actual value that was flagged
         value        REAL,
-
-        -- Population statistics at time of detection
         mean         REAL,
         std_dev      REAL,
-
-        -- How many standard deviations away from the mean
         sigma        REAL,
-
-        -- mild = 2-3σ, severe = >3σ
         severity     TEXT    NOT NULL DEFAULT 'mild',
-
-        -- 0 = flagged but still included in analysis
-        -- 1 = excluded from analysis (researcher decision)
         excluded     INTEGER NOT NULL DEFAULT 0,
-
-        -- Human-readable reason: "auto:3.4σ" or "manual:thermal event"
         reason       TEXT,
-
         detected_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """,
 
-    # Fast lookup: all outliers for a given run
     """
     CREATE INDEX IF NOT EXISTS idx_outliers_run_id
         ON outliers (run_id)
     """,
 
-    # Fast lookup: excluded outliers only (used to filter analysis queries)
     """
     CREATE INDEX IF NOT EXISTS idx_outliers_excluded
         ON outliers (excluded)
+    """,
+
+    # ── 6. SYSTEM PROFILES ────────────────────────────────────────────────────
+    # Auto-detected hardware profile — CPU, RAM, RAPL zones, env type.
+    # Collected once at startup, injected into every generated report.
+    # Fixes "Unknown hardware" in all PDF/HTML report outputs forever.
+    """
+    CREATE TABLE IF NOT EXISTS system_profiles (
+        profile_id        TEXT PRIMARY KEY,
+        cpu_model         TEXT NOT NULL DEFAULT 'Unknown',
+        cpu_cores_phys    INTEGER,
+        cpu_cores_logical INTEGER,
+        cpu_freq_max_mhz  REAL,
+        ram_gb            REAL,
+        env_type          TEXT DEFAULT 'LOCAL',
+        os_name           TEXT,
+        kernel            TEXT,
+        rapl_zones_json   TEXT DEFAULT '[]',
+        gpu_model         TEXT,
+        thermal_tdp_w     REAL,
+        disk_gb           REAL,
+        collected_at      TEXT NOT NULL
+    )
+    """,
+
+    # ── 7. RESEARCH GOALS ─────────────────────────────────────────────────────
+    # Stores researcher-defined and YAML-loaded research goals.
+    # Each goal drives a full report: metrics, thresholds, stat config,
+    # narrative persona, doc sections, diagram IDs.
+    # Populated at startup from gui/report_engine/goals/*.yaml
+    """
+    CREATE TABLE IF NOT EXISTS research_goals (
+        goal_id              TEXT PRIMARY KEY,
+        name                 TEXT NOT NULL,
+        category             TEXT NOT NULL DEFAULT 'custom',
+        description          TEXT,
+        hypothesis           TEXT,
+        metrics_json         TEXT NOT NULL DEFAULT '[]',
+        thresholds_json      TEXT DEFAULT '{}',
+        eval_criteria_json   TEXT DEFAULT '{}',
+        narrative_persona    TEXT DEFAULT 'research_engineer',
+        doc_sections_json    TEXT DEFAULT '[]',
+        diagram_ids_json     TEXT DEFAULT '[]',
+        report_sections_json TEXT DEFAULT '[]',
+        version              TEXT DEFAULT '1.0.0',
+        tags_json            TEXT DEFAULT '[]',
+        source               TEXT DEFAULT 'yaml',
+        created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at           TEXT
+    )
+    """,
+
+    # ── 8. REPORT RUNS ────────────────────────────────────────────────────────
+    # One row per generated report. Stores the full config used, narrative
+    # output, stat results, confidence level, and output file paths.
+    # Powers the Report Library page — browse, re-run, download.
+    """
+    CREATE TABLE IF NOT EXISTS report_runs (
+        report_id             TEXT PRIMARY KEY,
+        goal_id               TEXT NOT NULL,
+        secondary_goals_json  TEXT DEFAULT '[]',
+        report_type           TEXT NOT NULL DEFAULT 'goal',
+        title                 TEXT NOT NULL,
+        run_filter_json       TEXT NOT NULL DEFAULT '{}',
+        config_yaml           TEXT,
+        narrative_json        TEXT,
+        stat_results_json     TEXT DEFAULT '[]',
+        confidence_level      TEXT DEFAULT 'LOW',
+        confidence_rationale  TEXT,
+        hypothesis_verdict    TEXT,
+        output_paths_json     TEXT DEFAULT '{}',
+        run_count             INTEGER DEFAULT 0,
+        generated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+        generator_version     TEXT DEFAULT '1.0.0',
+        reproducibility_hash  TEXT,
+        notes                 TEXT
+    )
     """,
 
 ]
@@ -249,10 +254,8 @@ def ensure_gui_tables() -> dict:
         return status
 
     try:
-        # Use a direct sqlite3 connection here — NOT the cached gui/db.py
-        # connection, because we need DDL (CREATE TABLE) not just SELECT.
         conn = sqlite3.connect(str(_DB_PATH), timeout=10)
-        conn.execute("PRAGMA journal_mode=WAL")  # Better concurrent access
+        conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
 
         for statement in _GUI_TABLE_MIGRATIONS:
@@ -263,18 +266,23 @@ def ensure_gui_tables() -> dict:
                 cursor.execute(sql)
                 status["tables_checked"] += 1
             except sqlite3.Error as e:
-                # Log the error but keep going — one bad statement
-                # should not block the rest of the migrations.
                 error_msg = f"Migration error: {e}\nSQL: {sql[:80]}..."
                 status["errors"].append(error_msg)
                 print(f"[db_migrations] WARNING: {error_msg}")
 
         conn.commit()
 
-        # Log this migration run into schema_version if that table exists.
-        # This gives you an audit trail of when migrations ran.
-        _log_migration(conn, status)
+        # ── Collect system profile on first run ────────────────────────────
+        # After tables exist, auto-collect hardware profile if not yet done.
+        # This is what eliminates "Unknown hardware" from all reports.
+        try:
+            _ensure_system_profile(conn)
+        except Exception as e:
+            # Non-fatal — report engine degrades gracefully without it
+            status["errors"].append(f"system_profile collection: {e}")
+            print(f"[db_migrations] system_profile warning: {e}")
 
+        _log_migration(conn, status)
         conn.close()
         status["success"] = len(status["errors"]) == 0
 
@@ -283,6 +291,51 @@ def ensure_gui_tables() -> dict:
         print(f"[db_migrations] CRITICAL: {traceback.format_exc()}")
 
     return status
+
+
+def _ensure_system_profile(conn: sqlite3.Connection) -> None:
+    """
+    Collect and store a system profile if none exists yet.
+    Called once after tables are created — idempotent.
+    """
+    existing = conn.execute(
+        "SELECT profile_id FROM system_profiles LIMIT 1"
+    ).fetchone()
+
+    if existing:
+        return  # Already have a profile — nothing to do
+
+    # Import here to avoid circular imports at module level
+    try:
+        from gui.report_engine.system_profiler import collect_profile
+        import json
+
+        profile = collect_profile()
+        conn.execute("""
+            INSERT OR IGNORE INTO system_profiles VALUES (
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?
+            )
+        """, (
+            profile.profile_id,
+            profile.cpu_model,
+            profile.cpu_cores_physical,
+            profile.cpu_cores_logical,
+            profile.cpu_freq_max_mhz,
+            profile.ram_gb,
+            profile.env_type.value,
+            profile.os_name,
+            profile.kernel,
+            json.dumps(profile.rapl_zones),
+            profile.gpu_model,
+            profile.thermal_tdp_w,
+            profile.disk_gb,
+            profile.collected_at.isoformat(),
+        ))
+        conn.commit()
+        print(f"[db_migrations] System profile collected: {profile.summary_line()}")
+    except ImportError:
+        # report_engine not yet installed — skip silently
+        print("[db_migrations] report_engine not found — skipping system profile collection")
 
 
 def _log_migration(conn: sqlite3.Connection, status: dict) -> None:
@@ -295,13 +348,12 @@ def _log_migration(conn: sqlite3.Connection, status: dict) -> None:
             INSERT INTO schema_version (version, description, applied_at)
             VALUES (?, ?, ?)
         """, (
-            "gui_tables_v1",
+            "gui_tables_v2",
             f"GUI tables ensured: {status['tables_checked']} statements, "
             f"{len(status['errors'])} errors",
             status["timestamp"],
         ))
     except sqlite3.Error:
-        # schema_version table may not exist or have different columns — that's fine.
         pass
 
 
@@ -312,12 +364,7 @@ def _log_migration(conn: sqlite3.Connection, status: dict) -> None:
 def refresh_coverage_matrix() -> int:
     """
     Recompute and upsert the coverage_matrix table from live run data.
-
-    Call this after experiments complete, or from the Data Quality section.
     Returns the number of cells updated.
-
-    This query counts runs grouped by hw_id × model × task × workflow,
-    then upserts into coverage_matrix using INSERT OR REPLACE.
     """
     if not _DB_PATH.exists():
         return 0
@@ -326,7 +373,6 @@ def refresh_coverage_matrix() -> int:
         conn = sqlite3.connect(str(_DB_PATH), timeout=10)
         conn.execute("PRAGMA journal_mode=WAL")
 
-        # Count runs per combination — the core sufficiency calculation
         conn.execute("""
             INSERT OR REPLACE INTO coverage_matrix
                 (hw_id, model_name, task_name, workflow_type, run_count, last_updated)
@@ -368,16 +414,8 @@ def detect_and_store_outliers(
     """
     Run outlier detection across key energy/performance columns.
     Writes results to the outliers table.
-
-    Uses population mean and std_dev per (workflow_type, column).
-    Any run where |value - mean| > sigma * std_dev is flagged.
-
     Returns number of new outliers written.
-
-    Called from: gui/pages/dq_validity.py
     """
-
-    # Default columns to check — the most meaningful for energy research
     if columns is None:
         columns = [
             "energy_j",
@@ -401,15 +439,11 @@ def detect_and_store_outliers(
         conn.row_factory = sqlite3.Row
 
         for col in columns:
-            # Compute per-workflow mean and std_dev for this column.
-            # We compute per workflow_type so agentic and linear
-            # are compared to their own populations — not mixed.
             try:
                 stats_rows = conn.execute(f"""
                     SELECT
                         r.workflow_type,
                         AVG(r.{col})                        AS mean_val,
-                        -- SQLite has no STDEV — compute manually
                         AVG(r.{col} * r.{col}) -
                             AVG(r.{col}) * AVG(r.{col})     AS variance,
                         COUNT(*)                            AS n
@@ -420,20 +454,17 @@ def detect_and_store_outliers(
                     HAVING COUNT(*) >= 5
                 """).fetchall()
             except sqlite3.OperationalError:
-                # Column doesn't exist in this DB version — skip it
                 continue
 
             for stat in stats_rows:
-                workflow    = stat["workflow_type"]
-                mean_val    = stat["mean_val"]
-                variance    = max(stat["variance"] or 0, 0)
-                std_dev     = variance ** 0.5
+                workflow = stat["workflow_type"]
+                mean_val = stat["mean_val"]
+                variance = max(stat["variance"] or 0, 0)
+                std_dev  = variance ** 0.5
 
-                # Skip if std_dev is essentially zero — no spread to measure
                 if std_dev < 1e-9:
                     continue
 
-                # Find runs outside the threshold for this workflow + column
                 outlier_runs = conn.execute(f"""
                     SELECT r.run_id, r.{col} AS value
                     FROM runs r
@@ -444,20 +475,18 @@ def detect_and_store_outliers(
                 """, (workflow, mean_val, mild_sigma, std_dev)).fetchall()
 
                 for run in outlier_runs:
-                    run_id = run["run_id"]
-                    value  = run["value"]
-                    sigma  = abs(value - mean_val) / std_dev
+                    run_id   = run["run_id"]
+                    value    = run["value"]
+                    sigma    = abs(value - mean_val) / std_dev
                     severity = "severe" if sigma >= severe_sigma else "mild"
                     reason   = f"auto:{sigma:.1f}σ above mean {mean_val:.3f}"
 
-                    # Only insert if not already recorded for this run+column
                     existing = conn.execute("""
                         SELECT outlier_id FROM outliers
                         WHERE run_id = ? AND column_name = ?
                     """, (run_id, col)).fetchone()
 
                     if existing:
-                        # Update sigma in case population has grown
                         conn.execute("""
                             UPDATE outliers
                             SET sigma = ?, severity = ?, reason = ?,

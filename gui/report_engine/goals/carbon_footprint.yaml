@@ -1,0 +1,85 @@
+goal:
+  goal_id: carbon_footprint
+  name: Carbon Footprint Estimation
+  category: carbon
+  version: "1.0.0"
+  tags: [carbon, sustainability, energy]
+  description: >
+    Estimate CO₂-equivalent emissions from LLM experiment energy consumption.
+    Uses RAPL energy measurements with configurable carbon intensity factors
+    to produce per-run and per-workflow carbon cost estimates.
+  hypothesis: >
+    Agentic workflows generate materially higher carbon emissions per task
+    than linear workflows. At grid carbon intensity of 233 gCO₂/kWh (UK avg),
+    the orchestration overhead adds measurable environmental cost at scale.
+
+  metrics:
+    - name: Energy (Wh)
+      column: total_energy_uj
+      unit: Wh
+      direction: lower_is_better
+      formula: "total_energy_uj / 3.6e9"
+      display_precision: 6
+      description: Total energy converted to watt-hours
+
+    - name: CO₂ Estimate (grams)
+      column: total_energy_uj
+      unit: gCO₂
+      direction: lower_is_better
+      formula: "(total_energy_uj / 3.6e9) * 233"
+      display_precision: 6
+      description: CO₂ estimate at UK grid intensity 233 gCO₂/kWh
+
+    - name: CO₂ at Global Average
+      column: total_energy_uj
+      unit: gCO₂
+      direction: lower_is_better
+      formula: "(total_energy_uj / 3.6e9) * 475"
+      display_precision: 6
+      description: CO₂ estimate at global average 475 gCO₂/kWh
+
+    - name: Runs to 1g CO₂ (UK)
+      column: total_energy_uj
+      unit: runs
+      direction: higher_is_better
+      formula: "1.0 / ((total_energy_uj / 3.6e9) * 233)"
+      display_precision: 0
+      description: How many runs before 1 gram of CO₂ at UK grid
+
+    - name: Total Energy (µJ)
+      column: total_energy_uj
+      unit: µJ
+      direction: lower_is_better
+      display_precision: 0
+
+  thresholds:
+    total_energy_uj:
+      warn: 10000000
+      severe: 100000000
+      unit: µJ
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+
+  narrative_persona: energy_researcher
+  doc_sections:
+    - research/measurement-methodology.md
+  diagram_ids:
+    - energy-engine
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

@@ -1,0 +1,105 @@
+goal:
+  goal_id: energy_efficiency
+  name: Energy Efficiency Analysis
+  category: efficiency
+  version: "1.0.0"
+  tags: [energy, core, paper-ready]
+  description: >
+    Measure and compare the total energy consumption of linear vs agentic
+    LLM workflows. Quantify the orchestration energy tax and determine
+    whether the quality improvement justifies the overhead.
+  hypothesis: >
+    Agentic workflows consume significantly more energy than linear workflows
+    for equivalent tasks, with the orchestration overhead exceeding 30% of
+    total energy expenditure.
+
+  metrics:
+    - name: Total Energy
+      column: total_energy_uj
+      unit: µJ
+      direction: lower_is_better
+      display_precision: 0
+      description: Total package energy from RAPL sensors across all domains
+      alert_threshold: 50000000
+
+    - name: Energy per Token
+      column: total_energy_uj
+      unit: µJ/token
+      direction: lower_is_better
+      formula: "total_energy_uj / NULLIF(total_tokens, 0)"
+      display_precision: 1
+      description: Energy cost normalised by tokens produced
+
+    - name: Baseline-Adjusted Energy
+      column: total_energy_uj
+      unit: µJ
+      direction: lower_is_better
+      baseline_col: idle_baseline_uj
+      formula: "total_energy_uj - idle_baseline_uj"
+      display_precision: 0
+      description: Net energy above idle baseline
+
+    - name: Duration
+      column: duration_ns
+      unit: ms
+      direction: lower_is_better
+      formula: "duration_ns / 1e6"
+      display_precision: 1
+      description: Wall-clock duration of the experiment run
+
+    - name: Avg Package Power
+      column: avg_power_watts
+      unit: W
+      direction: lower_is_better
+      display_precision: 2
+      description: Mean package power draw during run
+
+    - name: Peak Package Power
+      column: avg_power_watts
+      unit: W
+      direction: lower_is_better
+      display_precision: 2
+
+  thresholds:
+    total_energy_uj:
+      warn: 10000000
+      severe: 50000000
+      unit: µJ
+    avg_package_power_w:
+      warn: 30.0
+      severe: 65.0
+      unit: W
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+    report_ci: true
+    ci_level: 0.95
+    comparison_mode: relative
+
+  narrative_persona: energy_researcher
+  doc_sections:
+    - research/measurement-methodology.md
+    - research/mathematical-derivations.md
+    - user-guide/understanding-metrics.md
+  diagram_ids:
+    - energy-engine
+    - data-flow
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - diagrams
+    - metrics_explanation
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

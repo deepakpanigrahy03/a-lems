@@ -102,3 +102,4 @@ context.txt
 archive/
 core/.env
 config/hw_config.json.*
+reports/output/

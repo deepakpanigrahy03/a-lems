@@ -887,3 +887,29 @@ WHERE (i.total_llm_compute_ms > 0 OR i.total_wait_ms > 0)
   AND (r.orchestration_cpu_ms <= r.compute_time_ms * 5);
 
 """
+
+ENERGY_SAMPLES_WITH_POWER_VIEW = """
+CREATE VIEW IF NOT EXISTS energy_samples_with_power AS
+SELECT 
+    e1.sample_id,
+    e1.run_id,
+    e1.timestamp_ns / 1e9 AS time_s,
+    e1.pkg_energy_uj,
+    e1.core_energy_uj,
+    e1.uncore_energy_uj,
+    e1.dram_energy_uj,
+    -- Power (watts) = Δenergy (µJ) / Δtime (seconds) / 1e6
+    (e1.pkg_energy_uj - e2.pkg_energy_uj) / ((e1.timestamp_ns - e2.timestamp_ns) / 1e9) / 1e6 AS pkg_power_watts,
+    (e1.core_energy_uj - e2.core_energy_uj) / ((e1.timestamp_ns - e2.timestamp_ns) / 1e9) / 1e6 AS core_power_watts,
+    (e1.uncore_energy_uj - e2.uncore_energy_uj) / ((e1.timestamp_ns - e2.timestamp_ns) / 1e9) / 1e6 AS uncore_power_watts,
+    (e1.dram_energy_uj - e2.dram_energy_uj) / ((e1.timestamp_ns - e2.timestamp_ns) / 1e9) / 1e6 AS dram_power_watts
+FROM energy_samples e1
+LEFT JOIN energy_samples e2 ON e1.run_id = e2.run_id 
+    AND e2.timestamp_ns = (
+        SELECT MAX(timestamp_ns) 
+        FROM energy_samples e3 
+        WHERE e3.run_id = e1.run_id AND e3.timestamp_ns < e1.timestamp_ns
+    )
+WHERE e2.timestamp_ns IS NOT NULL
+ORDER BY e1.run_id, e1.timestamp_ns;
+"""

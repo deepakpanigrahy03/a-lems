@@ -1,0 +1,90 @@
+goal:
+  goal_id: llm_quality_vs_cost
+  name: LLM Quality vs Energy Cost Trade-off
+  category: quality
+  version: "1.0.0"
+  tags: [quality, energy, trade-off, paper-ready]
+  description: >
+    Evaluate whether the quality improvement of agentic workflows justifies
+    their additional energy cost. Computes energy-per-quality-unit and
+    quality-adjusted cost efficiency for each workflow type.
+  hypothesis: >
+    While agentic workflows produce higher quality outputs, their energy
+    cost per quality-unit exceeds that of linear workflows by more than
+    2x, making them energetically inefficient for quality-uncritical tasks.
+
+  metrics:
+    - name: Response Quality Score
+      column: complexity_score
+      unit: score
+      direction: higher_is_better
+      display_precision: 3
+      description: Normalised quality score from llm_quality evaluation (0–1)
+
+    - name: Energy per Quality Unit
+      column: total_energy_uj
+      unit: µJ/score
+      direction: lower_is_better
+      formula: "total_energy_uj / NULLIF(quality_score, 0)"
+      display_precision: 0
+      description: Energy cost normalised by achieved quality score
+
+    - name: API Latency ms
+      column: api_latency_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+
+    - name: LLM Compute Time
+      column: total_llm_compute_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+      description: Time spent in actual LLM inference (from llm_interactions)
+
+    - name: Non-local Wait ms
+      column: api_latency_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+      description: Time waiting on cloud LLM API responses
+
+    - name: Step Count (Agentic)
+      column: steps
+      unit: steps
+      direction: lower_is_better
+      display_precision: 0
+      description: Number of LLM interaction steps in agentic run
+
+  thresholds:
+    quality_score:
+      warn: 0.6
+      severe: 0.4
+      unit: score
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+    report_ci: true
+
+  narrative_persona: research_engineer
+  doc_sections:
+    - user-guide/understanding-metrics.md
+  diagram_ids:
+    - experiment-lifecycle
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

@@ -1,0 +1,87 @@
+goal:
+  goal_id: token_economy
+  name: Token Economy Analysis
+  category: tokens
+  version: "1.0.0"
+  tags: [tokens, efficiency, cost]
+  description: >
+    Analyse token usage patterns across workflow types. Quantifies prompt vs
+    completion token split, tokens-per-second throughput, and token efficiency
+    relative to task complexity and energy expenditure.
+  hypothesis: >
+    Agentic workflows consume 3-5x more tokens than linear workflows for
+    equivalent tasks due to multi-step planning and synthesis overhead,
+    directly inflating API cost and energy expenditure.
+
+  metrics:
+    - name: Total Tokens
+      column: total_tokens
+      unit: tokens
+      direction: lower_is_better
+      display_precision: 0
+
+    - name: Prompt Tokens
+      column: prompt_tokens
+      unit: tokens
+      direction: lower_is_better
+      display_precision: 0
+
+    - name: Completion Tokens
+      column: completion_tokens
+      unit: tokens
+      direction: lower_is_better
+      display_precision: 0
+
+    - name: Tokens per Second
+      column: total_tokens
+      unit: tok/s
+      direction: higher_is_better
+      formula: "total_tokens / (duration_ns / 1e9)"
+      display_precision: 1
+
+    - name: Energy per Token
+      column: total_energy_uj
+      unit: µJ/token
+      direction: lower_is_better
+      formula: "total_energy_uj / NULLIF(total_tokens, 0)"
+      display_precision: 2
+
+    - name: Prompt/Completion Ratio
+      column: prompt_tokens
+      unit: ratio
+      direction: lower_is_better
+      formula: "prompt_tokens / NULLIF(completion_tokens, 0)"
+      display_precision: 2
+      description: High ratio = prompt-heavy = potential for compression
+
+  thresholds:
+    total_tokens:
+      warn: 10000
+      severe: 50000
+      unit: tokens
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+
+  narrative_persona: research_engineer
+  doc_sections:
+    - user-guide/understanding-metrics.md
+  diagram_ids:
+    - experiment-lifecycle
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

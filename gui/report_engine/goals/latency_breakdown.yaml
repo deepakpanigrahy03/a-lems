@@ -1,0 +1,94 @@
+goal:
+  goal_id: latency_breakdown
+  name: Latency Phase Breakdown
+  category: latency
+  version: "1.0.0"
+  tags: [latency, timing, agentic, phases]
+  description: >
+    Decompose total experiment latency into its constituent phases:
+    planning, execution, and synthesis. Identifies which phase dominates
+    agentic overhead and where optimisation effort should be focused.
+  hypothesis: >
+    The planning phase accounts for >40% of total agentic wall-clock time,
+    representing the primary target for orchestration optimisation.
+
+  metrics:
+    - name: Total Duration
+      column: duration_ns
+      unit: ms
+      direction: lower_is_better
+      formula: "duration_ns / 1e6"
+      display_precision: 1
+
+    - name: Planning Phase ms
+      column: planning_time_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+      description: Time spent in planning/reasoning phase (agentic only)
+
+    - name: Execution Phase ms
+      column: execution_time_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+      description: Time spent executing LLM calls
+
+    - name: Synthesis Phase ms
+      column: synthesis_time_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+      description: Time spent synthesising/aggregating results
+
+    - name: Planning %
+      column: phase_planning_ratio
+      unit: "%"
+      direction: lower_is_better
+      display_precision: 1
+
+    - name: Execution %
+      column: phase_execution_ratio
+      unit: "%"
+      direction: lower_is_better
+      display_precision: 1
+
+    - name: Synthesis %
+      column: phase_synthesis_ratio
+      unit: "%"
+      direction: lower_is_better
+      display_precision: 1
+
+  thresholds:
+    plan_pct:
+      warn: 30.0
+      severe: 50.0
+      unit: "%"
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+
+  narrative_persona: systems_engineer
+  doc_sections:
+    - research/measurement-methodology.md
+    - research/mathematical-derivations.md
+  diagram_ids:
+    - experiment-lifecycle
+    - data-flow
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

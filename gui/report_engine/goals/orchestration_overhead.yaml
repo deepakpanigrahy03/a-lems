@@ -1,0 +1,108 @@
+goal:
+  goal_id: orchestration_overhead
+  name: Orchestration Overhead Analysis
+  category: efficiency
+  version: "1.0.0"
+  tags: [orchestration, ooi, paper-ready, core]
+  description: >
+    Quantify the orchestration tax of agentic LLM workflows using the
+    Orchestration Overhead Index (OOI). Measures CPU cycles and wall-clock
+    time consumed by orchestration logic relative to total compute.
+  hypothesis: >
+    Agentic orchestration is CPU-intensive (OOI_cpu ≈ 0.9) but time-efficient
+    (OOI_time < 0.1), meaning the orchestrator runs fast but consumes
+    nearly all available CPU during its active intervals.
+
+  metrics:
+    - name: OOI Time
+      column: ooi_time
+      unit: ratio
+      direction: lower_is_better
+      formula: "orchestration_cpu_ms / (duration_ns / 1e6)"
+      display_precision: 3
+      description: >
+        Fraction of total wall-clock time consumed by orchestration CPU.
+        Source: research_metrics_view.
+
+    - name: OOI CPU
+      column: ooi_cpu
+      unit: ratio
+      direction: lower_is_better
+      formula: "orchestration_cpu_ms / compute_time_ms"
+      display_precision: 3
+      description: >
+        Fraction of active compute time consumed by orchestration.
+        Values near 1.0 indicate orchestration dominates CPU during execution.
+
+    - name: UCR (Useful Compute Ratio)
+      column: ucr
+      unit: ratio
+      direction: higher_is_better
+      formula: "total_llm_compute_ms / (duration_ns / 1e6)"
+      display_precision: 3
+      description: >
+        Fraction of total time spent on actual LLM inference.
+        Higher = more efficient use of wall-clock time.
+
+    - name: Network Wait Ratio
+      column: network_ratio
+      unit: ratio
+      direction: lower_is_better
+      formula: "total_wait_ms / (duration_ns / 1e6)"
+      display_precision: 3
+      description: Fraction of total time spent waiting on network (cloud LLM).
+
+    - name: Orchestration CPU ms
+      column: orchestration_cpu_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+
+    - name: Compute Time ms
+      column: compute_time_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+
+  thresholds:
+    ooi_cpu:
+      warn: 0.5
+      severe: 0.85
+      unit: ratio
+    ooi_time:
+      warn: 0.15
+      severe: 0.30
+      unit: ratio
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+    report_ci: true
+    ci_level: 0.95
+    comparison_mode: relative
+
+  narrative_persona: systems_engineer
+  doc_sections:
+    - research/mathematical-derivations.md
+    - research/measurement-methodology.md
+  diagram_ids:
+    - architecture
+    - data-flow
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - diagrams
+    - metrics_explanation
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

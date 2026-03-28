@@ -1,0 +1,97 @@
+goal:
+  goal_id: network_efficiency
+  name: Network Efficiency Analysis
+  category: network
+  version: "1.0.0"
+  tags: [network, data-movement, cloud]
+  description: >
+    Analyse network data movement patterns for cloud vs local LLM deployments.
+    Quantifies bytes transferred, TCP retransmission overhead, and the
+    proportion of total experiment time spent on network I/O.
+  hypothesis: >
+    Cloud-deployed agentic workflows spend >35% of total wall-clock time
+    waiting on network I/O, making network latency — not compute — the
+    primary bottleneck for cloud agentic deployments.
+
+  metrics:
+    - name: Bytes Sent
+      column: bytes_sent
+      unit: KB
+      direction: lower_is_better
+      formula: "bytes_sent / 1024"
+      display_precision: 1
+      description: Total bytes sent to LLM API across the run
+
+    - name: Bytes Received
+      column: bytes_recv
+      unit: KB
+      direction: lower_is_better
+      formula: "bytes_recv / 1024"
+      display_precision: 1
+      description: Total bytes received from LLM API
+
+    - name: TCP Retransmits
+      column: tcp_retransmits
+      unit: count
+      direction: lower_is_better
+      display_precision: 0
+      alert_threshold: 10
+      description: TCP retransmission count — proxy for network instability
+
+    - name: Network Wait Ratio
+      column: network_ratio
+      unit: ratio
+      direction: lower_is_better
+      formula: "total_wait_ms / (duration_ns / 1e6)"
+      display_precision: 3
+      description: Fraction of total time waiting on network responses
+
+    - name: Avg API Latency
+      column: api_latency_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+      description: Mean per-call LLM API latency from llm_interactions
+
+    - name: Non-local Wait ms
+      column: api_latency_ms
+      unit: ms
+      direction: lower_is_better
+      display_precision: 1
+
+  thresholds:
+    tcp_retransmits:
+      warn: 5
+      severe: 20
+      unit: count
+    network_ratio:
+      warn: 0.30
+      severe: 0.50
+      unit: ratio
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+    comparison_mode: relative
+
+  narrative_persona: systems_engineer
+  doc_sections:
+    - research/measurement-methodology.md
+  diagram_ids:
+    - data-flow
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

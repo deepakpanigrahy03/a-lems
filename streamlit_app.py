@@ -103,7 +103,7 @@ _PAGE_MODULES = {
     "execute": "gui.pages.execute",
     "experiments": "gui.pages.experiments",
     "experiment_planner":  "gui.pages.experiment_planner",
-    "settings": "gui.pages.settings",
+    "multi_host_dispatch": "gui.pages.multi_host_dispatch",
     "explorer": "gui.pages.explorer",
     "energy": "gui.pages.energy",
     "domains": "gui.pages.domains",
@@ -135,6 +135,12 @@ _PAGE_MODULES = {
     "ml_features": "gui.pages.ml_features_page",
     "hypotheses": "gui.pages.hypotheses",
     "research_metrics":    "gui.pages.research_metrics_view_page",
+    #Reports
+    "report_builder":      "gui.pages.report_builder",
+    "report_library":      "gui.pages.report_library",
+    "goal_registry_page":  "gui.pages.goal_registry_page",
+    "system_profile_page": "gui.pages.system_profile_page",
+    
     # Environment
     "carbon_country": "gui.pages.carbon_country",
     "water_methane": "gui.pages.water_methane",
@@ -142,10 +148,13 @@ _PAGE_MODULES = {
     "env_config": "gui.pages.env_config",
     "llm_log": "gui.pages.llm_log",
     "ml_export": "gui.pages.ml_export",
+    "llm_quality": "gui.pages.llm_quality",
     # Silicon Lab
     "hw_registry": "gui.pages.hw_registry",
     "silicon_compare": "gui.pages.silicon_compare",
     "silicon_journey": "gui.pages.silicon_journey",
+    "capability_matrix":   "gui.pages.capability_matrix",
+    "multi_host_status":   "gui.pages.multi_host_status",
     # Data Movement
     "data_cache": "gui.pages.data_cache",
     "data_tokens": "gui.pages.data_tokens",

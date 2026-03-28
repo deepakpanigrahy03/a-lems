@@ -1,0 +1,199 @@
+// A-LEMS Distributed Architecture
+// Render: dot -Tsvg architecture.dot -o architecture.svg
+// Or:     python -m alems.docs.render_diagrams
+
+digraph alems_architecture {
+    graph [
+        rankdir=TB
+        bgcolor="transparent"
+        fontname="Helvetica"
+        fontsize=11
+        splines=ortho
+        nodesep=0.6
+        ranksep=0.8
+        pad=0.4
+    ]
+    node [
+        fontname="Helvetica"
+        fontsize=10
+        shape=box
+        style="filled,rounded"
+        penwidth=0.8
+    ]
+    edge [
+        fontname="Helvetica"
+        fontsize=9
+        penwidth=0.8
+        arrowsize=0.7
+    ]
+
+    // ── ORACLE VM CLUSTER ─────────────────────────────────────────────────
+    subgraph cluster_server {
+        label="Oracle VM  129.153.71.47"
+        style="filled,rounded"
+        fillcolor="#0d1b2a"
+        color="#22c55e"
+        fontcolor="#22c55e"
+        fontsize=12
+        penwidth=1.5
+
+        streamlit_server [
+            label="Streamlit UI\n:8501"
+            fillcolor="#1a2e1a"
+            color="#22c55e"
+            fontcolor="#86efac"
+        ]
+        fastapi [
+            label="FastAPI\n:8000"
+            fillcolor="#1a2e1a"
+            color="#22c55e"
+            fontcolor="#86efac"
+        ]
+        postgres [
+            label="PostgreSQL\nalems_central"
+            shape=cylinder
+            fillcolor="#1a2e44"
+            color="#38bdf8"
+            fontcolor="#7dd3fc"
+        ]
+        job_queue [
+            label="job_queue\ntable"
+            fillcolor="#1a2e44"
+            color="#38bdf8"
+            fontcolor="#7dd3fc"
+        ]
+        run_status_cache [
+            label="run_status_cache\ntable"
+            fillcolor="#1a2e44"
+            color="#38bdf8"
+            fontcolor="#7dd3fc"
+        ]
+        sync_log [
+            label="sync_log\ntable"
+            fillcolor="#1a2e44"
+            color="#38bdf8"
+            fontcolor="#7dd3fc"
+        ]
+
+        fastapi -> postgres [label="reads/writes" color="#38bdf8" fontcolor="#38bdf8"]
+        postgres -> job_queue [style=dashed color="#475569"]
+        postgres -> run_status_cache [style=dashed color="#475569"]
+        postgres -> sync_log [style=dashed color="#475569"]
+        streamlit_server -> postgres [label="queries" color="#38bdf8" fontcolor="#38bdf8"]
+    }
+
+    // ── INTERNET BOUNDARY ─────────────────────────────────────────────────
+    boundary [
+        label="Internet boundary\nHTTP outbound only from agents"
+        shape=plaintext
+        fontcolor="#475569"
+        fontsize=9
+    ]
+
+    // ── LOCAL MACHINE A ───────────────────────────────────────────────────
+    subgraph cluster_machine_a {
+        label="Local machine A\nresearcher laptop"
+        style="filled,rounded"
+        fillcolor="#0d1117"
+        color="#3b82f6"
+        fontcolor="#93c5fd"
+        penwidth=1.2
+
+        ui_a [
+            label="Streamlit UI\n:8501 local"
+            fillcolor="#0c1a2e"
+            color="#3b82f6"
+            fontcolor="#93c5fd"
+        ]
+        agent_a [
+            label="A-LEMS Agent\nheartbeat+poll+sync"
+            fillcolor="#0c1a2e"
+            color="#3b82f6"
+            fontcolor="#93c5fd"
+        ]
+        pipeline_a [
+            label="test_harness\nexecution pipeline"
+            fillcolor="#1a1a0d"
+            color="#f59e0b"
+            fontcolor="#fcd34d"
+        ]
+        sqlite_a [
+            label="SQLite\nexperiments.db"
+            shape=cylinder
+            fillcolor="#0c1a2e"
+            color="#3b82f6"
+            fontcolor="#93c5fd"
+        ]
+
+        ui_a -> sqlite_a [label="reads" color="#3b82f6" fontcolor="#3b82f6"]
+        agent_a -> sqlite_a [label="reads" color="#3b82f6" fontcolor="#3b82f6"]
+        pipeline_a -> sqlite_a [label="writes\n(unchanged)" color="#f59e0b" fontcolor="#f59e0b" penwidth=1.5]
+    }
+
+    // ── LOCAL MACHINE B ───────────────────────────────────────────────────
+    subgraph cluster_machine_b {
+        label="Local machine B"
+        style="filled,rounded"
+        fillcolor="#0d1117"
+        color="#3b82f6"
+        fontcolor="#93c5fd"
+        penwidth=1.2
+
+        agent_b [
+            label="A-LEMS Agent"
+            fillcolor="#0c1a2e"
+            color="#3b82f6"
+            fontcolor="#93c5fd"
+        ]
+        sqlite_b [
+            label="SQLite"
+            shape=cylinder
+            fillcolor="#0c1a2e"
+            color="#3b82f6"
+            fontcolor="#93c5fd"
+        ]
+        agent_b -> sqlite_b [color="#3b82f6"]
+    }
+
+    // ── LOCAL MACHINE N ───────────────────────────────────────────────────
+    machine_n [
+        label="Machine N\n(up to 100)"
+        fillcolor="#1a1a1a"
+        color="#475569"
+        fontcolor="#94a3b8"
+        style="filled,rounded,dashed"
+    ]
+
+    // ── EDGES: agent → server ─────────────────────────────────────────────
+    agent_a -> fastapi [
+        label="POST /register\nPOST /heartbeat (5-30s)\nGET /get-job (10s)\nPOST /bulk-sync"
+        color="#22c55e"
+        fontcolor="#22c55e"
+        penwidth=1.5
+        ltail=cluster_machine_a
+    ]
+    agent_b -> fastapi [
+        label="same protocol"
+        color="#22c55e"
+        fontcolor="#22c55e"
+        style=dashed
+        ltail=cluster_machine_b
+    ]
+    machine_n -> fastapi [
+        color="#475569"
+        fontcolor="#475569"
+        style=dashed
+        arrowhead=none
+    ]
+
+    // ── WRITE PATH ANNOTATION ─────────────────────────────────────────────
+    write_path [
+        label="Write path:\ntest_harness → SQLite → agent syncs async\nServer NEVER in write path"
+        shape=note
+        fillcolor="#1a0d00"
+        color="#f59e0b"
+        fontcolor="#fcd34d"
+        fontsize=9
+    ]
+    pipeline_a -> write_path [style=invis]
+}

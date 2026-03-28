@@ -1,0 +1,99 @@
+goal:
+  goal_id: thermal_profiling
+  name: Thermal Behaviour Profiling
+  category: thermal
+  version: "1.0.0"
+  tags: [thermal, hardware, environment]
+  description: >
+    Profile CPU thermal behaviour during LLM workloads. Analyse temperature
+    trajectories, throttling events, thermal zone stability, and the
+    correlation between thermal state and energy/performance.
+  hypothesis: >
+    Agentic workflows cause sustained elevated CPU temperatures compared to
+    linear workflows due to bursty orchestration CPU spikes, increasing
+    the risk of thermal throttling and reducing sustained throughput.
+
+  metrics:
+    - name: Peak CPU Temp
+      column: max_temp_c
+      unit: °C
+      direction: lower_is_better
+      display_precision: 1
+      alert_threshold: 90.0
+      description: Maximum CPU temperature recorded during run
+
+    - name: Avg CPU Temp
+      column: package_temp_celsius
+      unit: °C
+      direction: lower_is_better
+      display_precision: 1
+      description: Mean CPU temperature across all thermal samples
+
+    - name: Thermal Throttle Flag
+      column: thermal_throttle_flag
+      unit: bool
+      direction: lower_is_better
+      display_precision: 0
+      description: 1 if thermal throttling was detected during the run
+
+    - name: Temp Variance
+      column: package_temp_celsius
+      unit: °C²
+      direction: lower_is_better
+      formula: "VAR(cpu_temp)"
+      display_precision: 2
+      description: Variance of CPU temperature — higher variance = more instability
+
+    - name: WiFi Temp
+      column: package_temp_celsius
+      unit: °C
+      direction: lower_is_better
+      display_precision: 1
+      description: WiFi chip temperature — proxy for SoC thermal load
+
+    - name: Thermal Sample Count
+      column: run_id
+      unit: samples
+      direction: higher_is_better
+      formula: "COUNT thermal_samples per run"
+      display_precision: 0
+      description: Number of thermal samples collected — coverage indicator
+
+  thresholds:
+    max_cpu_temp_c:
+      warn: 80.0
+      severe: 90.0
+      unit: °C
+    avg_cpu_temp_c:
+      warn: 70.0
+      severe: 85.0
+      unit: °C
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+    report_ci: true
+    ci_level: 0.95
+
+  narrative_persona: hardware_engineer
+  doc_sections:
+    - research/measurement-methodology.md
+  diagram_ids:
+    - energy-engine
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - diagrams
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

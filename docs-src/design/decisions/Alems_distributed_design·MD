@@ -1,0 +1,937 @@
+# A-LEMS Distributed Orchestration — Master Design Document
+
+**Date:** 2026-03-27  
+**Status:** Approved design, ready to implement  
+**Scope:** Multi-host execution, PostgreSQL sync, dual-mode UI  
+**Constraint:** Zero breaking changes to existing pipeline or schema queries
+
+---
+
+## 0. Ground rules (never violate)
+
+| Rule | Detail |
+|------|--------|
+| Do NOT rename any existing column | hw_id, exp_id, run_id stay exactly as-is |
+| Do NOT touch existing tables destructively | Only ADD columns, never modify/drop |
+| Do NOT rewrite the execution pipeline | `test_harness` command is called identically |
+| Do NOT make Streamlit depend on server | Local mode must work fully offline |
+| Measurement integrity > everything | No two jobs ever run on the same machine in parallel |
+
+---
+
+## 1. The collision problem and its solution
+
+### Why collisions happen
+Every local SQLite database has its own `AUTOINCREMENT` sequences starting at 1.  
+Machine A has `run_id` 1–1554, Machine B will also have `run_id` 1–N.  
+When both sync to PostgreSQL, `run_id=1` from Machine A collides with `run_id=1` from Machine B.
+
+### Solution: UUID bridge (additive only)
+
+Two new columns added to local SQLite **and** used as PK in PostgreSQL:
+
+```
+runs          → +global_run_id TEXT   (UUID, generated at row creation locally)
+               +sync_status   INTEGER DEFAULT 0
+experiments   → +global_exp_id TEXT   (UUID, generated at row creation locally)
+child tables  → +global_run_id TEXT   (copied from runs at insert time)
+```
+
+**Local SQLite**: integer PKs remain, `global_run_id` is just an extra column.  
+**PostgreSQL**: `global_run_id` IS the primary key. Integer IDs kept as reference columns.  
+**All existing queries**: unchanged — they still use `run_id`, `exp_id` as before.  
+**Cross-machine queries on server**: join/group on `hw_id` or `global_run_id`.
+
+### hardware_config identity across machines
+
+`hardware_hash` (already exists, already UNIQUE) is the stable machine fingerprint.  
+On sync, the server does:
+```sql
+SELECT hw_id FROM hardware_config WHERE hardware_hash = $1
+```
+If not found → INSERT new row → get server-side `hw_id`.  
+The sync payload always carries `hardware_hash`, never assumes `hw_id` is globally unique.
+
+---
+
+## 2. Schema changes (exact — minimal)
+
+### 2.1 SQLite migration (runs on every local machine)
+
+```sql
+-- Migration 007: distributed identity columns
+-- File: migrations/007_distributed_identity.sql
+
+-- Add global identity to experiments
+ALTER TABLE experiments ADD COLUMN global_exp_id TEXT;
+
+-- Add global identity + sync tracking to runs  
+ALTER TABLE runs ADD COLUMN global_run_id TEXT;
+ALTER TABLE runs ADD COLUMN sync_status   INTEGER DEFAULT 0;
+-- sync_status: 0=unsynced, 1=synced, 2=sync_failed, 3=sync_skipped(local mode)
+
+-- Add global_run_id to all child tables (for fast sync without joining)
+ALTER TABLE energy_samples       ADD COLUMN global_run_id TEXT;
+ALTER TABLE cpu_samples          ADD COLUMN global_run_id TEXT;
+ALTER TABLE thermal_samples      ADD COLUMN global_run_id TEXT;
+ALTER TABLE interrupt_samples    ADD COLUMN global_run_id TEXT;
+ALTER TABLE orchestration_events ADD COLUMN global_run_id TEXT;
+ALTER TABLE llm_interactions     ADD COLUMN global_run_id TEXT;
+ALTER TABLE orchestration_tax_summary ADD COLUMN global_run_id TEXT;
+
+-- Index for fast sync queries
+CREATE INDEX IF NOT EXISTS idx_runs_sync_status ON runs(sync_status);
+CREATE INDEX IF NOT EXISTS idx_runs_global_id   ON runs(global_run_id);
+
+-- Backfill existing rows (deterministic UUID from hw_id+run_id)
+-- Done in Python migration script, not SQL (uuid5 namespace)
+
+-- schema_version bump
+INSERT OR IGNORE INTO schema_version(version, description)
+VALUES (7, 'distributed identity: global_run_id, global_exp_id, sync_status');
+```
+
+### 2.2 PostgreSQL schema (server — new database)
+
+```sql
+-- PostgreSQL uses global UUIDs as primary keys
+-- Local integer IDs kept as reference/display columns
+
+CREATE TABLE hardware_config (
+    hw_id           BIGSERIAL PRIMARY KEY,
+    hardware_hash   TEXT      UNIQUE NOT NULL,  -- stable identity key
+    hostname        TEXT,
+    cpu_model       TEXT,
+    cpu_cores       INTEGER,
+    cpu_threads     INTEGER,
+    ram_gb          INTEGER,
+    kernel_version  TEXT,
+    microcode_version TEXT,
+    rapl_domains    TEXT,
+    cpu_architecture TEXT,
+    cpu_vendor      TEXT,
+    cpu_family      INTEGER,
+    cpu_model_id    INTEGER,
+    cpu_stepping    INTEGER,
+    has_avx2        BOOLEAN,
+    has_avx512      BOOLEAN,
+    has_vmx         BOOLEAN,
+    gpu_model       TEXT,
+    gpu_driver      TEXT,
+    gpu_count       INTEGER,
+    gpu_power_available BOOLEAN,
+    rapl_has_dram   BOOLEAN,
+    rapl_has_uncore BOOLEAN,
+    system_manufacturer TEXT,
+    system_product  TEXT,
+    system_type     TEXT,
+    virtualization_type TEXT,
+    created_at      TIMESTAMP DEFAULT NOW(),
+    detected_at     TIMESTAMP,
+    -- Agent tracking (server-side only)
+    last_seen       TIMESTAMP,
+    agent_version   TEXT,
+    agent_status    TEXT DEFAULT 'offline'  -- online|busy|offline
+);
+
+CREATE TABLE environment_config (
+    env_id      BIGSERIAL PRIMARY KEY,
+    env_hash    TEXT UNIQUE NOT NULL,
+    python_version TEXT,
+    python_implementation TEXT,
+    os_name     TEXT,
+    os_version  TEXT,
+    kernel_version TEXT,
+    llm_framework TEXT,
+    framework_version TEXT,
+    git_commit  TEXT,
+    git_branch  TEXT,
+    git_dirty   BOOLEAN,
+    numpy_version TEXT,
+    torch_version TEXT,
+    transformers_version TEXT,
+    container_runtime TEXT,
+    container_image TEXT,
+    created_at  TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE experiments (
+    global_exp_id   TEXT        PRIMARY KEY,  -- UUID from local machine
+    exp_id          BIGINT      NOT NULL,      -- local autoincrement value (kept)
+    hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
+    env_id          BIGINT      REFERENCES environment_config(env_id),
+    name            TEXT        NOT NULL,
+    description     TEXT,
+    workflow_type   TEXT,
+    model_name      TEXT,
+    provider        TEXT,
+    task_name       TEXT,
+    country_code    TEXT,
+    group_id        TEXT,
+    status          TEXT        DEFAULT 'pending',
+    started_at      TIMESTAMP,
+    completed_at    TIMESTAMP,
+    error_message   TEXT,
+    runs_completed  INTEGER     DEFAULT 0,
+    runs_total      INTEGER,
+    optimization_enabled INTEGER DEFAULT 0,
+    created_at      TIMESTAMP   DEFAULT NOW(),
+    -- Server-side dispatch tracking
+    dispatched_at   TIMESTAMP,
+    dispatch_source TEXT        DEFAULT 'local',  -- local|server_queue|global_queue
+    UNIQUE (hw_id, exp_id)  -- collision-safe unique index
+);
+
+CREATE TABLE runs (
+    global_run_id   TEXT        PRIMARY KEY,  -- UUID from local machine
+    run_id          BIGINT      NOT NULL,      -- local autoincrement value (kept)
+    global_exp_id   TEXT        NOT NULL REFERENCES experiments(global_exp_id),
+    hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
+    baseline_id     TEXT,
+    run_number      INTEGER,
+    workflow_type   TEXT        NOT NULL,
+    sync_status     INTEGER     DEFAULT 1,     -- always 1 in postgres (already synced)
+    synced_at       TIMESTAMP   DEFAULT NOW(),
+    -- All 99 metric columns identical to SQLite (REAL→DOUBLE PRECISION, INTEGER→BIGINT)
+    start_time_ns   BIGINT,
+    end_time_ns     BIGINT,
+    duration_ns     BIGINT,
+    total_energy_uj BIGINT,
+    dynamic_energy_uj BIGINT,
+    baseline_energy_uj BIGINT,
+    avg_power_watts DOUBLE PRECISION,
+    pkg_energy_uj   BIGINT,
+    core_energy_uj  BIGINT,
+    uncore_energy_uj BIGINT,
+    dram_energy_uj  BIGINT,
+    instructions    BIGINT,
+    cycles          BIGINT,
+    ipc             DOUBLE PRECISION,
+    cache_misses    BIGINT,
+    cache_references BIGINT,
+    cache_miss_rate DOUBLE PRECISION,
+    -- ... (all remaining columns, same names, types mapped)
+    run_state_hash  TEXT,
+    bytes_sent      BIGINT,
+    bytes_recv      BIGINT,
+    tcp_retransmits BIGINT,
+    orchestration_cpu_ms DOUBLE PRECISION
+);
+
+-- Child tables: global_run_id FK, local run_id kept as reference
+CREATE TABLE energy_samples (
+    sample_id       BIGSERIAL   PRIMARY KEY,
+    global_run_id   TEXT        NOT NULL REFERENCES runs(global_run_id),
+    run_id          BIGINT,     -- local reference
+    timestamp_ns    BIGINT      NOT NULL,
+    pkg_energy_uj   BIGINT,
+    core_energy_uj  BIGINT,
+    uncore_energy_uj BIGINT,
+    dram_energy_uj  BIGINT,
+    UNIQUE (global_run_id, timestamp_ns)  -- idempotent sync guard
+);
+-- (cpu_samples, thermal_samples, interrupt_samples, orchestration_events,
+--  llm_interactions, orchestration_tax_summary follow same pattern)
+
+-- Server-only tables (no SQLite equivalent)
+CREATE TABLE job_queue (
+    job_id          TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    global_exp_id   TEXT        REFERENCES experiments(global_exp_id),
+    experiment_config_json TEXT NOT NULL,
+    status          TEXT        DEFAULT 'pending',
+    -- pending|dispatched|running|completed|failed|cancelled
+    priority        INTEGER     DEFAULT 5,
+    on_disconnect   TEXT        DEFAULT 'fail',
+    -- fail|requeue|wait (configurable per experiment)
+    target_hw_id    BIGINT      REFERENCES hardware_config(hw_id),
+    -- NULL = any available machine
+    dispatched_to_hw_id BIGINT  REFERENCES hardware_config(hw_id),
+    dispatched_at   TIMESTAMP,
+    started_at      TIMESTAMP,
+    completed_at    TIMESTAMP,
+    created_at      TIMESTAMP   DEFAULT NOW(),
+    error_message   TEXT,
+    retry_count     INTEGER     DEFAULT 0,
+    max_retries     INTEGER     DEFAULT 0
+);
+
+CREATE TABLE sync_log (
+    log_id          BIGSERIAL   PRIMARY KEY,
+    hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
+    sync_started_at TIMESTAMP   DEFAULT NOW(),
+    sync_completed_at TIMESTAMP,
+    runs_synced     INTEGER     DEFAULT 0,
+    rows_total      INTEGER     DEFAULT 0,
+    status          TEXT        DEFAULT 'in_progress',
+    -- in_progress|success|partial|failed
+    error_details   TEXT
+);
+
+CREATE TABLE experiment_submissions (
+    submission_id   TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+    submitted_by_hw_id BIGINT   REFERENCES hardware_config(hw_id),
+    config_json     TEXT        NOT NULL,
+    name            TEXT        NOT NULL,
+    description     TEXT,
+    review_status   TEXT        DEFAULT 'pending_review',
+    -- pending_review|approved|rejected|auto_approved
+    reviewed_by     TEXT,
+    reviewed_at     TIMESTAMP,
+    review_notes    TEXT,
+    submitted_at    TIMESTAMP   DEFAULT NOW(),
+    promoted_to_job_id TEXT     REFERENCES job_queue(job_id)
+);
+```
+
+---
+
+## 3. File structure (complete)
+
+```
+~/mydrive/a-lems/
+├── alems/                          ← NEW top-level package
+│   ├── __init__.py
+│   ├── agent/                      ← runs on every local machine
+│   │   ├── __init__.py
+│   │   ├── agent.py                ← main loop (heartbeat + poll + execute + sync)
+│   │   ├── heartbeat.py            ← POST /register every 30s
+│   │   ├── job_executor.py         ← wraps test_harness subprocess call
+│   │   ├── sync_client.py          ← SQLite → /bulk-sync
+│   │   ├── mode_manager.py         ← reads/writes ~/.alems/agent.conf
+│   │   └── backfill.py             ← UUID backfill for existing rows on first run
+│   ├── server/                     ← runs on Oracle VM only
+│   │   ├── __init__.py
+│   │   ├── main.py                 ← FastAPI app factory
+│   │   ├── routers/
+│   │   │   ├── register.py         ← POST /register
+│   │   │   ├── jobs.py             ← GET /get-job, POST /job-status
+│   │   │   ├── sync.py             ← POST /bulk-sync
+│   │   │   └── experiments.py      ← POST /experiments/submit, GET /experiments/queue
+│   │   ├── db.py                   ← PostgreSQL async engine (asyncpg + SQLAlchemy)
+│   │   ├── job_dispatcher.py       ← queue logic, machine lock enforcement
+│   │   └── health.py               ← GET /health (mode detection for agents)
+│   ├── shared/
+│   │   ├── __init__.py
+│   │   ├── models.py               ← Pydantic models (BulkSyncPayload, JobResponse, etc.)
+│   │   ├── db_layer.py             ← SQLAlchemy abstraction: same queries, both dialects
+│   │   └── uuid_gen.py             ← deterministic UUID generation for backfill
+│   └── migrations/
+│       ├── 007_distributed_identity.sql    ← SQLite migration
+│       ├── 001_postgres_initial.sql        ← Full PostgreSQL schema
+│       └── run_migrations.py              ← applies both, detects dialect
+├── gui/
+│   └── pages/
+│       ├── connected_machines.py   ← NEW: live agent dashboard
+│       ├── dispatch_queue.py       ← NEW: job queue management
+│       ├── experiment_submissions.py ← NEW: global queue review
+│       └── sync_monitor.py         ← NEW: per-machine sync health
+└── docs/
+    ├── mkdocs.yml
+    ├── index.md
+    ├── architecture/
+    │   ├── overview.md
+    │   ├── agent.md
+    │   ├── server.md
+    │   ├── schema.md
+    │   └── data-flow.md
+    ├── setup/
+    │   ├── oracle-vm-setup.md
+    │   ├── postgres-setup.md
+    │   ├── agent-install.md
+    │   └── local-mode.md
+    └── reference/
+        ├── api.md
+        └── schema-diff.md
+```
+
+---
+
+## 4. SQLAlchemy dialect layer (query compatibility)
+
+This is the key to "same query runs on SQLite and PostgreSQL":
+
+```python
+# alems/shared/db_layer.py
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session
+from contextlib import contextmanager
+import os
+
+def get_engine(db_url: str = None):
+    """
+    Returns a SQLAlchemy engine for either SQLite or PostgreSQL.
+    Detected from URL scheme or ALEMS_DB_URL env var.
+    """
+    url = db_url or os.environ.get("ALEMS_DB_URL", f"sqlite:///{_default_sqlite_path()}")
+    
+    if url.startswith("sqlite"):
+        return create_engine(url, connect_args={"check_same_thread": False})
+    else:
+        # PostgreSQL
+        return create_engine(url, pool_pre_ping=True, pool_size=10)
+
+@contextmanager  
+def get_session(engine) -> Session:
+    with Session(engine) as session:
+        yield session
+
+# ── Query helpers that paper over dialect differences ──────────────────────
+
+def now_expr(engine) -> str:
+    """Returns dialect-correct NOW() expression."""
+    if _is_sqlite(engine):
+        return "datetime('now')"
+    return "NOW()"
+
+def upsert_hardware(session, hardware_hash: str, hw_data: dict) -> int:
+    """
+    Upsert hardware_config by hardware_hash.
+    Returns hw_id. Works on both SQLite and PostgreSQL.
+    """
+    engine = session.get_bind()
+    if _is_sqlite(engine):
+        session.execute(text("""
+            INSERT INTO hardware_config (hardware_hash, hostname, cpu_model, ...)
+            VALUES (:hardware_hash, :hostname, :cpu_model, ...)
+            ON CONFLICT (hardware_hash) DO UPDATE SET
+                last_seen = datetime('now')
+        """), {**hw_data, "hardware_hash": hardware_hash})
+    else:
+        session.execute(text("""
+            INSERT INTO hardware_config (hardware_hash, hostname, cpu_model, ...)
+            VALUES (:hardware_hash, :hostname, :cpu_model, ...)
+            ON CONFLICT (hardware_hash) DO UPDATE SET
+                last_seen = NOW(),
+                agent_status = EXCLUDED.agent_status
+        """), {**hw_data, "hardware_hash": hardware_hash})
+    
+    row = session.execute(text(
+        "SELECT hw_id FROM hardware_config WHERE hardware_hash = :h"
+    ), {"h": hardware_hash}).fetchone()
+    return row.hw_id
+
+def get_unsynced_runs(session, limit: int = 100) -> list:
+    """Fetch runs with sync_status=0. Same query both dialects."""
+    return session.execute(text("""
+        SELECT r.run_id, r.global_run_id, r.exp_id, r.global_exp_id, r.hw_id
+        FROM runs r
+        WHERE r.sync_status = 0
+        ORDER BY r.run_id ASC
+        LIMIT :limit
+    """), {"limit": limit}).fetchall()
+
+def mark_runs_synced(session, global_run_ids: list[str]):
+    """Mark runs as synced. Same query both dialects."""
+    session.execute(text("""
+        UPDATE runs SET sync_status = 1
+        WHERE global_run_id IN :ids
+    """), {"ids": tuple(global_run_ids)})
+
+def _is_sqlite(engine) -> bool:
+    return engine.dialect.name == "sqlite"
+
+def _default_sqlite_path() -> str:
+    from pathlib import Path
+    return str(Path.home() / "mydrive" / "a-lems" / "data" / "experiments.db")
+```
+
+---
+
+## 5. UUID generation strategy
+
+```python
+# alems/shared/uuid_gen.py
+
+import uuid
+
+# Stable namespace for A-LEMS (generated once, fixed forever)
+_ALEMS_NS = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # UUID5 namespace
+
+def run_uuid(hw_id: int, run_id: int) -> str:
+    """
+    Deterministic UUID for existing rows.
+    Given the same hw_id + run_id always produces the same UUID.
+    Used for backfilling existing 1554 runs.
+    """
+    return str(uuid.uuid5(_ALEMS_NS, f"run:{hw_id}:{run_id}"))
+
+def exp_uuid(hw_id: int, exp_id: int) -> str:
+    """Deterministic UUID for existing experiments."""
+    return str(uuid.uuid5(_ALEMS_NS, f"exp:{hw_id}:{exp_id}"))
+
+def new_run_uuid() -> str:
+    """Random UUID for new runs (created after migration)."""
+    return str(uuid.uuid4())
+
+def new_exp_uuid() -> str:
+    """Random UUID for new experiments."""
+    return str(uuid.uuid4())
+```
+
+**Backfill logic for existing 1554 runs:**
+```python
+# alems/agent/backfill.py
+# Run ONCE on first agent startup after migration
+
+def backfill_global_ids(db_path: str, hw_id: int):
+    """
+    Fills global_run_id and global_exp_id for existing rows
+    that predate the distributed migration.
+    Idempotent — safe to run multiple times.
+    """
+    import sqlite3
+    from alems.shared.uuid_gen import run_uuid, exp_uuid
+    
+    con = sqlite3.connect(db_path)
+    
+    # Backfill experiments
+    rows = con.execute(
+        "SELECT exp_id FROM experiments WHERE global_exp_id IS NULL"
+    ).fetchall()
+    for (exp_id,) in rows:
+        uid = exp_uuid(hw_id, exp_id)
+        con.execute(
+            "UPDATE experiments SET global_exp_id=? WHERE exp_id=?",
+            (uid, exp_id)
+        )
+    
+    # Backfill runs
+    rows = con.execute(
+        "SELECT run_id FROM runs WHERE global_run_id IS NULL"
+    ).fetchall()
+    for (run_id,) in rows:
+        uid = run_uuid(hw_id, run_id)
+        con.execute(
+            "UPDATE runs SET global_run_id=? WHERE run_id=?",
+            (uid, run_id)
+        )
+    
+    # Backfill child tables from runs
+    for tbl in ["energy_samples","cpu_samples","thermal_samples",
+                "interrupt_samples","orchestration_events","llm_interactions"]:
+        con.execute(f"""
+            UPDATE {tbl} SET global_run_id = (
+                SELECT global_run_id FROM runs WHERE runs.run_id = {tbl}.run_id
+            )
+            WHERE global_run_id IS NULL
+        """)
+    
+    con.commit()
+    con.close()
+    print(f"Backfill complete: {len(rows)} runs, {len(rows)} experiments updated")
+```
+
+---
+
+## 6. Agent design
+
+```python
+# alems/agent/agent.py  — simplified pseudocode
+
+import time, subprocess, threading
+from alems.agent.heartbeat import send_heartbeat
+from alems.agent.job_executor import execute_job
+from alems.agent.sync_client import sync_unsynced_runs
+from alems.agent.mode_manager import get_mode, get_server_url
+
+HEARTBEAT_INTERVAL = 30   # seconds
+POLL_INTERVAL      = 10   # seconds
+SYNC_INTERVAL      = 60   # seconds (also triggered after each run)
+
+_active_run = threading.Event()  # SET when a run is in progress
+
+def run_agent():
+    print(f"A-LEMS Agent starting — mode={get_mode()}")
+    
+    # Backfill UUIDs on first run
+    from alems.agent.backfill import backfill_global_ids
+    backfill_global_ids(...)
+    
+    threads = [
+        threading.Thread(target=_heartbeat_loop, daemon=True),
+        threading.Thread(target=_poll_loop,      daemon=True),
+        threading.Thread(target=_sync_loop,      daemon=True),
+    ]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+def _heartbeat_loop():
+    while True:
+        if get_mode() == "connected":
+            send_heartbeat(
+                busy=_active_run.is_set(),
+                server_url=get_server_url()
+            )
+        time.sleep(HEARTBEAT_INTERVAL)
+
+def _poll_loop():
+    while True:
+        if get_mode() == "connected" and not _active_run.is_set():
+            job = fetch_job(server_url=get_server_url())
+            if job:
+                _active_run.set()
+                try:
+                    execute_job(job)   # calls test_harness subprocess
+                    sync_unsynced_runs(immediately=True)
+                finally:
+                    _active_run.clear()
+        time.sleep(POLL_INTERVAL)
+
+def _sync_loop():
+    while True:
+        time.sleep(SYNC_INTERVAL)
+        if get_mode() == "connected":
+            sync_unsynced_runs()
+```
+
+---
+
+## 7. FastAPI server endpoints
+
+```
+POST /register          → upsert hardware_config, return api_key + hw_id mapping
+GET  /health            → {"status": "ok", "mode": "server"}  (agents use this for mode detection)
+GET  /get-job           → returns next queued job for this hw_id, or {"job": null} if none/busy
+POST /job-status        → agent reports job started/completed/failed
+POST /bulk-sync         → receives full sync payload, inserts all tables idempotently
+POST /experiments/submit → researcher submits experiment to global queue
+GET  /experiments/queue → admin sees pending submissions
+POST /experiments/approve/{id}  → admin approves → promotes to job_queue
+POST /experiments/reject/{id}   → admin rejects with notes
+GET  /machines          → list all registered machines with status (for Streamlit dashboard)
+GET  /machines/{hw_id}/runs → runs for a specific machine (Streamlit per-machine view)
+```
+
+---
+
+## 8. Agent config file
+
+```toml
+# ~/.alems/agent.conf
+
+[agent]
+mode        = "connected"        # "local" | "connected"
+server_url  = "http://129.153.71.47:8000"
+api_key     = ""                 # filled on first successful registration
+hw_id_local = 1                  # local hw_id (from hardware_config)
+hw_id_server = 0                 # server-assigned hw_id (filled after registration)
+
+[sync]
+interval_seconds  = 60
+batch_size        = 100          # runs per sync request
+retry_max         = 3
+retry_backoff_s   = 30
+
+[execution]
+poll_interval_s   = 10
+heartbeat_s       = 30
+```
+
+---
+
+## 9. Streamlit UI — mode-aware behaviour
+
+```python
+# gui/db.py  — add this function
+
+def get_ui_context() -> dict:
+    """
+    Returns context the UI uses to decide local vs server view.
+    Called once at page load.
+    """
+    db_url = os.environ.get("ALEMS_DB_URL", "")
+    is_server = db_url.startswith("postgresql")
+    
+    return {
+        "is_server": is_server,
+        "db_label":  "PostgreSQL · server" if is_server else "SQLite · local",
+        "hw_filter": None if is_server else get_local_hw_id(),
+        # None = show all machines (server view)
+        # int  = filter to this machine only (local view)
+    }
+```
+
+All existing Streamlit pages gain one behaviour change:
+- If `ctx["hw_filter"]` is set → every query adds `WHERE hw_id = :hw_id`
+- If `ctx["hw_filter"]` is None → no filter, all machines visible, GROUP BY hw_id added to overview
+
+**Zero query rewrites.** The filter is injected at the connection layer.
+
+---
+
+## 10. Bulk sync payload format
+
+```python
+# alems/shared/models.py
+
+from pydantic import BaseModel
+from typing import Optional
+
+class HardwarePayload(BaseModel):
+    hardware_hash: str
+    hostname: str
+    cpu_model: str
+    # ... all hardware_config columns
+
+class SyncRunRow(BaseModel):
+    global_run_id: str
+    run_id: int
+    global_exp_id: str
+    # ... all runs columns
+
+class BulkSyncPayload(BaseModel):
+    hw_hardware_hash: str          # used to resolve hw_id on server
+    experiments:      list[dict]
+    runs:             list[SyncRunRow]
+    energy_samples:   list[dict]
+    cpu_samples:      list[dict]
+    thermal_samples:  list[dict]
+    interrupt_samples: list[dict]
+    orchestration_events: list[dict]
+    llm_interactions: list[dict]
+    orchestration_tax_summary: list[dict]
+
+class JobResponse(BaseModel):
+    job_id:     Optional[str]
+    command:    Optional[str]   # exact test_harness command to run
+    exp_config: Optional[dict]
+    on_disconnect: str = "fail"
+```
+
+---
+
+## 11. Job dispatch — no-parallel enforcement
+
+```python
+# alems/server/job_dispatcher.py
+
+def get_next_job(hw_id: int, session) -> dict | None:
+    """
+    Returns next job for hw_id, or None if machine is busy or queue empty.
+    Double-checked: server state + agent self-reports busy via heartbeat.
+    """
+    # Check if machine has an active job in server state
+    active = session.execute(text("""
+        SELECT job_id FROM job_queue
+        WHERE dispatched_to_hw_id = :hw_id
+          AND status = 'running'
+        LIMIT 1
+    """), {"hw_id": hw_id}).fetchone()
+    
+    if active:
+        return None  # machine is busy — do not dispatch
+    
+    # Find next available job (respecting target_hw_id preference)
+    job = session.execute(text("""
+        SELECT * FROM job_queue
+        WHERE status = 'pending'
+          AND (target_hw_id IS NULL OR target_hw_id = :hw_id)
+        ORDER BY priority DESC, created_at ASC
+        LIMIT 1
+    """), {"hw_id": hw_id}).fetchone()
+    
+    if not job:
+        return None
+    
+    # Atomically mark as dispatched
+    session.execute(text("""
+        UPDATE job_queue
+        SET status='dispatched', dispatched_to_hw_id=:hw_id, dispatched_at=NOW()
+        WHERE job_id=:job_id AND status='pending'
+    """), {"hw_id": hw_id, "job_id": job.job_id})
+    
+    return job
+```
+
+**What happens when agent goes offline mid-run:**
+```python
+# Runs every 2 minutes on server — checks for stale dispatched jobs
+def reap_stale_jobs(session):
+    machines = session.execute(text("""
+        SELECT hw_id, last_seen, agent_status FROM hardware_config
+        WHERE agent_status = 'busy'
+          AND last_seen < NOW() - INTERVAL '3 minutes'
+    """)).fetchall()
+    
+    for m in machines:
+        job = session.execute(text("""
+            SELECT job_id, on_disconnect FROM job_queue
+            WHERE dispatched_to_hw_id = :hw_id AND status = 'running'
+        """), {"hw_id": m.hw_id}).fetchone()
+        
+        if not job: continue
+        
+        if job.on_disconnect == "fail":
+            session.execute(text("""
+                UPDATE job_queue SET status='failed', error_message='agent_offline'
+                WHERE job_id=:id
+            """), {"id": job.job_id})
+        
+        elif job.on_disconnect == "requeue":
+            session.execute(text("""
+                UPDATE job_queue
+                SET status='pending', dispatched_to_hw_id=NULL, retry_count=retry_count+1
+                WHERE job_id=:id AND retry_count < max_retries
+            """), {"id": job.job_id})
+        
+        elif job.on_disconnect == "wait":
+            pass  # leave as 'running', agent will resume on reconnect
+```
+
+---
+
+## 12. Oracle VM setup sequence
+
+```bash
+# 1. Install PostgreSQL
+sudo apt update
+sudo apt install -y postgresql postgresql-contrib
+
+# 2. Create database and user
+sudo -u postgres psql << 'EOF'
+CREATE USER alems WITH PASSWORD 'CHANGE_ME_strong_password';
+CREATE DATABASE alems_central OWNER alems;
+GRANT ALL PRIVILEGES ON DATABASE alems_central TO alems;
+EOF
+
+# 3. Apply PostgreSQL schema
+psql -U alems -d alems_central -f alems/migrations/001_postgres_initial.sql
+
+# 4. Install FastAPI dependencies
+cd ~/mydrive/a-lems
+source venv/bin/activate
+pip install fastapi uvicorn[standard] asyncpg sqlalchemy[asyncio] pydantic
+
+# 5. Create systemd service for FastAPI
+sudo tee /etc/systemd/system/alems-api.service << 'EOF'
+[Unit]
+Description=A-LEMS Orchestration API
+After=network.target postgresql.service
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/mydrive/a-lems
+Environment="ALEMS_DB_URL=postgresql+asyncpg://alems:CHANGE_ME@localhost/alems_central"
+ExecStart=/home/ubuntu/mydrive/a-lems/venv/bin/uvicorn alems.server.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable alems-api
+sudo systemctl start alems-api
+
+# 6. Open port 8000 in Oracle Cloud security list (add ingress rule: TCP 8000 from 0.0.0.0/0)
+# Done via Oracle Cloud Console → VCN → Security Lists → Add Ingress Rule
+
+# 7. Verify
+curl http://129.153.71.47:8000/health
+# → {"status": "ok", "mode": "server", "version": "1.0.0"}
+```
+
+---
+
+## 13. Agent install on local machine (researcher — one command)
+
+```bash
+# On any local machine with the A-LEMS repo cloned:
+cd ~/mydrive/a-lems
+source venv/bin/activate
+pip install fastapi httpx pydantic   # only new deps needed by agent
+
+# First run: migrates SQLite + backfills UUIDs + registers with server
+python -m alems.agent start
+
+# Or in local-only mode (no server connection):
+python -m alems.agent start --mode local
+
+# Check status:
+python -m alems.agent status
+
+# Toggle mode at runtime (agent detects config change within 30s):
+python -m alems.agent set-mode connected
+python -m alems.agent set-mode local
+```
+
+---
+
+## 14. Experiment submission flow (world-class design)
+
+```
+Researcher local UI
+  → saves experiment config to saved_experiments (SQLite)
+  → clicks "Push to global queue"
+  → POST /experiments/submit (with config + description)
+  → server sets review_status = 'pending_review'
+
+Server Streamlit admin page
+  → shows all pending submissions
+  → admin reviews config, can edit/approve/reject
+  → on approve: creates job_queue row, notifies researcher (future: email/webhook)
+  → on reject: sets review_notes explaining why
+
+Trust tiers (future enhancement):
+  → admin can grant 'trusted' status to hw_id
+  → trusted researchers → auto_approved (skips review queue)
+  → new researchers → always goes through review
+```
+
+---
+
+## 15. What does NOT change
+
+| Item | Status |
+|------|--------|
+| `test_harness` command format | Unchanged — agent calls it as subprocess |
+| SQLite schema for existing columns | Unchanged — only ADD COLUMN |
+| All existing Streamlit pages | Unchanged — get hw_filter injected automatically |
+| All existing SQL queries in db.py | Unchanged — work on both dialects via SQLAlchemy |
+| The report engine (Phase 4) | Untouched — separate work |
+| The tunnel (Cloudflare) | Untouched — may remove later, no dependency |
+| runs table unique index (exp_id, run_number, workflow_type) | Unchanged locally |
+
+---
+
+## 16. Implementation order (phases)
+
+### Phase A — Schema + backfill (1 day)
+1. Write `007_distributed_identity.sql`
+2. Write `backfill.py`
+3. Test on local SQLite — verify all 1554 runs get UUIDs
+4. Verify all existing Streamlit pages still work
+
+### Phase B — FastAPI server (2 days)
+1. Write `alems/server/main.py` + all routers
+2. Write `001_postgres_initial.sql`
+3. Install PostgreSQL on Oracle VM
+4. Apply schema, start FastAPI as systemd service
+5. Test `/health` endpoint
+
+### Phase C — Agent (2 days)
+1. Write `alems/agent/` package
+2. Test heartbeat + registration on one local machine
+3. Test job poll + execute (manual job inserted into PostgreSQL)
+4. Test bulk sync — verify data arrives in PostgreSQL correctly
+
+### Phase D — Sync correctness verification (1 day)
+1. Run 5 experiments locally
+2. Sync to PostgreSQL
+3. Verify row counts match in both DBs
+4. Verify no duplicate rows on re-sync
+
+### Phase E — Streamlit server pages (2 days)
+1. `connected_machines.py`
+2. `dispatch_queue.py`
+3. `experiment_submissions.py`
+4. `sync_monitor.py`
+
+### Phase F — Documentation (parallel with E)
+1. MkDocs site
+2. README per module
+
+---
+
+*End of design document. No implementation code should deviate from these decisions without updating this document first.*

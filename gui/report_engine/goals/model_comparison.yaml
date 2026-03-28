@@ -1,0 +1,95 @@
+goal:
+  goal_id: model_comparison
+  name: Cross-Model Energy & Quality Comparison
+  category: comparative
+  version: "1.0.0"
+  tags: [model, comparative, energy, quality, paper-ready]
+  description: >
+    Compare energy consumption, latency, and quality metrics across different
+    LLM models and providers. Enables researchers to make evidence-based
+    model selection decisions based on energy-quality trade-offs.
+  hypothesis: >
+    Larger parameter models consume disproportionately more energy per token
+    without proportional quality gains, suggesting smaller models are more
+    energy-efficient for standard tasks.
+
+  metrics:
+    - name: Total Energy
+      column: total_energy_uj
+      unit: µJ
+      direction: lower_is_better
+      display_precision: 0
+
+    - name: Energy per Token
+      column: total_energy_uj
+      unit: µJ/token
+      direction: lower_is_better
+      formula: "total_energy_uj / NULLIF(total_tokens, 0)"
+      display_precision: 2
+
+    - name: Quality Score
+      column: complexity_score
+      unit: score
+      direction: higher_is_better
+      display_precision: 3
+
+    - name: Quality-Energy Efficiency
+      column: complexity_score
+      unit: score/MJ
+      direction: higher_is_better
+      formula: "quality_score / (total_energy_uj / 1e12)"
+      display_precision: 1
+      description: Quality per megajoule — higher is more efficient
+
+    - name: Total Duration ms
+      column: duration_ns
+      unit: ms
+      direction: lower_is_better
+      formula: "duration_ns / 1e6"
+      display_precision: 1
+
+    - name: Total Tokens
+      column: total_tokens
+      unit: tokens
+      direction: lower_is_better
+      display_precision: 0
+
+    - name: Avg Package Power W
+      column: avg_power_watts
+      unit: W
+      direction: lower_is_better
+      display_precision: 2
+
+  thresholds:
+    quality_score:
+      warn: 0.6
+      severe: 0.4
+      unit: score
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 3
+    comparison_mode: relative
+
+  narrative_persona: research_engineer
+  doc_sections:
+    - user-guide/understanding-metrics.md
+    - research/measurement-methodology.md
+  diagram_ids:
+    - experiment-lifecycle
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

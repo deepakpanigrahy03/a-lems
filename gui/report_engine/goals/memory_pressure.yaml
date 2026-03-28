@@ -1,0 +1,93 @@
+goal:
+  goal_id: memory_pressure
+  name: Memory Pressure Analysis
+  category: memory
+  version: "1.0.0"
+  tags: [memory, page-faults, swap, hardware]
+  description: >
+    Profile memory pressure during LLM workloads. Analyses major and minor
+    page faults, swap usage, and cache efficiency to identify memory-bound
+    bottlenecks in both linear and agentic workflows.
+  hypothesis: >
+    Agentic workflows exhibit significantly higher major page fault rates than
+    linear workflows due to context switching between planning, execution,
+    and synthesis phases, increasing memory pressure and potential swap usage.
+
+  metrics:
+    - name: Major Page Faults
+      column: major_page_faults
+      unit: faults
+      direction: lower_is_better
+      display_precision: 0
+      alert_threshold: 100
+      description: Major page faults requiring disk I/O — high cost
+
+    - name: Minor Page Faults
+      column: minor_page_faults
+      unit: faults
+      direction: lower_is_better
+      display_precision: 0
+      description: Minor page faults served from memory — lower cost
+
+    - name: Swap Delta (KB)
+      column: swap_end_used_mb
+      unit: KB
+      direction: lower_is_better
+      display_precision: 1
+      alert_threshold: 1024
+      description: Change in swap usage during run — positive = swap pressure
+
+    - name: Peak Memory MB
+      column: rss_memory_mb
+      unit: MB
+      direction: lower_is_better
+      display_precision: 1
+
+    - name: Cache Miss Rate
+      column: cache_miss_rate
+      unit: ratio
+      direction: lower_is_better
+      display_precision: 3
+
+    - name: IPC (Instructions/Cycle)
+      column: ipc
+      unit: IPC
+      direction: higher_is_better
+      display_precision: 3
+      description: Average IPC from cpu_samples — low IPC may indicate memory stalls
+
+  thresholds:
+    major_page_faults:
+      warn: 100
+      severe: 1000
+      unit: faults
+    swap_delta_kb:
+      warn: 1024
+      severe: 10240
+      unit: KB
+
+  eval_criteria:
+    stat_test: mann_whitney
+    alpha: 0.05
+    effect_size: cohens_d
+    min_runs_per_group: 5
+
+  narrative_persona: hardware_engineer
+  doc_sections:
+    - research/measurement-methodology.md
+  diagram_ids:
+    - architecture
+
+  report_sections:
+    - title_page
+    - executive_summary
+    - goal_and_hypothesis
+    - system_profile
+    - experiment_setup
+    - results_table
+    - visualizations
+    - hypothesis_verdict
+    - goal_analysis
+    - interpretation
+    - conclusion
+    - appendix

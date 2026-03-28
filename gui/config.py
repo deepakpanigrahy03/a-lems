@@ -94,6 +94,7 @@ SECTION_ACCENTS = {
     "DATA MOVEMENT": "#a78bfa",
     "SESSIONS & RUNS": "#3b82f6",
     "RESEARCH & INSIGHTS": "#38bdf8",
+    "REPORTS": "#a78bfa", 
     "ENVIRONMENT": "#34d399",
     "DATA QUALITY": "#f472b6",
     "SILICON LAB": "#fb923c",
@@ -168,7 +169,7 @@ SECTION_PAGES = {
                 "label": "Multi-Host Dispatch",
                 "icon": "⊕",
                 "desc": "Trigger parallel runs across N silicon targets simultaneously.",
-                "status": PLANNED,
+                "status": NEW,
             },
         ],
     },
@@ -341,7 +342,7 @@ SECTION_PAGES = {
                 "id": "run_drilldown",
                 "label": "Run Drilldown",
                 "icon": "🔍",
-                "desc": "All sensor streams for one run — energy, CPU, thermal, interrupts.",
+                "desc": "All sensor streams for one run — energy, CPU, thermal, interrupts, LLM.",
                 "status": NEW,
             },
         ],
@@ -408,8 +409,70 @@ SECTION_PAGES = {
                 "desc": "State research hypotheses, track supporting and contradicting evidence.",
                 "status": NEW,
             },
+            {
+                "id":"llm_quality",
+                "label":"LLM Quality",
+                "icon":"⭐",
+                "desc":"Response quality scoring, energy per quality unit, linear vs agentic agreement.",
+                "status":NEW
+            },
         ],
     },
+
+
+    "REPORTS": {
+        "accent": "#a78bfa",
+        "icon": "◎",
+        "who": "Researchers · PhD students · Lab leads · Authors",
+        "description": (
+            "Goal-based experimental report generation. Combines measured data, "
+            "documentation, and architecture diagrams into publication-quality "
+            "PDFs and interactive HTML reports."
+        ),
+        "pages": [
+            {
+                "id": "report_builder",
+                "label": "Report Builder",
+                "icon": "◈",
+                "desc": (
+                    "Configure goal, filters, and sections — then generate "
+                    "a PDF + interactive HTML report in one click."
+                ),
+                "status": NEW,
+            },
+            {
+                "id": "report_library",
+                "label": "Report Library",
+                "icon": "≡",
+                "desc": (
+                    "Browse all generated reports. Re-run with fresh data, "
+                    "compare confidence levels, download PDF or HTML."
+                ),
+                "status": NEW,
+            },
+            {
+                "id": "goal_registry_page",
+                "label": "Goal Registry",
+                "icon": "⊟",
+                "desc": (
+                    "Define and manage research goals — metrics, thresholds, "
+                    "statistical criteria, narrative persona."
+                ),
+                "status": NEW,
+            },
+            {
+                "id": "system_profile_page",
+                "label": "System Profile",
+                "icon": "▣",
+                "desc": (
+                    "Auto-detect CPU model, cores, RAM, RAPL zones, and "
+                    "environment type. Stored in DB, injected into every report."
+                ),
+                "status": NEW,
+            },
+        ],
+    },    
+
     "ENVIRONMENT": {
         "accent": "#34d399",
         "icon": "♻",
@@ -522,14 +585,14 @@ SECTION_PAGES = {
                 "label": "Multi-Host Status",
                 "icon": "⊕",
                 "desc": "Per-host connection health, tunnel state, last run timestamp.",
-                "status": PLANNED,
+                "status": NEW,
             },
             {
                 "id": "capability_matrix",
                 "label": "Capability Matrix",
                 "icon": "◫",
                 "desc": "AVX2/AVX512/VMX/RAPL flags across all registered hardware.",
-                "status": PLANNED,
+                "status": NEW,
             },
         ],
     },
