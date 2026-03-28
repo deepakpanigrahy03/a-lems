@@ -245,7 +245,6 @@ CREATE TABLE IF NOT EXISTS runs (
 
 CREATE TABLE IF NOT EXISTS energy_samples (
     sample_id       BIGSERIAL   PRIMARY KEY,
-    global_run_id   BIGINT      REFERENCES runs(global_run_id),
     run_id    BIGINT      NOT NULL,
     hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns    BIGINT      NOT NULL,
@@ -258,7 +257,6 @@ CREATE TABLE IF NOT EXISTS energy_samples (
 
 CREATE TABLE IF NOT EXISTS cpu_samples (
     sample_id           BIGSERIAL   PRIMARY KEY,
-    global_run_id       BIGINT      REFERENCES runs(global_run_id),
     run_id        BIGINT      NOT NULL,
     hw_id               BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns        BIGINT      NOT NULL,
@@ -284,7 +282,6 @@ CREATE TABLE IF NOT EXISTS cpu_samples (
 
 CREATE TABLE IF NOT EXISTS thermal_samples (
     sample_id       BIGSERIAL   PRIMARY KEY,
-    global_run_id   BIGINT      REFERENCES runs(global_run_id),
     run_id    BIGINT      NOT NULL,
     hw_id           BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns    BIGINT      NOT NULL,
@@ -300,7 +297,6 @@ CREATE TABLE IF NOT EXISTS thermal_samples (
 
 CREATE TABLE IF NOT EXISTS interrupt_samples (
     sample_id           BIGSERIAL   PRIMARY KEY,
-    global_run_id       BIGINT      REFERENCES runs(global_run_id),
     run_id        BIGINT      NOT NULL,
     hw_id               BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     timestamp_ns        BIGINT      NOT NULL,
@@ -310,7 +306,6 @@ CREATE TABLE IF NOT EXISTS interrupt_samples (
 
 CREATE TABLE IF NOT EXISTS orchestration_events (
     event_id            BIGSERIAL   PRIMARY KEY,
-    global_run_id       BIGINT      REFERENCES runs(global_run_id),
     run_id        BIGINT      NOT NULL,
     hw_id               BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     step_index          INTEGER,
@@ -330,7 +325,6 @@ CREATE TABLE IF NOT EXISTS orchestration_events (
 
 CREATE TABLE IF NOT EXISTS llm_interactions (
     interaction_id          BIGSERIAL   PRIMARY KEY,
-    global_run_id           BIGINT      REFERENCES runs(global_run_id),
     run_id            BIGINT      NOT NULL,
     hw_id                   BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     step_index              INTEGER,
@@ -361,7 +355,6 @@ CREATE TABLE IF NOT EXISTS llm_interactions (
 
 CREATE TABLE IF NOT EXISTS orchestration_tax_summary (
     comparison_id           BIGSERIAL   PRIMARY KEY,
-    global_run_id           BIGINT      REFERENCES runs(global_run_id),
     run_id            BIGINT,
     hw_id                   BIGINT      REFERENCES hardware_config(hw_id),
     linear_run_id           BIGINT      NOT NULL,
@@ -377,7 +370,6 @@ CREATE TABLE IF NOT EXISTS orchestration_tax_summary (
 
 CREATE TABLE IF NOT EXISTS outliers (
     outlier_id    BIGSERIAL   PRIMARY KEY,
-    global_run_id BIGINT      REFERENCES runs(global_run_id),
     run_id  BIGINT      NOT NULL,
     hw_id         BIGINT      NOT NULL REFERENCES hardware_config(hw_id),
     column_name   TEXT        NOT NULL,
