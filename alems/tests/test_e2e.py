@@ -279,18 +279,22 @@ def run_server_tests(server_url: str, pg_url: str | None):
         con.close()
 
         payload = {
-            "hardware_hash":    hw_hash,
-            "api_key":          api_key,
-            "hardware_data":    hw_dict,
-            "experiments":      [exp_dict],
-            "runs":             [run_dict],
-            "energy_samples":   [],
-            "cpu_samples":      [],
-            "thermal_samples":  [],
-            "interrupt_samples": [],
-            "orchestration_events": [],
-            "llm_interactions": [],
+            "hardware_hash":             hw_hash,
+            "api_key":                   api_key,
+            "hardware_data":             hw_dict,
+            "environment_config":        env_configs,
+            "idle_baselines":            baselines,
+            "task_categories":           [],
+            "experiments":               [exp_dict],
+            "runs":                      [run_dict],
+            "energy_samples":            [],
+            "cpu_samples":               [],
+            "thermal_samples":           [],
+            "interrupt_samples":         [],
+            "orchestration_events":      [],
+            "llm_interactions":          [],
             "orchestration_tax_summary": [],
+            "outliers":                  [],
         }
         r = httpx.post(f"{server_url}/bulk-sync", json=payload, timeout=30)
         assert r.status_code == 200, f"HTTP {r.status_code}: {r.text}"
