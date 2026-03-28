@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS hardware_config (
     -- Agent tracking (updated by every heartbeat)
     last_seen           TIMESTAMP,
     agent_status        TEXT      DEFAULT 'offline',
-    agent_version       TEXT
+    agent_version       TEXT,
+    api_key             TEXT 
 );
 
 -- ── environment_config ────────────────────────────────────────────────────────
