@@ -171,7 +171,7 @@ def render(ctx: dict) -> None:
     total_cols    = len(df.columns)
     numeric_cols  = df.select_dtypes(include="number").columns.tolist()
     n_numeric     = len(numeric_cols)
-    null_pct_avg  = round(df.isna().mean().mean() * 100, 1)
+    null_pct_avg  = ROUND(CAST(df.isna().mean().mean() * 100 AS NUMERIC), 1)
 
     # ── Quick stats ────────────────────────────────────────────────────────────
     qs1, qs2, qs3, qs4 = st.columns(4)
@@ -236,7 +236,7 @@ def render(ctx: dict) -> None:
                     r = pair.corr().iloc[0, 1]
                     if pd.isna(r):
                         continue
-                    corrs.append((col, round(r, 4)))
+                    corrs.append((col, ROUND(CAST(r AS NUMERIC), 4)))
                 except Exception:
                     pass
 
@@ -360,7 +360,7 @@ def render(ctx: dict) -> None:
 
             # Stats + log transform suggestion
             stats = df[sel_feature].dropna().describe()
-            st.dataframe(pd.DataFrame(stats).T.round(4), use_container_width=True)
+            st.dataframe(pd.DataFrame(stats).T.ROUND(CAST(4 AS NUMERIC)), use_container_width=True)
 
             if sel_feature in LOG_TRANSFORM_COLS:
                 st.markdown(
@@ -452,9 +452,9 @@ def render(ctx: dict) -> None:
                         f"Missing from view: {', '.join(missing)}</div>",
                         unsafe_allow_html=True,
                     )
-                stats_df = df[avail].describe().T.round(4)
+                stats_df = df[avail].describe().T.ROUND(CAST(4 AS NUMERIC))
                 stats_df["null_count"] = df[avail].isna().sum()
-                stats_df["null_pct"]   = (df[avail].isna().mean() * 100).round(1)
+                stats_df["null_pct"]   = (df[avail].isna().mean() * 100).ROUND(CAST(1 AS NUMERIC))
                 st.dataframe(stats_df, use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -522,7 +522,7 @@ def render(ctx: dict) -> None:
         # Export stats
         n_before = len(df)
         n_after  = len(export_df)
-        pct_kept = round(n_after / n_before * 100, 1) if n_before else 0
+        pct_kept = ROUND(CAST(n_after / n_before * 100 AS NUMERIC), 1) if n_before else 0
 
         st.markdown(
             f"<div style='padding:10px 14px;background:#0c1f3a;"
@@ -550,7 +550,7 @@ def render(ctx: dict) -> None:
         )
 
         if selected_cols:
-            csv_df = export_df[selected_cols].round(6)
+            csv_df = export_df[selected_cols].ROUND(CAST(6 AS NUMERIC))
             st.download_button(
                 "📥 Export filtered CSV",
                 csv_df.to_csv(index=False),

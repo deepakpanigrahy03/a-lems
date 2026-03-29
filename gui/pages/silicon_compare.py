@@ -184,7 +184,7 @@ def render(ctx: dict) -> None:
             avg_power=("avg_power_watts", "mean"),
             avg_duration=("duration_ms", "mean"),
         )
-        .round(3)
+        .ROUND(CAST(3 AS NUMERIC))
         .reset_index()
     )
 

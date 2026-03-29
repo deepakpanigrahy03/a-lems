@@ -178,12 +178,12 @@ def render(ctx: dict) -> None:
         rows.append(
             {
                 "Workflow": wf,
-                "P50": round(sub.quantile(0.50), 1),
-                "P75": round(sub.quantile(0.75), 1),
-                "P90": round(sub.quantile(0.90), 1),
-                "P95": round(sub.quantile(0.95), 1),
-                "P99": round(sub.quantile(0.99), 1),
-                "Max": round(sub.max(), 1),
+                "P50": ROUND(CAST(sub.quantile(0.50) AS NUMERIC), 1),
+                "P75": ROUND(CAST(sub.quantile(0.75) AS NUMERIC), 1),
+                "P90": ROUND(CAST(sub.quantile(0.90) AS NUMERIC), 1),
+                "P95": ROUND(CAST(sub.quantile(0.95) AS NUMERIC), 1),
+                "P99": ROUND(CAST(sub.quantile(0.99) AS NUMERIC), 1),
+                "Max": ROUND(CAST(sub.max() AS NUMERIC), 1),
             }
         )
     if rows:

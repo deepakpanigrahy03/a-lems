@@ -83,8 +83,8 @@ def render(ctx: dict):
     _rp_runs, _rp_err = q_safe("""
         SELECT r.run_id, r.workflow_type, r.run_number,
                e.task_name, e.provider,
-               ROUND(r.total_energy_uj/1e6,4) AS energy_j,
-               ROUND(r.duration_ns/1e9,2)     AS duration_s,
+               ROUND(CAST(r.total_energy_uj/1e6 AS NUMERIC), 4) AS energy_j,
+               ROUND(CAST(r.duration_ns/1e9 AS NUMERIC), 2)     AS duration_s,
                r.ipc, r.total_tokens
         FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
         ORDER BY r.run_id DESC LIMIT 100
@@ -164,10 +164,10 @@ def render(ctx: dict):
 
         if _load_src == "db":
             _e_df, _ = q_safe(f"""
-                SELECT ROUND((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6,1) AS elapsed_ms,
-                       ROUND(pkg_energy_uj/1e6,6)    AS pkg_j,
-                       ROUND(core_energy_uj/1e6,6)   AS core_j,
-                       ROUND(dram_energy_uj/1e6,6)   AS dram_j
+                SELECT ROUND(CAST((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6 AS NUMERIC), 1) AS elapsed_ms,
+                       ROUND(CAST(pkg_energy_uj/1e6 AS NUMERIC), 6)    AS pkg_j,
+                       ROUND(CAST(core_energy_uj/1e6 AS NUMERIC), 6)   AS core_j,
+                       ROUND(CAST(dram_energy_uj/1e6 AS NUMERIC), 6)   AS dram_j
                 FROM energy_samples WHERE run_id={_rp_rid}
                 ORDER BY timestamp_ns
             """)
@@ -185,14 +185,14 @@ def render(ctx: dict):
                 _e_rows = _e_df.dropna().to_dict("records")
 
             _c_df, _ = q_safe(f"""
-                SELECT ROUND((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6,1) AS elapsed_ms,
+                SELECT ROUND(CAST((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6 AS NUMERIC), 1) AS elapsed_ms,
                        cpu_util_percent, package_temp, ipc, c6_residency, c1_residency
                 FROM cpu_samples WHERE run_id={_rp_rid} ORDER BY timestamp_ns
             """)
             _c_rows = _c_df.to_dict("records") if not _c_df.empty else []
 
             _i_df, _ = q_safe(f"""
-                SELECT ROUND((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6,1) AS elapsed_ms,
+                SELECT ROUND(CAST((timestamp_ns-MIN(timestamp_ns) OVER (PARTITION BY run_id))/1e6 AS NUMERIC), 1) AS elapsed_ms,
                        interrupts_per_sec
                 FROM interrupt_samples WHERE run_id={_rp_rid} ORDER BY timestamp_ns
             """)
@@ -340,10 +340,10 @@ def render(ctx: dict):
             # Orchestration events timeline
             _ev, _ev_e = q_safe(f"""
                 SELECT step_index, phase, event_type,
-                       ROUND((start_time_ns - MIN(start_time_ns) OVER ())/1e6,1) AS start_ms,
-                       ROUND(duration_ns/1e6,1)        AS duration_ms,
-                       ROUND(event_energy_uj/1e6,6)    AS event_j,
-                       ROUND(power_watts,2)             AS power_w
+                       ROUND(CAST((start_time_ns - MIN(start_time_ns) OVER ())/1e6 AS NUMERIC), 1) AS start_ms,
+                       ROUND(CAST(duration_ns/1e6 AS NUMERIC), 1)        AS duration_ms,
+                       ROUND(CAST(event_energy_uj/1e6 AS NUMERIC), 6)    AS event_j,
+                       ROUND(CAST(power_watts AS NUMERIC), 2)             AS power_w
                 FROM orchestration_events
                 WHERE run_id={_rp_rid}
                 ORDER BY start_time_ns
@@ -405,7 +405,7 @@ def render(ctx: dict):
                             "event_j",
                             "power_w",
                         ]
-                    ].round(4),
+                    ].ROUND(CAST(4 AS NUMERIC)),
                     use_container_width=True,
                     hide_index=True,
                 )

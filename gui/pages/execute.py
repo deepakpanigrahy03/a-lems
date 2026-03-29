@@ -648,7 +648,7 @@ def _load_tax_from_db(group_id: str) -> list:
                 ra.total_energy_uj / 1e6              AS agentic_j,
                 -- FIX: agentic / linear, always >= 1
                 CASE WHEN rl.total_energy_uj > 0
-                     THEN CAST(ra.total_energy_uj AS REAL) / rl.total_energy_uj
+                     THEN CAST(ra.total_energy_uj AS DOUBLE PRECISION) / rl.total_energy_uj
                      ELSE 1.0 END                     AS tax_x,
                 '' AS ci
             FROM orchestration_tax_summary ots
@@ -972,7 +972,7 @@ def _analytics_card(session: dict):
                 x=df["label"],
                 y=df["linear_j"],
                 marker_color="#22c55e",
-                text=df["linear_j"].round(3),
+                text=df["linear_j"].ROUND(CAST(3 AS NUMERIC)),
                 textposition="outside",
                 textfont=dict(size=8),
             )
@@ -983,7 +983,7 @@ def _analytics_card(session: dict):
                 x=df["label"],
                 y=df["agentic_j"],
                 marker_color="#ef4444",
-                text=df["agentic_j"].round(3),
+                text=df["agentic_j"].ROUND(CAST(3 AS NUMERIC)),
                 textposition="outside",
                 textfont=dict(size=8),
             )

@@ -61,14 +61,14 @@ def render(ctx: dict):
     _sus, _sus_e = q_safe("""
         SELECT e.provider, e.model_name, r.workflow_type, e.task_name,
                COUNT(*) AS runs,
-               ROUND(AVG(r.carbon_g)*1000, 4) AS avg_carbon_mg,
-               ROUND(SUM(r.carbon_g)*1000, 3)  AS total_carbon_mg,
-               ROUND(AVG(r.water_ml), 4)         AS avg_water_ml,
-               ROUND(SUM(r.water_ml), 2)          AS total_water_ml,
-               ROUND(AVG(r.methane_mg), 4)         AS avg_methane_mg,
-               ROUND(AVG(r.total_energy_uj)/1e6, 4) AS avg_energy_j,
-               ROUND(AVG(CASE WHEN r.total_tokens>0
-                   THEN r.carbon_g/r.total_tokens*1e6 END), 4) AS ug_carbon_per_token
+               ROUND(CAST(AVG(r.carbon_g)*1000 AS NUMERIC), 4) AS avg_carbon_mg,
+               ROUND(CAST(SUM(r.carbon_g)*1000 AS NUMERIC), 3)  AS total_carbon_mg,
+               ROUND(CAST(AVG(r.water_ml) AS NUMERIC), 4)         AS avg_water_ml,
+               ROUND(CAST(SUM(r.water_ml) AS NUMERIC), 2)          AS total_water_ml,
+               ROUND(CAST(AVG(r.methane_mg) AS NUMERIC), 4)         AS avg_methane_mg,
+               ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4) AS avg_energy_j,
+               ROUND(CAST(AVG(CASE WHEN r.total_tokens>0
+                   THEN r.carbon_g/r.total_tokens*1e6 END) AS NUMERIC), 4) AS ug_carbon_per_token
         FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
         WHERE r.carbon_g IS NOT NULL
         GROUP BY e.provider, e.model_name, r.workflow_type, e.task_name
@@ -143,7 +143,7 @@ def render(ctx: dict):
             ]
             if c in _sus.columns
         ]
-        st.dataframe(_sus[_sc].round(4), use_container_width=True, hide_index=True)
+        st.dataframe(_sus[_sc].ROUND(CAST(4 AS NUMERIC)), use_container_width=True, hide_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

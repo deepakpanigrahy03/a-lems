@@ -64,8 +64,8 @@ def render(ctx: dict):
         "— pick a preset —": "",
         "Energy by category": (
             "SELECT tc.category, r.workflow_type, COUNT(*) AS runs,\n"
-            "  ROUND(AVG(r.total_energy_uj)/1e6,4) AS avg_energy_j,\n"
-            "  ROUND(AVG(r.dynamic_energy_uj)/1e6,4) AS avg_dynamic_j\n"
+            "  ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4) AS avg_energy_j,\n"
+            "  ROUND(CAST(AVG(r.dynamic_energy_uj)/1e6 AS NUMERIC), 4) AS avg_dynamic_j\n"
             "FROM runs r\n"
             "JOIN experiments e ON r.exp_id=e.exp_id\n"
             "LEFT JOIN task_categories tc ON e.task_name=tc.task_id\n"
@@ -73,10 +73,10 @@ def render(ctx: dict):
         ),
         "Tax breakdown by task": (
             "SELECT tc.category, e.task_name,\n"
-            "  ROUND(AVG(ots.linear_dynamic_uj/1e6),4) AS linear_j,\n"
-            "  ROUND(AVG(ots.agentic_dynamic_uj/1e6),4) AS agentic_j,\n"
-            "  ROUND(AVG(ots.orchestration_tax_uj/1e6),4) AS tax_j,\n"
-            "  ROUND(AVG(ots.tax_percent),2) AS tax_pct\n"
+            "  ROUND(CAST(AVG(ots.linear_dynamic_uj/1e6) AS NUMERIC), 4) AS linear_j,\n"
+            "  ROUND(CAST(AVG(ots.agentic_dynamic_uj/1e6) AS NUMERIC), 4) AS agentic_j,\n"
+            "  ROUND(CAST(AVG(ots.orchestration_tax_uj/1e6) AS NUMERIC), 4) AS tax_j,\n"
+            "  ROUND(CAST(AVG(ots.tax_percent) AS NUMERIC), 2) AS tax_pct\n"
             "FROM orchestration_tax_summary ots\n"
             "JOIN runs rl ON ots.linear_run_id=rl.run_id\n"
             "JOIN experiments e ON rl.exp_id=e.exp_id\n"
@@ -85,7 +85,7 @@ def render(ctx: dict):
         ),
         "Energy per token by model": (
             "SELECT e.model_name, e.provider,\n"
-            "  ROUND(AVG(r.energy_per_token*1000),4) AS avg_mj_per_token,\n"
+            "  ROUND(CAST(AVG(r.energy_per_token*1000) AS NUMERIC), 4) AS avg_mj_per_token,\n"
             "  COUNT(*) AS runs\n"
             "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
             "WHERE r.total_tokens>0\n"
@@ -93,8 +93,8 @@ def render(ctx: dict):
         ),
         "Carbon by provider · region": (
             "SELECT e.provider, e.country_code,\n"
-            "  ROUND(SUM(r.carbon_g)*1000,3) AS total_carbon_mg,\n"
-            "  ROUND(SUM(r.water_ml),2) AS total_water_ml,\n"
+            "  ROUND(CAST(SUM(r.carbon_g)*1000 AS NUMERIC), 3) AS total_carbon_mg,\n"
+            "  ROUND(CAST(SUM(r.water_ml) AS NUMERIC), 2) AS total_water_ml,\n"
             "  COUNT(*) AS runs\n"
             "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
             "GROUP BY e.provider, e.country_code ORDER BY total_carbon_mg DESC"
@@ -111,16 +111,16 @@ def render(ctx: dict):
         ),
         "Recent runs": (
             "SELECT r.run_id, r.workflow_type, e.task_name, e.provider,\n"
-            "  ROUND(r.total_energy_uj/1e6,4) AS energy_j,\n"
-            "  ROUND(r.duration_ns/1e9,2) AS duration_s,\n"
+            "  ROUND(CAST(r.total_energy_uj/1e6 AS NUMERIC), 4) AS energy_j,\n"
+            "  ROUND(CAST(r.duration_ns/1e9 AS NUMERIC), 2) AS duration_s,\n"
             "  r.total_tokens, r.ipc\n"
             "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
             "ORDER BY r.run_id DESC LIMIT 30"
         ),
         "Sustainability report": (
             "SELECT e.provider, tc.category,\n"
-            "  ROUND(SUM(r.carbon_g),4) AS total_carbon_g,\n"
-            "  ROUND(SUM(r.water_ml),2) AS total_water_ml,\n"
+            "  ROUND(CAST(SUM(r.carbon_g) AS NUMERIC), 4) AS total_carbon_g,\n"
+            "  ROUND(CAST(SUM(r.water_ml) AS NUMERIC), 2) AS total_water_ml,\n"
             "  COUNT(*) AS runs\n"
             "FROM runs r JOIN experiments e ON r.exp_id=e.exp_id\n"
             "LEFT JOIN task_categories tc ON e.task_name=tc.task_id\n"

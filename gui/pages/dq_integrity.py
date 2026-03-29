@@ -41,7 +41,7 @@ def render(ctx: dict) -> None:
     """)
     duplicates = len(dup_df) if not dup_df.empty else 0
 
-    hash_coverage = round(has_hash / total * 100, 1) if total else 0
+    hash_coverage = ROUND(CAST(has_hash / total * 100 AS NUMERIC), 1) if total else 0
     integrity_ok = duplicates == 0 and no_hash == 0
 
     # ── Header ────────────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ def render(ctx: dict) -> None:
         trend["cumulative_total"] = range(1, len(trend) + 1)
         trend["rolling_pct"] = (
             trend["cumulative_hashed"] / trend["cumulative_total"] * 100
-        ).round(1)
+        ).ROUND(CAST(1 AS NUMERIC))
 
         st.markdown(
             f"<div style='font-size:11px;font-weight:600;color:{accent};"

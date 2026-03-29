@@ -159,7 +159,7 @@ def _render_suggester():
     sufficient      = int(coverage["sufficient"].sum())
     total_needed    = int(coverage["runs_needed"].sum())
     zero_cells      = int((coverage["run_count"] == 0).sum())
-    readiness       = round(sufficient / total_cells * 100, 1) if total_cells else 0
+    readiness       = ROUND(CAST(sufficient / total_cells * 100 AS NUMERIC), 1) if total_cells else 0
 
     rclr = (
         "#22c55e" if readiness >= 80 else

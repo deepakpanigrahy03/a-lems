@@ -71,15 +71,15 @@ def _load_stats() -> dict:
         df, _ = q_safe("""
             SELECT e.model_name, r.workflow_type,
                    COUNT(*)                                  AS runs,
-                   ROUND(AVG(r.total_energy_uj)/1e6, 4)     AS avg_j,
-                   ROUND(AVG(r.dynamic_energy_uj)/1e6, 4)   AS avg_dyn_j,
-                   ROUND(AVG(r.duration_ns)/1e9, 3)         AS avg_dur_s,
-                   ROUND(AVG(r.total_tokens), 1)            AS avg_tokens,
-                   ROUND(AVG(CASE WHEN r.total_tokens > 0
+                   ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4)     AS avg_j,
+                   ROUND(CAST(AVG(r.dynamic_energy_uj)/1e6 AS NUMERIC), 4)   AS avg_dyn_j,
+                   ROUND(CAST(AVG(r.duration_ns)/1e9 AS NUMERIC), 3)         AS avg_dur_s,
+                   ROUND(CAST(AVG(r.total_tokens) AS NUMERIC), 1)            AS avg_tokens,
+                   ROUND(CAST(AVG(CASE WHEN r.total_tokens > 0
                        THEN r.total_energy_uj / r.total_tokens
-                       END) / 1e3, 4)                       AS avg_mj_tok,
-                   ROUND(AVG(r.ipc), 3)                     AS avg_ipc,
-                   ROUND(AVG(r.carbon_g)*1000, 4)           AS avg_carbon_mg
+                       END) / 1e3 AS NUMERIC), 4)                       AS avg_mj_tok,
+                   ROUND(CAST(AVG(r.ipc) AS NUMERIC), 3)                     AS avg_ipc,
+                   ROUND(CAST(AVG(r.carbon_g)*1000 AS NUMERIC), 4)           AS avg_carbon_mg
             FROM runs r
             JOIN experiments e ON r.exp_id = e.exp_id
             WHERE e.model_name IS NOT NULL
@@ -349,16 +349,16 @@ def render(ctx: dict = None):
         _full_df, _ = q_safe("""
             SELECT e.model_name, e.provider, r.workflow_type, e.task_name,
                    COUNT(*)                                        AS runs,
-                   ROUND(AVG(r.total_energy_uj)/1e6, 4)           AS avg_energy_j,
-                   ROUND(AVG(r.dynamic_energy_uj)/1e6, 4)         AS avg_dynamic_j,
-                   ROUND(AVG(r.duration_ns)/1e9, 3)               AS avg_duration_s,
-                   ROUND(AVG(r.total_tokens), 1)                  AS avg_tokens,
-                   ROUND(AVG(CASE WHEN r.total_tokens > 0
+                   ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4)           AS avg_energy_j,
+                   ROUND(CAST(AVG(r.dynamic_energy_uj)/1e6 AS NUMERIC), 4)         AS avg_dynamic_j,
+                   ROUND(CAST(AVG(r.duration_ns)/1e9 AS NUMERIC), 3)               AS avg_duration_s,
+                   ROUND(CAST(AVG(r.total_tokens) AS NUMERIC), 1)                  AS avg_tokens,
+                   ROUND(CAST(AVG(CASE WHEN r.total_tokens > 0
                        THEN r.total_energy_uj / r.total_tokens
-                       END) / 1e3, 4)                             AS avg_mj_per_token,
-                   ROUND(AVG(r.ipc), 3)                           AS avg_ipc,
-                   ROUND(AVG(r.carbon_g)*1000, 4)                 AS avg_carbon_mg,
-                   ROUND(AVG(r.water_ml), 4)                      AS avg_water_ml
+                       END) / 1e3 AS NUMERIC), 4)                             AS avg_mj_per_token,
+                   ROUND(CAST(AVG(r.ipc) AS NUMERIC), 3)                           AS avg_ipc,
+                   ROUND(CAST(AVG(r.carbon_g)*1000 AS NUMERIC), 4)                 AS avg_carbon_mg,
+                   ROUND(CAST(AVG(r.water_ml) AS NUMERIC), 4)                      AS avg_water_ml
             FROM runs r
             JOIN experiments e ON r.exp_id = e.exp_id
             WHERE e.model_name IS NOT NULL
@@ -494,4 +494,4 @@ def render(ctx: dict = None):
         ]
         if c in _filt.columns
     ]
-    st.dataframe(_filt[_show].round(4), use_container_width=True, hide_index=True)
+    st.dataframe(_filt[_show].ROUND(CAST(4 AS NUMERIC)), use_container_width=True, hide_index=True)

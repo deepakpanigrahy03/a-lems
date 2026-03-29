@@ -103,7 +103,7 @@ def render(ctx: dict) -> None:
     ).get("n", 0) or 0
 
     # ── Header ────────────────────────────────────────────────────────────────
-    throttle_pct = round(throttle_count / total_samples * 100, 1) if total_samples else 0
+    throttle_pct = ROUND(CAST(throttle_count / total_samples * 100 AS NUMERIC), 1) if total_samples else 0
     health_clr   = (
         "#22c55e" if throttle_pct < 10 else
         "#f59e0b" if throttle_pct < 50 else
@@ -545,7 +545,7 @@ def render(ctx: dict) -> None:
     )
     zone_stats.columns = ["Zone", "Mean °C", "Std Dev", "Min °C", "Max °C", "Samples"]
     zone_stats = zone_stats.sort_values("Std Dev", ascending=False)
-    zone_stats = zone_stats.round(2)
+    zone_stats = zone_stats.ROUND(CAST(2 AS NUMERIC))
 
     # Visualise std dev as a bar chart — high variance zones are unreliable
     fig_stab = go.Figure(go.Bar(

@@ -102,7 +102,7 @@ def render(ctx: dict) -> None:
     n_high         = int((df["swap_class"] == "high_pressure").sum())
     n_severe       = int((df["swap_class"] == "severe_pressure").sum())
     n_pressured    = n_low + n_high + n_severe
-    clean_pct      = round(n_clean / total * 100, 1) if total else 0
+    clean_pct      = ROUND(CAST(n_clean / total * 100 AS NUMERIC), 1) if total else 0
     avg_delta      = df["swap_delta"].mean()
     max_delta      = df["swap_delta"].max()
 
@@ -410,7 +410,7 @@ def render(ctx: dict) -> None:
         corr = sub["swap_delta"].corr(sub[col])
         corr_rows.append({
             "Metric":      col,
-            "Correlation with swap_delta": round(corr, 4),
+            "Correlation with swap_delta": ROUND(CAST(corr AS NUMERIC), 4),
             "Strength":    (
                 "strong"   if abs(corr) >= 0.5 else
                 "moderate" if abs(corr) >= 0.3 else
@@ -532,7 +532,7 @@ def render(ctx: dict) -> None:
             if has_energy:                 show_cols.append("energy_j")
             if "duration_ms" in df.columns: show_cols.append("duration_ms")
             st.dataframe(
-                pressured_runs[show_cols].round(3),
+                pressured_runs[show_cols].ROUND(CAST(3 AS NUMERIC)),
                 use_container_width=True,
                 hide_index=True,
             )
