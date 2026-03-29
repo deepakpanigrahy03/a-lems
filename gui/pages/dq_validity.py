@@ -67,7 +67,7 @@ def render(ctx: dict) -> None:
     thermal_ev = int(stats.get("thermal_event", 0))
     noisy      = int(stats.get("noisy_env", 0))
     clean      = int(stats.get("clean", 0))
-    clean_pct  = ROUND(CAST(clean / total * 100 AS NUMERIC), 1) if total else 0
+    clean_pct  = round(clean / total * 100, 1) if total else 0
 
     # ── Header ────────────────────────────────────────────────────────────────
     health_clr = (
@@ -104,7 +104,7 @@ def render(ctx: dict) -> None:
     ]
     for col, (label, val, clr, condition) in zip(cols, flags):
         with col:
-            pct = ROUND(CAST(val / total * 100 AS NUMERIC), 1) if total else 0
+            pct = round(val / total * 100, 1) if total else 0
             bg  = "#1a0505" if val > 0 else "#0c1a0c"
             st.markdown(
                 f"<div style='padding:12px 14px;background:{bg};"
@@ -268,10 +268,10 @@ def render(ctx: dict) -> None:
             o.outlier_id,
             o.run_id,
             o.column_name,
-            ROUND(CAST(o.value AS NUMERIC), 4)   AS value,
-            ROUND(CAST(o.mean AS NUMERIC), 4)   AS mean,
-            ROUND(CAST(o.std_dev AS NUMERIC), 4)   AS std_dev,
-            ROUND(CAST(o.sigma AS NUMERIC), 2)   AS sigma,
+            ROUND(o.value,    4)   AS value,
+            ROUND(o.mean,     4)   AS mean,
+            ROUND(o.std_dev,  4)   AS std_dev,
+            ROUND(o.sigma,    2)   AS sigma,
             o.severity,
             o.excluded,
             o.reason,

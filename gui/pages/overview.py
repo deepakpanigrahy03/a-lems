@@ -160,15 +160,15 @@ def render_model_behavior_sidebar():
         SELECT e.model_name, e.provider, r.workflow_type,
                e.task_name,
                COUNT(*)                                    AS runs,
-               ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4)        AS avg_energy_j,
-               ROUND(CAST(AVG(r.dynamic_energy_uj)/1e6 AS NUMERIC), 4)      AS avg_dynamic_j,
-               ROUND(CAST(AVG(r.duration_ns)/1e9 AS NUMERIC), 3)            AS avg_duration_s,
-               ROUND(CAST(AVG(r.total_tokens) AS NUMERIC), 1)               AS avg_tokens,
-               ROUND(CAST(AVG(CASE WHEN r.total_tokens>0
-                   THEN r.total_energy_uj/r.total_tokens END)/1e3 AS NUMERIC), 4) AS avg_mj_per_token,
-               ROUND(CAST(AVG(r.ipc) AS NUMERIC), 3)                        AS avg_ipc,
-               ROUND(CAST(AVG(r.carbon_g)*1000 AS NUMERIC), 4)              AS avg_carbon_mg,
-               ROUND(CAST(AVG(r.water_ml) AS NUMERIC), 4)                   AS avg_water_ml
+               ROUND(AVG(r.total_energy_uj)/1e6,4)        AS avg_energy_j,
+               ROUND(AVG(r.dynamic_energy_uj)/1e6,4)      AS avg_dynamic_j,
+               ROUND(AVG(r.duration_ns)/1e9,3)            AS avg_duration_s,
+               ROUND(AVG(r.total_tokens),1)               AS avg_tokens,
+               ROUND(AVG(CASE WHEN r.total_tokens>0
+                   THEN r.total_energy_uj/r.total_tokens END)/1e3,4) AS avg_mj_per_token,
+               ROUND(AVG(r.ipc),3)                        AS avg_ipc,
+               ROUND(AVG(r.carbon_g)*1000,4)              AS avg_carbon_mg,
+               ROUND(AVG(r.water_ml),4)                   AS avg_water_ml
         FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
         WHERE e.model_name IS NOT NULL
         GROUP BY e.model_name, e.provider, r.workflow_type, e.task_name
@@ -321,7 +321,7 @@ def render_model_behavior_sidebar():
         if c in _model_cmp.columns
     ]
     st.dataframe(
-        _model_cmp[_show_cols].ROUND(CAST(4 AS NUMERIC)), use_container_width=True, hide_index=True
+        _model_cmp[_show_cols].round(4), use_container_width=True, hide_index=True
     )
 
 
@@ -377,8 +377,9 @@ def render(ctx: dict):
                     e.error_message,
                     COUNT(r.run_id)                                 AS runs_done_actual,
                     COALESCE(e.runs_completed, COUNT(r.run_id))     AS runs_done,
-                    ROUND(CAST(100.0 * COALESCE(e.runs_completed, COUNT(r.run_id))
-                        / NULLIF(e.runs_total, 0) AS NUMERIC), 0)               AS pct_done
+                    ROUND(
+                        100.0 * COALESCE(e.runs_completed, COUNT(r.run_id))
+                        / NULLIF(e.runs_total, 0), 0)               AS pct_done
                 FROM experiments e
                 LEFT JOIN runs r ON r.exp_id = e.exp_id
                 WHERE (
@@ -629,11 +630,11 @@ def render(ctx: dict):
             )
             or {}
         )
-        _sp = ROUND(CAST(
+        _sp = round(
             int(_suf.get("sufficient_cells", 0) or 0)
             / max(int(_suf.get("total_cells", 1) or 1), 1)
             * 100
-         AS NUMERIC))
+        )
 
         def _chip(v, l, clr, bg):
             return f"<span style='display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;background:{bg};border:1px solid {clr}44;margin-right:6px;'><span style='font-size:13px;font-weight:700;color:{clr};font-family:IBM Plex Mono,monospace;'>{v}</span><span style='font-size:9px;color:{clr};opacity:.8;text-transform:uppercase;letter-spacing:.06em;'>{l}</span></span>"
@@ -755,10 +756,10 @@ def render(ctx: dict):
         _tax_df, _ = q_safe("""
             SELECT
                 e.task_name || ' · ' || COALESCE(e.model_name, e.provider, '?') AS label,
-                ROUND(CAST(AVG(
-                    CAST(ra.total_energy_uj AS DOUBLE PRECISION) /
+                ROUND(AVG(
+                    CAST(ra.total_energy_uj AS REAL) /
                     NULLIF(rl.total_energy_uj, 0)
-                ) AS NUMERIC), 2) AS tmult
+                ), 2) AS tmult
             FROM orchestration_tax_summary ots
             JOIN runs rl ON ots.linear_run_id  = rl.run_id
             JOIN runs ra ON ots.agentic_run_id = ra.run_id
@@ -816,8 +817,8 @@ def render(ctx: dict):
         try:
             _tg, _ = q_safe("""
                 SELECT e.group_id,
-                       ROUND(CAST(AVG(CAST(ra.total_energy_uj AS DOUBLE PRECISION) /
-                             NULLIF(rl.total_energy_uj,0)) AS NUMERIC), 2) AS mt
+                       ROUND(AVG(CAST(ra.total_energy_uj AS REAL) /
+                             NULLIF(rl.total_energy_uj,0)),2) AS mt
                 FROM orchestration_tax_summary ots
                 JOIN runs rl ON ots.linear_run_id  = rl.run_id
                 JOIN runs ra ON ots.agentic_run_id = ra.run_id

@@ -685,7 +685,7 @@ def _deep_analysis(
                         tdf = pd.DataFrame(q(f"""
                             SELECT ots.*,
                             CASE WHEN rl.total_energy_uj > 0
-                                 THEN CAST(ra.total_energy_uj AS DOUBLE PRECISION)/rl.total_energy_uj
+                                 THEN CAST(ra.total_energy_uj AS REAL)/rl.total_energy_uj
                                  ELSE 1.0 END                     AS tax_multiplier,
                             rl.total_energy_uj/1e6                AS linear_energy_j,
                             ra.total_energy_uj/1e6                AS agentic_energy_j,

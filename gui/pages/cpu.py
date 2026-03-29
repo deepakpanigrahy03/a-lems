@@ -223,7 +223,7 @@ def render(ctx: dict):
 
     cs_runs["efficiency_score"] = (
         cs_runs["deep_sleep_s"] / cs_runs["duration_s"] * 100
-    ).clip(0, 100).ROUND(CAST(2 AS NUMERIC))
+    ).clip(0, 100).round(2)
 
     # Classify runs
     def _classify_score(s):

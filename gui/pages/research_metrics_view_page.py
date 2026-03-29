@@ -102,7 +102,7 @@ def render(ctx: dict) -> None:
             ["ooi_time", "ooi_cpu", "ucr", "network_ratio"]
         ]
         .agg(["mean", "count"])
-        .ROUND(CAST(4 AS NUMERIC))
+        .round(4)
     )
 
     # Flat summary for display
@@ -116,7 +116,7 @@ def render(ctx: dict) -> None:
             network_ratio=("network_ratio", "mean"),
         )
         .reset_index()
-        .ROUND(CAST(4 AS NUMERIC))
+        .round(4)
     )
     flat.columns = [
         "Workflow", "Provider", "Runs",
@@ -315,6 +315,6 @@ def render(ctx: dict) -> None:
             "total_llm_compute_ms", "total_wait_ms",
         ]
         st.dataframe(
-            df[show_cols].ROUND(CAST(4 AS NUMERIC)),
+            df[show_cols].round(4),
             use_container_width=True, hide_index=True,
         )

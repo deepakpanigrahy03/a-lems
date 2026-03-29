@@ -132,7 +132,7 @@ def _load_tax_for_session(group_id: str) -> pd.DataFrame:
             ots.orchestration_tax_uj / 1e6 AS tax_j,
             ots.tax_percent,
             CASE WHEN rl.total_energy_uj > 0
-                 THEN CAST(ra.total_energy_uj AS DOUBLE PRECISION) / rl.total_energy_uj
+                 THEN CAST(ra.total_energy_uj AS REAL) / rl.total_energy_uj
                  ELSE 1.0 END              AS tax_multiplier,
             el.task_name, el.provider, el.model_name,
             rl.run_number,
@@ -737,7 +737,7 @@ def _tab_energy(group_id: str, runs: pd.DataFrame, tax: pd.DataFrame):
                     "#ef4444" if v > 50 else "#f59e0b" if v > 20 else "#22c55e"
                     for v in tax2.ooi
                 ],
-                text=tax2.ooi.ROUND(CAST(1 AS NUMERIC)).astype(str) + "%",
+                text=tax2.ooi.round(1).astype(str) + "%",
                 textposition="outside",
             )
         )
@@ -949,7 +949,7 @@ def _tab_thermal(group_id: str, runs: pd.DataFrame):
                     "#ef4444" if v > 25 else "#f59e0b" if v > 15 else "#22c55e"
                     for v in runs.thermal_delta_c.fillna(0)
                 ],
-                text=runs.thermal_delta_c.ROUND(CAST(1 AS NUMERIC)),
+                text=runs.thermal_delta_c.round(1),
                 textposition="outside",
             )
         )
@@ -1036,7 +1036,7 @@ def _tab_cpu(group_id: str, runs: pd.DataFrame):
                     "#22c55e" if w == "linear" else "#ef4444"
                     for w in ipc_agg.workflow_type
                 ],
-                text=ipc_agg.ipc.ROUND(CAST(3 AS NUMERIC)),
+                text=ipc_agg.ipc.round(3),
                 textposition="outside",
             )
         )
@@ -1188,7 +1188,7 @@ def _tab_cpu(group_id: str, runs: pd.DataFrame):
             if c in runs.columns
         ]
         if len(num_cols) >= 2:
-            corr = runs[num_cols].corr().ROUND(CAST(3 AS NUMERIC))
+            corr = runs[num_cols].corr().round(3)
             st.caption(
                 "Correlation matrix (fallback — install statsmodels for full regression):"
             )
@@ -2131,7 +2131,7 @@ def _generate_pdf(
                         f"{v:.3f}" if c in ("ipc", "cache_miss_rate") else f"{v:,.0f}"
                     )
                 tbl3.append(row_vals)
-            col_w = [3.5] + [ROUND(CAST((16.5 - 3.5) / len(cpu_avail) AS NUMERIC), 1)] * len(cpu_avail)
+            col_w = [3.5] + [round((16.5 - 3.5) / len(cpu_avail), 1)] * len(cpu_avail)
             story.append(_table(tbl3, col_w))
 
             if "thread_migrations" in cpu_avail:

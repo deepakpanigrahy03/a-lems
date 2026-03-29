@@ -142,10 +142,10 @@ def render(ctx: dict) -> None:
     coverage = {}
     for c in unique_cols:
         null_count = int(null_row.get(f"null_{c}", 0) or 0)
-        coverage[c] = ROUND(CAST((1 - null_count / total_runs) * 100 AS NUMERIC), 1)
+        coverage[c] = round((1 - null_count / total_runs) * 100, 1)
 
     # ── Header ────────────────────────────────────────────────────────────────
-    overall_coverage = ROUND(CAST(sum(coverage.values()) / len(coverage) AS NUMERIC), 1)
+    overall_coverage = round(sum(coverage.values()) / len(coverage), 1)
     health_clr = (
         "#22c55e"
         if overall_coverage >= 90
@@ -183,7 +183,7 @@ def render(ctx: dict) -> None:
         if not valid_cols:
             continue
 
-        group_avg = ROUND(CAST(sum(coverage[c] for c in valid_cols) / len(valid_cols) AS NUMERIC), 1)
+        group_avg = round(sum(coverage[c] for c in valid_cols) / len(valid_cols), 1)
         group_clr = (
             "#22c55e"
             if group_avg >= 90

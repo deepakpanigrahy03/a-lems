@@ -254,7 +254,7 @@ def render(ctx: dict) -> None:
                     "ipc",
                 ]
             ]
-            .ROUND(CAST(6 AS NUMERIC))
+            .round(6)
             if "energy_j" in df.columns
             else pd.DataFrame()
         )

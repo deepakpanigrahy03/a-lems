@@ -66,22 +66,22 @@ def render(ctx: dict):
             COALESCE(tc.category, 'uncategorised')           AS category,
             r.workflow_type,
             COUNT(*)                                          AS runs,
-            ROUND(CAST(AVG(r.total_energy_uj)   / 1e6 AS NUMERIC), 4)        AS avg_energy_j,
-            ROUND(CAST(AVG(r.dynamic_energy_uj) / 1e6 AS NUMERIC), 4)        AS avg_dynamic_j,
-            ROUND(CAST(AVG(r.duration_ns)       / 1e9 AS NUMERIC), 3)        AS avg_duration_s,
-            ROUND(CAST(AVG(r.total_tokens) AS NUMERIC), 1)        AS avg_tokens,
-            ROUND(CAST(AVG(CASE WHEN r.total_tokens > 0
-                THEN r.total_energy_uj / r.total_tokens END) / 1e3 AS NUMERIC), 4) AS avg_mj_per_token,
-            ROUND(CAST(AVG(r.total_energy_uj / 1e6 /
-                NULLIF(r.duration_ns / 1e9, 0)) AS NUMERIC), 4) AS avg_j_per_sec,
-            ROUND(CAST(AVG(r.planning_time_ms) AS NUMERIC), 1)        AS avg_plan_ms,
-            ROUND(CAST(AVG(r.execution_time_ms) AS NUMERIC), 1)        AS avg_exec_ms,
-            ROUND(CAST(AVG(r.synthesis_time_ms) AS NUMERIC), 1)        AS avg_synth_ms,
-            ROUND(CAST(AVG(r.carbon_g) * 1000 AS NUMERIC), 4)        AS avg_carbon_mg,
-            ROUND(CAST(AVG(r.water_ml) AS NUMERIC), 4)        AS avg_water_ml,
-            ROUND(CAST(AVG(es_agg.core_j) AS NUMERIC), 4)        AS avg_core_j,
-            ROUND(CAST(AVG(es_agg.uncore_j) AS NUMERIC), 4)        AS avg_uncore_j,
-            ROUND(CAST(AVG(es_agg.dram_j) AS NUMERIC), 4)        AS avg_dram_j
+            ROUND(AVG(r.total_energy_uj)   / 1e6, 4)        AS avg_energy_j,
+            ROUND(AVG(r.dynamic_energy_uj) / 1e6, 4)        AS avg_dynamic_j,
+            ROUND(AVG(r.duration_ns)       / 1e9, 3)        AS avg_duration_s,
+            ROUND(AVG(r.total_tokens),            1)        AS avg_tokens,
+            ROUND(AVG(CASE WHEN r.total_tokens > 0
+                THEN r.total_energy_uj / r.total_tokens END) / 1e3, 4) AS avg_mj_per_token,
+            ROUND(AVG(r.total_energy_uj / 1e6 /
+                NULLIF(r.duration_ns / 1e9, 0)),             4) AS avg_j_per_sec,
+            ROUND(AVG(r.planning_time_ms),        1)        AS avg_plan_ms,
+            ROUND(AVG(r.execution_time_ms),       1)        AS avg_exec_ms,
+            ROUND(AVG(r.synthesis_time_ms),       1)        AS avg_synth_ms,
+            ROUND(AVG(r.carbon_g) * 1000,         4)        AS avg_carbon_mg,
+            ROUND(AVG(r.water_ml),                4)        AS avg_water_ml,
+            ROUND(AVG(es_agg.core_j),             4)        AS avg_core_j,
+            ROUND(AVG(es_agg.uncore_j),           4)        AS avg_uncore_j,
+            ROUND(AVG(es_agg.dram_j),             4)        AS avg_dram_j
         FROM runs r
         JOIN experiments e ON r.exp_id = e.exp_id
         LEFT JOIN task_categories tc ON e.task_name = tc.task_id
@@ -232,15 +232,15 @@ def render(ctx: dict):
                    COALESCE(tc.category,'uncategorised') AS category,
                    r.workflow_type,
                    COUNT(*) AS runs,
-                   ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4)  AS avg_energy_j,
-                   ROUND(CAST(AVG(r.duration_ns)/1e9 AS NUMERIC), 3)   AS avg_duration_s,
-                   ROUND(CAST(AVG(r.total_tokens) AS NUMERIC), 1)  AS avg_tokens,
-                   ROUND(CAST(AVG(CASE WHEN r.total_tokens > 0
-                       THEN r.total_energy_uj/r.total_tokens END)/1e3 AS NUMERIC), 4) AS avg_mj_per_token,
-                   ROUND(CAST(AVG(r.carbon_g)*1000 AS NUMERIC), 4)  AS avg_carbon_mg,
-                   ROUND(CAST(AVG(r.water_ml) AS NUMERIC), 4)  AS avg_water_ml,
-                   ROUND(CAST(AVG(r.llm_calls) AS NUMERIC), 1)  AS avg_llm_calls,
-                   ROUND(CAST(AVG(r.tool_calls) AS NUMERIC), 1)  AS avg_tool_calls
+                   ROUND(AVG(r.total_energy_uj)/1e6, 4)  AS avg_energy_j,
+                   ROUND(AVG(r.duration_ns)/1e9,    3)   AS avg_duration_s,
+                   ROUND(AVG(r.total_tokens),        1)  AS avg_tokens,
+                   ROUND(AVG(CASE WHEN r.total_tokens > 0
+                       THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_per_token,
+                   ROUND(AVG(r.carbon_g)*1000,       4)  AS avg_carbon_mg,
+                   ROUND(AVG(r.water_ml),            4)  AS avg_water_ml,
+                   ROUND(AVG(r.llm_calls),           1)  AS avg_llm_calls,
+                   ROUND(AVG(r.tool_calls),          1)  AS avg_tool_calls
             FROM runs r
             JOIN experiments e ON r.exp_id = e.exp_id
             LEFT JOIN task_categories tc ON e.task_name = tc.task_id

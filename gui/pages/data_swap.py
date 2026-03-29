@@ -36,7 +36,7 @@ def render(ctx: dict) -> None:
     has_swap_pct = "swap_end_percent" in df.columns
 
     df_swapped = df[df["swap_end_used_mb"] > 0]
-    swap_pct_val = ROUND(CAST(len(df_swapped) / len(df) * 100 AS NUMERIC), 1) if len(df) > 0 else 0
+    swap_pct_val = round(len(df_swapped) / len(df) * 100, 1) if len(df) > 0 else 0
 
     lin = df[df["workflow_type"] == "linear"]
     age = df[df["workflow_type"] == "agentic"]

@@ -267,7 +267,7 @@ def render(ctx: dict) -> None:
     if baselines.empty:
         st.info("No idle baselines recorded yet.")
     else:
-        st.dataframe(baselines.ROUND(CAST(4 AS NUMERIC)), use_container_width=True, height=250)
+        st.dataframe(baselines.round(4), use_container_width=True, height=250)
 
         # Baseline power bar chart
         fig2 = go.Figure()

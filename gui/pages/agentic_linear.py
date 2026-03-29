@@ -62,21 +62,21 @@ def render(ctx: dict):
         SELECT e.task_name, e.provider, e.model_name,
                r.workflow_type,
                COUNT(*) AS runs,
-               ROUND(CAST(AVG(r.total_energy_uj)/1e6 AS NUMERIC), 4)   AS avg_energy_j,
-               ROUND(CAST(AVG(r.dynamic_energy_uj)/1e6 AS NUMERIC), 4)  AS avg_dynamic_j,
-               ROUND(CAST(AVG(r.duration_ns)/1e9 AS NUMERIC), 3)         AS avg_duration_s,
-               ROUND(CAST(AVG(r.total_tokens) AS NUMERIC), 1)            AS avg_tokens,
-               ROUND(CAST(AVG(CASE WHEN r.total_tokens>0
-                   THEN r.total_energy_uj/r.total_tokens END)/1e3 AS NUMERIC), 4) AS avg_mj_token,
-               ROUND(CAST(AVG(r.ipc) AS NUMERIC), 3)                     AS avg_ipc,
-               ROUND(CAST(AVG(r.cache_miss_rate)*100 AS NUMERIC), 2)      AS avg_cache_miss,
-               ROUND(CAST(AVG(r.carbon_g)*1000 AS NUMERIC), 4)            AS avg_carbon_mg,
-               ROUND(CAST(AVG(r.planning_time_ms) AS NUMERIC), 1)          AS avg_plan_ms,
-               ROUND(CAST(AVG(r.execution_time_ms) AS NUMERIC), 1)         AS avg_exec_ms,
-               ROUND(CAST(AVG(r.synthesis_time_ms) AS NUMERIC), 1)         AS avg_synth_ms,
-               ROUND(CAST(AVG(r.llm_calls) AS NUMERIC), 2)                 AS avg_llm_calls,
-               ROUND(CAST(AVG(r.tool_calls) AS NUMERIC), 2)                AS avg_tool_calls,
-               ROUND(CAST(AVG(r.thermal_delta_c) AS NUMERIC), 2)            AS avg_temp_rise
+               ROUND(AVG(r.total_energy_uj)/1e6, 4)   AS avg_energy_j,
+               ROUND(AVG(r.dynamic_energy_uj)/1e6, 4)  AS avg_dynamic_j,
+               ROUND(AVG(r.duration_ns)/1e9, 3)         AS avg_duration_s,
+               ROUND(AVG(r.total_tokens), 1)            AS avg_tokens,
+               ROUND(AVG(CASE WHEN r.total_tokens>0
+                   THEN r.total_energy_uj/r.total_tokens END)/1e3, 4) AS avg_mj_token,
+               ROUND(AVG(r.ipc), 3)                     AS avg_ipc,
+               ROUND(AVG(r.cache_miss_rate)*100, 2)      AS avg_cache_miss,
+               ROUND(AVG(r.carbon_g)*1000, 4)            AS avg_carbon_mg,
+               ROUND(AVG(r.planning_time_ms), 1)          AS avg_plan_ms,
+               ROUND(AVG(r.execution_time_ms), 1)         AS avg_exec_ms,
+               ROUND(AVG(r.synthesis_time_ms), 1)         AS avg_synth_ms,
+               ROUND(AVG(r.llm_calls), 2)                 AS avg_llm_calls,
+               ROUND(AVG(r.tool_calls), 2)                AS avg_tool_calls,
+               ROUND(AVG(r.thermal_delta_c), 2)            AS avg_temp_rise
         FROM runs r JOIN experiments e ON r.exp_id=e.exp_id
         GROUP BY e.task_name, e.provider, e.model_name, r.workflow_type
         ORDER BY e.task_name, r.workflow_type
@@ -147,7 +147,7 @@ def render(ctx: dict):
             st.plotly_chart(fl(_fig_al), use_container_width=True)
 
         with _tab_table:
-            st.dataframe(_cmp.ROUND(CAST(4 AS NUMERIC)), use_container_width=True, hide_index=True)
+            st.dataframe(_cmp.round(4), use_container_width=True, hide_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

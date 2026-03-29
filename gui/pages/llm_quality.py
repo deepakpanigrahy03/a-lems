@@ -63,17 +63,17 @@ def _score_run(interactions: pd.DataFrame, total_energy_j: float) -> dict:
                    if "api_latency_ms" in interactions.columns else 1
 
     # Score 1: Step completion rate (0-100)
-    completion_score = ROUND(CAST(n_success / n_steps * 100 AS NUMERIC), 1) if n_steps else 0
+    completion_score = round(n_success / n_steps * 100, 1) if n_steps else 0
 
     # Score 2: Token efficiency — completion/prompt ratio, normalised
     # A ratio of ~0.5-2.0 is normal; higher means more output per input
     tok_ratio = comp_toks / max(prompt_toks, 1)
-    tok_efficiency_score = min(100, ROUND(CAST(tok_ratio * 50 AS NUMERIC), 1))
+    tok_efficiency_score = min(100, round(tok_ratio * 50, 1))
 
     # Score 3: Latency efficiency — tokens per second
     tokens_per_sec = total_tokens / (total_lat_ms / 1000) if total_lat_ms > 0 else 0
     # Normalise: 100 tok/s = perfect, <10 tok/s = poor
-    latency_score = min(100, ROUND(CAST(tokens_per_sec AS NUMERIC), 1))
+    latency_score = min(100, round(tokens_per_sec, 1))
 
     # Score 4: Response richness — avg response length in chars
     avg_resp_len = 0
@@ -82,11 +82,13 @@ def _score_run(interactions: pd.DataFrame, total_energy_j: float) -> dict:
         avg_resp_len = float(resp_lens.mean()) if not resp_lens.empty else 0
 
     # Composite score weighted sum
-    composite = ROUND(CAST(completion_score   * W_STEP_COMPLETION
+    composite = round(
+        completion_score   * W_STEP_COMPLETION
         + tok_efficiency_score * W_TOKEN_EFFICIENCY
         + min(100, latency_score)  * W_LATENCY_EFFICIENCY
         + min(100, avg_resp_len / 10) * W_LENGTH_CONSISTENCY,
-        1 AS NUMERIC), )
+        1,
+    )
 
     # Energy efficiency: J per completion token
     j_per_token = total_energy_j / max(comp_toks, 1)
@@ -511,7 +513,7 @@ def render(ctx: dict) -> None:
                 if lin_text and agt_text:
                     len_diff = abs(len(lin_text) - len(agt_text))
                     len_max  = max(len(lin_text), len(agt_text), 1)
-                    length_sim = ROUND(CAST((1 - len_diff / len_max) * 100 AS NUMERIC), 1)
+                    length_sim = round((1 - len_diff / len_max) * 100, 1)
                 else:
                     length_sim = None
 
@@ -694,7 +696,7 @@ def render(ctx: dict) -> None:
         if "error_message"      in view.columns: show_cols.append("error_message")
 
         st.dataframe(
-            view[show_cols].head(200).ROUND(CAST(2 AS NUMERIC)),
+            view[show_cols].head(200).round(2),
             use_container_width=True, hide_index=True,
         )
 

@@ -133,7 +133,7 @@ def render(ctx: dict) -> None:
     with col_b:
         st.metric("Columns", f"{len(preview.columns) if not preview.empty else 0}")
     with col_c:
-        pct = ROUND(CAST(filtered_count / total * 100 AS NUMERIC), 1) if total else 0
+        pct = round(filtered_count / total * 100, 1) if total else 0
         st.metric("% of total", f"{pct}%")
 
     if preview.empty:
@@ -170,7 +170,7 @@ def render(ctx: dict) -> None:
                 c = preview[["energy_j", col]].dropna()
                 if len(c) > 10:
                     r = c.corr().iloc[0, 1]
-                    corrs.append((col, ROUND(CAST(r AS NUMERIC), 3)))
+                    corrs.append((col, round(r, 3)))
             except Exception:
                 pass
 
@@ -233,7 +233,7 @@ def render(ctx: dict) -> None:
         if c in preview.columns
     ]
 
-    st.dataframe(preview[key_cols].ROUND(CAST(4 AS NUMERIC)), use_container_width=True, height=300)
+    st.dataframe(preview[key_cols].round(4), use_container_width=True, height=300)
 
     # ── Export ────────────────────────────────────────────────────────────────
     st.markdown(

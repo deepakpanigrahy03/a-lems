@@ -92,7 +92,7 @@ def render(ctx: dict) -> None:
     avg_major   = df["major_page_faults"].mean()
     avg_minor   = df["minor_page_faults"].mean()
     max_major   = df["major_page_faults"].max()
-    clean_pct   = ROUND(CAST(n_clean / total * 100 AS NUMERIC), 1) if total else 0
+    clean_pct   = round(n_clean / total * 100, 1) if total else 0
 
     # ── Header ────────────────────────────────────────────────────────────────
     health_clr = (
@@ -261,7 +261,7 @@ def render(ctx: dict) -> None:
             if "provider"   in df.columns: show_cols.append("provider")
             if "energy_j"   in df.columns: show_cols.append("energy_j")
             st.dataframe(
-                severe_runs[show_cols].ROUND(CAST(2 AS NUMERIC)),
+                severe_runs[show_cols].round(2),
                 use_container_width=True, hide_index=True,
             )
         else:
@@ -558,7 +558,7 @@ def render(ctx: dict) -> None:
             if pd.isna(r): continue
             corr_rows.append({
                 "Metric":            col,
-                "r (major_faults)":  ROUND(CAST(r AS NUMERIC), 4),
+                "r (major_faults)":  round(r, 4),
                 "Strength":          "strong" if abs(r) >= 0.5 else "moderate" if abs(r) >= 0.3 else "weak",
                 "n runs":            len(sub),
             })
@@ -624,6 +624,6 @@ def render(ctx: dict) -> None:
         with st.expander("Page fault statistics by workflow"):
             stats = (
                 df.groupby("workflow_type")[["major_page_faults", "minor_page_faults"]]
-                .describe().ROUND(CAST(2 AS NUMERIC))
+                .describe().round(2)
             )
             st.dataframe(stats, use_container_width=True)

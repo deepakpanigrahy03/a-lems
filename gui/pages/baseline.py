@@ -212,7 +212,7 @@ def render(ctx: dict) -> None:
         "ID", "Pkg (W)", "Core (W)", "Uncore (W)", "DRAM (W)",
         "Governor", "Turbo", "BG CPU%", "Duration(s)", "Samples", "Method",
     ]
-    st.dataframe(display.ROUND(CAST(4 AS NUMERIC)), use_container_width=True)
+    st.dataframe(display.round(4), use_container_width=True)
 
     # ── How baselines affect energy (original — unchanged) ────────────────────
     st.markdown(
@@ -318,13 +318,13 @@ def render(ctx: dict) -> None:
     adj_df["idle_fraction_pct"] = (
         (adj_df["baseline_pkg_w"] * adj_df["duration_s"])
         / adj_df["total_energy_j"] * 100
-    ).clip(0, 100).ROUND(CAST(1 AS NUMERIC))
+    ).clip(0, 100).round(1)
 
     # Difference between stored dynamic_energy_uj and our recomputed value
     # Non-zero means the harness used a different baseline value at collection time.
     adj_df["dynamic_delta_j"] = (
         adj_df["computed_dynamic_j"] - adj_df["stored_dynamic_j"]
-    ).ROUND(CAST(6 AS NUMERIC))
+    ).round(6)
 
     n_adj = len(adj_df)
     avg_idle_pct   = adj_df["idle_fraction_pct"].mean()
@@ -427,7 +427,7 @@ def render(ctx: dict) -> None:
 
     turbo_groups = adj_df.groupby("turbo")[
         ["total_energy_j", "computed_dynamic_j", "idle_fraction_pct"]
-    ].agg(["mean", "std", "count"]).ROUND(CAST(4 AS NUMERIC))
+    ].agg(["mean", "std", "count"]).round(4)
 
     if len(adj_df["turbo"].dropna().unique()) >= 2:
         turbo_agg = (
@@ -528,7 +528,7 @@ def render(ctx: dict) -> None:
     bl_compare = (
         adj_df.groupby("turbo")[  # group by baseline_id not turbo — kept for compat
             ["total_energy_j", "computed_dynamic_j"]
-        ].agg(["mean", "count"]).ROUND(CAST(4 AS NUMERIC))
+        ].agg(["mean", "count"]).round(4)
     )
 
     bl_energy = q("""
@@ -553,7 +553,7 @@ def render(ctx: dict) -> None:
         bl_energy["avg_computed_dynamic_j"] = (
             bl_energy["avg_total_j"]
             - bl_energy["idle_pkg_w"] * bl_energy["avg_duration_s"]
-        ).clip(lower=0).ROUND(CAST(4 AS NUMERIC))
+        ).clip(lower=0).round(4)
 
         display_bl = bl_energy[[
             "baseline_id", "workflow_type", "n_runs",
@@ -565,7 +565,7 @@ def render(ctx: dict) -> None:
             "Avg Total (J)", "Avg Dynamic (J)",
             "Idle Pkg (W)", "Avg Duration (s)",
         ]
-        st.dataframe(display_bl.ROUND(CAST(4 AS NUMERIC)), use_container_width=True, hide_index=True)
+        st.dataframe(display_bl.round(4), use_container_width=True, hide_index=True)
 
         # Flag if dynamic energy differs > 20% between baselines for same workflow
         for wf in bl_energy["workflow_type"].unique():

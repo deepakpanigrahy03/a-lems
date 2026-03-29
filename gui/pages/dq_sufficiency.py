@@ -162,13 +162,13 @@ def render(ctx: dict) -> None:
     # ── Derived columns ───────────────────────────────────────────────────────
     df["runs_needed"] = (MIN_RUNS - df["run_count"]).clip(lower=0)
     df["sufficient"]  = df["run_count"] >= MIN_RUNS
-    df["pct"]         = (df["run_count"] / MIN_RUNS * 100).clip(upper=100).ROUND(CAST(1 AS NUMERIC))
+    df["pct"]         = (df["run_count"] / MIN_RUNS * 100).clip(upper=100).round(1)
     df["hostname"]    = df["hostname"].fillna("hw_" + df["hw_id"].astype(str))
 
     total_cells        = len(df)
     sufficient_cells   = int(df["sufficient"].sum())
     total_runs_needed  = int(df["runs_needed"].sum())
-    readiness          = ROUND(CAST(sufficient_cells / total_cells * 100 AS NUMERIC), 1) if total_cells else 0
+    readiness          = round(sufficient_cells / total_cells * 100, 1) if total_cells else 0
 
     # ── Header — readiness score ──────────────────────────────────────────────
     health_clr = (

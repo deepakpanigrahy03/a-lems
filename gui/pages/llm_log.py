@@ -65,7 +65,7 @@ def render(ctx: dict) -> None:
         return
 
     # ── Header ────────────────────────────────────────────────────────────────
-    error_rate = ROUND(CAST(n_error / total * 100 AS NUMERIC), 1) if total else 0
+    error_rate = round(n_error / total * 100, 1) if total else 0
     health_clr = "#22c55e" if error_rate < 5 else "#f59e0b" if error_rate < 20 else "#ef4444"
 
     st.markdown(
