@@ -418,7 +418,8 @@ _ALL_BOOL_COLS = {
  
 # Columns that only exist in SQLite — never send to PostgreSQL
 _SQLITE_ONLY = {
-    "sync_status",       # SQLite sync tracking, not in PG
+    "sync_status",  
+    "sync_samples_status",     # SQLite sync tracking, not in PG
     "global_run_id",     # old UUID — no longer used
     "global_exp_id",     # old UUID — no longer used
 }
