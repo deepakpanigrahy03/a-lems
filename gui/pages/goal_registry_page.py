@@ -216,10 +216,12 @@ def _tab_all_goals(goals: list[ResearchGoal]) -> None:
         textposition="outside",
         textfont=dict(size=9, color="#7090b0"),
     ))
-    fig.update_layout(**make_layout())),
+    fig.update_layout(
+        **make_layout(),
         height=200,
         margin=dict(l=40, r=20, t=30, b=40),
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown(f"**{len(filtered)} goals** {'(filtered)' if sel_cat != '(all)' else ''}")
