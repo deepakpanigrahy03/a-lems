@@ -145,16 +145,19 @@ def _build_payload(con, run_ids, exp_ids, db_path, include_samples=True):
     hw_data = dict(hw_row) if hw_row else {}
     exp_rows = fetch("experiments", "exp_id", exp_ids)
     run_rows = fetch("runs", "run_id", run_ids)
-    env_ids      = list({e["env_id"]      for e in exp_rows if e.get("env_id")})
-    baseline_ids = list({r["baseline_id"] for r in run_rows if r.get("baseline_id")})
-    task_cats = [dict(r) for r in con.execute("SELECT * FROM task_categories").fetchall()]
+    env_ids   = list({e["env_id"] for e in exp_rows if e.get("env_id")})
+    # Send ALL baselines and task_categories every batch — small reference tables,
+    # idempotent upsert on server. Avoids FK violation when a run references a
+    # baseline that was collected in a different sync batch.
+    all_baselines = [dict(r) for r in con.execute("SELECT * FROM idle_baselines").fetchall()]
+    task_cats     = [dict(r) for r in con.execute("SELECT * FROM task_categories").fetchall()]
 
     payload = {
         "hardware_hash":    hw_data.get("hardware_hash", ""),
         "api_key":          get_api_key(),
         "hardware_data":    hw_data,
         "environment_config":  fetch("environment_config", "env_id", env_ids),
-        "idle_baselines":      fetch("idle_baselines", "baseline_id", baseline_ids),
+        "idle_baselines":      all_baselines,
         "task_categories":     task_cats,
         "experiments":         exp_rows,
         "runs":                run_rows,

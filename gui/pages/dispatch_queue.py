@@ -88,6 +88,25 @@ def _render_server_queue(ctx: dict):
     if filter_status != "all":
         jobs = [j for j in jobs if j.get("status") == filter_status]
 
+    # ── Dispatch new job to all connected machines ────────────────────────────
+    with st.expander("⬡ Dispatch job to all connected machines", expanded=False):
+        import json
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            task_id = st.text_input("Task ID", value="gsm8k_basic", key="dq_task")
+        with col2:
+            provider = st.selectbox("Provider", ["cloud", "local"], key="dq_prov")
+        with col3:
+            reps = st.number_input("Repetitions", min_value=1, max_value=20, value=3, key="dq_reps")
+        model = st.text_input("Model (optional)", value="", key="dq_model")
+        if st.button("🚀 Dispatch to all connected machines", key="dq_dispatch_all"):
+            exp_cfg = {"task_id": task_id, "provider": provider,
+                       "repetitions": reps, "workflow_type": "linear"}
+            if model:
+                exp_cfg["model_name"] = model
+            _dispatch_to_all(json.dumps(exp_cfg))
+
+    st.markdown("---")
     for job in jobs:
         _job_card(job, admin=True)
 
@@ -187,6 +206,34 @@ def _job_card(job: dict, admin: bool = False) -> None:
             with col2:
                 if st.button("↑ Priority", key=f"prio_{job.get('job_id')}"):
                     _boost_priority(str(job.get("job_id")))
+
+
+def _dispatch_to_all(config_json: str) -> None:
+    """Create one pending job per connected machine (last_seen within 2 min)."""
+    import os
+    from alems.shared.db_layer import get_engine, get_session
+    from sqlalchemy import text
+    engine = get_engine(os.environ.get("ALEMS_DB_URL"))
+    with get_session(engine) as session:
+        machines = session.execute(text("""
+            SELECT hw_id FROM hardware_config
+            WHERE agent_status IN ('idle', 'connected', 'syncing')
+              AND last_seen > NOW() - INTERVAL '2 minutes'
+        """)).fetchall()
+        count = 0
+        for (hw_id,) in machines:
+            session.execute(text("""
+                INSERT INTO job_queue
+                    (experiment_config_json, status, priority, target_hw_id, created_by_hw_id)
+                VALUES (:cfg, 'pending', 5, :hw, :hw)
+            """), {"cfg": config_json, "hw": hw_id})
+            count += 1
+        session.commit()
+    if count:
+        st.success(f"Dispatched to {count} machine(s)")
+    else:
+        st.warning("No connected machines found (last_seen within 2 min)")
+    st.rerun()
 
 
 def _cancel_job(job_id: str) -> None:

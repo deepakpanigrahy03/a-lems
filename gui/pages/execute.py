@@ -207,15 +207,20 @@ def _load_tasks() -> tuple:
 
 def _show_stuck_runs():
     try:
-        stuck = q(f"""
-            SELECT exp_id, task_name, provider, group_id,
-                   started_at, runs_completed, runs_total
-            FROM experiments
-            WHERE status = 'running'
-              AND started_at IS NOT NULL
-              AND (julianday('now') - julianday(started_at)) * 1440 > {_STUCK_MINS}
-            ORDER BY exp_id
-        """)
+        from gui.db import is_server_mode
+        if is_server_mode():
+            from gui.db_pg import load_stuck_experiments
+            stuck = load_stuck_experiments(_STUCK_MINS)
+        else:
+            stuck = q(f"""
+                SELECT exp_id, task_name, provider, group_id,
+                       started_at, runs_completed, runs_total
+                FROM experiments
+                WHERE status = 'running'
+                  AND started_at IS NOT NULL
+                  AND (julianday('now') - julianday(started_at)) * 1440 > {_STUCK_MINS}
+                ORDER BY exp_id
+            """)
     except Exception:
         return
     if stuck.empty:

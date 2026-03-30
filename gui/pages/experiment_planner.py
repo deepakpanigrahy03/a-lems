@@ -95,45 +95,35 @@ def _render_suggester():
             st.rerun()
 
     # ── Load coverage data ────────────────────────────────────────────────────
-    # Try cached coverage_matrix first, fall back to live query
-    coverage = q("""
-        SELECT
-            cm.hw_id,
-            cm.model_name,
-            cm.task_name,
-            cm.workflow_type,
-            cm.run_count,
-            cm.last_updated,
-            h.hostname
-        FROM coverage_matrix cm
-        LEFT JOIN hardware_config h ON cm.hw_id = h.hw_id
-        ORDER BY cm.run_count ASC
-    """)
-
-    if coverage.empty:
-        # Fall back to live query if coverage_matrix not populated yet
+    from gui.db import is_server_mode
+    if is_server_mode():
+        # PG: live query with correct GROUP BY (no coverage_matrix table in PG)
+        from gui.db_pg import load_coverage
+        coverage = load_coverage()
+    else:
+        # SQLite: try cached coverage_matrix, fall back to live query
         coverage = q("""
-            SELECT
-                r.hw_id,
-                e.model_name,
-                e.task_name,
-                e.workflow_type,
-                COUNT(*) AS run_count,
-                h.hostname
-            FROM runs r
-            JOIN experiments e ON r.exp_id = e.exp_id
-            LEFT JOIN hardware_config h ON r.hw_id = h.hw_id
-            WHERE e.model_name IS NOT NULL
-              AND e.task_name  IS NOT NULL
-              AND e.workflow_type IS NOT NULL
-            GROUP BY r.hw_id, e.model_name, e.task_name, e.workflow_type
-            ORDER BY run_count ASC
+            SELECT cm.hw_id, cm.model_name, cm.task_name,
+                   cm.workflow_type, cm.run_count, cm.last_updated, h.hostname
+            FROM coverage_matrix cm
+            LEFT JOIN hardware_config h ON cm.hw_id = h.hw_id
+            ORDER BY cm.run_count ASC
         """)
-        if not coverage.empty:
-            st.info(
-                "Coverage table is empty — showing live query results. "
-                "Click ⟳ Refresh to populate the cache."
-            )
+        if coverage.empty:
+            coverage = q("""
+                SELECT r.hw_id, e.model_name, e.task_name, e.workflow_type,
+                       COUNT(*) AS run_count, h.hostname
+                FROM runs r
+                JOIN experiments e ON r.exp_id = e.exp_id
+                LEFT JOIN hardware_config h ON r.hw_id = h.hw_id
+                WHERE e.model_name IS NOT NULL
+                  AND e.task_name  IS NOT NULL
+                  AND e.workflow_type IS NOT NULL
+                GROUP BY r.hw_id, e.model_name, e.task_name, e.workflow_type, h.hostname
+                ORDER BY run_count ASC
+            """)
+            if not coverage.empty:
+                st.info("Coverage table empty — showing live results. Click ⟳ Refresh.")
 
     if coverage.empty:
         st.warning(
