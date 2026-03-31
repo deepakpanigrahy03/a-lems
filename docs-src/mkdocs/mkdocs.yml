@@ -53,6 +53,7 @@ nav:
     - Troubleshooting Distributed: developer-guide/11-troubleshooting-distributed.md
     - Registration & Onboarding: developer-guide/12-registration-onboarding.md
     - Sync & Backload Operations: developer-guide/13-sync-operations.md
+    - Table Details: developer-guide/14-database-tables.md
 
     
   - Research:
