@@ -32,6 +32,14 @@ from alems.shared.models import (
     RegisterRequest, RegisterResponse,
     SubmissionReviewRequest,
 )
+from pydantic import BaseModel as _BaseModel
+from typing import Optional as _Optional
+
+class JobSubmitRequest(_BaseModel):
+    api_key: str
+    experiment_config_json: str
+    target_hw_id: _Optional[int] = None
+    priority: int = 5
 from alems.shared.db_layer import (
     get_engine, get_session,
     upsert_hardware, get_or_create_api_key, verify_api_key,
@@ -217,6 +225,20 @@ def job_status(req: JobStatusRequest, session: Session = Depends(get_db)):
     return {"ok": True}
 
 
+# ── Job submit ────────────────────────────────────────────────────────────────
+
+@app.post("/jobs/submit")
+def submit_job(req: JobSubmitRequest, session: Session = Depends(get_db)):
+    """Submit a job to the queue. target_hw_id=None means any available machine."""
+    session.execute(text("""
+        INSERT INTO job_queue (experiment_config_json, status, priority, target_hw_id)
+        VALUES (:cfg, 'pending', :prio, :hw)
+    """), {"cfg": req.experiment_config_json, "prio": req.priority,
+           "hw": req.target_hw_id})
+    session.commit()
+    return {"ok": True, "message": "Job queued"}
+
+
 # ── Bulk sync ─────────────────────────────────────────────────────────────────
 
 @app.post("/bulk-sync", response_model=BulkSyncResponse)
@@ -256,12 +278,25 @@ def bulk_sync(payload: BulkSyncPayload, session: Session = Depends(get_db)):
             exp = _remap_exp_for_pg(exp, hw_id)
             _upsert_pg(session, "experiments", exp, "hw_id, exp_id")
             rows_inserted += 1
- 
+
+        # Flush so just-inserted experiments are visible to the SELECT below
+        session.flush()
+
+        # Build exp_id -> global_exp_id map once — avoids per-run SELECT + flush race
+        local_exp_ids = list({r.get("exp_id") for r in payload.runs if r.get("exp_id")})
+        exp_id_map: dict[int, int] = {}
+        if local_exp_ids:
+            ph = ",".join(str(int(i)) for i in local_exp_ids)
+            for row in session.execute(text(
+                f"SELECT exp_id, global_exp_id FROM experiments WHERE hw_id = :hw AND exp_id IN ({ph})"
+            ), {"hw": hw_id}).fetchall():
+                exp_id_map[int(row[0])] = int(row[1])
+
         # 6. runs
         _RUNS_STRIP = {"sync_status", "_local_run_id", "_skip"}
         skipped_runs = []
         for run in payload.runs:
-            run = _remap_run_for_pg(run, hw_id, session)
+            run = _remap_run_for_pg(run, hw_id, exp_id_map)
             if run.pop("_skip", False):
                 skipped_runs.append(run.get("run_id"))
                 continue
@@ -449,7 +484,8 @@ def _remap_exp_for_pg(exp: dict, hw_id: int) -> dict:
     return row
  
  
-def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
+def _remap_run_for_pg(run: dict, hw_id: int, exp_id_map: dict) -> dict:
+    """exp_id_map: {local_exp_id -> global_exp_id} pre-built after session.flush()."""
     row = _clean_row(run)
     row["hw_id"] = hw_id
     local_run_id = row.get("run_id")
@@ -457,20 +493,11 @@ def _remap_run_for_pg(run: dict, hw_id: int, session) -> dict:
 
     exp_id = row.get("exp_id")
     if exp_id:
-        exp_row = session.execute(text("""
-            SELECT global_exp_id FROM experiments
-            WHERE hw_id = :hw AND exp_id = :eid
-        """), {"hw": hw_id, "eid": exp_id}).fetchone()
-        if exp_row:
-            row["global_exp_id"] = exp_row[0]
+        global_exp_id = exp_id_map.get(int(exp_id))
+        if global_exp_id:
+            row["global_exp_id"] = global_exp_id
         else:
-            # Experiment not yet synced to PG — skip this run
-            row["_skip"] = True
-
-    # Remove old UUID string if present
-    if isinstance(row.get("global_exp_id"), str):
-        row.pop("global_exp_id", None)
-        row["_skip"] = True
+            row["_skip"] = True  # experiment not synced yet — will retry next batch
 
     return row
  

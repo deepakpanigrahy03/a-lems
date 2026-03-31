@@ -37,6 +37,7 @@ nav:
     - GUI Usage: user-guide/04-gui-usage.md
     - Generating Reports: user-guide/05-generating-reports.md
     - Troubleshooting: user-guide/06-troubleshooting.md
+    - Fleet Control: user-guide/07-fleet-control.md
   
   - Developer Guide:
     - Architecture: developer-guide/01-architecture.md
@@ -51,6 +52,7 @@ nav:
     - Schema Migration: developer-guide/10-schema-migration.md
     - Troubleshooting Distributed: developer-guide/11-troubleshooting-distributed.md
     - Registration & Onboarding: developer-guide/12-registration-onboarding.md
+    - Sync & Backload Operations: developer-guide/13-sync-operations.md
 
     
   - Research:

@@ -1247,6 +1247,36 @@ def render(ctx: dict):
 
     st.title("Execute Run")
 
+    # ── Host selector ──────────────────────────────────────────────────────
+    # localhost always available. Remote hosts shown if agent is connected.
+    # Selection stored in session state; tab2 reads it to decide local vs dispatch.
+    from gui.pages._agent_utils import get_ui_mode, is_server_alive, get_server_url
+    _ui_mode = get_ui_mode()
+
+    _host_options = {"💻 localhost (this machine)": "local"}
+    if _ui_mode == "connected" and is_server_alive():
+        try:
+            import httpx as _hx
+            from alems.agent.mode_manager import get_api_key as _gak
+            _r = _hx.get(f"{get_server_url()}/machines",
+                         headers={"Authorization": f"Bearer {_gak()}"}, timeout=3)
+            if _r.status_code == 200:
+                for _m in _r.json():
+                    if _m.get("agent_status") in ("idle", "connected", "syncing"):
+                        _lbl = f"🟢 {_m['hostname']} (hw_id={_m['hw_id']})"
+                        _host_options[_lbl] = int(_m["hw_id"])
+        except Exception:
+            pass
+
+    if len(_host_options) > 1:
+        _chosen_host_lbl = st.selectbox(
+            "Target machine", list(_host_options.keys()), key="ex_target_host"
+        )
+        st.session_state["ex_dispatch_target"] = _host_options[_chosen_host_lbl]
+    else:
+        st.session_state["ex_dispatch_target"] = "local"
+        st.caption("💻 Running on localhost · Connect to server to dispatch to remote hosts")
+
     # FIX #2: non-blocking mode banner
     _conn = _get_conn_safe()
     if _conn.get("verified"):
@@ -1585,7 +1615,40 @@ def render(ctx: dict):
                 _save_queue()
                 sid = f"ses_{int(_time.time()*1000)}"
 
-                if conn.get("verified"):
+                _dispatch_target = st.session_state.get("ex_dispatch_target", "local")
+
+                if _dispatch_target != "local":
+                    # ── Remote dispatch via job_queue ──────────────────────
+                    import json as _json
+                    from alems.agent.mode_manager import get_api_key as _gak2
+                    _cfg = {
+                        "task_id":      exp.get("task", all_tasks[0] if all_tasks else "gsm8k_basic"),
+                        "provider":     exp.get("provider", (exp.get("providers") or ["cloud"])[0]),
+                        "repetitions":  exp.get("reps", 3),
+                        "workflow_type": exp.get("workflow_type", "linear"),
+                        "country":      exp.get("country", "US"),
+                    }
+                    if exp.get("model"):
+                        _cfg["model_name"] = exp["model"]
+                    try:
+                        import httpx as _hx2
+                        _r2 = _hx2.post(
+                            f"{get_server_url()}/jobs/submit",
+                            json={"api_key": _gak2(),
+                                  "experiment_config_json": _json.dumps(_cfg),
+                                  "target_hw_id": _dispatch_target,
+                                  "priority": 5},
+                            timeout=10,
+                        )
+                        if _r2.status_code == 200:
+                            st.success(f"✅ Job dispatched to hw_id={_dispatch_target}. "
+                                       "Agent will pick it up within 10s.")
+                        else:
+                            st.error(f"Dispatch failed: {_r2.status_code} {_r2.text}")
+                    except Exception as _de:
+                        st.error(f"Dispatch error: {_de}")
+
+                elif conn.get("verified"):
                     payload = {
                         "task_id": exp.get(
                             "task",

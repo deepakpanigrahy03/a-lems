@@ -270,7 +270,7 @@ def _run_gap_detection(all_tasks: list) -> list:
             "LEFT JOIN runs r ON e.exp_id = r.exp_id "
             "AND r.workflow_type = 'linear' "
             "GROUP BY e.task_name, e.provider "
-            f"HAVING cnt < {min_runs} "
+            f"HAVING COUNT(r.run_id) < {min_runs} "
             "ORDER BY cnt ASC "
             "LIMIT 10"
         )
@@ -375,7 +375,7 @@ def _run_gap_detection(all_tasks: list) -> list:
             "JOIN runs r ON e.exp_id = r.exp_id "
             "WHERE r.workflow_type = 'agentic' "
             "GROUP BY e.task_name, e.provider "
-            "HAVING cnt >= 3"
+            "HAVING COUNT(*) >= 3"
         )
         for _, row in df3.iterrows():
             if row.mean_e and row.mean_e > 0:
@@ -847,7 +847,7 @@ def render(ctx: dict):
         if not suggestions:
             st.success("✅ No significant data gaps detected!")
         else:
-            for s in suggestions:
+            for _si, s in enumerate(suggestions):
                 clr = {"🔴": "#ef4444", "🟡": "#f59e0b", "⚪": "#4b5563"}.get(
                     s["emoji"], "#3d5570"
                 )
@@ -866,7 +866,7 @@ def render(ctx: dict):
                 if s.get("action") == "add_to_queue" and s.get("queue_item"):
                     if st.button(
                         f"+ Add to Queue",
-                        key=f"gap_{s['rule_id']}_{s['title'][:20]}",
+                        key=f"gap_{s['rule_id']}_{_si}_{s['title'][:12]}",
                         use_container_width=True,
                     ):
                         if "ex_queue" not in st.session_state:
