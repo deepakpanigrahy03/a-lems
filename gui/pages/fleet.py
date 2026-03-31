@@ -277,18 +277,17 @@ def _dispatch_server() -> None:
         st.warning("No machines registered. Agents must register before dispatch.")
         return
 
-    online = machines[machines.agent_status.isin(["idle", "connected", "syncing"])]
+    online = machines[machines.agent_status.isin(["idle", "connected", "syncing", "offline"])]
 
-    st.markdown(
-        f"<div style='font-size:11px;color:#94a3b8;margin-bottom:12px;'>"
-        f"{len(online)} machine(s) online of {len(machines)} registered</div>",
-        unsafe_allow_html=True,
-    )
+    c_info1, c_info2 = st.columns(2)
+    c_info1.metric("Registered machines", len(machines))
+    c_info2.metric("Available for dispatch", len(machines[machines.agent_status != "offline"]))
 
-    # Host selector
-    host_options = {"🌐 All connected machines": None}
-    for _, m in online.iterrows():
-        host_options[f"{'🟢'} {m['hostname']} (hw_id={m['hw_id']})"] = int(m["hw_id"])
+    # Host selector — ALL machines, not just online (job queues, agent picks up when ready)
+    host_options = {"🌐 All registered machines": None}
+    for _, m in machines.iterrows():
+        icon = "🟢" if m.agent_status in ("idle","connected","syncing") else "⚫"
+        host_options[f"{icon} {m['hostname']} · {m['agent_status']} (hw_id={m['hw_id']})"] = int(m["hw_id"])
 
     chosen_label = st.selectbox("Target machine", list(host_options.keys()),
                                 key="fleet_dispatch_target")
@@ -298,7 +297,7 @@ def _dispatch_server() -> None:
 
     if st.button("🚀 Dispatch Job", type="primary", use_container_width=True,
                  key="fleet_dispatch_btn"):
-        _submit_jobs(cfg, target_hw_id, online)
+        _submit_jobs(cfg, target_hw_id, machines)
 
 
 def _dispatch_local(mode: str) -> None:
@@ -437,6 +436,15 @@ def _jobqueue_server() -> None:
                        key="fleet_jq_filter")
     if flt != "all":
         jobs = jobs[jobs.status == flt]
+
+    pending_count = len(jobs[jobs.status == "pending"]) if not jobs.empty else 0
+    if pending_count > 0:
+        st.info(
+            f"**{pending_count} job(s) pending.** Jobs are picked up automatically by the agent "
+            f"on each machine within 10 seconds. "
+            f"To trigger immediately on local machine: `python -m alems.agent start`",
+            icon="ℹ️",
+        )
 
     for _, job in jobs.iterrows():
         _job_row(dict(job), admin=True)
@@ -583,6 +591,42 @@ def _sync_server() -> None:
             f"last seen: {seen} · last sync: {sync}</div>",
             unsafe_allow_html=True,
         )
+
+    # Server freshness — how up-to-date is PG vs what agents report
+    st.markdown(
+        "<div style='font-size:11px;font-weight:600;color:#a78bfa;"
+        "text-transform:uppercase;margin:12px 0 6px;'>🌐 Server freshness</div>",
+        unsafe_allow_html=True,
+    )
+    freshness = q("""
+        SELECT
+            h.hostname,
+            h.agent_status,
+            h.last_seen,
+            COUNT(DISTINCT r.global_run_id)     AS pg_runs,
+            MAX(r.synced_at)                    AS last_sync,
+            EXTRACT(EPOCH FROM (NOW() - MAX(r.synced_at)))/3600 AS hours_since_sync
+        FROM hardware_config h
+        LEFT JOIN runs r ON r.hw_id = h.hw_id
+        GROUP BY h.hw_id, h.hostname, h.agent_status, h.last_seen
+        ORDER BY h.last_seen DESC NULLS LAST
+    """)
+    if not freshness.empty:
+        for _, row in freshness.iterrows():
+            hrs  = row.get("hours_since_sync")
+            clr  = "#22c55e" if hrs and hrs < 1 else "#f59e0b" if hrs and hrs < 24 else "#ef4444"
+            fresh_txt = f"{hrs:.1f}h ago" if hrs is not None else "never"
+            st.markdown(
+                f"<div style='padding:8px 14px;background:#0d1117;"
+                f"border:1px solid {clr}33;border-left:3px solid {clr};"
+                f"border-radius:8px;margin-bottom:5px;font-size:10px;"
+                f"font-family:IBM Plex Mono,monospace;'>"
+                f"<b style='color:#f1f5f9;'>{row['hostname']}</b> · "
+                f"<span style='color:{clr};'>{row['agent_status']}</span> · "
+                f"PG runs: <b style='color:#a78bfa;'>{int(row['pg_runs'] or 0):,}</b> · "
+                f"last sync: <b style='color:{clr};'>{fresh_txt}</b></div>",
+                unsafe_allow_html=True,
+            )
 
     logs = q("""
         SELECT s.sync_started_at, s.sync_completed_at, s.runs_synced,
