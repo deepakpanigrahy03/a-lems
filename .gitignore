@@ -103,3 +103,4 @@ archive/
 core/.env
 config/hw_config.json.*
 reports/output/
+config/queue_state.yaml

@@ -1,45 +1,40 @@
 """
-streamlit_server.py
-────────────────────────────────────────────────────────────────────────────
-A-LEMS Global Dashboard — PostgreSQL, all-machines view, port 8502.
+A-LEMS Energy Measurement Dashboard
+=====================================
+Entry point — 3-layer navigation dispatcher.
 
-Identical to streamlit_app.py but:
-  - Reads PostgreSQL (ALEMS_DB_URL) — all machines' data aggregated
-  - Shows server mode badge in sidebar  
-  - Adds Hardware Comparison section (cross-hardware analysis)
-
-Run on Oracle VM:
-    streamlit run streamlit_server.py --server.port 8502 --server.address 0.0.0.0
-
-On boxes without ALEMS_DB_URL set, shows a clear error and stops.
-────────────────────────────────────────────────────────────────────────────
+  nav_section=None              → Overview (default)
+  nav_section set, nav_page=None → Section landing card grid
+  nav_section set, nav_page set  → Actual page
 """
+
 import importlib
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
-
-import os
 import pandas as pd
 import streamlit as st
 
-# ── Guard ─────────────────────────────────────────────────────────────────────
-if not os.environ.get("ALEMS_DB_URL", "").startswith("postgresql"):
-    st.set_page_config(page_title="A-LEMS Server", page_icon="🌐", layout="wide")
-    st.error(
-        "## ⊘  Server dashboard requires PostgreSQL\n\n"
-        "`ALEMS_DB_URL` not set or not PostgreSQL.\n\n"
-        "**Local data:** `streamlit run streamlit_app.py`\n\n"
-        "**Global view (Oracle VM):** `streamlit run streamlit_server.py --server.port 8502`"
-    )
-    st.stop()
+
+
+_ROOT = Path(__file__).parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 st.set_page_config(
-    page_title="A-LEMS · Global Dashboard",
-    page_icon="🌐",
+    page_title="A-LEMS · Energy Measurement",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── GUI table migrations — runs every startup, safe, idempotent ───────────────
+from gui.db import is_server_mode
+if not is_server_mode():
+    from gui.db_migrations import ensure_gui_tables
+    _migration_status = ensure_gui_tables()
+    if _migration_status["errors"]:
+        st.sidebar.warning(f"⚠ DB migration issues: {len(_migration_status['errors'])} error(s).")
 
 st.markdown(
     """
@@ -65,16 +60,12 @@ code { font-size:0.75rem; }
     unsafe_allow_html=True,
 )
 
-from gui.db_migrations import ensure_gui_tables
-_migration_status = ensure_gui_tables()
-if _migration_status.get("errors"):
-    st.sidebar.warning(f"⚠ DB migration issues: {len(_migration_status['errors'])} error(s).")
-
 from gui.config import (PAGE_META, PAGE_TO_SECTION, PAGES_BLOCKED,
                         SECTION_ACCENTS, SECTION_PAGES)
 from gui.db import load_overview, load_runs, load_tax
 from gui.sidebar import render_sidebar
 
+# ── Shared data ───────────────────────────────────────────────────────────────
 ov = load_overview()
 runs = load_runs()
 tax = load_tax()
@@ -108,6 +99,7 @@ CTX = dict(
     synth_pct=synth_ms / phase_total * 100,
 )
 
+# ── Page modules ──────────────────────────────────────────────────────────────
 _PAGE_MODULES = {
     "overview": "gui.pages.overview",
     "execute": "gui.pages.execute",
@@ -191,17 +183,10 @@ _PAGE_MODULES = {
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 render_sidebar()
-
-# Server mode badge
 st.sidebar.markdown(
-    "<div style='margin:8px 12px;padding:6px 10px;background:#0d2b0d;"
-    "border:1px solid #22c55e44;border-radius:6px;font-size:10px;"
-    "color:#22c55e;font-family:IBM Plex Mono,monospace;'>"
-    "🌐 GLOBAL VIEW · PostgreSQL · All machines</div>",
+    "<div style='margin:8px 12px;padding:6px 10px;background:#0d2b0d;border:1px solid #22c55e44;border-radius:6px;font-size:10px;color:#22c55e;font-family:IBM Plex Mono,monospace;'>🌐 GLOBAL VIEW · PostgreSQL · All machines</div>",
     unsafe_allow_html=True,
 )
-
-render_sidebar()
 
 nav_section = st.session_state.get("nav_section")
 nav_page = st.session_state.get("nav_page")

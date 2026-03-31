@@ -606,21 +606,9 @@ def _thread_run_local(_first_exp: dict, sid: str):
     _store_set("running", True)
     _store_set("done", False)
 
+    # Run ONLY the first experiment — user must click Start for each subsequent one.
+    # Auto-drain was causing uncontrolled multi-run loops.
     _run_one(_first_exp, sid)
-
-    # Safety cap: never drain more than 50 queued experiments per thread start
-    _max_drain = 50
-    _drained = 0
-    while _drained < _max_drain:
-        if _store_get("stop", False):
-            break
-        with _STORE_LOCK:
-            q_list = _STORE.get("queue", [])
-            if not q_list:
-                break
-            nxt = q_list.pop(0)
-        _drained += 1
-        _run_one(nxt, f"ses_{int(_time.time()*1000)}")
 
     _store_set("running", False)
     _store_set("done", True)
@@ -1530,24 +1518,50 @@ def render(ctx: dict):
             st.divider()
             # ── Target machine selector ───────────────────────────────────
             st.markdown("#### 🖥 Target Machine")
+            from gui.db import is_server_mode as _ism
             from gui.pages._agent_utils import get_ui_mode as _gum, is_server_alive as _isa, get_server_url as _gsu
-            _host_options = {"💻 localhost (this machine)": "local"}
-            if _gum() == "connected" and _isa():
+
+            _host_options = {}
+
+            if _ism():
+                # Server mode — PostgreSQL — show all connected machines, no localhost
                 try:
-                    import httpx as _hx
-                    from alems.agent.mode_manager import get_api_key as _gak
-                    _r = _hx.get(f"{_gsu()}/machines",
-                                 headers={"Authorization": f"Bearer {_gak()}"}, timeout=3)
-                    if _r.status_code == 200:
-                        for _m in _r.json():
-                            if _m.get("agent_status") in ("idle","connected","syncing"):
-                                _host_options[f"🟢 {_m['hostname']} (hw_id={_m['hw_id']})"] = int(_m["hw_id"])
+                    from gui.db_pg import q as _pgq
+                    _machines = _pgq("""
+                        SELECT hw_id, hostname, agent_status FROM hardware_config
+                        WHERE agent_status IN ('idle','connected','syncing')
+                          AND last_seen > NOW() - INTERVAL '5 minutes'
+                        ORDER BY hostname
+                    """)
+                    for _, _m in _machines.iterrows():
+                        _host_options[f"🟢 {_m['hostname']} (hw_id={_m['hw_id']})"] = int(_m["hw_id"])
                 except Exception:
                     pass
-            _chosen = st.selectbox("Run on", list(_host_options.keys()), key="ex_target_host")
-            st.session_state["ex_dispatch_target"] = _host_options[_chosen]
-            if st.session_state["ex_dispatch_target"] != "local":
-                st.caption("⬆ Jobs dispatched to remote host via server job queue.")
+                if not _host_options:
+                    st.warning("No machines connected. Agents must be running and reporting heartbeat.")
+            else:
+                # Local mode — localhost always available + remote if connected
+                _host_options["💻 localhost (this machine)"] = "local"
+                if _gum() == "connected" and _isa():
+                    try:
+                        import httpx as _hx
+                        from alems.agent.mode_manager import get_api_key as _gak
+                        _r = _hx.get(f"{_gsu()}/machines",
+                                     headers={"Authorization": f"Bearer {_gak()}"}, timeout=3)
+                        if _r.status_code == 200:
+                            for _m in _r.json():
+                                if _m.get("agent_status") in ("idle","connected","syncing"):
+                                    _host_options[f"🟢 {_m['hostname']} (hw_id={_m['hw_id']})"] = int(_m["hw_id"])
+                    except Exception:
+                        pass
+
+            if _host_options:
+                _chosen = st.selectbox("Run on", list(_host_options.keys()), key="ex_target_host")
+                st.session_state["ex_dispatch_target"] = _host_options[_chosen]
+                if st.session_state["ex_dispatch_target"] != "local":
+                    st.caption("⬆ Jobs dispatched via server job queue. Agent picks up within 10s.")
+            else:
+                st.session_state["ex_dispatch_target"] = "local"
             st.divider()
 
             st.markdown("#### ⏳ Queue")

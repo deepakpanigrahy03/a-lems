@@ -13,7 +13,7 @@ from __future__ import annotations
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from gui.db import q, q1, is_server_mode
+from gui.db import q, q1, q_safe, is_server_mode
 from gui.config import PL
 
 ACCENT = "#f59e0b"
@@ -134,7 +134,7 @@ def _bar_chart(df: pd.DataFrame, x_col: str, y_col: str, metric_label: str, titl
         textposition="outside",
     ))
     fig.update_layout(
-        **PL,
+        **{k: v for k, v in PL.items() if k != "margin"},
         title=dict(text=title, font=dict(size=12, color="#94a3b8")),
         xaxis_title=x_col,
         yaxis_title=metric_label,

@@ -743,50 +743,160 @@ def _sync_local(mode: str) -> None:
             st.dataframe(recent_failed, use_container_width=True, hide_index=True)
 
 
+def _get_db_path() -> str:
+    """Always use DB_PATH from config — never hardcode home path."""
+    import os
+    from gui.config import DB_PATH
+    return os.environ.get("ALEMS_SQLITE_PATH", str(DB_PATH))
+
+
 def _trigger_sync_now() -> None:
+    import sqlite3
+    db = _get_db_path()
     try:
+        # Counts before
+        con = sqlite3.connect(db)
+        before = con.execute(
+            "SELECT SUM(CASE WHEN sync_status=0 THEN 1 ELSE 0 END),"
+            "SUM(CASE WHEN sync_status=2 THEN 1 ELSE 0 END) FROM runs"
+        ).fetchone()
+        con.close()
+        pending_before = int(before[0] or 0)
+        failed_before  = int(before[1] or 0)
+
         from alems.agent.sync_client import sync_unsynced_runs
-        from alems.agent.mode_manager import get_mode
-        import os
-        db = os.environ.get("ALEMS_SQLITE_PATH",
-                            str(__import__("pathlib").Path.home() /
-                                "mydrive/a-lems/data/experiments.db"))
         result = sync_unsynced_runs(db, immediately=True)
-        synced = result.get("runs_synced", 0)
-        if result.get("status") == "ok":
-            st.success(f"✅ Synced {synced} run(s).")
+
+        # Counts after
+        con = sqlite3.connect(db)
+        after = con.execute(
+            "SELECT SUM(CASE WHEN sync_status=0 THEN 1 ELSE 0 END),"
+            "SUM(CASE WHEN sync_status=1 THEN 1 ELSE 0 END),"
+            "SUM(CASE WHEN sync_status=2 THEN 1 ELSE 0 END) FROM runs"
+        ).fetchone()
+        con.close()
+        pending_after = int(after[0] or 0)
+        synced_after  = int(after[1] or 0)
+        failed_after  = int(after[2] or 0)
+
+        runs_synced = result.get("runs_synced", 0)
+        rows_total  = result.get("rows_total", 0)
+        status      = result.get("status", "?")
+        error       = result.get("error", "")
+
+        if status == "ok":
+            st.success(
+                f"✅ Sync complete — **{runs_synced}** run(s) synced, "
+                f"**{rows_total}** rows inserted into PostgreSQL"
+            )
         else:
-            st.error(f"Sync failed: {result.get('error')}")
+            st.error(f"❌ Sync failed: {error}")
+
+        # Audit table
+        import pandas as pd
+        audit = pd.DataFrame([
+            {"metric": "Runs synced this batch",   "value": runs_synced},
+            {"metric": "PG rows inserted",         "value": rows_total},
+            {"metric": "Pending before",           "value": pending_before},
+            {"metric": "Pending after",            "value": pending_after},
+            {"metric": "Failed before",            "value": failed_before},
+            {"metric": "Failed after",             "value": failed_after},
+            {"metric": "Total synced in SQLite",   "value": synced_after},
+        ])
+        st.dataframe(audit, use_container_width=True, hide_index=True)
+        st.cache_data.clear()
+        st.rerun()
+
     except Exception as e:
         st.error(f"Sync error: {e}")
+        import traceback
+        st.code(traceback.format_exc(), language="text")
 
 
 def _reset_failed_runs() -> None:
+    import sqlite3
+    db = _get_db_path()
     try:
-        import sqlite3, os
-        db = os.environ.get("ALEMS_SQLITE_PATH",
-                            str(__import__("pathlib").Path.home() /
-                                "mydrive/a-lems/data/experiments.db"))
         con = sqlite3.connect(db)
+        # Fresh count — bypass any cache
         n = con.execute("SELECT COUNT(*) FROM runs WHERE sync_status=2").fetchone()[0]
+        if n == 0:
+            st.info("No failed runs found in SQLite. Counter may be cached — refreshing.")
+            con.close()
+            st.cache_data.clear()
+            st.rerun()
+            return
+        # Get sample of failed run_ids for audit
+        sample = con.execute(
+            "SELECT run_id, exp_id, workflow_type FROM runs "
+            "WHERE sync_status=2 ORDER BY run_id DESC LIMIT 5"
+        ).fetchall()
         con.execute("UPDATE runs SET sync_status=0 WHERE sync_status=2")
         con.commit()
         con.close()
-        st.success(f"✅ Reset {n} failed run(s) to pending. They will sync on next cycle.")
+        st.success(f"✅ Reset **{n}** failed run(s) → pending. Agent will retry on next cycle.")
+        import pandas as pd
+        st.dataframe(
+            pd.DataFrame(sample, columns=["run_id", "exp_id", "workflow_type"])
+            .assign(new_status="pending (0)"),
+            use_container_width=True, hide_index=True,
+        )
+        st.cache_data.clear()
+        st.rerun()
     except Exception as e:
         st.error(str(e))
+        import traceback
+        st.code(traceback.format_exc(), language="text")
 
 
 def _trigger_samples_sync() -> None:
+    import sqlite3
+    db = _get_db_path()
     try:
+        # Count before
+        con = sqlite3.connect(db)
+        before = con.execute(
+            "SELECT COUNT(*) FROM runs "
+            "WHERE sync_status=1 AND sync_samples_status=0"
+        ).fetchone()[0]
+        con.close()
+
+        if before == 0:
+            st.info("No runs pending sample sync (sync_samples_status=0 with sync_status=1).")
+            return
+
         from alems.agent.sync_client import _sync_pending_samples
         from alems.agent.mode_manager import get_sync_config
-        import os
         cfg = get_sync_config()
-        db  = os.environ.get("ALEMS_SQLITE_PATH",
-                             str(__import__("pathlib").Path.home() /
-                                 "mydrive/a-lems/data/experiments.db"))
-        _sync_pending_samples(db, int(cfg.get("retry_max", 3)), int(cfg.get("retry_backoff_s", 30)))
-        st.success("✅ Samples sync triggered.")
+        _sync_pending_samples(
+            db,
+            int(cfg.get("retry_max", 3)),
+            int(cfg.get("retry_backoff_s", 5)),   # reduced backoff for manual trigger
+        )
+
+        # Count after
+        con = sqlite3.connect(db)
+        after = con.execute(
+            "SELECT COUNT(*) FROM runs "
+            "WHERE sync_status=1 AND sync_samples_status=0"
+        ).fetchone()[0]
+        synced_batch = before - after
+        con.close()
+
+        st.success(
+            f"✅ Samples sync complete — **{synced_batch}** run(s) samples synced "
+            f"({after} still pending, agent will continue in background)"
+        )
+        import pandas as pd
+        st.dataframe(pd.DataFrame([
+            {"metric": "Pending before", "value": before},
+            {"metric": "Synced this batch", "value": synced_batch},
+            {"metric": "Still pending", "value": after},
+        ]), use_container_width=True, hide_index=True)
+        st.cache_data.clear()
+        st.rerun()
+
     except Exception as e:
         st.error(f"Samples sync error: {e}")
+        import traceback
+        st.code(traceback.format_exc(), language="text")
