@@ -10,13 +10,15 @@ Mode detection (automatic):
 SQL compatibility strategy:
   _adapt_sql() transforms SQLite SQL to PostgreSQL before execution.
   Transformations applied:
-    ROUND(expr, n)       → ROUND(CAST(expr AS NUMERIC), n)
-    CAST(x AS REAL)      → CAST(x AS DOUBLE PRECISION)
-    AS REAL              → AS DOUBLE PRECISION
-    datetime('now',...)  → NOW() - INTERVAL ...
-    datetime(x,'unixepoch') → to_timestamp(x)
-    strftime(fmt, ...)   → to_char(to_timestamp(...), fmt)
-    ? params             → %s params
+    ROUND(expr, n)                    → ROUND(CAST(expr AS NUMERIC), n)
+    CAST(x AS REAL)                   → CAST(x AS DOUBLE PRECISION)
+    AS REAL                           → AS DOUBLE PRECISION
+    datetime('now',...)               → NOW() - INTERVAL ...
+    datetime(x,'unixepoch')           → to_timestamp(x)
+    datetime(col)                     → col  (bare cast, PG col already typed)
+    strftime(fmt, ...)                → to_char(to_timestamp(...), fmt)
+    julianday('now') - julianday(col) → EXTRACT(EPOCH FROM (NOW()-col::timestamp))/86400
+    ? params                          → %s params
 ────────────────────────────────────────────────────────────────────────────
 """
 
@@ -153,9 +155,70 @@ def _adapt_sql(sql: str) -> str:
         sql, flags=re.IGNORECASE,
     )
 
-    # 6. SQLite string concat with || when mixing types — keep as-is (PG supports ||)
+    # 6. julianday('now') - julianday(col)  →  EXTRACT(EPOCH FROM (NOW() - col::timestamp)) / 86400
+    #    Pattern: (julianday('now') - julianday(expr)) * N
+    #    Semantics: difference in days * N  (execute.py uses * 1440 for minutes)
+    #    PG equivalent: EXTRACT(EPOCH FROM (NOW() - expr::timestamp)) / 86400 * N
+    def _julianday_diff(m: re.Match) -> str:
+        expr = m.group(1).strip()
+        return f"(EXTRACT(EPOCH FROM (NOW() - ({expr})::timestamp)) / 86400.0)"
 
-    # 7. ? → %s  (parameter placeholder)
+    sql = re.sub(
+        r"julianday\(\s*'now'\s*\)\s*-\s*julianday\(\s*([^)]+)\s*\)",
+        _julianday_diff,
+        sql, flags=re.IGNORECASE,
+    )
+
+    # 7. bare datetime(expr) cast — SQLite uses datetime(x) to normalise strings/timestamps.
+    #    In PG the column is already a proper timestamp type, so strip the wrapper.
+    #    Must run AFTER rules 3 & 4 so only bare (no second arg) calls remain.
+    #    Use paren-counting so COALESCE(...) and other nested calls are handled correctly.
+    def _strip_bare_datetime(sql: str) -> str:
+        result = []
+        i = 0
+        upper = sql.upper()
+        tag = 'DATETIME('
+        while i < len(sql):
+            if upper[i:i+len(tag)] == tag:
+                # Check there is no 'unixepoch' / interval second arg (those were handled above)
+                # Scan inner content
+                inner_start = i + len(tag)
+                depth = 1
+                j = inner_start
+                while j < len(sql) and depth > 0:
+                    if sql[j] == '(':
+                        depth += 1
+                    elif sql[j] == ')':
+                        depth -= 1
+                    j += 1
+                inner = sql[inner_start:j - 1]
+                # Only strip if no second argument at depth-0 (no comma at depth 0)
+                d, has_arg = 0, False
+                for c in inner:
+                    if c == '(':
+                        d += 1
+                    elif c == ')':
+                        d -= 1
+                    elif c == ',' and d == 0:
+                        has_arg = True
+                        break
+                if has_arg:
+                    # Has a second arg — already handled (unixepoch/interval) or unknown; keep
+                    result.append(sql[i:j])
+                else:
+                    # Bare datetime(expr) → just expr
+                    result.append(inner)
+                i = j
+            else:
+                result.append(sql[i])
+                i += 1
+        return ''.join(result)
+
+    sql = _strip_bare_datetime(sql)
+
+    # 8. SQLite string concat with || when mixing types — keep as-is (PG supports ||)
+
+    # 9. ? → %s  (parameter placeholder)
     sql = sql.replace('?', '%s')
 
     return sql
@@ -246,15 +309,25 @@ class _PgCursor:
 
 # ── Query helpers ─────────────────────────────────────────────────────────────
 
+def _pg_engine():
+    """SQLAlchemy engine for PostgreSQL — avoids pandas psycopg2 warning."""
+    try:
+        from sqlalchemy import create_engine
+        return create_engine(_db_url(), pool_pre_ping=True)
+    except Exception as e:
+        raise RuntimeError(f"SQLAlchemy engine failed: {e}")
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def q(sql: str, params: tuple = ()) -> pd.DataFrame:
     """Cached query → DataFrame. Dialect-aware."""
     if is_server_mode():
         try:
-            con    = _pg_connect()
+            from sqlalchemy import text as _text
+            engine = _pg_engine()
             sql_pg = _adapt_sql(sql)
-            df     = pd.read_sql_query(sql_pg, con, params=params or None)
-            con.close()
+            with engine.connect() as con:
+                df = pd.read_sql_query(_text(sql_pg), con, params=params or None)
             return df
         except Exception as e:
             st.error(f"Query error: {e}")
@@ -271,10 +344,11 @@ def q_safe(sql: str, params: tuple = ()) -> tuple[pd.DataFrame, str | None]:
     """Uncached query → (DataFrame, error). Use in UI pages."""
     if is_server_mode():
         try:
-            con    = _pg_connect()
+            from sqlalchemy import text as _text
+            engine = _pg_engine()
             sql_pg = _adapt_sql(sql)
-            df     = pd.read_sql_query(sql_pg, con, params=params or None)
-            con.close()
+            with engine.connect() as con:
+                df = pd.read_sql_query(_text(sql_pg), con, params=params or None)
             return df, None
         except Exception as e:
             return pd.DataFrame(), str(e)

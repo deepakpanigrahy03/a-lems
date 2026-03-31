@@ -207,20 +207,15 @@ def _load_tasks() -> tuple:
 
 def _show_stuck_runs():
     try:
-        from gui.db import is_server_mode
-        if is_server_mode():
-            from gui.db_pg import load_stuck_experiments
-            stuck = load_stuck_experiments(_STUCK_MINS)
-        else:
-            stuck = q(f"""
-                SELECT exp_id, task_name, provider, group_id,
-                       started_at, runs_completed, runs_total
-                FROM experiments
-                WHERE status = 'running'
-                  AND started_at IS NOT NULL
-                  AND (julianday('now') - julianday(started_at)) * 1440 > {_STUCK_MINS}
-                ORDER BY exp_id
-            """)
+        stuck = q(f"""
+            SELECT exp_id, task_name, provider, group_id,
+                   started_at, runs_completed, runs_total
+            FROM experiments
+            WHERE status = 'running'
+              AND started_at IS NOT NULL
+              AND (julianday('now') - julianday(started_at)) * 1440 > {_STUCK_MINS}
+            ORDER BY exp_id
+        """)
     except Exception:
         return
     if stuck.empty:
@@ -1247,36 +1242,6 @@ def render(ctx: dict):
 
     st.title("Execute Run")
 
-    # ── Host selector ──────────────────────────────────────────────────────
-    # localhost always available. Remote hosts shown if agent is connected.
-    # Selection stored in session state; tab2 reads it to decide local vs dispatch.
-    from gui.pages._agent_utils import get_ui_mode, is_server_alive, get_server_url
-    _ui_mode = get_ui_mode()
-
-    _host_options = {"💻 localhost (this machine)": "local"}
-    if _ui_mode == "connected" and is_server_alive():
-        try:
-            import httpx as _hx
-            from alems.agent.mode_manager import get_api_key as _gak
-            _r = _hx.get(f"{get_server_url()}/machines",
-                         headers={"Authorization": f"Bearer {_gak()}"}, timeout=3)
-            if _r.status_code == 200:
-                for _m in _r.json():
-                    if _m.get("agent_status") in ("idle", "connected", "syncing"):
-                        _lbl = f"🟢 {_m['hostname']} (hw_id={_m['hw_id']})"
-                        _host_options[_lbl] = int(_m["hw_id"])
-        except Exception:
-            pass
-
-    if len(_host_options) > 1:
-        _chosen_host_lbl = st.selectbox(
-            "Target machine", list(_host_options.keys()), key="ex_target_host"
-        )
-        st.session_state["ex_dispatch_target"] = _host_options[_chosen_host_lbl]
-    else:
-        st.session_state["ex_dispatch_target"] = "local"
-        st.caption("💻 Running on localhost · Connect to server to dispatch to remote hosts")
-
     # FIX #2: non-blocking mode banner
     _conn = _get_conn_safe()
     if _conn.get("verified"):
@@ -1518,13 +1483,13 @@ def render(ctx: dict):
                 else:
                     st.session_state.ex_queue.insert(0, dict(meta))
                     _save_queue()
-                    st.success("Queued — go to ⚡ Live Execution")
+                    st.session_state["ex_goto_live"] = True
                     st.rerun()
 
             if c3.button("➕ Queue", use_container_width=True, key="ex_queue_btn"):
                 st.session_state.ex_queue.append(dict(meta))
                 _save_queue()
-                st.success(f"Queued at position {len(st.session_state.ex_queue)}")
+                st.success(f"✅ Added at position {len(st.session_state.ex_queue)} — see Queue panel below →")
 
         with right:
             st.markdown("#### 📁 Saved Experiments")
@@ -1563,15 +1528,54 @@ def render(ctx: dict):
                     st.rerun()
 
             st.divider()
+            # ── Target machine selector ───────────────────────────────────
+            st.markdown("#### 🖥 Target Machine")
+            from gui.pages._agent_utils import get_ui_mode as _gum, is_server_alive as _isa, get_server_url as _gsu
+            _host_options = {"💻 localhost (this machine)": "local"}
+            if _gum() == "connected" and _isa():
+                try:
+                    import httpx as _hx
+                    from alems.agent.mode_manager import get_api_key as _gak
+                    _r = _hx.get(f"{_gsu()}/machines",
+                                 headers={"Authorization": f"Bearer {_gak()}"}, timeout=3)
+                    if _r.status_code == 200:
+                        for _m in _r.json():
+                            if _m.get("agent_status") in ("idle","connected","syncing"):
+                                _host_options[f"🟢 {_m['hostname']} (hw_id={_m['hw_id']})"] = int(_m["hw_id"])
+                except Exception:
+                    pass
+            _chosen = st.selectbox("Run on", list(_host_options.keys()), key="ex_target_host")
+            st.session_state["ex_dispatch_target"] = _host_options[_chosen]
+            if st.session_state["ex_dispatch_target"] != "local":
+                st.caption("⬆ Jobs dispatched to remote host via server job queue.")
+            st.divider()
+
             st.markdown("#### ⏳ Queue")
             if not st.session_state.ex_queue:
-                st.caption("Queue is empty.")
+                st.caption("Queue is empty. Build an experiment above and click ➕ Queue.")
             else:
+                st.info(f"⚡ {len(st.session_state.ex_queue)} experiment(s) queued — go to **⚡ Live Execution** tab to start.", icon="▶")
                 for i, exp in enumerate(st.session_state.ex_queue):
                     qa, qb = st.columns([4, 1])
+                    # Show name + task + provider + command preview
+                    task    = exp.get("task") or ", ".join(exp.get("tasks", []))[:30]
+                    prov    = exp.get("provider") or "/".join(exp.get("providers", []))
+                    reps    = exp.get("reps", "?")
+                    cmd_str = " ".join(exp["cmd"]) if exp.get("cmd") else "batch"
                     qa.markdown(
-                        f"<div style='font-size:11px;color:#93c5fd;'>"
-                        f"#{i+1} — <b>{exp['name']}</b></div>",
+                        f"<div style='padding:6px 8px;background:#0d1117;"
+                        f"border:1px solid #1e3a5f;border-left:3px solid #3b82f6;"
+                        f"border-radius:6px;margin-bottom:4px;'>"
+                        f"<div style='font-size:11px;color:#93c5fd;font-weight:600;'>"
+                        f"#{i+1} — {exp['name']}</div>"
+                        f"<div style='font-size:10px;color:#7090b0;margin-top:2px;'>"
+                        f"task: <b style='color:#e2e8f0;'>{task}</b> · "
+                        f"provider: <b style='color:#e2e8f0;'>{prov}</b> · "
+                        f"{reps} reps</div>"
+                        f"<div style='font-size:9px;color:#475569;margin-top:2px;"
+                        f"font-family:IBM Plex Mono,monospace;overflow:hidden;"
+                        f"text-overflow:ellipsis;white-space:nowrap;'>"
+                        f"{cmd_str}</div></div>",
                         unsafe_allow_html=True,
                     )
                     if qb.button("✕", key=f"q_del_{i}", use_container_width=True):
@@ -1615,40 +1619,7 @@ def render(ctx: dict):
                 _save_queue()
                 sid = f"ses_{int(_time.time()*1000)}"
 
-                _dispatch_target = st.session_state.get("ex_dispatch_target", "local")
-
-                if _dispatch_target != "local":
-                    # ── Remote dispatch via job_queue ──────────────────────
-                    import json as _json
-                    from alems.agent.mode_manager import get_api_key as _gak2
-                    _cfg = {
-                        "task_id":      exp.get("task", all_tasks[0] if all_tasks else "gsm8k_basic"),
-                        "provider":     exp.get("provider", (exp.get("providers") or ["cloud"])[0]),
-                        "repetitions":  exp.get("reps", 3),
-                        "workflow_type": exp.get("workflow_type", "linear"),
-                        "country":      exp.get("country", "US"),
-                    }
-                    if exp.get("model"):
-                        _cfg["model_name"] = exp["model"]
-                    try:
-                        import httpx as _hx2
-                        _r2 = _hx2.post(
-                            f"{get_server_url()}/jobs/submit",
-                            json={"api_key": _gak2(),
-                                  "experiment_config_json": _json.dumps(_cfg),
-                                  "target_hw_id": _dispatch_target,
-                                  "priority": 5},
-                            timeout=10,
-                        )
-                        if _r2.status_code == 200:
-                            st.success(f"✅ Job dispatched to hw_id={_dispatch_target}. "
-                                       "Agent will pick it up within 10s.")
-                        else:
-                            st.error(f"Dispatch failed: {_r2.status_code} {_r2.text}")
-                    except Exception as _de:
-                        st.error(f"Dispatch error: {_de}")
-
-                elif conn.get("verified"):
+                if conn.get("verified"):
                     payload = {
                         "task_id": exp.get(
                             "task",
@@ -1694,6 +1665,34 @@ def render(ctx: dict):
                         st.session_state.ex_sessions.append(record)
                         if record["status"] == "complete":
                             _analytics_card(record)
+                elif st.session_state.get("ex_dispatch_target", "local") != "local":
+                    # Remote dispatch via job_queue
+                    import json as _json
+                    from gui.pages._agent_utils import get_server_url as _gsu2
+                    from alems.agent.mode_manager import get_api_key as _gak2
+                    _target_hw = st.session_state["ex_dispatch_target"]
+                    _cfg = {
+                        "task_id":       exp.get("task", "gsm8k_basic"),
+                        "provider":      exp.get("provider", "cloud"),
+                        "repetitions":   exp.get("reps", 3),
+                        "workflow_type": exp.get("workflow_type", "linear"),
+                        "country":       exp.get("country", "US"),
+                    }
+                    try:
+                        import httpx as _hx3
+                        _r3 = _hx3.post(
+                            f"{_gsu2()}/jobs/submit",
+                            json={"api_key": _gak2(),
+                                  "experiment_config_json": _json.dumps(_cfg),
+                                  "target_hw_id": _target_hw, "priority": 5},
+                            timeout=10,
+                        )
+                        if _r3.status_code == 200:
+                            st.success(f"✅ Dispatched to hw_id={_target_hw}. Agent picks up within 10s. Check Fleet → Job Queue.")
+                        else:
+                            st.error(f"Dispatch failed: {_r3.status_code}")
+                    except Exception as _de3:
+                        st.error(f"Dispatch error: {_de3}")
                 else:
                     st.session_state.ex_run_record = {
                         "sid": sid,
@@ -1713,11 +1712,12 @@ def render(ctx: dict):
                     )
                     t.start()
                     st.session_state.ex_thread = t
+                    st.session_state["ex_stay_on_live"] = True
                     st.rerun()
 
         elif not st.session_state.ex_running and not st.session_state.ex_queue:
             if not (st.session_state.ex_running or st.session_state.ex_done):
-                st.info("Queue is empty. Go to 📋 Create & Queue to add experiments.")
+                st.info("Queue is empty. Go to **📋 Create & Queue** tab → build an experiment → click ➕ Queue or ▶ Run Next.")
 
         if st.session_state.ex_running or st.session_state.ex_done:
             _render_live_view()

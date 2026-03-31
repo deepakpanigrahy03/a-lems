@@ -160,6 +160,8 @@ _PAGE_MODULES = {
     "silicon_journey": "gui.pages.silicon_journey",
     "capability_matrix":   "gui.pages.capability_matrix",
     "multi_host_status":   "gui.pages.multi_host_status",
+    "fleet":               "gui.pages.fleet",
+    "hardware_compare":    "gui.pages.hardware_compare",
     # Data Movement
     "data_cache": "gui.pages.data_cache",
     "data_tokens": "gui.pages.data_tokens",

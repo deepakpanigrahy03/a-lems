@@ -1,1 +1,22 @@
-queue: []
+queue:
+- cmd:
+  - python
+  - -m
+  - core.execution.tests.test_harness
+  - --task-id
+  - code_fibonacci
+  - --provider
+  - cloud
+  - --repetitions
+  - '1'
+  - --country
+  - US
+  - --cool-down
+  - '5'
+  - --save-db
+  country: US
+  mode: single
+  name: My Experiment
+  provider: cloud
+  reps: 1
+  task: code_fibonacci
