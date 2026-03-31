@@ -253,10 +253,10 @@ def render(ctx: dict) -> None:
         cs = q(f"""
             SELECT timestamp_ns/1e9 AS time_s,
                    cpu_util_percent, package_power,
-                   ipc, cache_miss_rate, frequency_mhz,
+                   ipc,
+                   cpu_avg_mhz        AS frequency_mhz,
                    c1_residency, c2_residency, c3_residency,
-                   c6_residency, c7_residency,
-                   context_switches, migrations
+                   c6_residency, c7_residency
             FROM cpu_samples
             WHERE run_id = {int(sel_run_id)}
             ORDER BY timestamp_ns

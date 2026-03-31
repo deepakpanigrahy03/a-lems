@@ -81,7 +81,7 @@ def _fleet_server() -> None:
                h.cpu_architecture, h.virtualization_type,
                h.agent_status, h.last_seen, h.agent_version,
                h.server_hw_id,
-               COUNT(r.global_run_id)  AS total_runs,
+               COUNT(DISTINCT r.global_run_id)  AS total_runs,
                MAX(r.synced_at)        AS last_sync,
                rsc.status              AS live_status,
                rsc.task_name           AS live_task,
@@ -555,7 +555,7 @@ def _sync_server() -> None:
 
     machines = q("""
         SELECT h.hw_id, h.hostname, h.agent_status, h.last_seen,
-               COUNT(r.global_run_id) AS synced_runs,
+               COUNT(DISTINCT r.global_run_id) AS synced_runs,
                MAX(r.synced_at)       AS last_sync
         FROM hardware_config h
         LEFT JOIN runs r ON r.hw_id = h.hw_id

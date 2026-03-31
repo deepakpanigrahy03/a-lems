@@ -101,7 +101,7 @@ def _auth(
 def health(session: Session = Depends(get_db)):
     row = session.execute(text("""
         SELECT COUNT(*) FROM hardware_config
-        WHERE last_seen > NOW() - INTERVAL '2 minutes'
+        WHERE last_seen > NOW() - INTERVAL '5 minutes' AND agent_status != 'offline'
     """)).fetchone()
     connected = int(row[0]) if row else 0
     return HealthResponse(

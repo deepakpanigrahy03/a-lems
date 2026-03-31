@@ -654,18 +654,20 @@ def _load_tax_from_db(group_id: str) -> list:
     # Fallback: compute from runs directly
     try:
         df2 = q(f"""
-            SELECT
-                e.provider,
-                e.task_name                                      AS task,
-                AVG(CASE WHEN r.workflow_type='linear'
-                         THEN r.total_energy_uj/1e6 END)         AS linear_j,
-                AVG(CASE WHEN r.workflow_type='agentic'
-                         THEN r.total_energy_uj/1e6 END)         AS agentic_j
-            FROM runs r
-            JOIN experiments e ON r.exp_id = e.exp_id
-            WHERE e.group_id = '{group_id}'
-            GROUP BY e.provider, e.task_name
-            HAVING linear_j IS NOT NULL AND agentic_j IS NOT NULL
+            SELECT * FROM (
+                SELECT
+                    e.provider,
+                    e.task_name                                      AS task,
+                    AVG(CASE WHEN r.workflow_type='linear'
+                             THEN r.total_energy_uj/1e6 END)         AS linear_j,
+                    AVG(CASE WHEN r.workflow_type='agentic'
+                             THEN r.total_energy_uj/1e6 END)         AS agentic_j
+                FROM runs r
+                JOIN experiments e ON r.exp_id = e.exp_id
+                WHERE e.group_id = '{group_id}'
+                GROUP BY e.provider, e.task_name
+            ) sub
+            WHERE linear_j IS NOT NULL AND agentic_j IS NOT NULL
         """)
         if df2 is not None and not df2.empty:
             df2["tax_x"] = df2["agentic_j"] / df2["linear_j"].clip(lower=1e-9)
