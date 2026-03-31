@@ -108,14 +108,11 @@ def build_command(exp_config: dict) -> str:
     Mirrors what the Streamlit Execute page does.
     """
     parts = [
-        sys.executable, "-m", "core.execution.tests.test_harness",
-        "--task-id",     str(exp_config.get("task_id", "gsm8k_basic")),
-        "--provider",    str(exp_config.get("provider", "cloud")),
+        sys.executable, "-m", "core.execution.tests.run_experiment",
+        "--tasks",       str(exp_config.get("task_id", "gsm8k_basic")),
+        "--providers",   str(exp_config.get("provider", "cloud")),
         "--repetitions", str(exp_config.get("repetitions", 3)),
         "--country",     str(exp_config.get("country", "US")),
-        "--cool-down",   str(exp_config.get("cool_down", 5)),
         "--save-db",
     ]
-    if exp_config.get("model_name"):
-        parts += ["--model", exp_config["model_name"]]
     return " ".join(parts)
