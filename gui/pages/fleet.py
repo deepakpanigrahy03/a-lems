@@ -373,35 +373,50 @@ def _fleet_local(mode: str) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _build_job_form(key_prefix: str) -> dict:
-    """Shared job config form. All fields from config — no free text."""
-    tasks  = _load_tasks()
+    """Job config form — multi-task, multi-provider, all from config."""
+    tasks      = _load_tasks()
     task_ids   = [t["id"] for t in tasks]
     task_labels= [f"{t['id']}  ({t.get('category','')})" for t in tasks]
 
+    # Multi-task selector
+    sel_tasks = st.multiselect(
+        "Tasks", task_ids,
+        default=[task_ids[0]] if task_ids else [],
+        format_func=lambda tid: next(
+            (f"{t['id']}  ({t.get('category','')})" for t in tasks if t["id"] == tid), tid
+        ),
+        key=f"{key_prefix}_tasks",
+    )
+    if not sel_tasks:
+        st.warning("Select at least one task.")
+
     c1, c2, c3 = st.columns(3)
     with c1:
-        idx     = st.selectbox("Task", range(len(task_ids)),
-                               format_func=lambda i: task_labels[i],
-                               key=f"{key_prefix}_task")
-        task_id = task_ids[idx]
+        sel_providers = st.multiselect(
+            "Providers", ["cloud", "local"],
+            default=["cloud"], key=f"{key_prefix}_provs"
+        )
     with c2:
-        provider = st.selectbox("Provider", ["cloud", "local", "groq", "openrouter"],
-                                key=f"{key_prefix}_prov")
-    with c3:
         reps = st.number_input("Repetitions", 1, 50, 3, key=f"{key_prefix}_reps")
-
-    c4, c5 = st.columns(2)
-    with c4:
-        model = st.text_input("Model (optional)", key=f"{key_prefix}_model")
-    with c5:
+    with c3:
         country = st.selectbox("Country", ["US","GB","DE","FR","IN","SG","NO","AU"],
                                key=f"{key_prefix}_country")
 
-    cfg = {"task_id": task_id, "provider": provider,
-           "repetitions": reps, "country": country}
-    if model:
-        cfg["model_name"] = model
-    return cfg
+    # Preview command
+    if sel_tasks and sel_providers:
+        cmd_preview = (
+            f"run_experiment --tasks {','.join(sel_tasks)} "
+            f"--providers {','.join(sel_providers)} "
+            f"--repetitions {reps} --country {country} --save-db"
+        )
+        st.code(cmd_preview, language="bash")
+
+    return {
+        "tasks":     ",".join(sel_tasks),
+        "providers": ",".join(sel_providers) if sel_providers else "cloud",
+        "repetitions": int(reps),
+        "country":   country,
+    }
 
 
 def _dispatch_server() -> None:
@@ -489,13 +504,23 @@ def _dispatch_local(mode: str) -> None:
     if st.button("🚀 Dispatch Job", type="primary", use_container_width=True,
                  key="fleet_local_dispatch_btn"):
         if target == "local":
+            import sys
+            cmd = [
+                sys.executable, "-m", "core.execution.tests.run_experiment",
+                "--tasks",       cfg["tasks"],
+                "--providers",   cfg["providers"],
+                "--repetitions", str(cfg["repetitions"]),
+                "--country",     cfg.get("country", "US"),
+                "--save-db",
+            ]
             item = {
-                "name":     f"{cfg['task_id']} / {cfg['provider']}",
-                "task":     cfg["task_id"],
-                "provider": cfg["provider"],
+                "name":     f"{cfg['tasks']} / {cfg['providers']}",
+                "tasks":    cfg["tasks"],
+                "providers":cfg["providers"],
                 "reps":     cfg["repetitions"],
                 "country":  cfg.get("country", "US"),
-                "mode":     "single",
+                "mode":     "batch",
+                "cmd":      cmd,
             }
             if "ex_queue" not in st.session_state:
                 st.session_state.ex_queue = []

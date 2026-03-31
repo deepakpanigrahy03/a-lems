@@ -234,8 +234,8 @@ def _poll_loop():
                     _current_job_id = None
                     _current_run_id = None
 
-                # Sync immediately after run completes
-                _trigger_sync()
+                # Sync immediately after run completes — full (metadata + samples)
+                _trigger_sync(full=True)
 
         _shutdown.wait(timeout=interval)
 
@@ -264,9 +264,16 @@ def _sync_loop():
     print("[agent] Sync thread stopped")
 
 
-def _trigger_sync() -> dict:
-    from alems.agent.sync_client import sync_unsynced_runs
-    return sync_unsynced_runs(_get_db_path())
+def _trigger_sync(full: bool = False) -> dict:
+    from alems.agent.sync_client import sync_unsynced_runs, _sync_pending_samples
+    from alems.agent.mode_manager import get_sync_config
+    result = sync_unsynced_runs(_get_db_path())
+    if full:
+        cfg = get_sync_config()
+        _sync_pending_samples(_get_db_path(),
+                              int(cfg.get("retry_max", 3)),
+                              int(cfg.get("retry_backoff_s", 5)))
+    return result
 
 
 # ── Registration ──────────────────────────────────────────────────────────────

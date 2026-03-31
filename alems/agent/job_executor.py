@@ -107,10 +107,13 @@ def build_command(exp_config: dict) -> str:
     Build the test_harness CLI command from an experiment config dict.
     Mirrors what the Streamlit Execute page does.
     """
+    # Support both old (task_id/provider) and new (tasks/providers) config keys
+    tasks     = exp_config.get("tasks") or exp_config.get("task_id", "gsm8k_basic")
+    providers = exp_config.get("providers") or exp_config.get("provider", "cloud")
     parts = [
         sys.executable, "-m", "core.execution.tests.run_experiment",
-        "--tasks",       str(exp_config.get("task_id", "gsm8k_basic")),
-        "--providers",   str(exp_config.get("provider", "cloud")),
+        "--tasks",       str(tasks),
+        "--providers",   str(providers),
         "--repetitions", str(exp_config.get("repetitions", 3)),
         "--country",     str(exp_config.get("country", "US")),
         "--save-db",
