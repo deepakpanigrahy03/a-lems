@@ -77,18 +77,24 @@ def _header(mode: str) -> None:
 def _fleet_server() -> None:
     from gui.db_pg import q
     machines = q("""
-        SELECT h.hw_id, h.hostname, h.cpu_model, h.os_name,
+        SELECT h.hw_id, h.hostname, h.cpu_model,
+               h.cpu_architecture, h.virtualization_type,
                h.agent_status, h.last_seen, h.agent_version,
                h.server_hw_id,
                COUNT(r.global_run_id)  AS total_runs,
                MAX(r.synced_at)        AS last_sync,
                rsc.status              AS live_status,
                rsc.task_name           AS live_task,
-               rsc.elapsed_s           AS live_elapsed
+               rsc.elapsed_s           AS live_elapsed,
+               MAX(ec.os_name)         AS os_name,
+               MAX(ec.os_version)      AS os_version
         FROM hardware_config h
-        LEFT JOIN runs r        ON r.hw_id = h.hw_id
+        LEFT JOIN runs r              ON r.hw_id = h.hw_id
+        LEFT JOIN experiments e       ON e.hw_id = h.hw_id
+        LEFT JOIN environment_config ec ON ec.env_id = e.env_id
         LEFT JOIN run_status_cache rsc ON rsc.hw_id = h.hw_id
-        GROUP BY h.hw_id, h.hostname, h.cpu_model, h.os_name,
+        GROUP BY h.hw_id, h.hostname, h.cpu_model,
+                 h.cpu_architecture, h.virtualization_type,
                  h.agent_status, h.last_seen, h.agent_version, h.server_hw_id,
                  rsc.status, rsc.task_name, rsc.elapsed_s
         ORDER BY h.last_seen DESC NULLS LAST
@@ -192,6 +198,9 @@ def _machine_card(m: dict, admin: bool = False) -> None:
                 "busy": "#f59e0b"}.get(status, "#475569")
     host    = m.get("hostname") or f"hw_{m.get('hw_id')}"
     cpu     = m.get("cpu_model", "—")
+    os_name = m.get("os_name", "")
+    os_ver  = m.get("os_version", "")
+    os_str  = f"{os_name} {os_ver}".strip() or "—"
     runs    = int(m.get("total_runs") or 0)
     seen    = str(m.get("last_seen") or "never")[:16]
     live    = m.get("live_status", "")
@@ -209,6 +218,7 @@ def _machine_card(m: dict, admin: bool = False) -> None:
             f"<div style='font-size:10px;color:#94a3b8;font-family:IBM Plex Mono,monospace;"
             f"line-height:1.9;'>"
             f"cpu: <b style='color:#f1f5f9;'>{cpu}</b><br>"
+            f"os: <b style='color:#f1f5f9;'>{os_str}</b><br>"
             f"status: <b style='color:{clr};'>{status}</b><br>"
             f"last seen: {seen}<br>"
             f"synced runs: <b style='color:#a78bfa;'>{runs:,}</b>"
@@ -639,8 +649,11 @@ def _sync_local(mode: str) -> None:
                 try:
                     from alems.agent.mode_manager import _write_conf, _read_raw
                     conf = _read_raw()
-                    conf["server_url"] = new_url
-                    conf["mode"] = "connected"
+                    # _read_raw returns nested {section: {key: val}} — agent section
+                    if "agent" not in conf or not isinstance(conf.get("agent"), dict):
+                        conf["agent"] = {}
+                    conf["agent"]["server_url"] = new_url
+                    conf["agent"]["mode"] = "connected"
                     _write_conf(conf)
                     st.success("Mode set to connected. Restart agent to activate.")
                     st.code("python -m alems.agent start")
