@@ -77,6 +77,7 @@ def sync_unsynced_runs(db_path: str, immediately: bool = False) -> dict:
             summary["runs_synced"] = len(synced_ids)
             summary["rows_total"]  = result.get("rows_inserted", 0)
             print(f"[sync] Phase 1: {len(synced_ids)} runs metadata synced")
+            _write_sync_log(len(synced_ids), summary["rows_total"], "ok")
             return summary
         print(f"[sync] Attempt {attempt}/{retry_max} failed")
         if attempt < retry_max:
@@ -172,6 +173,27 @@ def _build_payload(con, run_ids, exp_ids, db_path, include_samples=True):
         "outliers":                  fetch("outliers", "run_id", run_ids) if include_samples else [],
     }
     return payload
+
+
+def _write_sync_log(runs_synced: int, rows_total: int, status: str) -> None:
+    """POST sync result to server for audit log. Non-blocking — errors ignored."""
+    try:
+        server_url = get_server_url()
+        import datetime
+        httpx.post(
+            f"{server_url}/sync-log",
+            json={
+                "api_key":         get_api_key(),
+                "runs_synced":     runs_synced,
+                "rows_total":      rows_total,
+                "status":          status,
+                "sync_completed_at": datetime.datetime.utcnow().isoformat(),
+            },
+            headers=_headers(),
+            timeout=5,
+        )
+    except Exception:
+        pass  # Never block sync for logging
 
 
 def _post_sync(payload: dict) -> Optional[dict]:

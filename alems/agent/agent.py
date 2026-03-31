@@ -39,6 +39,7 @@ _active_run   = threading.Event()   # SET when a run is executing
 _shutdown     = threading.Event()   # SET to stop all threads
 _current_job_id: Optional[str] = None
 _current_global_run_id: Optional[str] = None
+_current_run_id: Optional[int] = None  # local SQLite run_id during execution
 _last_sync_at: Optional[str] = None
 
 
@@ -89,12 +90,49 @@ def _heartbeat_loop():
     print("[agent] Heartbeat thread stopped")
 
 
+def _post_run_status_cache(run_id: int, job_id: str) -> None:
+    """Write completed run metrics to server run_status_cache."""
+    try:
+        con = sqlite3.connect(_get_db_path())
+        con.row_factory = sqlite3.Row
+        row = con.execute("""
+            SELECT r.run_id, r.exp_id, r.workflow_type,
+                   r.total_energy_uj, r.avg_power_watts,
+                   r.total_tokens, r.steps, r.duration_ns,
+                   e.task_name, e.model_name
+            FROM runs r JOIN experiments e ON e.exp_id = r.exp_id
+            WHERE r.run_id = ? LIMIT 1
+        """, (run_id,)).fetchone()
+        con.close()
+        if not row:
+            return
+        from alems.agent.heartbeat import send_heartbeat
+        from alems.shared.models import LiveMetrics
+        metrics = LiveMetrics(
+            run_id=run_id,
+            job_id=job_id,
+            task_name=row["task_name"],
+            model_name=row["model_name"],
+            workflow_type=row["workflow_type"],
+            elapsed_s=int((row["duration_ns"] or 0) / 1e9),
+            energy_uj=row["total_energy_uj"],
+            avg_power_watts=row["avg_power_watts"],
+            total_tokens=row["total_tokens"],
+            steps=row["steps"],
+        )
+        # Send as "running" so server writes to run_status_cache, then idle
+        send_heartbeat("running", _get_db_path(), live=metrics)
+        print(f"[agent] Posted run metrics to server: run_id={run_id}")
+    except Exception as e:
+        print(f"[agent] run_status_cache post error: {e}")
+
+
 def _build_live_metrics():
     """Read latest metrics from SQLite for the current active run."""
     from alems.shared.models import LiveMetrics
-    global _current_job_id, _current_global_run_id
+    global _current_job_id, _current_global_run_id, _current_run_id
 
-    if not _current_global_run_id:
+    if not _current_run_id:
         return None
     try:
         con = sqlite3.connect(_get_db_path())
@@ -104,12 +142,12 @@ def _build_live_metrics():
                    r.total_energy_uj, r.avg_power_watts,
                    r.total_tokens, r.steps,
                    e.task_name, e.model_name,
-                   (strftime('%s','now') - r.start_time_ns/1e9) as elapsed_s
+                   (CAST(strftime('%s','now') AS INTEGER) - r.start_time_ns/1000000000) as elapsed_s
             FROM runs r
             JOIN experiments e ON e.exp_id = r.exp_id
-            WHERE r.global_run_id = ?
+            WHERE r.run_id = ?
             ORDER BY r.run_id DESC LIMIT 1
-        """, (_current_global_run_id,)).fetchone()
+        """, (_current_run_id,)).fetchone()
         con.close()
         if not row:
             return None
@@ -151,26 +189,39 @@ def _poll_loop():
             if job:
                 print(f"[agent] Got job: {job.job_id}")
                 _active_run.set()
-                _current_job_id      = job.job_id
+                _current_job_id        = job.job_id
                 _current_global_run_id = None
+                _current_run_id        = None
 
                 report_job_status(job.job_id, "started", _get_db_path())
 
                 try:
-                    # Build command if not provided directly
                     cmd = job.command or build_command(job.exp_config)
-                    global_run_id = execute_job(
+                    # Pre-set expected run_id so heartbeat sends live metrics during run
+                    try:
+                        _con = sqlite3.connect(_get_db_path())
+                        _row = _con.execute("SELECT COALESCE(MAX(run_id),0) FROM runs").fetchone()
+                        _con.close()
+                        _current_run_id = int(_row[0]) + 1
+                    except Exception:
+                        _current_run_id = None
+
+                    new_run_id = execute_job(
                         command=cmd,
                         db_path=_get_db_path(),
                         job_id=job.job_id,
                     )
-                    _current_global_run_id = global_run_id
+                    _current_run_id        = new_run_id
+                    _current_global_run_id = str(new_run_id) if new_run_id else None
 
                     report_job_status(
                         job.job_id, "completed", _get_db_path(),
-                        global_run_id=global_run_id,
+                        global_run_id=_current_global_run_id,
                     )
-                    print(f"[agent] Job {job.job_id} completed")
+                    print(f"[agent] Job {job.job_id} completed — run_id={new_run_id}")
+                    # Write final metrics to run_status_cache so server can see result
+                    if new_run_id:
+                        _post_run_status_cache(new_run_id, job.job_id)
 
                 except Exception as e:
                     print(f"[agent] Job {job.job_id} error: {e}")
@@ -181,6 +232,7 @@ def _poll_loop():
                 finally:
                     _active_run.clear()
                     _current_job_id = None
+                    _current_run_id = None
 
                 # Sync immediately after run completes
                 _trigger_sync()

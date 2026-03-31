@@ -36,6 +36,12 @@ def execute_job(
     No UUID assignment — PostgreSQL assigns global IDs during sync.
     """
     working_dir = cwd or str(PROJECT_ROOT)
+
+    # Replace python executable with local venv python — command may have been
+    # built on a different machine with a different python path
+    import re
+    command = re.sub(r'^/[^ ]+/python[^ ]*', sys.executable, command)
+
     print(f"[executor] Executing: {command}")
     print(f"[executor] Working dir: {working_dir}")
 
@@ -110,8 +116,6 @@ def build_command(exp_config: dict) -> str:
         "--cool-down",   str(exp_config.get("cool_down", 5)),
         "--save-db",
     ]
-    if exp_config.get("workflow_type"):
-        parts += ["--workflow-type", exp_config["workflow_type"]]
     if exp_config.get("model_name"):
         parts += ["--model", exp_config["model_name"]]
     return " ".join(parts)

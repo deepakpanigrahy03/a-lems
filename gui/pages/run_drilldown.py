@@ -26,6 +26,13 @@ import streamlit as st
 
 from gui.config import PL, WF_COLORS
 from gui.db import q, q1
+# Strip keys from PL that callers override to avoid "multiple values" TypeError
+def _pl(**overrides):
+    """PL dict with caller overrides taking precedence."""
+    return {k: v for k, v in PL.items()
+            if k not in overrides} | overrides
+
+
 
 ACCENT = "#3b82f6"
 
@@ -160,13 +167,13 @@ def render(ctx: dict) -> None:
     # ══════════════════════════════════════════════════════════════════════════
     with tab1:
         es = q(f"""
-            SELECT timestamp_ns/1e9 AS time_s,
+            SELECT time_s,
                    pkg_power_watts, core_power_watts,
                    uncore_power_watts, dram_power_watts,
                    pkg_energy_uj
-            FROM energy_samples
+            FROM energy_samples_with_power
             WHERE run_id = {int(sel_run_id)}
-            ORDER BY timestamp_ns
+            ORDER BY time_s
             LIMIT {MAX_ENERGY_SAMPLES}
         """)
 
@@ -206,7 +213,7 @@ def render(ctx: dict) -> None:
                     line=dict(width=1.5, color=clr),
                 ))
             fig_e.update_layout(
-                **PL, height=300,
+                **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=300,
                 xaxis_title="Time (s)", yaxis_title="Power (W)",
                 title=dict(text="RAPL power over time", font=dict(size=11)),
             )
@@ -223,7 +230,7 @@ def render(ctx: dict) -> None:
                     fillcolor="rgba(245,158,11,0.07)",
                 ))
                 fig_cum.update_layout(
-                    **PL, height=200,
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=200,
                     xaxis_title="Time (s)", yaxis_title="Cumulative energy (J)",
                     title=dict(text="Cumulative energy", font=dict(size=11)),
                 )
@@ -251,15 +258,19 @@ def render(ctx: dict) -> None:
     # ══════════════════════════════════════════════════════════════════════════
     with tab2:
         cs = q(f"""
-            SELECT timestamp_ns/1e9 AS time_s,
-                   cpu_util_percent, package_power,
-                   ipc,
-                   cpu_avg_mhz        AS frequency_mhz,
-                   c1_residency, c2_residency, c3_residency,
-                   c6_residency, c7_residency
-            FROM cpu_samples
-            WHERE run_id = {int(sel_run_id)}
-            ORDER BY timestamp_ns
+            SELECT cs.timestamp_ns/1e9 AS time_s,
+                   cs.cpu_util_percent, cs.package_power,
+                   cs.ipc,
+                   cs.cpu_avg_mhz AS frequency_mhz,
+                   cs.c1_residency, cs.c2_residency, cs.c3_residency,
+                   cs.c6_residency, cs.c7_residency,
+                   r.cache_miss_rate,
+                   r.context_switches_voluntary + r.context_switches_involuntary AS context_switches,
+                   r.thread_migrations AS migrations
+            FROM cpu_samples cs
+            JOIN runs r ON cs.run_id = r.run_id
+            WHERE cs.run_id = {int(sel_run_id)}
+            ORDER BY cs.timestamp_ns
             LIMIT {MAX_CPU_SAMPLES}
         """)
 
@@ -287,7 +298,7 @@ def render(ctx: dict) -> None:
                         yaxis="y2",
                     ))
                 fig_cpu.update_layout(
-                    **PL, height=260,
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=260,
                     xaxis_title="Time (s)",
                     yaxis=dict(title="CPU util %", color="#3b82f6"),
                     yaxis2=dict(title="IPC", overlaying="y", side="right",
@@ -308,7 +319,7 @@ def render(ctx: dict) -> None:
                         fillcolor="rgba(245,158,11,0.07)",
                     ))
                     fig_freq.update_layout(
-                        **PL, height=260,
+                        **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=260,
                         xaxis_title="Time (s)",
                         yaxis_title="Frequency (MHz)",
                         title=dict(text="CPU frequency", font=dict(size=11)),
@@ -339,7 +350,7 @@ def render(ctx: dict) -> None:
                         stackgroup="cstates",
                     ))
                 fig_cs.update_layout(
-                    **PL, height=240,
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=240,
                     xaxis_title="Time (s)",
                     yaxis_title="C-state residency %",
                     title=dict(text="C-state residency over time", font=dict(size=11)),
@@ -354,7 +365,7 @@ def render(ctx: dict) -> None:
                     line=dict(color="#ef4444", width=1.5),
                 ))
                 fig_cmr.update_layout(
-                    **PL, height=200,
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=200,
                     xaxis_title="Time (s)", yaxis_title="Cache miss rate",
                     title=dict(text="Cache miss rate over time", font=dict(size=11)),
                 )
@@ -420,7 +431,7 @@ def render(ctx: dict) -> None:
                 ))
 
             fig_th.update_layout(
-                **PL, height=300,
+                **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=300,
                 xaxis_title="Time (s)", yaxis_title="Temperature (°C)",
                 title=dict(text="Thermal zones over time", font=dict(size=11)),
             )
@@ -446,7 +457,7 @@ def render(ctx: dict) -> None:
                         line=dict(color=colors[i % len(colors)], width=1),
                     ))
                 fig_zones.update_layout(
-                    **PL, height=280,
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=280,
                     xaxis_title="Time (s)", yaxis_title="Temperature (°C)",
                     title=dict(text="All thermal zones", font=dict(size=11)),
                 )
@@ -508,7 +519,7 @@ def render(ctx: dict) -> None:
                         fillcolor="rgba(245,158,11,0.07)",
                     ))
                     fig_irq.update_layout(
-                        **PL, height=240,
+                        **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=240,
                         xaxis_title="Time (s)", yaxis_title="Interrupts/s",
                         title=dict(text="Interrupt rate", font=dict(size=11)),
                     )
@@ -525,7 +536,7 @@ def render(ctx: dict) -> None:
                         fillcolor="rgba(167,139,250,0.07)",
                     ))
                     fig_ctx.update_layout(
-                        **PL, height=240,
+                        **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=240,
                         xaxis_title="Time (s)", yaxis_title="Context switches/s",
                         title=dict(text="Context switch rate", font=dict(size=11)),
                     )
@@ -618,7 +629,7 @@ def render(ctx: dict) -> None:
                         name="Completion", marker_color="#a78bfa", marker_line_width=0,
                     ))
                 fig_tok.update_layout(
-                    **PL, height=240, barmode="stack",
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=240, barmode="stack",
                     xaxis_title="Step", yaxis_title="Tokens",
                     title=dict(text="Tokens per step", font=dict(size=11)),
                 )
@@ -637,7 +648,7 @@ def render(ctx: dict) -> None:
                         name="LLM compute", marker_color="#22c55e", marker_line_width=0,
                     ))
                 fig_lat.update_layout(
-                    **PL, height=240, barmode="stack",
+                    **{k:v for k,v in PL.items() if k not in ("yaxis","xaxis","margin")}, height=240, barmode="stack",
                     xaxis_title="Step", yaxis_title="ms",
                     title=dict(text="Latency breakdown per step", font=dict(size=11)),
                 )
