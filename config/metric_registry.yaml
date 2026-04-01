@@ -1,0 +1,333 @@
+# config/metric_registry.yaml
+# Single source of truth for ALL metrics.
+# Add metric here → appears in UI automatically.
+# Zero code change ever.
+version: "1.0"
+
+metrics:
+
+  # ── LAYER 1: SILICON — MEASURED ─────────────────────────────────────
+
+  - id: pkg_energy_uj
+    label: "Package energy"
+    provenance: MEASURED
+    layer: silicon
+    layer_order: 1
+    source: "RAPL /sys/class/powercap/intel-rapl"
+    db_table: runs
+    db_column: pkg_energy_uj
+    unit: µJ
+    display_units: [µJ, mJ, J, Wh]
+    display_scale: {µJ: 1, mJ: 0.001, J: 0.000001, Wh: 0.000000000278}
+    formula: null
+    formula_latex: null
+    tooltip: "Total CPU package energy — read directly from Intel RAPL hardware register"
+    chart_type: timeseries
+    category: energy
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench, showcase]
+    default_visible: true
+
+  - id: core_energy_uj
+    label: "Core energy"
+    provenance: MEASURED
+    layer: silicon
+    layer_order: 1
+    source: "RAPL core domain"
+    db_table: runs
+    db_column: core_energy_uj
+    unit: µJ
+    display_units: [µJ, mJ, J]
+    formula: null
+    formula_latex: null
+    tooltip: "CPU core energy — compute work only, excludes uncore and DRAM"
+    chart_type: timeseries
+    category: energy
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench, showcase]
+    default_visible: true
+
+  - id: ipc
+    label: "IPC"
+    provenance: MEASURED
+    layer: silicon
+    layer_order: 1
+    source: "perf_event_open syscall"
+    db_table: runs
+    db_column: ipc
+    unit: "instr/cycle"
+    display_units: ["instr/cycle"]
+    formula: null
+    formula_latex: null
+    tooltip: "Instructions per cycle — hardware performance counter, not estimated"
+    chart_type: bar
+    category: performance
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench]
+    default_visible: true
+
+  # ── LAYER 2: OS — MEASURED ──────────────────────────────────────────
+
+  - id: interrupt_rate
+    label: "Interrupt rate"
+    provenance: MEASURED
+    layer: os
+    layer_order: 2
+    source: "/proc/stat irq delta"
+    db_table: runs
+    db_column: interrupt_rate
+    unit: "interrupts/s"
+    display_units: ["interrupts/s"]
+    formula: null
+    formula_latex: null
+    tooltip: "Hardware interrupt frequency sampled at 10Hz from /proc/stat"
+    chart_type: timeseries
+    category: performance
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench]
+    default_visible: false
+
+  # ── LAYER 3: ORCHESTRATION — CALCULATED ─────────────────────────────
+
+  - id: dynamic_energy_uj
+    label: "Dynamic energy"
+    provenance: CALCULATED
+    layer: orchestration
+    layer_order: 3
+    source: "EnergyAnalyzer.compute()"
+    db_table: runs
+    db_column: dynamic_energy_uj
+    unit: µJ
+    display_units: [µJ, mJ, J, Wh]
+    formula: "pkg_energy_uj - (baseline_package_power * duration_ns/1e9 * 1e6)"
+    formula_latex: "E_{dynamic} = E_{pkg} - (P_{idle} \\times t)"
+    tooltip: "Workload energy above idle baseline"
+    chart_type: bar
+    category: energy
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench, showcase]
+    default_visible: true
+
+  - id: orchestration_tax_uj
+    label: "Orchestration tax"
+    provenance: CALCULATED
+    layer: orchestration
+    layer_order: 3
+    source: "orchestration_tax_summary table"
+    db_table: orchestration_tax_summary
+    db_column: orchestration_tax_uj
+    unit: µJ
+    display_units: [µJ, mJ, J]
+    formula: "agentic_dynamic_uj - linear_dynamic_uj"
+    formula_latex: "E_{tax} = E_{agentic} - E_{linear}"
+    tooltip: "Pure overhead cost of agentic orchestration vs equivalent linear run"
+    chart_type: bar
+    category: energy
+    significance: thesis_core
+    leaderboard: true
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+  - id: ooi_time
+    label: "OOI (time)"
+    provenance: CALCULATED
+    layer: orchestration
+    layer_order: 3
+    source: "research_metrics_view"
+    db_table: research_metrics_view
+    db_column: ooi_time
+    unit: ratio
+    display_units: [ratio, "%"]
+    display_scale: {ratio: 1, "%": 100}
+    formula: "orchestration_cpu_ms / total_time_ms"
+    formula_latex: "OOI_t = \\frac{T_{orch}}{T_{total}}"
+    tooltip: "Orchestration Overhead Index — fraction of wall time spent on orchestration"
+    chart_type: gauge
+    category: efficiency
+    significance: thesis_core
+    leaderboard: true
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+  - id: ucr
+    label: "UCR"
+    provenance: CALCULATED
+    layer: orchestration
+    layer_order: 3
+    source: "research_metrics_view"
+    db_table: research_metrics_view
+    db_column: ucr
+    unit: ratio
+    display_units: [ratio, "%"]
+    formula: "total_llm_compute_ms / total_time_ms"
+    formula_latex: "UCR = \\frac{T_{compute}}{T_{total}}"
+    tooltip: "Useful Compute Ratio — fraction of time doing real LLM compute"
+    chart_type: gauge
+    category: efficiency
+    significance: thesis_core
+    leaderboard: true
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+  - id: energy_per_token
+    label: "Energy per token"
+    provenance: CALCULATED
+    layer: orchestration
+    layer_order: 3
+    source: "runs table"
+    db_table: runs
+    db_column: energy_per_token
+    unit: "µJ/token"
+    display_units: ["µJ/token", "mJ/token", "J/token"]
+    formula: "dynamic_energy_uj / total_tokens"
+    formula_latex: "E_{token} = \\frac{E_{dynamic}}{N_{tokens}}"
+    tooltip: "Dynamic energy cost per output token — primary efficiency metric"
+    chart_type: bar
+    category: efficiency
+    significance: thesis_core
+    leaderboard: true
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+  # ── LAYER 4: APPLICATION — INFERRED ─────────────────────────────────
+
+  - id: carbon_g
+    label: "Carbon footprint"
+    provenance: INFERRED
+    layer: application
+    layer_order: 4
+    source: "grid_intensity_2026.json × dynamic_energy_j"
+    db_table: runs
+    db_column: carbon_g
+    unit: gCO2
+    display_units: [gCO2, kgCO2, "searches equivalent", "phone charges"]
+    display_scale:
+      gCO2: 1
+      kgCO2: 0.001
+      "searches equivalent": 3.33
+      "phone charges": 0.00005
+    formula: "dynamic_energy_j * grid_intensity[country_code]"
+    formula_latex: "CO_2 = E_{dynamic} \\times I_{grid}(country)"
+    tooltip: "Estimated carbon — inferred from grid intensity, not directly measured"
+    config_dep: grid_intensity_2026.json
+    chart_type: gauge
+    category: sustainability
+    significance: supporting
+    leaderboard: true
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+  - id: water_ml
+    label: "Water usage"
+    provenance: INFERRED
+    layer: application
+    layer_order: 4
+    source: "gwp_values.yaml × dynamic_energy_j"
+    db_table: runs
+    db_column: water_ml
+    unit: ml
+    display_units: [ml, L, "bottles (500ml)"]
+    display_scale: {ml: 1, L: 0.001, "bottles (500ml)": 0.002}
+    formula: "dynamic_energy_j * water_factor"
+    formula_latex: "W = E_{dynamic} \\times F_{water}"
+    tooltip: "Estimated water consumption — inferred from energy and water intensity factor"
+    config_dep: gwp_values.yaml
+    chart_type: gauge
+    category: sustainability
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+  - id: methane_mg
+    label: "Methane equivalent"
+    provenance: INFERRED
+    layer: application
+    layer_order: 4
+    source: "gwp_values.yaml × dynamic_energy_j"
+    db_table: runs
+    db_column: methane_mg
+    unit: mg
+    display_units: [mg, g]
+    formula: "dynamic_energy_j * methane_factor"
+    formula_latex: "CH_4 = E_{dynamic} \\times F_{methane}"
+    tooltip: "Estimated methane equivalent — inferred from energy and methane intensity factor"
+    config_dep: gwp_values.yaml
+    chart_type: gauge
+    category: sustainability
+    significance: supporting
+    leaderboard: false
+    visible_in: [workbench, showcase, commons]
+    default_visible: true
+
+# ── LAYERS DEFINITION ────────────────────────────────────────────────────
+layers:
+  - id: silicon
+    label: "Silicon"
+    order: 1
+    color: "#1D9E75"
+    description: "Directly read from hardware registers (RAPL, MSR, perf)"
+    badge: MEASURED
+
+  - id: os
+    label: "OS / System"
+    order: 2
+    color: "#534AB7"
+    description: "Kernel-level signals from /proc, scheduler, thermal"
+    badge: MEASURED
+
+  - id: orchestration
+    label: "Orchestration"
+    order: 3
+    color: "#BA7517"
+    description: "Derived from agentic workflow timing and energy delta"
+    badge: CALCULATED
+
+  - id: application
+    label: "Application"
+    order: 4
+    color: "#185FA5"
+    description: "Inferred from LLM responses, tokens, grid intensity"
+    badge: INFERRED
+
+# ── SIGNIFICANCE ─────────────────────────────────────────────────────────
+significance:
+  - id: thesis_core
+    label: "Thesis core"
+    color: "#E24B4A"
+    description: "Central to PhD research question"
+
+  - id: supporting
+    label: "Supporting"
+    color: "#888780"
+    description: "Supports analysis but not central claim"
+
+# ── DISPLAY UNITS ────────────────────────────────────────────────────────
+# Researcher adds new unit here → appears in UI dropdown automatically
+unit_conversions:
+  energy:
+    base: µJ
+    units:
+      µJ: 1
+      mJ: 0.001
+      J: 0.000001
+      Wh: 0.000000000278
+      kWh: 0.000000000000278
+  carbon:
+    base: gCO2
+    units:
+      gCO2: 1
+      kgCO2: 0.001
+      tCO2: 0.000001
+  time:
+    base: ns
+    units:
+      ns: 1
+      µs: 0.001
+      ms: 0.000001
+      s: 0.000000001

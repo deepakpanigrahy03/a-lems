@@ -88,6 +88,31 @@ def sync_unsynced_runs(db_path: str, immediately: bool = False) -> dict:
     return summary
 
 
+def sync_run_samples_now(db_path: str, run_id_from: int, retry_max: int = 3) -> None:
+    """Immediately sync samples for all runs created >= run_id_from — bypasses backlog."""
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    rows = con.execute(
+        "SELECT run_id, exp_id FROM runs WHERE run_id >= ? AND sync_status=1 AND sync_samples_status=0",
+        (run_id_from,)
+    ).fetchall()
+    if not rows:
+        con.close()
+        return
+    run_ids = [r["run_id"] for r in rows]
+    exp_ids = list(set(r["exp_id"] for r in rows))
+    payload = _build_payload(con, run_ids, exp_ids, db_path, include_samples=True)
+    con.close()
+    for attempt in range(1, retry_max + 1):
+        result = _post_sync(payload)
+        if result and result.get("ok"):
+            _mark_samples_synced(db_path, run_ids)
+            print(f"[sync] Live sync: {len(run_ids)} run(s) samples synced (run_ids {run_ids[0]}–{run_ids[-1]})")
+            return
+        time.sleep(2)
+    print(f"[sync] Live sync: failed after {retry_max} attempts")
+
+
 def _sync_pending_samples(db_path: str, retry_max: int, backoff: int) -> None:
     """Phase 2 — sync child table samples for already-synced runs."""
     con = sqlite3.connect(db_path)
@@ -97,7 +122,7 @@ def _sync_pending_samples(db_path: str, retry_max: int, backoff: int) -> None:
         SELECT run_id, exp_id FROM runs
         WHERE sync_status = 1
           AND sync_samples_status = 0
-        ORDER BY run_id ASC LIMIT 3
+        ORDER BY run_id DESC LIMIT 2
     """, ()).fetchall()
 
     if not rows:
